@@ -4,7 +4,11 @@ import { catalogNames } from './model/catalog';
 import { BaseScene } from './scenes/BaseScene';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
+import { SlotEditor } from './slotEditor';
 import { GameStore } from './store';
+import { InfoDrawer } from './ui/InfoDrawer';
+import { askMasterPassword } from './ui/MasterLogin';
+import { MasterSession } from './ui/MasterSession';
 import { SlotPanel } from './ui/SlotPanel';
 import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
@@ -37,8 +41,27 @@ async function start(): Promise<void> {
     shownLogEntries = state.log.length;
   });
 
-  mountTopBar(requireElement('topbar'), store, notify);
-  const panel = new SlotPanel(requireElement('panel'), store);
+  const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
+  const editor = new SlotEditor(gameData.slots);
+  const drawer = new InfoDrawer(requireElement('drawer'), store, session, editor);
+  const panel = new SlotPanel(requireElement('panel'), store, session);
+
+  mountTopBar(requireElement('topbar'), store, {
+    notify,
+    toggleDrawer: () => drawer.toggle(),
+    openMaster: async () => {
+      if (session.isActive) return drawer.open('master');
+      if (!session.isConfigured) return notify(t.master.notConfigured, 'error');
+      if (await askMasterPassword(session)) {
+        notify(t.master.unlocked);
+        drawer.open('master');
+      }
+    },
+  });
+  // Leaving master mode also ends any slot editing in progress.
+  session.subscribe((isActive) => {
+    if (!isActive) editor.setEditing(false);
+  });
 
   await document.fonts.ready;
   new Phaser.Game({
@@ -46,16 +69,12 @@ async function start(): Promise<void> {
     parent: 'game',
     backgroundColor: '#0e0c10',
     scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
-    scene: [new BootScene(), new PreloadScene(gameData.assets), new BaseScene(store, panel)],
+    scene: [
+      new BootScene(),
+      new PreloadScene(gameData.assets),
+      new BaseScene(store, panel, editor),
+    ],
   });
-
-  if (import.meta.env.DEV) {
-    window.addEventListener('keydown', (event) => {
-      if (event.key.toLowerCase() === 'd' && !(event.target instanceof HTMLInputElement))
-        store.advanceDays(1);
-    });
-    console.info(t.devAdvanceHint);
-  }
 }
 
 start().catch((error: unknown) => {

@@ -74,13 +74,34 @@ const placedBuildingSchema = z.discriminatedUnion('status', [
   }),
 ]);
 
-export const logEntrySchema = z.object({
+const buildingEventSchema = z.object({
   day: positiveInt,
-  kind: z.enum(['build_started', 'upgrade_started', 'build_completed']),
+  kind: z.enum([
+    'build_started',
+    'upgrade_started',
+    'build_completed',
+    'building_forced',
+    'building_removed',
+  ]),
   buildingId: z.string(),
   level: z.number().int().positive(),
   actor: z.string().optional(),
 });
+
+export const logEntrySchema = z.discriminatedUnion('kind', [
+  buildingEventSchema,
+  z.object({
+    day: positiveInt,
+    kind: z.literal('resources_adjusted'),
+    /** Signed amounts: positive was given, negative was taken. */
+    delta: z.record(z.string(), z.number().int()),
+  }),
+  z.object({
+    day: positiveInt,
+    kind: z.literal('days_advanced'),
+    days: z.number().int().positive(),
+  }),
+]);
 
 export const SAVE_VERSION = 1;
 

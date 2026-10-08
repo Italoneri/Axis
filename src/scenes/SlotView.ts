@@ -7,6 +7,12 @@ const GOLD = 0xd4af37;
 const GOLD_SOFT = 0xf3e3a6;
 const LEVEL_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
+export interface SlotViewHandlers {
+  onClick: () => void;
+  /** World coordinates while the master drags the slot in edit mode. */
+  onDrag: (x: number, y: number) => void;
+}
+
 export interface SlotViewModel {
   placed: PlacedBuilding | undefined;
   def: BuildingDef | undefined;
@@ -15,6 +21,9 @@ export interface SlotViewModel {
 
 /** Everything drawn for one slot: idle glow, building sprite, level badge and progress ring. */
 export class SlotView {
+  private readonly container: Phaser.GameObjects.Container;
+  private readonly hitArea: Phaser.GameObjects.Zone;
+  private readonly idLabel: Phaser.GameObjects.Text;
   private readonly glow: Phaser.GameObjects.Graphics;
   private readonly ring: Phaser.GameObjects.Graphics;
   private readonly sprite: Phaser.GameObjects.Image;
@@ -27,17 +36,28 @@ export class SlotView {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    readonly x: number,
-    readonly y: number,
+    slotId: string,
+    x: number,
+    y: number,
     private readonly size: number,
-    onClick: () => void,
+    handlers: SlotViewHandlers,
   ) {
     const radius = size / 2;
-    this.glow = scene.add.graphics({ x, y }).setBlendMode(Phaser.BlendModes.ADD);
-    this.sprite = scene.add.image(x, y, '__DEFAULT').setVisible(false);
-    this.ring = scene.add.graphics({ x, y });
+    this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    this.sprite = scene.add.image(0, 0, '__DEFAULT').setVisible(false);
+    this.ring = scene.add.graphics();
+    this.idLabel = scene.add
+      .text(0, -radius * 0.95, slotId, {
+        fontFamily: 'monospace',
+        fontSize: `${Math.round(size * 0.16)}px`,
+        color: '#ffffff',
+        backgroundColor: '#000000aa',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
     this.badge = scene.add
-      .text(x, y + radius * 0.92, '', {
+      .text(0, radius * 0.92, '', {
         fontFamily: 'Cinzel, serif',
         fontStyle: 'bold',
         fontSize: `${Math.round(size * 0.2)}px`,
@@ -46,6 +66,13 @@ export class SlotView {
         strokeThickness: Math.max(3, size * 0.04),
       })
       .setOrigin(0.5);
+    this.container = scene.add.container(x, y, [
+      this.glow,
+      this.sprite,
+      this.ring,
+      this.badge,
+      this.idLabel,
+    ]);
 
     this.glowPulse = scene.tweens.add({
       targets: this.glow,
@@ -56,14 +83,30 @@ export class SlotView {
       ease: 'Sine.InOut',
     });
 
-    const hitArea = scene.add.zone(x, y, size, size).setInteractive({
+    // Input lives on a separate zone so drag coordinates come back in world space.
+    this.hitArea = scene.add.zone(x, y, size, size).setInteractive({
       hitArea: new Phaser.Geom.Circle(radius, radius, radius),
       hitAreaCallback: Phaser.Geom.Circle.Contains,
       useHandCursor: true,
     });
-    hitArea.on('pointerover', () => this.setHovered(true));
-    hitArea.on('pointerout', () => this.setHovered(false));
-    hitArea.on('pointerup', onClick);
+    this.hitArea.on('pointerover', () => this.setHovered(true));
+    this.hitArea.on('pointerout', () => this.setHovered(false));
+    this.hitArea.on('pointerup', handlers.onClick);
+    this.hitArea.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) =>
+      handlers.onDrag(dragX, dragY),
+    );
+  }
+
+  moveTo(x: number, y: number): void {
+    this.container.setPosition(x, y);
+    this.hitArea.setPosition(x, y);
+  }
+
+  /** Edit mode shows the slot id and lets the master drag the slot around. */
+  setEditable(editable: boolean): void {
+    this.scene.input.setDraggable(this.hitArea, editable);
+    if (this.hitArea.input) this.hitArea.input.cursor = editable ? 'move' : 'pointer';
+    this.idLabel.setVisible(editable);
   }
 
   update({ placed, def, day }: SlotViewModel): void {
@@ -103,7 +146,7 @@ export class SlotView {
   }
 
   playCompleted(): void {
-    const emitter = this.scene.add.particles(this.x, this.y, SPARK_TEXTURE, {
+    const emitter = this.scene.add.particles(this.container.x, this.container.y, SPARK_TEXTURE, {
       speed: { min: this.size * 0.4, max: this.size * 1.8 },
       lifespan: { min: 600, max: 1100 },
       scale: { start: this.size / 120, end: 0 },

@@ -1,6 +1,12 @@
 import type { Catalog } from './model/catalog';
-import type { GameState } from './model/schema';
+import type { GameState, ResourceBag } from './model/schema';
 import { startBuild, startUpgrade, type BlockReason, type BuildOrder } from './systems/BuildSystem';
+import {
+  adjustResources,
+  forceBuilding,
+  removeBuilding,
+  type ForceOrder,
+} from './systems/MasterSystem';
 import { loadState, persistState } from './systems/SaveSystem';
 import { advanceDays } from './systems/TimeSystem';
 
@@ -8,7 +14,10 @@ import { advanceDays } from './systems/TimeSystem';
 export type StateChange =
   | { kind: 'loaded' }
   | { kind: 'construction_started'; slotId: string }
-  | { kind: 'days_advanced'; completedSlotIds: string[] };
+  | { kind: 'days_advanced'; completedSlotIds: string[] }
+  | { kind: 'building_forced'; slotId: string }
+  | { kind: 'building_removed'; slotId: string }
+  | { kind: 'resources_adjusted' };
 
 type Listener = (state: GameState, change: StateChange) => void;
 
@@ -54,6 +63,23 @@ export class GameStore {
   advanceDays(days: number): void {
     const { state, completedSlotIds } = advanceDays(this.state, days);
     this.commit(state, { kind: 'days_advanced', completedSlotIds });
+  }
+
+  // Master actions: the UI only exposes them after the master password is entered.
+
+  adjustResources(delta: ResourceBag): void {
+    this.commit(adjustResources(this.state, delta), { kind: 'resources_adjusted' });
+  }
+
+  forceBuilding(order: ForceOrder): void {
+    this.commit(forceBuilding(this.state, this.catalog, order), {
+      kind: 'building_forced',
+      slotId: order.slotId,
+    });
+  }
+
+  removeBuilding(slotId: string): void {
+    this.commit(removeBuilding(this.state, slotId), { kind: 'building_removed', slotId });
   }
 
   replace(state: GameState): void {

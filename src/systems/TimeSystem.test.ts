@@ -24,6 +24,7 @@ describe('advanceDays', () => {
     expect(next.log).toEqual([
       { day: 4, kind: 'build_completed', buildingId: 'heart', level: 1 },
       { day: 6, kind: 'build_completed', buildingId: 'forge', level: 1 },
+      { day: 6, kind: 'days_advanced', days: 3 },
     ]);
   });
 

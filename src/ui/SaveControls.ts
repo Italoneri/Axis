@@ -2,6 +2,7 @@ import { t } from '../i18n/pt-BR';
 import { parseSave, serializeState } from '../systems/SaveSystem';
 import type { GameStore } from '../store';
 import { el } from './dom';
+import { downloadText } from './download';
 
 export function createSaveControls(
   store: GameStore,
@@ -23,16 +24,8 @@ export function createSaveControls(
     notify(t.save.imported);
   });
 
-  const exportSave = () => {
-    const blob = new Blob([serializeState(store.current)], { type: 'application/json' });
-    const link = el('a', {
-      href: URL.createObjectURL(blob),
-      download: `axis-save-dia-${store.current.day}.json`,
-    });
-    link.click();
-    // Revoking synchronously can cancel the download in some browsers.
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  };
+  const exportSave = () =>
+    downloadText(`axis-save-dia-${store.current.day}.json`, serializeState(store.current));
 
   return el(
     'div',

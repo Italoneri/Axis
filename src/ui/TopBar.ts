@@ -4,11 +4,13 @@ import type { GameStore } from '../store';
 import { el } from './dom';
 import { createSaveControls } from './SaveControls';
 
-export function mountTopBar(
-  root: HTMLElement,
-  store: GameStore,
-  notify: (msg: string, tone?: 'error') => void,
-): void {
+export interface TopBarActions {
+  notify: (msg: string, tone?: 'error') => void;
+  toggleDrawer: () => void;
+  openMaster: () => void;
+}
+
+export function mountTopBar(root: HTMLElement, store: GameStore, actions: TopBarActions): void {
   const { catalog } = store;
   const amounts = new Map<string, HTMLElement>();
 
@@ -29,7 +31,13 @@ export function mountTopBar(
     el('span', { class: 'topbar__brand' }, 'AXIS'),
     el('ul', { class: 'topbar__resources' }, ...resourceItems),
     day,
-    createSaveControls(store, notify),
+    el(
+      'div',
+      { class: 'topbar__actions' },
+      el('button', { class: 'btn', type: 'button', onclick: actions.toggleDrawer }, t.drawer.open),
+      el('button', { class: 'btn', type: 'button', onclick: actions.openMaster }, t.master.enter),
+    ),
+    createSaveControls(store, actions.notify),
   );
 
   const render = (state: GameState) => {

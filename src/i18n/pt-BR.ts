@@ -48,7 +48,48 @@ export const t = {
       'Não foi possível salvar no navegador. Exporte o save para não perder o progresso.',
   },
 
-  devAdvanceHint: 'Dev: tecla D avança 1 dia',
+  drawer: {
+    open: 'Registro e bônus',
+    close: 'Fechar',
+    bonusesTab: 'Bônus ativos',
+    logTab: 'Registro',
+    masterTab: 'Mestre',
+    noBonuses: 'Nenhuma estrutura concluída ainda.',
+    emptyLog: 'Nada aconteceu na Axis ainda.',
+  },
+
+  master: {
+    enter: 'Mestre',
+    title: 'Modo Mestre',
+    password: 'Senha do mestre',
+    unlock: 'Entrar',
+    cancel: 'Cancelar',
+    wrongPassword: 'Senha incorreta.',
+    notConfigured: 'Modo Mestre desativado: defina VITE_MASTER_PASSWORD no arquivo .env.',
+    unlocked: 'Modo Mestre ativado.',
+    leave: 'Sair do modo mestre',
+    timeSection: 'Tempo',
+    daysToAdvance: 'Dias',
+    advance: 'Avançar',
+    resourcesSection: 'Recursos',
+    resourcesHint: 'Informe as quantidades e escolha dar ou remover.',
+    give: 'Dar',
+    take: 'Remover',
+    slotsSection: 'Espaços',
+    slotsHint: 'Com a edição ligada, arraste os espaços sobre o mapa e exporte o slots.json.',
+    editSlots: 'Editar espaços',
+    stopEditing: 'Parar edição',
+    exportSlots: 'Exportar slots.json',
+    resetSlots: 'Descartar alterações',
+    slotsEdited: 'Espaços alterados (ainda não salvos no projeto).',
+    buildingsHint: 'Para forçar ou remover estruturas, clique num espaço do mapa.',
+    forceSection: 'Mestre',
+    forceLevel: 'Nível',
+    force: 'Forçar',
+    completeNow: 'Concluir agora',
+    remove: 'Remover estrutura',
+    confirmRemove: 'Clique de novo para confirmar',
+  },
 } as const;
 
 type Names = { building: (id: string) => string; resource: (id: string) => string };
@@ -77,14 +118,28 @@ export function blockReasonText(reason: BlockReason, names: Names): string {
 }
 
 export function logEntryText(entry: LogEntry, names: Names): string {
-  const who = entry.actor ? `${entry.actor} ` : '';
+  return `Dia ${entry.day} — ${logAction(entry, names)}`;
+}
+
+function logAction(entry: LogEntry, names: Names): string {
+  if (entry.kind === 'days_advanced') return `${t.days(entry.days)} se passaram`;
+  if (entry.kind === 'resources_adjusted') {
+    const changes = Object.entries(entry.delta).map(
+      ([id, amount]) => `${amount > 0 ? '+' : ''}${amount} ${names.resource(id)}`,
+    );
+    return `O mestre ajustou recursos: ${changes.join(', ')}`;
+  }
+
   const what = `${names.building(entry.buildingId)} nv. ${entry.level}`;
-  const action = {
+  const who = entry.actor ? `${entry.actor} ` : '';
+  const actions: Record<typeof entry.kind, string> = {
     build_started: who ? `${who}iniciou ${what}` : `Iniciada: ${what}`,
     upgrade_started: who ? `${who}começou a melhorar ${what}` : `Melhoria iniciada: ${what}`,
     build_completed: `Concluída: ${what}`,
-  }[entry.kind];
-  return `Dia ${entry.day} — ${action}`;
+    building_forced: `O mestre definiu ${what}`,
+    building_removed: `O mestre removeu ${what}`,
+  };
+  return actions[entry.kind];
 }
 
 function assertNever(value: never): never {

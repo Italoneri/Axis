@@ -35,7 +35,7 @@ export function advanceDays(state: GameState, days: number): AdvanceResult {
       ...state,
       day,
       slots: { ...state.slots, ...completedSlots },
-      log: [...state.log, ...completionLog],
+      log: [...state.log, ...completionLog, { day, kind: 'days_advanced', days }],
     },
     completedSlotIds: due.map(({ slotId }) => slotId),
   };

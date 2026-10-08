@@ -21,3 +21,23 @@ export function subtractResources(available: ResourceBag, cost: ResourceBag): Re
   }
   return result;
 }
+
+/**
+ * Applies signed amounts, never going below zero. Returns the delta that was
+ * actually applied, which differs from the request when a removal hits zero.
+ */
+export function applyResourceDelta(
+  available: ResourceBag,
+  delta: ResourceBag,
+): { resources: ResourceBag; applied: ResourceBag } {
+  const applied = Object.fromEntries(
+    Object.entries(delta)
+      .map(([id, amount]) => [id, Math.max(amount, -(available[id] ?? 0))] as const)
+      .filter(([, amount]) => amount !== 0),
+  );
+  const resources: Record<string, number> = { ...available };
+  for (const [id, amount] of Object.entries(applied)) {
+    resources[id] = (resources[id] ?? 0) + amount;
+  }
+  return { resources, applied };
+}

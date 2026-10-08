@@ -12,6 +12,8 @@ import { activeLevel, checkBuild, checkUpgrade, type BuildCheck } from '../syste
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
 import { el } from './dom';
+import type { MasterSession } from './MasterSession';
+import { renderMasterSlotControls } from './MasterSlotControls';
 
 type SelectionListener = (slotId: string | null) => void;
 
@@ -23,8 +25,10 @@ export class SlotPanel {
   constructor(
     private readonly root: HTMLElement,
     private readonly store: GameStore,
+    private readonly session: MasterSession,
   ) {
     store.subscribe(() => this.render());
+    session.subscribe(() => this.render());
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') this.close();
     });
@@ -60,6 +64,8 @@ export class SlotPanel {
       placed && placedDef
         ? this.renderOccupied(slot.id, placed, placedDef, state)
         : this.renderEmpty(slot.id, slot.type, state);
+    const masterControls =
+      this.session.isActive && renderMasterSlotControls(this.store, slot, placed);
 
     this.root.replaceChildren(
       el(
@@ -77,7 +83,7 @@ export class SlotPanel {
           '×',
         ),
       ),
-      el('div', { class: 'panel__body' }, ...body),
+      el('div', { class: 'panel__body' }, masterControls, ...body),
     );
   }
 
