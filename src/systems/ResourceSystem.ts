@@ -1,7 +1,7 @@
-import type { ResourceBag } from '../model/schema';
+import type { AmountBag } from '../model/schema';
 
 /** Returns only the resources that are short, with how much is missing. Empty means affordable. */
-export function missingResources(available: ResourceBag, cost: ResourceBag): ResourceBag {
+export function missingResources(available: AmountBag, cost: AmountBag): AmountBag {
   return Object.fromEntries(
     Object.entries(cost)
       .map(([id, amount]) => [id, amount - (available[id] ?? 0)] as const)
@@ -9,12 +9,12 @@ export function missingResources(available: ResourceBag, cost: ResourceBag): Res
   );
 }
 
-export function canAfford(available: ResourceBag, cost: ResourceBag): boolean {
+export function canAfford(available: AmountBag, cost: AmountBag): boolean {
   return Object.keys(missingResources(available, cost)).length === 0;
 }
 
 /** Caller must check `canAfford` first; amounts are floored at zero as a safety net. */
-export function subtractResources(available: ResourceBag, cost: ResourceBag): ResourceBag {
+export function subtractResources(available: AmountBag, cost: AmountBag): AmountBag {
   const result: Record<string, number> = { ...available };
   for (const [id, amount] of Object.entries(cost)) {
     result[id] = Math.max(0, (result[id] ?? 0) - amount);
@@ -27,9 +27,9 @@ export function subtractResources(available: ResourceBag, cost: ResourceBag): Re
  * actually applied, which differs from the request when a removal hits zero.
  */
 export function applyResourceDelta(
-  available: ResourceBag,
-  delta: ResourceBag,
-): { resources: ResourceBag; applied: ResourceBag } {
+  available: AmountBag,
+  delta: AmountBag,
+): { resources: AmountBag; applied: AmountBag } {
   const applied = Object.fromEntries(
     Object.entries(delta)
       .map(([id, amount]) => [id, Math.max(amount, -(available[id] ?? 0))] as const)

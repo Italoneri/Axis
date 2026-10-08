@@ -1,0 +1,19 @@
+[
+  {
+    "id": "emerald",
+    "name": "Esmeralda",
+    "icon": "icon.coin.emerald",
+    "bronzeValue": 10000,
+    "order": 1
+  },
+  {
+    "id": "platinum",
+    "name": "Platina",
+    "icon": "icon.coin.platinum",
+    "bronzeValue": 1000,
+    "order": 2
+  },
+  { "id": "gold", "name": "Ouro", "icon": "icon.coin.gold", "bronzeValue": 100, "order": 3 },
+  { "id": "silver", "name": "Prata", "icon": "icon.coin.silver", "bronzeValue": 10, "order": 4 },
+  { "id": "bronze", "name": "Bronze", "icon": "icon.coin.bronze", "bronzeValue": 1, "order": 5 }
+]

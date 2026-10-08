@@ -82,12 +82,27 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   white-space: nowrap;
 }
 
-.resource img {
+.resource:hover,
+.resource[aria-expanded='true'] {
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+
+.resource:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.resource .thumb {
   width: 26px;
   height: 26px;
 }
@@ -565,4 +580,340 @@ select.input {
 
 .card--master select.input:first-child {
   flex: 2 1 170px;
+}
+
+/* ---------- Resources: dropdown and panels ---------- */
+
+.popover {
+  position: fixed;
+  top: calc(var(--topbar-height) + 6px);
+  left: 12px;
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100dvh - var(--topbar-height) - 24px);
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  z-index: 5;
+  overscroll-behavior: contain;
+  animation: popover-in 0.14s ease-out;
+}
+
+.popover[hidden] {
+  display: none;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.popover__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--gold-soft);
+}
+
+.thumb {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.thumb--md {
+  width: 36px;
+  height: 36px;
+}
+
+.thumb--placeholder {
+  display: inline-grid;
+  place-items: center;
+  background: var(--thumb-color, #4a3f52);
+  border: 1px solid var(--border);
+  color: var(--gold-soft);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cost__item .thumb {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+.coin-list,
+.item-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.coin {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.coin--empty {
+  color: var(--muted);
+}
+
+.coin__count {
+  font-weight: 700;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.coin__value {
+  min-width: 9ch;
+  text-align: right;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.coin-total,
+.wealth {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  font-variant-numeric: tabular-nums;
+}
+
+.coin-total strong,
+.wealth strong {
+  color: var(--gold-soft);
+}
+
+.wealth {
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.card--highlight {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.25);
+}
+
+.subform {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.coin-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 2px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.item-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.item-row__value {
+  font-weight: 700;
+  color: var(--gold-soft);
+}
+
+.item__desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.item__master {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.research__toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.research__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.research__title {
+  font-weight: 700;
+}
+
+.research__category {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.research__progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.research__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--border);
+}
+
+.longtext {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  font-size: 15px;
+}
+
+.influence-total {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.influence-total__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.influence-total__value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--gold);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper .btn {
+  min-width: 36px;
+}
+
+.input--narrow {
+  width: 64px;
+  text-align: center;
+}
+
+textarea.input {
+  resize: vertical;
+  font: inherit;
+}
+
+input[type='color'].input {
+  width: 56px;
+  height: 34px;
+  padding: 2px;
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+details > summary {
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .popover {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100dvh - var(--topbar-height) - 16px);
+  }
+
+  .topbar__resources {
+    gap: 2px;
+  }
+
+  .resource {
+    padding: 4px 6px;
+  }
+
+  /* Comfortable touch targets inside the dropdown. */
+  .popover .btn,
+  .popover .input,
+  .popover .tab {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}
+
+.row--wrap > .field {
+  flex: 1 1 140px;
 }

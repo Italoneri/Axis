@@ -2,8 +2,7 @@ import { t } from '../i18n/pt-BR';
 import type { BuildingDef, PlacedBuilding, SlotDef } from '../model/schema';
 import type { GameStore } from '../store';
 import { el } from './dom';
-
-const CONFIRM_WINDOW_MS = 3000;
+import { confirmButton } from './widgets';
 
 /** Master-only card in the slot panel: force any building/level, finish now, or remove. */
 export function renderMasterSlotControls(
@@ -73,19 +72,6 @@ export function renderMasterSlotControls(
         },
         t.master.completeNow,
       ),
-    placed && removeButton(() => store.removeBuilding(slot.id)),
+    placed && confirmButton(t.master.remove, () => store.removeBuilding(slot.id)),
   );
-}
-
-/** Two-step button: the first click arms it, a second click within a few seconds confirms. */
-function removeButton(onConfirm: () => void): HTMLButtonElement {
-  let armedUntil = 0;
-  const button = el('button', { class: 'btn btn--danger', type: 'button' }, t.master.remove);
-  button.addEventListener('click', () => {
-    if (Date.now() < armedUntil) return onConfirm();
-    armedUntil = Date.now() + CONFIRM_WINDOW_MS;
-    button.textContent = t.master.confirmRemove;
-    setTimeout(() => (button.textContent = t.master.remove), CONFIRM_WINDOW_MS);
-  });
-  return button;
 }

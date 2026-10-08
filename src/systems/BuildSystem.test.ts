@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState } from '../model/schema';
 import { builtLevel, checkBuild, checkUpgrade, startBuild, startUpgrade } from './BuildSystem';
-import { makeState, testCatalog } from './testFixtures';
+import { makeState, testCatalog, withCamp, withIron } from './testFixtures';
 
 const forgeDone = { buildingId: 'forge', level: 1, status: 'done' } as const;
 const heartDone = { buildingId: 'heart', level: 1, status: 'done' } as const;
@@ -37,7 +37,7 @@ describe('checkBuild', () => {
       state: makeState({ slots: { outer_n: forgeDone } }),
       slotId: 'outer_n',
       buildingId: 'armory',
-      reasons: ['slot_occupied', 'missing_resources'],
+      reasons: ['slot_occupied', 'missing_materials'],
     },
     {
       name: 'rejects a second copy of the same structure',
@@ -48,25 +48,24 @@ describe('checkBuild', () => {
     },
     {
       name: 'rejects a missing prerequisite',
-      state: makeState({ resources: { gold: 100, arcana: 10 } }),
+      state: withIron(10),
       slotId: 'outer_n',
       buildingId: 'armory',
       reasons: ['missing_requirement'],
     },
     {
-      name: 'rejects insufficient resources',
-      state: makeState({ resources: { gold: 5 } }),
+      name: 'rejects insufficient coins in the Acampamento',
+      state: withCamp({ gold: 5 }),
       slotId: 'outer_n',
       buildingId: 'forge',
-      reasons: ['missing_resources'],
+      reasons: ['missing_coins'],
     },
   ])('$name', ({ state, slotId, buildingId, reasons }) => {
     expect(reasonKinds(checkBuild(state, testCatalog, { slotId, buildingId }))).toEqual(reasons);
   });
 
   it('treats a prerequisite under construction as unmet', () => {
-    const state = makeState({
-      resources: { gold: 100, arcana: 10 },
+    const state = withIron(10, {
       slots: {
         outer_n: {
           buildingId: 'forge',
@@ -81,19 +80,35 @@ describe('checkBuild', () => {
     expect(reasonKinds(result)).toEqual(['missing_requirement']);
   });
 
-  it('reports exactly which resources are missing', () => {
-    const result = checkBuild(
-      makeState({ resources: { gold: 100, arcana: 2 }, slots: { outer_n: forgeDone } }),
-      testCatalog,
-      {
-        slotId: 'outer_s',
-        buildingId: 'armory',
-      },
-    );
+  it('reports exactly which materials are missing', () => {
+    const result = checkBuild(withIron(2, { slots: { outer_n: forgeDone } }), testCatalog, {
+      slotId: 'outer_s',
+      buildingId: 'armory',
+    });
     expect(result).toEqual({
       ok: false,
-      reasons: [{ kind: 'missing_resources', missing: { arcana: 3 } }],
+      reasons: [{ kind: 'missing_materials', missing: { iron: 3 } }],
     });
+  });
+
+  it('reports the coin shortfall and what the characters hold', () => {
+    const result = checkBuild(withCamp({ gold: 15 }), testCatalog, {
+      slotId: 'outer_n',
+      buildingId: 'forge',
+    });
+    expect(result).toEqual({
+      ok: false,
+      reasons: [{ kind: 'missing_coins', missingBronze: 500, personalBronze: 500 }],
+    });
+  });
+
+  it('marks a material missing from the catalog as unavailable instead of crashing', () => {
+    const state = makeState({
+      slots: { outer_n: forgeDone },
+      materials: { categories: [], items: [] },
+    });
+    const result = checkBuild(state, testCatalog, { slotId: 'outer_s', buildingId: 'armory' });
+    expect(result).toEqual({ ok: false, reasons: [{ kind: 'unknown_materials', ids: ['iron'] }] });
   });
 });
 
@@ -136,14 +151,14 @@ describe('checkUpgrade', () => {
 });
 
 describe('startBuild', () => {
-  it('charges the cost, schedules completion and logs the event', () => {
+  it('charges the Acampamento, schedules completion and logs the event', () => {
     const result = startBuild(makeState({ day: 5 }), testCatalog, {
       slotId: 'outer_n',
       buildingId: 'forge',
       actor: 'Thorin',
     });
     expect(result.ok && result.state).toMatchObject({
-      resources: { gold: 80 },
+      wallets: { camp: { gold: 80 }, characters: { thorin: { gold: 5 } } },
       slots: {
         outer_n: {
           buildingId: 'forge',
@@ -153,12 +168,36 @@ describe('startBuild', () => {
           completesOnDay: 8,
         },
       },
-      log: [{ day: 5, kind: 'build_started', buildingId: 'forge', level: 1, actor: 'Thorin' }],
+      log: [
+        {
+          day: 5,
+          kind: 'build_started',
+          buildingId: 'forge',
+          level: 1,
+          actor: 'Thorin',
+          paid: { bronze: 2000, materials: {} },
+        },
+      ],
+    });
+  });
+
+  it('pays with bigger coins and consumes the materials', () => {
+    const state = withIron(7, { slots: { outer_n: forgeDone } });
+    const result = startBuild(
+      { ...state, wallets: { ...state.wallets, camp: { emerald: 1 } } },
+      testCatalog,
+      { slotId: 'outer_s', buildingId: 'armory' },
+    );
+    if (!result.ok) throw new Error('expected build to start');
+    expect(result.state.wallets.camp).toEqual({ platinum: 9 });
+    expect(result.state.materials.items[0]?.quantity).toBe(2);
+    expect(result.state.log.at(-1)).toMatchObject({
+      paid: { bronze: 1000, materials: { Ferro: 5 } },
     });
   });
 
   it('does not change the state when blocked', () => {
-    const state = makeState({ resources: { gold: 0 } });
+    const state = withCamp({});
     const result = startBuild(state, testCatalog, { slotId: 'outer_n', buildingId: 'forge' });
     expect(result.ok).toBe(false);
     expect(state.slots).toEqual({});

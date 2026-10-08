@@ -1,11 +1,12 @@
 import { logEntryText, t } from '../i18n/pt-BR';
-import { catalogNames } from '../model/catalog';
 import type { SlotEditor } from '../slotEditor';
 import type { GameStore } from '../store';
 import { activeBonuses } from '../systems/BonusSystem';
 import { el } from './dom';
+import { textContext } from './format';
 import type { MasterSession } from './MasterSession';
 import { renderMasterTools } from './MasterTools';
+import type { Act } from './widgets';
 
 export type DrawerTab = 'bonuses' | 'log' | 'master';
 
@@ -18,6 +19,7 @@ export class InfoDrawer {
     private readonly store: GameStore,
     private readonly session: MasterSession,
     private readonly editor: SlotEditor,
+    private readonly act: Act,
   ) {
     store.subscribe(() => this.render());
     session.subscribe((isActive) => {
@@ -93,7 +95,12 @@ export class InfoDrawer {
   }
 
   private renderTab(tab: DrawerTab): HTMLElement[] {
-    if (tab === 'master') return renderMasterTools(this.store, this.session, this.editor);
+    if (tab === 'master')
+      return renderMasterTools(this.store, {
+        session: this.session,
+        editor: this.editor,
+        act: this.act,
+      });
     if (tab === 'log') return this.renderLog();
     return this.renderBonuses();
   }
@@ -127,15 +134,13 @@ export class InfoDrawer {
   private renderLog(): HTMLElement[] {
     const { log } = this.store.current;
     if (log.length === 0) return [el('p', { class: 'panel__hint' }, t.drawer.emptyLog)];
-    const names = catalogNames(this.store.catalog);
+    const ctx = textContext(this.store.catalog, this.store.current);
     const newestFirst = [...log].reverse();
     return [
       el(
         'ol',
         { class: 'log' },
-        ...newestFirst.map((entry) =>
-          el('li', { class: 'log__entry' }, logEntryText(entry, names)),
-        ),
+        ...newestFirst.map((entry) => el('li', { class: 'log__entry' }, logEntryText(entry, ctx))),
       ),
     ];
   }

@@ -1,0 +1,14 @@
+{
+  "total": 10,
+  "worlds": [
+    {
+      "id": "valdren",
+      "name": "Valdren",
+      "color": "#7fb069",
+      "description": "Reino das montanhas, terra natal de Thorin.",
+      "influence": 35
+    },
+    { "id": "aurelia", "name": "Aurélia", "color": "#d4af37", "influence": 12 },
+    { "id": "nyx", "name": "Nyx", "color": "#8a6fd4", "influence": 5 }
+  ]
+}

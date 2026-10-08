@@ -2,7 +2,14 @@ import { t } from '../i18n/pt-BR';
 import type { GameState } from '../model/schema';
 import type { GameStore } from '../store';
 import { el } from './dom';
+import type { MasterSession } from './MasterSession';
+import { ResourceMenu } from './ResourceMenu';
+import { GoldPanel } from './resources/GoldPanel';
+import { InfluencePanel } from './resources/InfluencePanel';
+import { MaterialsPanel } from './resources/MaterialsPanel';
+import { ResearchPanel } from './resources/ResearchPanel';
 import { createSaveControls } from './SaveControls';
+import type { Act } from './widgets';
 
 export interface TopBarActions {
   notify: (msg: string, tone?: 'error') => void;
@@ -10,26 +17,23 @@ export interface TopBarActions {
   openMaster: () => void;
 }
 
-export function mountTopBar(root: HTMLElement, store: GameStore, actions: TopBarActions): void {
-  const { catalog } = store;
-  const amounts = new Map<string, HTMLElement>();
-
-  const resourceItems = catalog.resources.map((resource) => {
-    const amount = el('span', { class: 'resource__amount' });
-    amounts.set(resource.id, amount);
-    return el(
-      'li',
-      { class: 'resource', title: resource.name },
-      el('img', { src: catalog.assets.images[resource.icon] ?? '', alt: '' }),
-      el('span', { class: 'resource__name' }, `${resource.name}:`),
-      amount,
-    );
-  });
+export function mountTopBar(
+  root: HTMLElement,
+  popover: HTMLElement,
+  { store, session, act }: { store: GameStore; session: MasterSession; act: Act },
+  actions: TopBarActions,
+): void {
+  const menu = new ResourceMenu(popover, store, [
+    new GoldPanel(store, session, act).menuItem,
+    new MaterialsPanel(store, session, act).menuItem,
+    new ResearchPanel(store, session, act).menuItem,
+    new InfluencePanel(store, session, act).menuItem,
+  ]);
   const day = el('span', { class: 'topbar__day' });
 
   root.append(
     el('span', { class: 'topbar__brand' }, 'AXIS'),
-    el('ul', { class: 'topbar__resources' }, ...resourceItems),
+    menu.mount(store.catalog, session),
     day,
     el(
       'div',
@@ -40,10 +44,7 @@ export function mountTopBar(root: HTMLElement, store: GameStore, actions: TopBar
     createSaveControls(store, actions.notify),
   );
 
-  const render = (state: GameState) => {
-    amounts.forEach((node, id) => (node.textContent = String(state.resources[id] ?? 0)));
-    day.textContent = t.day(state.day);
-  };
+  const render = (state: GameState) => (day.textContent = t.day(state.day));
   render(store.current);
   store.subscribe(render);
 }

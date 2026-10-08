@@ -1,26 +1,15 @@
 import { findBuilding, type Catalog } from '../model/catalog';
-import type { GameState, ResourceBag } from '../model/schema';
+import type { GameState } from '../model/schema';
 import { activeLevel } from './BuildSystem';
-import { applyResourceDelta } from './ResourceSystem';
 
-// Game master overrides: they skip costs and prerequisites on purpose,
-// because the GM is correcting the base to match what happened at the table.
+// Game master overrides for structures: they skip costs and prerequisites on
+// purpose, because the GM is correcting the base to match what happened at the
+// table. Resource edits live next to their rules (Wallets, Materials, Research, Influence).
 
 export interface ForceOrder {
   slotId: string;
   buildingId: string;
   level: number;
-}
-
-/** Gives (positive) or takes (negative) resources; logs only what actually changed. */
-export function adjustResources(state: GameState, delta: ResourceBag): GameState {
-  const { resources, applied } = applyResourceDelta(state.resources, delta);
-  if (Object.keys(applied).length === 0) return state;
-  return {
-    ...state,
-    resources,
-    log: [...state.log, { day: state.day, kind: 'resources_adjusted', delta: applied }],
-  };
 }
 
 /** Places a finished building at the given level, replacing whatever was in the slot. */

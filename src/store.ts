@@ -1,12 +1,8 @@
 import type { Catalog } from './model/catalog';
-import type { GameState, ResourceBag } from './model/schema';
+import type { GameState } from './model/schema';
 import { startBuild, startUpgrade, type BlockReason, type BuildOrder } from './systems/BuildSystem';
-import {
-  adjustResources,
-  forceBuilding,
-  removeBuilding,
-  type ForceOrder,
-} from './systems/MasterSystem';
+import { forceBuilding, removeBuilding, type ForceOrder } from './systems/MasterSystem';
+import type { ActionError, Outcome } from './systems/outcome';
 import { loadState, persistState } from './systems/SaveSystem';
 import { advanceDays } from './systems/TimeSystem';
 
@@ -17,7 +13,7 @@ export type StateChange =
   | { kind: 'days_advanced'; completedSlotIds: string[] }
   | { kind: 'building_forced'; slotId: string }
   | { kind: 'building_removed'; slotId: string }
-  | { kind: 'resources_adjusted' };
+  | { kind: 'resources_changed' };
 
 type Listener = (state: GameState, change: StateChange) => void;
 
@@ -65,11 +61,18 @@ export class GameStore {
     this.commit(state, { kind: 'days_advanced', completedSlotIds });
   }
 
-  // Master actions: the UI only exposes them after the master password is entered.
-
-  adjustResources(delta: ResourceBag): void {
-    this.commit(adjustResources(this.state, delta), { kind: 'resources_adjusted' });
+  /**
+   * Runs a pure resource action (deposit, master edits of coins, materials,
+   * research, influence and characters). Returns the refusal, if any.
+   */
+  apply(action: (state: GameState) => Outcome): ActionError | null {
+    const outcome = action(this.state);
+    if (!outcome.ok) return outcome.error;
+    if (outcome.state !== this.state) this.commit(outcome.state, { kind: 'resources_changed' });
+    return null;
   }
+
+  // Master actions: the UI only exposes them after the master password is entered.
 
   forceBuilding(order: ForceOrder): void {
     this.commit(forceBuilding(this.state, this.catalog, order), {

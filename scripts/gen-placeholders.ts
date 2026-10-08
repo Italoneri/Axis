@@ -1,5 +1,6 @@
 /**
- * Generates placeholder PNGs for every building and resource listed in src/data.
+ * Generates placeholder PNGs for every building and coin listed in src/data, plus
+ * any other icon in assets.json (top bar resource icons, for example).
  * Existing files are kept (they may already be final art); pass --force to overwrite.
  *
  *   npm run gen:placeholders [-- --force]
@@ -38,7 +39,7 @@ const readJson = <T>(file: string): T => JSON.parse(readFileSync(join(root, file
 
 const manifest = readJson<{ images: Record<string, string> }>('src/data/assets.json').images;
 const buildings = readJson<Entity[]>('src/data/buildings.json');
-const resources = readJson<Entity[]>('src/data/resources.json');
+const currencies = readJson<Entity[]>('src/data/currencies.json');
 
 let written = 0;
 buildings.forEach((b, i) => {
@@ -50,9 +51,23 @@ buildings.forEach((b, i) => {
   if (b.sprite) writeAsset(b.sprite, SPRITE_SIZE, style);
   writeAsset(b.icon, ICON_SIZE, style);
 });
-resources.forEach((r, i) => {
-  writeAsset(r.icon, ICON_SIZE, { shape: 'circle', hue: 45 + i * 90, letter: initial(r.name) });
+currencies.forEach((c, i) => {
+  writeAsset(c.icon, ICON_SIZE, {
+    shape: 'circle',
+    hue: (i * 360) / currencies.length,
+    letter: initial(c.name),
+  });
 });
+const covered = new Set([
+  ...buildings.flatMap((b) => [b.icon, b.sprite]),
+  ...currencies.map((c) => c.icon),
+]);
+Object.keys(manifest)
+  .filter((key) => key.startsWith('icon.') && !covered.has(key))
+  .forEach((key, i) => {
+    const name = key.slice('icon.'.length);
+    writeAsset(key, ICON_SIZE, { shape: 'octagon', hue: 30 + i * 70, letter: initial(name) });
+  });
 console.log(
   `placeholders: ${written} written${force ? '' : ' (existing files kept; use --force to overwrite)'}`,
 );

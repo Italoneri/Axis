@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { logEntryText, t } from './i18n/pt-BR';
-import { catalogNames } from './model/catalog';
 import { BaseScene } from './scenes/BaseScene';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
@@ -9,10 +8,12 @@ import { GameStore } from './store';
 import { InfoDrawer } from './ui/InfoDrawer';
 import { askMasterPassword } from './ui/MasterLogin';
 import { MasterSession } from './ui/MasterSession';
+import { textContext } from './ui/format';
 import { SlotPanel } from './ui/SlotPanel';
 import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
+import type { Act } from './ui/widgets';
 
 function requireElement(id: string): HTMLElement {
   const node = document.getElementById(id);
@@ -31,33 +32,43 @@ async function start(): Promise<void> {
     notify(t.save.storageFailed, 'error');
   });
 
-  const names = catalogNames(gameData);
   // Every new log entry becomes a toast; a replaced save just resets the cursor.
   let shownLogEntries = store.current.log.length;
   store.subscribe((state, change) => {
     if (change.kind !== 'loaded') {
-      state.log.slice(shownLogEntries).forEach((entry) => notify(logEntryText(entry, names)));
+      const ctx = textContext(gameData, state);
+      state.log.slice(shownLogEntries).forEach((entry) => notify(logEntryText(entry, ctx)));
     }
     shownLogEntries = state.log.length;
   });
 
   const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
   const editor = new SlotEditor(gameData.slots);
-  const drawer = new InfoDrawer(requireElement('drawer'), store, session, editor);
+  const act: Act = (action) => {
+    const error = store.apply(action);
+    if (error) notify(t.errors[error], 'error');
+    return error === null;
+  };
+  const drawer = new InfoDrawer(requireElement('drawer'), store, session, editor, act);
   const panel = new SlotPanel(requireElement('panel'), store, session);
 
-  mountTopBar(requireElement('topbar'), store, {
-    notify,
-    toggleDrawer: () => drawer.toggle(),
-    openMaster: async () => {
-      if (session.isActive) return drawer.open('master');
-      if (!session.isConfigured) return notify(t.master.notConfigured, 'error');
-      if (await askMasterPassword(session)) {
-        notify(t.master.unlocked);
-        drawer.open('master');
-      }
+  mountTopBar(
+    requireElement('topbar'),
+    requireElement('popover'),
+    { store, session, act },
+    {
+      notify,
+      toggleDrawer: () => drawer.toggle(),
+      openMaster: async () => {
+        if (session.isActive) return drawer.open('master');
+        if (!session.isConfigured) return notify(t.master.notConfigured, 'error');
+        if (await askMasterPassword(session)) {
+          notify(t.master.unlocked);
+          drawer.open('master');
+        }
+      },
     },
-  });
+  );
   // Leaving master mode also ends any slot editing in progress.
   session.subscribe((isActive) => {
     if (!isActive) editor.setEditing(false);

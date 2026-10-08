@@ -1,7 +1,8 @@
+import type { LogEntry, ResearchStatus, SlotType } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
-import type { LogEntry, SlotType } from '../model/schema';
+import type { ActionError } from '../systems/outcome';
 
-/** Every user-facing text lives here. Building and resource names live in src/data/*.json. */
+/** Every user-facing text lives here. Building, coin and seed names live in src/data/*.json. */
 export const t = {
   appTitle: 'Axis — Base',
   loading: 'Despertando a Axis…',
@@ -71,10 +72,8 @@ export const t = {
     timeSection: 'Tempo',
     daysToAdvance: 'Dias',
     advance: 'Avançar',
-    resourcesSection: 'Recursos',
-    resourcesHint: 'Informe as quantidades e escolha dar ou remover.',
-    give: 'Dar',
-    take: 'Remover',
+    charactersSection: 'Personagens',
+    charactersHint: 'O grupo da mesa. Cada personagem tem a própria carteira de moedas.',
     slotsSection: 'Espaços',
     slotsHint: 'Com a edição ligada, arraste os espaços sobre o mapa e exporte o slots.json.',
     editSlots: 'Editar espaços',
@@ -90,11 +89,141 @@ export const t = {
     remove: 'Remover estrutura',
     confirmRemove: 'Clique de novo para confirmar',
   },
+
+  common: {
+    save: 'Salvar',
+    cancel: 'Cancelar',
+    edit: 'Editar',
+    remove: 'Remover',
+    add: 'Adicionar',
+    create: 'Criar',
+    name: 'Nome',
+    color: 'Cor',
+    icon: 'Ícone (chave do assets.json ou URL)',
+    description: 'Descrição',
+    category: 'Categoria',
+    increase: 'Aumentar',
+    decrease: 'Diminuir',
+  },
+
+  resources: {
+    gold: 'Ouro',
+    materials: 'Materiais',
+    research: 'Pesquisa',
+    influence: 'Influência',
+    /** Abbreviation used after gold amounts. */
+    goldUnit: 'PO',
+    materialsSummary: (units: number) => (units === 1 ? '1 item' : `${units} itens`),
+    researchSummary: (done: number, inProgress: number) =>
+      `${done} concluídas · ${inProgress} em andamento`,
+  },
+
+  gold: {
+    camp: 'Acampamento',
+    campHint: 'Só as moedas do Acampamento pagam construções e melhorias.',
+    total: 'Total',
+    showDetails: 'Ver detalhes',
+    hideDetails: 'Ocultar detalhes',
+    groupWealth: 'Patrimônio total do grupo',
+    groupWealthHint: 'Acampamento + carteiras pessoais. É só informativo.',
+    deposit: 'Depositar no Acampamento',
+    depositTotal: 'Total do depósito',
+    confirmDeposit: 'Depositar',
+    adjust: 'Ajustar',
+    give: 'Dar',
+    take: 'Remover',
+    consolidate: 'Consolidar',
+    transferTitle: 'Transferir entre carteiras',
+    transfer: 'Transferir',
+    from: 'De',
+    to: 'Para',
+    noCharacters: 'Nenhum personagem cadastrado. O mestre cadastra na aba Mestre.',
+  },
+
+  materials: {
+    empty: 'Nenhum material nesta categoria.',
+    noCategories: 'Nenhuma categoria cadastrada.',
+    quantity: 'Quantidade',
+    amount: 'Qtd.',
+    newMaterial: 'Novo material nesta categoria',
+  },
+
+  categories: {
+    title: 'Categorias',
+    rename: 'Renomear esta categoria',
+    newCategory: 'Nova categoria',
+    removeHint: 'Só categorias vazias podem ser removidas.',
+  },
+
+  research: {
+    statuses: {
+      em_andamento: 'Em andamento',
+      concluida: 'Concluídas',
+    } satisfies Record<ResearchStatus, string>,
+    status: 'Status',
+    statusOptions: {
+      em_andamento: 'Em andamento',
+      concluida: 'Concluída',
+    } satisfies Record<ResearchStatus, string>,
+    empty: 'Nenhuma pesquisa aqui.',
+    buildStationHint: 'Construa a Estação de Estudo para ver os detalhes.',
+    archiveTitle: 'Arquivo de Pesquisas',
+    allStatuses: 'Todos os status',
+    allCategories: 'Todas as categorias',
+    search: 'Buscar por título',
+    title: 'Título',
+    progress: 'Progresso (%)',
+    startedOnDay: 'Dia de início',
+    completedOnDay: 'Dia de conclusão',
+    owner: 'Responsável',
+    description: 'Descrição',
+    notes: 'Resultados / notas',
+    cost: 'Custo (informativo)',
+    costCoins: 'Moedas (PO)',
+    addCostMaterial: 'Adicionar material ao custo',
+    newResearch: 'Nova pesquisa',
+    complete: 'Concluir',
+    started: (day: number) => `Início: dia ${day}`,
+    completed: (day: number) => `Concluída no dia ${day}`,
+  },
+
+  influence: {
+    total: 'Influência total',
+    totalHint: 'Independente dos mundos: cada valor é definido pelo mestre.',
+    worlds: 'Mundos',
+    noWorlds: 'Nenhum mundo cadastrado.',
+    percent: 'Influência (%)',
+    newWorld: 'Novo mundo',
+  },
+
+  characters: {
+    portrait: 'Retrato (chave do assets.json ou URL)',
+    newCharacter: 'Novo personagem',
+  },
+
+  errors: {
+    empty_name: 'Informe um nome.',
+    duplicate_name: 'Já existe um item com esse nome.',
+    not_found: 'Item não encontrado (talvez já tenha sido removido).',
+    category_not_empty: 'A categoria ainda tem itens. Mova-os ou remova-os antes.',
+    insufficient_coins: 'Não há moedas suficientes nessa carteira.',
+    nothing_to_move: 'Informe ao menos uma moeda.',
+    same_wallet: 'Escolha carteiras diferentes.',
+    character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
+  } satisfies Record<ActionError, string>,
 } as const;
 
-type Names = { building: (id: string) => string; resource: (id: string) => string };
+/** Lookups and formatters the texts need; built from the catalog and current state in ui/format.ts. */
+export interface TextContext {
+  building: (id: string) => string;
+  material: (id: string) => string;
+  /** "3 Platina e 12 Ouro". */
+  coins: (bag: Readonly<Record<string, number>>) => string;
+  /** Bronze amount shown in gold: "1.234,5 PO". */
+  gold: (bronze: number) => string;
+}
 
-export function blockReasonText(reason: BlockReason, names: Names): string {
+export function blockReasonText(reason: BlockReason, ctx: TextContext): string {
   switch (reason.kind) {
     case 'wrong_slot_type':
       return 'Não pode ser construída neste tipo de espaço.';
@@ -107,39 +236,114 @@ export function blockReasonText(reason: BlockReason, names: Names): string {
     case 'max_level':
       return 'Nível máximo alcançado.';
     case 'missing_requirement':
-      return `Requer ${names.building(reason.requirement.building)} nv. ${reason.requirement.minLevel}.`;
-    case 'missing_resources':
-      return `Faltam ${Object.entries(reason.missing)
-        .map(([id, amount]) => `${amount} de ${names.resource(id)}`)
-        .join(', ')}.`;
+      return `Requer ${ctx.building(reason.requirement.building)} nv. ${reason.requirement.minLevel}.`;
+    case 'missing_coins':
+      return `Faltam ${ctx.gold(reason.missingBronze)} no Acampamento. O grupo tem ${ctx.gold(reason.personalBronze)} nas carteiras pessoais.`;
+    case 'missing_materials':
+      return `Faltam ${listText(
+        Object.entries(reason.missing).map(([id, amount]) => `${amount} de ${ctx.material(id)}`),
+      )}.`;
+    case 'unknown_materials':
+      return `Material indisponível: ${listText(reason.ids)} (não existe no catálogo de materiais).`;
     default:
       return assertNever(reason);
   }
 }
 
-export function logEntryText(entry: LogEntry, names: Names): string {
-  return `Dia ${entry.day} — ${logAction(entry, names)}`;
+export function logEntryText(entry: LogEntry, ctx: TextContext): string {
+  return `Dia ${entry.day} — ${logAction(entry, ctx)}`;
 }
 
-function logAction(entry: LogEntry, names: Names): string {
-  if (entry.kind === 'days_advanced') return `${t.days(entry.days)} se passaram`;
-  if (entry.kind === 'resources_adjusted') {
-    const changes = Object.entries(entry.delta).map(
-      ([id, amount]) => `${amount > 0 ? '+' : ''}${amount} ${names.resource(id)}`,
-    );
-    return `O mestre ajustou recursos: ${changes.join(', ')}`;
+function logAction(entry: LogEntry, ctx: TextContext): string {
+  switch (entry.kind) {
+    case 'days_advanced':
+      return `${t.days(entry.days)} se passaram`;
+    case 'build_started':
+    case 'upgrade_started':
+    case 'build_completed':
+    case 'building_forced':
+    case 'building_removed':
+      return buildingAction(entry, ctx);
+    case 'coins_adjusted':
+      return `Mestre ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
+    case 'coins_deposited':
+      return `${entry.character} depositou ${ctx.coins(entry.coins)} no Acampamento`;
+    case 'coins_transferred':
+      return `Mestre transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
+    case 'coins_consolidated':
+      return `Mestre consolidou as moedas ${walletOf(entry.wallet)}`;
+    case 'material_adjusted':
+      return entry.delta > 0
+        ? `Mestre adicionou ${entry.delta} ${entry.material}`
+        : `Mestre removeu ${-entry.delta} ${entry.material}`;
+    case 'material_added':
+      return `Mestre cadastrou o material ${entry.material}`;
+    case 'material_removed':
+      return `Mestre removeu o material ${entry.material}`;
+    case 'research_added':
+      return `Pesquisa '${entry.title}' registrada`;
+    case 'research_completed':
+      return `Pesquisa '${entry.title}' concluída`;
+    case 'research_removed':
+      return `Pesquisa '${entry.title}' removida`;
+    case 'research_progressed':
+      return `Pesquisa '${entry.title}': ${entry.from}% → ${entry.to}%`;
+    case 'influence_changed':
+      return `${entry.world ? `Influência em ${entry.world}` : 'Influência total'}: ${entry.from}% → ${entry.to}%`;
+    case 'world_added':
+      return `Mundo ${entry.name} cadastrado`;
+    case 'world_removed':
+      return `Mundo ${entry.name} removido`;
+    case 'character_added':
+      return `${entry.name} entrou no grupo`;
+    case 'character_removed':
+      return `${entry.name} saiu do grupo`;
+    default:
+      return assertNever(entry);
   }
+}
 
-  const what = `${names.building(entry.buildingId)} nv. ${entry.level}`;
+type BuildingEntry = Extract<LogEntry, { buildingId: string }>;
+
+function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
+  const what = `${ctx.building(entry.buildingId)} nv. ${entry.level}`;
   const who = entry.actor ? `${entry.actor} ` : '';
-  const actions: Record<typeof entry.kind, string> = {
+  const paid = entry.paid ? ` (${paidText(entry.paid, ctx)})` : '';
+  const actions: Record<BuildingEntry['kind'], string> = {
     build_started: who ? `${who}iniciou ${what}` : `Iniciada: ${what}`,
     upgrade_started: who ? `${who}começou a melhorar ${what}` : `Melhoria iniciada: ${what}`,
     build_completed: `Concluída: ${what}`,
-    building_forced: `O mestre definiu ${what}`,
-    building_removed: `O mestre removeu ${what}`,
+    building_forced: `Mestre definiu ${what}`,
+    building_removed: `Mestre removeu ${what}`,
   };
-  return actions[entry.kind];
+  return actions[entry.kind] + paid;
+}
+
+function paidText(
+  paid: { bronze: number; materials: Readonly<Record<string, number>> },
+  ctx: TextContext,
+): string {
+  return [
+    ...(paid.bronze > 0 ? [ctx.gold(paid.bronze)] : []),
+    ...Object.entries(paid.materials).map(([name, amount]) => `${amount} ${name}`),
+  ].join(', ');
+}
+
+/** Wallet labels in the log: a character name, or absent for the Acampamento. */
+const walletName = (label: string | undefined) => label ?? 'o Acampamento';
+const walletOf = (label: string | undefined) => (label ? `de ${label}` : 'do Acampamento');
+
+function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {
+  return Object.entries(delta)
+    .map(([id, amount]) => `${amount > 0 ? '+' : '−'}${ctx.coins({ [id]: Math.abs(amount) })}`)
+    .join(', ');
+}
+
+const listFormat = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
+
+/** "a, b e c". */
+export function listText(items: readonly string[]): string {
+  return listFormat.format(items);
 }
 
 function assertNever(value: never): never {
