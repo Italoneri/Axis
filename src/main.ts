@@ -13,12 +13,23 @@ import { SlotPanel } from './ui/SlotPanel';
 import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
+import { UiMemory } from './ui/uiMemory';
 import type { Act } from './ui/widgets';
 
 function requireElement(id: string): HTMLElement {
   const node = document.getElementById(id);
   if (!node) throw new Error(`missing #${id} in index.html`);
   return node;
+}
+
+/** Private modes can throw on access; form memory then just lasts until reload. */
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.warn('[ui] localStorage unavailable', error);
+    return undefined;
+  }
 }
 
 async function start(): Promise<void> {
@@ -49,13 +60,14 @@ async function start(): Promise<void> {
     if (error) notify(t.errors[error], 'error');
     return error === null;
   };
+  const memory = new UiMemory(safeLocalStorage());
   const drawer = new InfoDrawer(requireElement('drawer'), store, session, editor, act);
   const panel = new SlotPanel(requireElement('panel'), store, session);
 
   mountTopBar(
     requireElement('topbar'),
     requireElement('popover'),
-    { store, session, act },
+    { store, session, act, memory },
     {
       notify,
       toggleDrawer: () => drawer.toggle(),

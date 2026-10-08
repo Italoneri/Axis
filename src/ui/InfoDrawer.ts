@@ -2,7 +2,7 @@ import { logEntryText, t } from '../i18n/pt-BR';
 import type { SlotEditor } from '../slotEditor';
 import type { GameStore } from '../store';
 import { activeBonuses } from '../systems/BonusSystem';
-import { el } from './dom';
+import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
 import type { MasterSession } from './MasterSession';
 import { renderMasterTools } from './MasterTools';
@@ -13,6 +13,7 @@ export type DrawerTab = 'bonuses' | 'log' | 'master';
 /** Left drawer, visible to everyone: active bonuses, event log and (for the master) tools. */
 export class InfoDrawer {
   private tab: DrawerTab | null = null;
+  private renderedTab: DrawerTab | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -50,6 +51,8 @@ export class InfoDrawer {
   private render(): void {
     const tab = this.tab;
     this.root.hidden = tab === null;
+    const sameView = tab !== null && tab === this.renderedTab;
+    this.renderedTab = tab;
     if (tab === null) return;
 
     const tabs: { id: DrawerTab; label: string }[] = [
@@ -58,39 +61,43 @@ export class InfoDrawer {
       ...(this.session.isActive ? [{ id: 'master' as const, label: t.drawer.masterTab }] : []),
     ];
 
-    this.root.replaceChildren(
-      el(
-        'header',
-        { class: 'panel__header' },
+    replaceKeepingScroll(
+      this.root,
+      [
         el(
-          'nav',
-          { class: 'tabs', role: 'tablist' },
-          ...tabs.map(({ id, label }) =>
-            el(
-              'button',
-              {
-                class: id === tab ? 'tab tab--active' : 'tab',
-                type: 'button',
-                role: 'tab',
-                'aria-selected': String(id === tab),
-                onclick: () => this.open(id),
-              },
-              label,
+          'header',
+          { class: 'panel__header' },
+          el(
+            'nav',
+            { class: 'tabs', role: 'tablist' },
+            ...tabs.map(({ id, label }) =>
+              el(
+                'button',
+                {
+                  class: id === tab ? 'tab tab--active' : 'tab',
+                  type: 'button',
+                  role: 'tab',
+                  'aria-selected': String(id === tab),
+                  onclick: () => this.open(id),
+                },
+                label,
+              ),
             ),
           ),
+          el(
+            'button',
+            {
+              class: 'btn btn--icon',
+              type: 'button',
+              'aria-label': t.drawer.close,
+              onclick: () => this.close(),
+            },
+            '×',
+          ),
         ),
-        el(
-          'button',
-          {
-            class: 'btn btn--icon',
-            type: 'button',
-            'aria-label': t.drawer.close,
-            onclick: () => this.close(),
-          },
-          '×',
-        ),
-      ),
-      el('div', { class: 'panel__body' }, ...this.renderTab(tab)),
+        el('div', { class: 'panel__body' }, ...this.renderTab(tab)),
+      ],
+      { sameView, scroller: '.panel__body' },
     );
   }
 

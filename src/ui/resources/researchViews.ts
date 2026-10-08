@@ -6,7 +6,16 @@ import { clampPercent } from '../../systems/Influence';
 import type { ResearchDraft } from '../../systems/Research';
 import { el } from '../dom';
 import { textContext } from '../format';
-import { button, field, numberInput, progressBar, readCount } from '../widgets';
+import type { UiMemory } from '../uiMemory';
+import {
+  button,
+  field,
+  numberInput,
+  progressBar,
+  readCount,
+  rememberedSelect,
+  selectInput,
+} from '../widgets';
 
 // Research pieces shared by the top bar dropdown and the study station archive.
 
@@ -77,9 +86,23 @@ function costText(catalog: Catalog, state: GameState, cost: Cost): string {
 export function researchForm(
   state: GameState,
   entry: Research | undefined,
-  { onSubmit, onCancel }: { onSubmit: (draft: ResearchDraft) => void; onCancel: () => void },
+  {
+    memory,
+    onSubmit,
+    onCancel,
+  }: { memory: UiMemory; onSubmit: (draft: ResearchDraft) => void; onCancel: () => void },
 ): HTMLElement {
   const { categories } = state.research;
+  // Editing shows the entry's values; a new research starts from the last choices made.
+  const choice = (
+    key: string,
+    label: string,
+    options: { value: string; label: string }[],
+    current: string | undefined,
+  ) =>
+    entry
+      ? selectInput({ label, options, value: current ?? '' })
+      : rememberedSelect(memory, { key, label, options });
   const text = (value = '') => el('input', { class: 'input input--wide', value });
   const area = (value = '') => {
     const node = el('textarea', { class: 'input input--wide', rows: '4' });
@@ -90,23 +113,20 @@ export function researchForm(
     numberInput({ min: 0, label, value });
 
   const title = text(entry?.title);
-  const category = el(
-    'select',
-    { class: 'input' },
-    ...categories.map((c) =>
-      el('option', { value: c.id, selected: c.id === entry?.category }, c.name),
-    ),
+  const category = choice(
+    'research.new.category',
+    t.common.category,
+    categories.map((c) => ({ value: c.id, label: c.name })),
+    entry?.category,
   );
-  const status = el(
-    'select',
-    { class: 'input' },
-    ...(['em_andamento', 'concluida'] as const).map((s) =>
-      el(
-        'option',
-        { value: s, selected: s === (entry?.status ?? 'em_andamento') },
-        t.research.statusOptions[s],
-      ),
-    ),
+  const status = choice(
+    'research.new.status',
+    t.research.status,
+    (['em_andamento', 'concluida'] as const).map((s) => ({
+      value: s,
+      label: t.research.statusOptions[s],
+    })),
+    entry?.status,
   );
   const progress = numberInput({
     min: 0,

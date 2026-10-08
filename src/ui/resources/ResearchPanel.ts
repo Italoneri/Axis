@@ -15,23 +15,39 @@ import {
 import { el } from '../dom';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
-import { button, categoryManager, confirmButton, type Act } from '../widgets';
+import type { UiMemory } from '../uiMemory';
+import { button, categoryManager, confirmButton, type Act, type PanelDeps } from '../widgets';
 import { researchForm, researchSummary } from './researchViews';
 
+const TAB_KEY = 'research.tab';
 const STATUSES: readonly ResearchStatus[] = ['em_andamento', 'concluida'];
 
 /** Pesquisa: compact lists by status; the master registers and edits research here. */
 export class ResearchPanel {
-  private tab: ResearchStatus = 'em_andamento';
   /** Research id being edited, or "new" for the creation form. */
   private editing: string | null = null;
   private redraw: () => void = () => undefined;
 
-  constructor(
-    private readonly store: GameStore,
-    private readonly session: MasterSession,
-    private readonly act: Act,
-  ) {}
+  private readonly store: GameStore;
+  private readonly session: MasterSession;
+  private readonly act: Act;
+  private readonly memory: UiMemory;
+
+  /** Active status tab, remembered across re-renders and reloads. */
+  private get tab(): ResearchStatus {
+    return this.memory.get(TAB_KEY) === 'concluida' ? 'concluida' : 'em_andamento';
+  }
+
+  private set tab(status: ResearchStatus) {
+    this.memory.set(TAB_KEY, status);
+  }
+
+  constructor({ store, session, act, memory }: PanelDeps) {
+    this.store = store;
+    this.session = session;
+    this.act = act;
+    this.memory = memory;
+  }
 
   get menuItem(): ResourceMenuItem {
     return {
@@ -157,6 +173,7 @@ export class ResearchPanel {
   private form(entry: Research | undefined): HTMLElement {
     const close = () => this.update(() => (this.editing = null));
     return researchForm(this.store.current, entry, {
+      memory: this.memory,
       onCancel: close,
       onSubmit: (draft) => {
         const done = this.act((s) =>

@@ -3,12 +3,23 @@ import { resolveImage, type Catalog } from '../model/catalog';
 import type { Category, GameState } from '../model/schema';
 import type { CoinBag } from '../systems/Coins';
 import type { Outcome } from '../systems/outcome';
+import type { GameStore } from '../store';
 import { el } from './dom';
+import type { MasterSession } from './MasterSession';
+import type { UiMemory } from './uiMemory';
 
 // Small building blocks shared by the resource panels, the slot panel and the master tools.
 
 /** Runs a store action and reports a refusal to the user; true when it went through. */
 export type Act = (action: (state: GameState) => Outcome) => boolean;
+
+/** What every resource panel needs; bundled to keep constructors short. */
+export interface PanelDeps {
+  store: GameStore;
+  session: MasterSession;
+  act: Act;
+  memory: UiMemory;
+}
 
 const CONFIRM_WINDOW_MS = 3000;
 
@@ -53,6 +64,55 @@ export function thumb(
     },
     name.trim().charAt(0).toUpperCase() || '?',
   );
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+export function selectInput({
+  label,
+  options,
+  value,
+}: {
+  label: string;
+  options: readonly SelectOption[];
+  value: string;
+}): HTMLSelectElement {
+  return el(
+    'select',
+    { class: 'input', 'aria-label': label },
+    ...options.map((o) => el('option', { value: o.value, selected: o.value === value }, o.label)),
+  );
+}
+
+/**
+ * <select> that keeps the user's last choice across re-renders (and reloads),
+ * falling back to `fallback` (or the first option) once that choice is gone.
+ */
+export function rememberedSelect(
+  memory: UiMemory,
+  {
+    key,
+    label,
+    options,
+    fallback,
+  }: {
+    key: string;
+    label: string;
+    options: readonly { value: string; label: string }[];
+    fallback?: string;
+  },
+): HTMLSelectElement {
+  const value = memory.pick(
+    key,
+    options.map((o) => o.value),
+    fallback ?? options[0]?.value ?? '',
+  );
+  const node = selectInput({ label, options, value });
+  node.addEventListener('change', () => memory.set(key, node.value));
+  return node;
 }
 
 export function progressBar(fraction: number, color?: string): HTMLElement {
@@ -154,7 +214,6 @@ export function stepper(
 export interface CoinInputs {
   element: HTMLElement;
   read: () => CoinBag;
-  clear: () => void;
 }
 
 /** One number field per coin, optionally capped at what a wallet holds. */
@@ -190,7 +249,7 @@ export function coinInputs(
     ),
   );
   if (onInput) element.addEventListener('input', () => onInput(read()));
-  return { element, read, clear: () => rows.forEach(({ input }) => (input.value = '')) };
+  return { element, read };
 }
 
 export interface CategoryOps {

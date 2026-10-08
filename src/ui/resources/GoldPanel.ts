@@ -17,7 +17,8 @@ import { el } from '../dom';
 import { formatCount, formatGold } from '../format';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
-import { button, coinInputs, thumb, type Act } from '../widgets';
+import type { UiMemory } from '../uiMemory';
+import { button, coinInputs, rememberedSelect, thumb, type Act, type PanelDeps } from '../widgets';
 
 /** Wallets in <select> values and UI state: "camp" or "character:<id>". */
 type WalletKey = string;
@@ -38,11 +39,17 @@ export class GoldPanel {
   /** Redraws the dropdown after purely visual changes (toggles, opened forms). */
   private redraw: () => void = () => undefined;
 
-  constructor(
-    private readonly store: GameStore,
-    private readonly session: MasterSession,
-    private readonly act: Act,
-  ) {}
+  private readonly store: GameStore;
+  private readonly session: MasterSession;
+  private readonly act: Act;
+  private readonly memory: UiMemory;
+
+  constructor({ store, session, act, memory }: PanelDeps) {
+    this.store = store;
+    this.session = session;
+    this.act = act;
+    this.memory = memory;
+  }
 
   get menuItem(): ResourceMenuItem {
     const { catalog } = this.store;
@@ -187,9 +194,10 @@ export class GoldPanel {
       onInput: (coins) =>
         (total.textContent = formatGold(catalog, toBronze(coins, catalog.currencies))),
     });
+    // The form stays open for this character after a deposit; the re-render zeroes the amounts.
     const submit = () => {
       const depositor = actingCharacter(character.id);
-      if (this.act((s) => depositToCamp(s, depositor, inputs.read()))) this.depositingFor = null;
+      this.act((s) => depositToCamp(s, depositor, inputs.read()));
     };
     return el(
       'div',
@@ -211,7 +219,7 @@ export class GoldPanel {
       const delta = Object.fromEntries(
         Object.entries(inputs.read()).map(([id, n]) => [id, sign * n]),
       );
-      if (this.act((s) => adjustCoins(s, ref, delta))) inputs.clear();
+      this.act((s) => adjustCoins(s, ref, delta));
     };
     return el(
       'div',
@@ -228,25 +236,28 @@ export class GoldPanel {
 
   private transferCard(state: GameState): HTMLElement {
     const options = [
-      { key: 'camp', label: t.gold.camp },
-      ...state.characters.map((c) => ({ key: `character:${c.id}`, label: c.name })),
+      { value: keyOf(CAMP), label: t.gold.camp },
+      ...state.characters.map((c) => ({
+        value: keyOf({ kind: 'character', characterId: c.id }),
+        label: c.name,
+      })),
     ];
-    const select = (selected: string, label: string) =>
-      el(
-        'select',
-        { class: 'input', 'aria-label': label },
-        ...options.map((o) =>
-          el('option', { value: o.key, selected: o.key === selected }, o.label),
-        ),
-      );
-    const from = select('camp', t.gold.from);
-    const to = select(options[1]?.key ?? 'camp', t.gold.to);
+    // "De" and "Para" keep the last choice; the coin amounts are zeroed by the re-render.
+    const from = rememberedSelect(this.memory, {
+      key: 'gold.transfer.from',
+      label: t.gold.from,
+      options,
+      fallback: keyOf(CAMP),
+    });
+    const to = rememberedSelect(this.memory, {
+      key: 'gold.transfer.to',
+      label: t.gold.to,
+      options,
+      fallback: options[1]?.value ?? keyOf(CAMP),
+    });
     const inputs = coinInputs(this.store.catalog);
-    const submit = () => {
-      if (this.act((s) => transferCoins(s, refOf(from.value), refOf(to.value), inputs.read()))) {
-        inputs.clear();
-      }
-    };
+    const submit = () =>
+      this.act((s) => transferCoins(s, refOf(from.value), refOf(to.value), inputs.read()));
     return el(
       'section',
       { class: 'card card--master' },

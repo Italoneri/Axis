@@ -1,7 +1,7 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
 import type { GameStore } from '../store';
-import { el } from './dom';
+import { el, replaceKeepingScroll } from './dom';
 import type { MasterSession } from './MasterSession';
 import { thumb } from './widgets';
 
@@ -27,6 +27,8 @@ const POPOVER_GAP_PX = 6;
  */
 export class ResourceMenu {
   private openId: string | null = null;
+  /** Item currently drawn in the popover, to tell a re-render from a switch. */
+  private renderedId: string | null = null;
   private readonly buttons = new Map<string, HTMLButtonElement>();
   private readonly values = new Map<string, HTMLElement>();
 
@@ -36,8 +38,11 @@ export class ResourceMenu {
     private readonly items: readonly ResourceMenuItem[],
   ) {
     popover.id ||= 'resource-popover';
-    // pointerdown runs before any click handler re-renders the popover, so the target is still attached.
-    document.addEventListener('pointerdown', (event) => this.closeIfOutside(event));
+    // pointerdown runs before any click handler re-renders the popover, so the target is
+    // still attached. Capture phase: the Phaser canvas stops pointer events from bubbling.
+    document.addEventListener('pointerdown', (event) => this.closeIfOutside(event), {
+      capture: true,
+    });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && this.openId) this.close({ restoreFocus: true });
     });
@@ -107,9 +112,15 @@ export class ResourceMenu {
     const item = this.items.find((i) => i.id === this.openId);
     this.buttons.forEach((node, id) => node.setAttribute('aria-expanded', String(id === item?.id)));
     this.popover.hidden = !item;
+    const sameView = item !== undefined && item.id === this.renderedId;
+    this.renderedId = item?.id ?? null;
     if (!item) return;
     this.popover.setAttribute('aria-label', item.label);
-    this.popover.replaceChildren(...item.render(() => this.renderPopover()));
+    replaceKeepingScroll(
+      this.popover,
+      item.render(() => this.renderPopover()),
+      { sameView },
+    );
     this.position();
   }
 

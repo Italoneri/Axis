@@ -20,7 +20,7 @@ import { findMaterial } from '../systems/Materials';
 import { STUDY_STATION_ID } from '../systems/Research';
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
-import { el } from './dom';
+import { el, replaceKeepingScroll } from './dom';
 import { formatGold, textContext } from './format';
 import type { MasterSession } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
@@ -32,6 +32,7 @@ type SelectionListener = (slotId: string | null) => void;
 /** Side panel (bottom sheet on phones) showing what can be built in, or is built on, a slot. */
 export class SlotPanel {
   private slotId: string | null = null;
+  private renderedSlotId: string | null = null;
   private readonly selectionListeners = new Set<SelectionListener>();
   private readonly researchArchive = new ResearchArchive();
 
@@ -67,6 +68,8 @@ export class SlotPanel {
   private render(): void {
     const slot = this.slotId === null ? undefined : findSlot(this.store.catalog, this.slotId);
     this.root.hidden = !slot;
+    const sameView = slot !== undefined && slot.id === this.renderedSlotId;
+    this.renderedSlotId = slot?.id ?? null;
     if (!slot) return;
 
     const state = this.store.current;
@@ -83,23 +86,27 @@ export class SlotPanel {
     const masterControls =
       this.session.isActive && renderMasterSlotControls(this.store, slot, placed);
 
-    this.root.replaceChildren(
-      el(
-        'header',
-        { class: 'panel__header' },
-        el('h2', { class: 'panel__title' }, title),
+    replaceKeepingScroll(
+      this.root,
+      [
         el(
-          'button',
-          {
-            class: 'btn btn--icon',
-            type: 'button',
-            'aria-label': t.panel.close,
-            onclick: () => this.close(),
-          },
-          '×',
+          'header',
+          { class: 'panel__header' },
+          el('h2', { class: 'panel__title' }, title),
+          el(
+            'button',
+            {
+              class: 'btn btn--icon',
+              type: 'button',
+              'aria-label': t.panel.close,
+              onclick: () => this.close(),
+            },
+            '×',
+          ),
         ),
-      ),
-      el('div', { class: 'panel__body' }, masterControls, ...body),
+        el('div', { class: 'panel__body' }, masterControls, ...body),
+      ],
+      { sameView, scroller: '.panel__body' },
     );
   }
 

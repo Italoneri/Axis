@@ -23,6 +23,7 @@ import {
   stepper,
   thumb,
   type Act,
+  type PanelDeps,
 } from '../widgets';
 
 const DEFAULT_WORLD_COLOR = '#7fb069';
@@ -33,11 +34,15 @@ export class InfluencePanel {
   private editing: string | null = null;
   private redraw: () => void = () => undefined;
 
-  constructor(
-    private readonly store: GameStore,
-    private readonly session: MasterSession,
-    private readonly act: Act,
-  ) {}
+  private readonly store: GameStore;
+  private readonly session: MasterSession;
+  private readonly act: Act;
+
+  constructor({ store, session, act }: PanelDeps) {
+    this.store = store;
+    this.session = session;
+    this.act = act;
+  }
 
   get menuItem(): ResourceMenuItem {
     return {

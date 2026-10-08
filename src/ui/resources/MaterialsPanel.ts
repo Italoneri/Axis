@@ -16,6 +16,7 @@ import { el } from '../dom';
 import { formatCount } from '../format';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
+import type { UiMemory } from '../uiMemory';
 import {
   button,
   categoryManager,
@@ -25,20 +26,39 @@ import {
   readCount,
   thumb,
   type Act,
+  type PanelDeps,
 } from '../widgets';
+
+const TAB_KEY = 'materials.tab';
 
 /** Materiais: one tab per category; the master adds, edits and counts materials. */
 export class MaterialsPanel {
-  private tab: string | null = null;
+  /** Kept open across re-renders so several materials can be added in a row. */
+  private isNewMaterialOpen = false;
   private expanded: string | null = null;
   private editing: string | null = null;
   private redraw: () => void = () => undefined;
 
-  constructor(
-    private readonly store: GameStore,
-    private readonly session: MasterSession,
-    private readonly act: Act,
-  ) {}
+  private readonly store: GameStore;
+  private readonly session: MasterSession;
+  private readonly act: Act;
+  private readonly memory: UiMemory;
+
+  /** Active category tab, remembered across re-renders and reloads. */
+  private get tab(): string | null {
+    return this.memory.get(TAB_KEY) || null;
+  }
+
+  private set tab(categoryId: string | null) {
+    this.memory.set(TAB_KEY, categoryId ?? '');
+  }
+
+  constructor({ store, session, act, memory }: PanelDeps) {
+    this.store = store;
+    this.session = session;
+    this.act = act;
+    this.memory = memory;
+  }
 
   get menuItem(): ResourceMenuItem {
     return {
@@ -162,12 +182,14 @@ export class MaterialsPanel {
       },
       field(t.materials.quantity, quantity),
     );
-    return el(
+    const details = el(
       'details',
-      { class: 'card card--master' },
+      { class: 'card card--master', open: this.isNewMaterialOpen },
       el('summary', { class: 'section-title' }, t.materials.newMaterial),
       form,
     );
+    details.addEventListener('toggle', () => (this.isNewMaterialOpen = details.open));
+    return details;
   }
 
   /** Shared add/edit form; the category select only appears when editing. */

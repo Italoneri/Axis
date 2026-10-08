@@ -1,15 +1,13 @@
 import { t } from '../i18n/pt-BR';
 import type { GameState } from '../model/schema';
-import type { GameStore } from '../store';
 import { el } from './dom';
-import type { MasterSession } from './MasterSession';
 import { ResourceMenu } from './ResourceMenu';
 import { GoldPanel } from './resources/GoldPanel';
 import { InfluencePanel } from './resources/InfluencePanel';
 import { MaterialsPanel } from './resources/MaterialsPanel';
 import { ResearchPanel } from './resources/ResearchPanel';
 import { createSaveControls } from './SaveControls';
-import type { Act } from './widgets';
+import type { PanelDeps } from './widgets';
 
 export interface TopBarActions {
   notify: (msg: string, tone?: 'error') => void;
@@ -20,14 +18,15 @@ export interface TopBarActions {
 export function mountTopBar(
   root: HTMLElement,
   popover: HTMLElement,
-  { store, session, act }: { store: GameStore; session: MasterSession; act: Act },
+  deps: PanelDeps,
   actions: TopBarActions,
 ): void {
+  const { store, session } = deps;
   const menu = new ResourceMenu(popover, store, [
-    new GoldPanel(store, session, act).menuItem,
-    new MaterialsPanel(store, session, act).menuItem,
-    new ResearchPanel(store, session, act).menuItem,
-    new InfluencePanel(store, session, act).menuItem,
+    new GoldPanel(deps).menuItem,
+    new MaterialsPanel(deps).menuItem,
+    new ResearchPanel(deps).menuItem,
+    new InfluencePanel(deps).menuItem,
   ]);
   const day = el('span', { class: 'topbar__day' });
 
