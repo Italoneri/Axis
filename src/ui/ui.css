@@ -12,6 +12,7 @@
   --font-body: 'Alegreya Sans', system-ui, sans-serif;
   --radius: 10px;
   --topbar-height: 56px;
+  --control-height: 36px;
 }
 
 * {
@@ -497,20 +498,49 @@ button {
   flex: 1;
 }
 
+/*
+ * One box for every form control (input, select, textarea): same font, padding,
+ * border and height. Width and flex sizing belong to the layout around them
+ * (.row, .field), never to the control itself: a flex-basis set on a control
+ * becomes its HEIGHT inside the column-direction .field.
+ */
 .input {
+  box-sizing: border-box;
   min-width: 0;
   width: 90px;
+  height: var(--control-height);
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.35);
   color: var(--text);
   font: inherit;
+  line-height: 1.25;
 }
 
 select.input {
   width: auto;
-  flex: 1;
+}
+
+textarea.input {
+  height: auto;
+  min-height: calc(var(--control-height) * 2);
+  resize: vertical;
+}
+
+input[type='color'].input {
+  width: 56px;
+  padding: 2px;
+}
+
+/* In a labelled column, a select spans the column like a wide input. */
+.field > select.input {
+  width: 100%;
+}
+
+/* In a horizontal row, selects share the free space. */
+.row > select.input {
+  flex: 1 1 90px;
 }
 
 .input--wide {
@@ -527,6 +557,11 @@ select.input {
   flex-direction: column;
   gap: 6px;
   color: var(--muted);
+}
+
+/* display: flex above would otherwise override the hidden attribute. */
+.field[hidden] {
+  display: none;
 }
 
 .notice {
@@ -574,11 +609,7 @@ select.input {
   }
 }
 
-.card--master select.input {
-  flex: 1 1 90px;
-}
-
-.card--master select.input:first-child {
+.card--master .row > select.input:first-child {
   flex: 2 1 170px;
 }
 
@@ -858,17 +889,6 @@ select.input {
   text-align: center;
 }
 
-textarea.input {
-  resize: vertical;
-  font: inherit;
-}
-
-input[type='color'].input {
-  width: 56px;
-  height: 34px;
-  padding: 2px;
-}
-
 .fieldset {
   display: flex;
   flex-direction: column;
@@ -901,8 +921,11 @@ details > summary {
   }
 
   /* Comfortable touch targets inside the dropdown. */
+  .popover {
+    --control-height: 40px;
+  }
+
   .popover .btn,
-  .popover .input,
   .popover .tab {
     min-height: 40px;
   }
