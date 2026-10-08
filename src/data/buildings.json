@@ -1,0 +1,245 @@
+[
+  {
+    "id": "axis_heart",
+    "name": "Coração da Axis",
+    "description": "O núcleo pulsante do salão. Despertá-lo libera níveis mais altos das outras estruturas.",
+    "icon": "icon.axis_heart",
+    "sprite": "building.axis_heart",
+    "allowedSlots": ["core"],
+    "levels": [
+      {
+        "cost": { "gold": 300, "materials": 100, "arcana": 30 },
+        "buildTime": 5,
+        "effect": "Desperta a Axis: libera o nível 2 das demais estruturas."
+      },
+      {
+        "cost": { "gold": 600, "materials": 200, "arcana": 60, "influence": 10 },
+        "buildTime": 8,
+        "effect": "Libera o nível 3 das demais estruturas. Uma vez por sessão, um personagem pode rolar novamente um teste que falhou."
+      },
+      {
+        "cost": { "gold": 1200, "materials": 300, "arcana": 120, "influence": 25 },
+        "buildTime": 12,
+        "effect": "A Axis pulsa com poder: todos os personagens começam cada sessão com inspiração."
+      }
+    ]
+  },
+  {
+    "id": "forge",
+    "name": "Forja",
+    "description": "Bigornas e fornalhas alimentadas pelo calor das profundezas.",
+    "icon": "icon.forge",
+    "sprite": "building.forge",
+    "allowedSlots": ["outer"],
+    "levels": [
+      {
+        "cost": { "gold": 150, "materials": 80 },
+        "buildTime": 3,
+        "effect": "Reparos de equipamento custam metade do preço."
+      },
+      {
+        "cost": { "gold": 350, "materials": 180, "arcana": 10 },
+        "buildTime": 5,
+        "effect": "Armas e armaduras comuns são forjadas na metade do tempo.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 800, "materials": 350, "arcana": 40, "influence": 5 },
+        "buildTime": 8,
+        "effect": "Uma vez por arco, aprimora uma arma ou armadura para +1.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "infirmary",
+    "name": "Enfermaria",
+    "description": "Leitos limpos, ervas secando no teto e o cheiro de unguento.",
+    "icon": "icon.infirmary",
+    "sprite": "building.infirmary",
+    "allowedSlots": ["inner", "outer"],
+    "levels": [
+      {
+        "cost": { "gold": 120, "materials": 60 },
+        "buildTime": 2,
+        "effect": "Descanso longo recupera +1 dado de vida."
+      },
+      {
+        "cost": { "gold": 300, "materials": 120, "arcana": 15 },
+        "buildTime": 4,
+        "effect": "Descanso longo remove 1 nível de exaustão adicional.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 700, "materials": 250, "arcana": 40, "influence": 5 },
+        "buildTime": 7,
+        "effect": "Poções de cura custam metade e personagens caídos na Axis estabilizam sozinhos.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "library",
+    "name": "Biblioteca",
+    "description": "Estantes que sobem até a escuridão do teto, repletas de tomos antigos.",
+    "icon": "icon.library",
+    "sprite": "building.library",
+    "allowedSlots": ["inner"],
+    "levels": [
+      {
+        "cost": { "gold": 150, "materials": 50, "arcana": 5 },
+        "buildTime": 3,
+        "effect": "Vantagem em testes de História e Arcanismo para pesquisas feitas na Axis."
+      },
+      {
+        "cost": { "gold": 350, "materials": 100, "arcana": 20 },
+        "buildTime": 5,
+        "effect": "Uma pergunta por sessão ao mestre sobre o mundo (resposta verdadeira, talvez vaga).",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 750, "materials": 200, "arcana": 50, "influence": 10 },
+        "buildTime": 8,
+        "effect": "Copiar magias para o grimório custa metade do tempo e do ouro.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "armory",
+    "name": "Arsenal",
+    "description": "Prateleiras de armas polidas e armaduras prontas para a próxima batalha.",
+    "icon": "icon.armory",
+    "sprite": "building.armory",
+    "allowedSlots": ["outer"],
+    "requires": [{ "building": "forge", "minLevel": 1 }],
+    "levels": [
+      {
+        "cost": { "gold": 200, "materials": 100 },
+        "buildTime": 3,
+        "effect": "Munição comum é reposta gratuitamente entre sessões."
+      },
+      {
+        "cost": { "gold": 400, "materials": 200, "influence": 3 },
+        "buildTime": 5,
+        "effect": "+1 na CA de quem defender a Axis em combate.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 850, "materials": 350, "arcana": 30, "influence": 8 },
+        "buildTime": 8,
+        "effect": "Cada personagem pode retirar uma arma +1 do arsenal para usar fora da Axis.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "sanctuary",
+    "name": "Santuário",
+    "description": "Velas eternas e um altar silencioso dedicado aos deuses do grupo.",
+    "icon": "icon.sanctuary",
+    "sprite": "building.sanctuary",
+    "allowedSlots": ["inner"],
+    "levels": [
+      {
+        "cost": { "gold": 180, "materials": 40, "arcana": 10 },
+        "buildTime": 3,
+        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de resistência contra medo."
+      },
+      {
+        "cost": { "gold": 400, "materials": 80, "arcana": 30, "influence": 5 },
+        "buildTime": 5,
+        "effect": "Remover maldições e doenças comuns na Axis não consome componentes.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 900, "materials": 150, "arcana": 80, "influence": 15 },
+        "buildTime": 10,
+        "effect": "Uma vez por arco, uma ressurreição na Axis dispensa o componente material.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "watchtower",
+    "name": "Torre de Vigia",
+    "description": "Um posto elevado junto à muralha, de onde se vê cada entrada da Axis.",
+    "icon": "icon.watchtower",
+    "sprite": "building.watchtower",
+    "allowedSlots": ["outer"],
+    "levels": [
+      {
+        "cost": { "gold": 100, "materials": 90 },
+        "buildTime": 2,
+        "effect": "A Axis não pode ser surpreendida."
+      },
+      {
+        "cost": { "gold": 250, "materials": 180, "influence": 3 },
+        "buildTime": 4,
+        "effect": "O mestre avisa com 1 dia de antecedência sobre ameaças que se aproximam da Axis.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 600, "materials": 320, "arcana": 20, "influence": 8 },
+        "buildTime": 7,
+        "effect": "Vantagem em iniciativa em combates dentro da Axis.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "barracks",
+    "name": "Alojamento",
+    "description": "Camas, baús e uma lareira comunal para o grupo e seus aliados.",
+    "icon": "icon.barracks",
+    "sprite": "building.barracks",
+    "allowedSlots": ["outer"],
+    "levels": [
+      {
+        "cost": { "gold": 100, "materials": 70 },
+        "buildTime": 2,
+        "effect": "Descanso curto na Axis leva apenas 30 minutos."
+      },
+      {
+        "cost": { "gold": 250, "materials": 150, "influence": 5 },
+        "buildTime": 4,
+        "effect": "Abriga até 4 aliados que ajudam em atividades de tempo livre.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 550, "materials": 300, "arcana": 10, "influence": 12 },
+        "buildTime": 7,
+        "effect": "Quem começa a sessão descansado na Axis recebe inspiração.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "arcane_lab",
+    "name": "Laboratório Arcano",
+    "description": "Alambiques, círculos de transmutação e o zumbido constante de magia contida.",
+    "icon": "icon.arcane_lab",
+    "sprite": "building.arcane_lab",
+    "allowedSlots": ["inner"],
+    "requires": [{ "building": "library", "minLevel": 1 }],
+    "levels": [
+      {
+        "cost": { "gold": 200, "materials": 60, "arcana": 20 },
+        "buildTime": 4,
+        "effect": "Identificar itens mágicos não exige descanso curto."
+      },
+      {
+        "cost": { "gold": 450, "materials": 120, "arcana": 50 },
+        "buildTime": 6,
+        "effect": "Criar poções e pergaminhos comuns custa metade.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "gold": 1000, "materials": 200, "arcana": 120, "influence": 10 },
+        "buildTime": 10,
+        "effect": "Uma vez por arco, cria um item mágico incomum à escolha do grupo.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  }
+]

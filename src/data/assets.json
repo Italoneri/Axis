@@ -1,0 +1,27 @@
+{
+  "images": {
+    "map": "assets/map/axis.png",
+    "icon.gold": "assets/icons/gold.png",
+    "icon.materials": "assets/icons/materials.png",
+    "icon.arcana": "assets/icons/arcana.png",
+    "icon.influence": "assets/icons/influence.png",
+    "icon.axis_heart": "assets/icons/axis_heart.png",
+    "icon.forge": "assets/icons/forge.png",
+    "icon.infirmary": "assets/icons/infirmary.png",
+    "icon.library": "assets/icons/library.png",
+    "icon.armory": "assets/icons/armory.png",
+    "icon.sanctuary": "assets/icons/sanctuary.png",
+    "icon.watchtower": "assets/icons/watchtower.png",
+    "icon.barracks": "assets/icons/barracks.png",
+    "icon.arcane_lab": "assets/icons/arcane_lab.png",
+    "building.axis_heart": "assets/buildings/axis_heart.png",
+    "building.forge": "assets/buildings/forge.png",
+    "building.infirmary": "assets/buildings/infirmary.png",
+    "building.library": "assets/buildings/library.png",
+    "building.armory": "assets/buildings/armory.png",
+    "building.sanctuary": "assets/buildings/sanctuary.png",
+    "building.watchtower": "assets/buildings/watchtower.png",
+    "building.barracks": "assets/buildings/barracks.png",
+    "building.arcane_lab": "assets/buildings/arcane_lab.png"
+  }
+}

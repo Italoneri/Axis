@@ -1,0 +1,6 @@
+[
+  { "id": "gold", "name": "Ouro", "icon": "icon.gold", "initial": 600 },
+  { "id": "materials", "name": "Materiais", "icon": "icon.materials", "initial": 250 },
+  { "id": "arcana", "name": "Essência Arcana", "icon": "icon.arcana", "initial": 40 },
+  { "id": "influence", "name": "Influência", "icon": "icon.influence", "initial": 10 }
+]

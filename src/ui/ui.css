@@ -1,0 +1,389 @@
+:root {
+  --bg: #0e0c10;
+  --surface: rgba(22, 19, 25, 0.94);
+  --surface-raised: rgba(38, 33, 40, 0.9);
+  --border: rgba(212, 175, 55, 0.35);
+  --gold: #d4af37;
+  --gold-soft: #f3e3a6;
+  --text: #e8e2d4;
+  --muted: #a39a86;
+  --danger: #e0806f;
+  --font-display: 'Cinzel', Georgia, serif;
+  --font-body: 'Alegreya Sans', system-ui, sans-serif;
+  --radius: 10px;
+  --topbar-height: 56px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr;
+}
+
+.game {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: linear-gradient(to bottom, #1d1820, #141117);
+  border-bottom: 1px solid var(--border);
+  z-index: 2;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar__brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.topbar__resources {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resource {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.resource img {
+  width: 26px;
+  height: 26px;
+}
+
+.topbar__day {
+  margin-left: auto;
+  font-family: var(--font-display);
+  color: var(--gold-soft);
+  white-space: nowrap;
+}
+
+.topbar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  background: linear-gradient(to bottom, #b8922a, #8a6a17);
+  border-color: var(--gold);
+  color: #1a1408;
+  font-weight: 700;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #d4af37, #a07c1d);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--icon {
+  padding: 2px 10px;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* ---------- Slot panel ---------- */
+
+.panel {
+  position: fixed;
+  top: calc(var(--topbar-height) + 12px);
+  right: 12px;
+  bottom: 12px;
+  width: min(380px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  z-index: 3;
+  animation: panel-in 0.18s ease-out;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 10px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--gold-soft);
+}
+
+.panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel__hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.card {
+  padding: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card--blocked {
+  opacity: 0.75;
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card__icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+.card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--gold-soft);
+}
+
+.card__sub {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.card__desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.stat {
+  margin: 0;
+  font-size: 15px;
+}
+
+.stat__label {
+  color: var(--gold);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.cost {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  vertical-align: middle;
+}
+
+.cost__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cost__item img {
+  width: 18px;
+  height: 18px;
+}
+
+.cost__item--short {
+  color: var(--danger);
+}
+
+.reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.progress {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  background: linear-gradient(to right, #8a6a17, var(--gold));
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.section-title {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+/* ---------- Toasts ---------- */
+
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.fatal {
+  padding: 24px;
+  white-space: pre-wrap;
+  color: var(--danger);
+}
+
+/* Phone: panel becomes a bottom sheet (full responsive pass comes in phase 4). */
+@media (max-width: 640px) {
+  .topbar {
+    gap: 12px;
+  }
+
+  .topbar__brand,
+  .resource__name {
+    display: none;
+  }
+
+  .panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 60vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .toast {
+    animation: none;
+  }
+}
