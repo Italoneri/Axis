@@ -31,6 +31,8 @@
     "building.watchtower": "assets/buildings/watchtower.png",
     "building.barracks": "assets/buildings/barracks.png",
     "building.arcane_lab": "assets/buildings/arcane_lab.png",
-    "building.study_station": "assets/buildings/study_station.png"
+    "building.study_station": "assets/buildings/study_station.png",
+    "icon.hot_springs": "assets/icons/hot_springs.png",
+    "building.hot_springs": "assets/buildings/hot_springs.png"
   }
 }

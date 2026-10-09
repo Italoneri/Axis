@@ -274,5 +274,41 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "hot_springs",
+    "name": "Fontes Termais",
+    "description": "Águas quentes que brotam das rochas sob a Axis, cercadas por um deque de madeira e lanternas.",
+    "icon": "icon.hot_springs",
+    "sprite": "building.hot_springs",
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "smoke", "x": 0.323, "y": 0.482 },
+      { "type": "smoke", "x": 0.665, "y": 0.481 },
+      { "type": "glow", "x": 0.429, "y": 0.472, "color": "#7fe0d6", "radius": 0.12 },
+      { "type": "smoke", "x": 0.806, "y": 0.541 },
+      { "type": "glow", "x": 0.083, "y": 0.179, "color": "#ffb347", "radius": 0.05 },
+      { "type": "glow", "x": 0.917, "y": 0.179, "color": "#ffb347", "radius": 0.05 },
+      { "type": "glow", "x": 0.659, "y": 0.303, "color": "#ffb347", "radius": 0.05 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 140, "materials": { "wood": 60, "iron": 12 } },
+        "buildTime": 3,
+        "effect": "Um descanso curto nas termas recupera +1 dado de vida extra."
+      },
+      {
+        "cost": { "coins": 320, "materials": { "wood": 110, "iron": 30, "aetherium": 12 } },
+        "buildTime": 5,
+        "effect": "Após um descanso longo, cada personagem ganha PV temporários iguais ao seu nível.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 750, "materials": { "wood": 200, "iron": 60, "aetherium": 40 } },
+        "buildTime": 8,
+        "effect": "Uma vez por sessão, quem se banhar nas termas recupera um espaço de magia ou um uso de habilidade de nível 1 a 3.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]
