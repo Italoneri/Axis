@@ -1,5 +1,13 @@
 import Phaser from 'phaser';
-import { slotBounds, slotContains, slotOutline, slotSpriteSize, toPixels } from '../map/geometry';
+import { artPlacement, artTextureKey, pickArtFile, type ArtPlacement } from '../map/buildingArt';
+import {
+  slotBounds,
+  slotContains,
+  slotOutline,
+  slotSpriteSize,
+  toPixels,
+  type Point,
+} from '../map/geometry';
 import type { SlotDef } from '../map/layout';
 import type { BuildingDef, PlacedBuilding } from '../model/schema';
 import { constructionProgress } from '../systems/TimeSystem';
@@ -10,13 +18,20 @@ const GOLD_SOFT = 0xf3e3a6;
 const FOUNDATION_FILL = 0x141218;
 const FOUNDATION_ALPHA = 0.47;
 const LEVEL_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+/** Final art of a structure still under construction: a faint preview of the target level. */
+const CONSTRUCTION_ART_ALPHA = 0.35;
+const SCAFFOLD_SPACING = 14;
+const DASH = 10;
+const DASH_GAP = 7;
 
 /** Draw order on the map: foundations under the gates, buildings above everything. */
-export const SLOT_DEPTH = { foundation: 10, building: 30 };
+export const SLOT_DEPTH = { foundation: 10, building: 30, scaffold: 31 };
 
 export interface SlotViewOptions {
   readonly slot: SlotDef;
   readonly mapSize: number;
+  /** Final art files available (see buildingArt.ts); missing art falls back to the placeholder. */
+  readonly art: ReadonlySet<string>;
   readonly onClick: () => void;
 }
 
@@ -26,21 +41,30 @@ export interface SlotViewModel {
   day: number;
 }
 
+/** What the slot shows: final art shaped to the slot, the square placeholder, or nothing. */
+type Look =
+  | { kind: 'art'; textureKey: string }
+  | { kind: 'placeholder'; textureKey: string }
+  | { kind: 'empty' };
+
 /**
  * Everything drawn for one slot: its foundation (arc, square or the core circle),
- * the building sprite, level badge and progress ring. Clicks are tested against
- * the real shape, so neighbouring arcs never steal each other's taps.
+ * the building art or placeholder sprite, level badge and progress ring. Clicks are
+ * tested against the real shape, so neighbouring arcs never steal each other's taps.
  */
 export class SlotView {
   private readonly foundation: Phaser.GameObjects.Graphics;
   private readonly container: Phaser.GameObjects.Container;
   private readonly ring: Phaser.GameObjects.Graphics;
   private readonly sprite: Phaser.GameObjects.Image;
+  private readonly art: Phaser.GameObjects.Image;
+  private readonly scaffold: Phaser.GameObjects.Graphics;
   private readonly badge: Phaser.GameObjects.Text;
   private readonly size: number;
+  private readonly placement: ArtPlacement;
   private hovered = false;
   private selected = false;
-  private shownSpriteKey: string | null = null;
+  private shown: Look = { kind: 'empty' };
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -49,8 +73,12 @@ export class SlotView {
     const { slot, mapSize } = options;
     const center = toPixels(slot, mapSize);
     this.size = slotSpriteSize(slot) * mapSize;
+    this.placement = artPlacement(slot);
     this.foundation = scene.add.graphics().setDepth(SLOT_DEPTH.foundation);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setVisible(false);
+    const shape = this.createShapeMask();
+    this.art = this.createArtImage().setMask(shape);
+    this.scaffold = scene.add.graphics().setDepth(SLOT_DEPTH.scaffold).setMask(shape);
     this.ring = scene.add.graphics();
     this.badge = scene.add
       .text(0, this.size * 0.46, '', {
@@ -70,14 +98,11 @@ export class SlotView {
   }
 
   update({ placed, def, day }: SlotViewModel): void {
-    const spriteKey = placed && def ? def.sprite : null;
-    if (spriteKey !== this.shownSpriteKey) {
-      this.shownSpriteKey = spriteKey;
-      if (spriteKey) this.sprite.setTexture(spriteKey).setDisplaySize(this.size, this.size);
-      this.sprite.setVisible(spriteKey !== null);
-    }
-
     const isBuilding = placed?.status === 'building';
+    this.show(this.lookFor(placed, def));
+    this.drawScaffold(isBuilding && this.shown.kind === 'art');
+
+    this.art.setAlpha(isBuilding ? CONSTRUCTION_ART_ALPHA : 1);
     this.sprite.setAlpha(isBuilding ? 0.55 : 1);
     if (isBuilding) this.sprite.setTint(0x9a9a9a);
     else this.sprite.clearTint();
@@ -93,11 +118,14 @@ export class SlotView {
 
   /** Scale-in for a new structure, a short pop for an upgrade. */
   playConstructionStarted(isNew: boolean): void {
-    const targetScale = this.sprite.scale;
-    if (isNew) this.sprite.setScale(0);
+    const image = this.shownImage();
+    const { scaleX, scaleY } = image;
+    const from = isNew ? 0 : 1.15;
+    image.setScale(scaleX * from, scaleY * from);
     this.scene.tweens.add({
-      targets: this.sprite,
-      scale: isNew ? targetScale : { from: targetScale * 1.15, to: targetScale },
+      targets: image,
+      scaleX,
+      scaleY,
       duration: isNew ? 550 : 350,
       ease: 'Back.Out',
     });
@@ -114,18 +142,93 @@ export class SlotView {
         blendMode: Phaser.BlendModes.ADD,
         emitting: false,
       })
-      .setDepth(SLOT_DEPTH.building + 1);
+      .setDepth(SLOT_DEPTH.scaffold + 1);
     emitter.explode(48);
     this.scene.time.delayedCall(1300, () => emitter.destroy());
 
-    const scale = this.sprite.scale;
+    const image = this.shownImage();
     this.scene.tweens.add({
-      targets: this.sprite,
-      scale: scale * 1.12,
+      targets: image,
+      scaleX: image.scaleX * 1.12,
+      scaleY: image.scaleY * 1.12,
       duration: 180,
       yoyo: true,
       ease: 'Quad.Out',
     });
+  }
+
+  private lookFor(placed: PlacedBuilding | undefined, def: BuildingDef | undefined): Look {
+    if (!placed || !def) return { kind: 'empty' };
+    const file = pickArtFile(this.options.art, def.id, this.options.slot.type, placed.level);
+    return file
+      ? { kind: 'art', textureKey: artTextureKey(file) }
+      : { kind: 'placeholder', textureKey: def.sprite };
+  }
+
+  private show(look: Look): void {
+    if (isSameLook(look, this.shown)) return;
+    this.shown = look;
+    const { mapSize } = this.options;
+    if (look.kind === 'art') {
+      const { width, height } = this.placement;
+      this.art.setTexture(look.textureKey).setDisplaySize(width * mapSize, height * mapSize);
+    }
+    if (look.kind === 'placeholder') {
+      this.sprite.setTexture(look.textureKey).setDisplaySize(this.size, this.size);
+    }
+    this.art.setVisible(look.kind === 'art');
+    this.sprite.setVisible(look.kind === 'placeholder');
+  }
+
+  private shownImage(): Phaser.GameObjects.Image {
+    return this.shown.kind === 'art' ? this.art : this.sprite;
+  }
+
+  /** The art lives in map space: for arcs its box is not centered on the slot's (x, y). */
+  private createArtImage(): Phaser.GameObjects.Image {
+    const { center, rotation } = this.placement;
+    const { x, y } = toPixels(center, this.options.mapSize);
+    return this.scene.add
+      .image(x, y, '__DEFAULT')
+      .setRotation(Phaser.Math.DegToRad(rotation))
+      .setDepth(SLOT_DEPTH.building)
+      .setVisible(false);
+  }
+
+  /** Clips the art and the scaffold to the exact foundation, so arcs keep their curve. */
+  private createShapeMask(): Phaser.Display.Masks.GeometryMask {
+    const g = this.scene.make.graphics({}, false).fillStyle(0xffffff);
+    g.fillPoints(this.outlinePixels(), true);
+    return g.createGeometryMask();
+  }
+
+  private outlinePixels(): Point[] {
+    const { slot, mapSize } = this.options;
+    if (slot.type === 'core') {
+      return circlePoints(toPixels(slot, mapSize), (slot.size / 2) * mapSize);
+    }
+    return slotOutline(slot).map((p) => toPixels(p, mapSize));
+  }
+
+  /** Gold hatching and a dashed outline over the faint art while it is being built. */
+  private drawScaffold(visible: boolean): void {
+    const g = this.scaffold.clear();
+    if (!visible) return;
+    const { slot, mapSize } = this.options;
+    const bounds = slotBounds(slot);
+    const left = bounds.left * mapSize;
+    const top = bounds.top * mapSize;
+    const width = bounds.width * mapSize;
+    const height = bounds.height * mapSize;
+    const stroke = Math.max(1, mapSize / 900);
+
+    g.lineStyle(stroke, GOLD, 0.45);
+    for (let offset = -height; offset < width; offset += SCAFFOLD_SPACING * stroke) {
+      g.lineBetween(left + offset, top + height, left + offset + height, top);
+    }
+    const outline = this.outlinePixels();
+    g.lineStyle(stroke * 2, GOLD, 0.9);
+    strokeDashed(g, [...outline, ...outline.slice(0, 1)], DASH * stroke, DASH_GAP * stroke);
   }
 
   /** A zone over the slot's bounding box whose hit test checks the exact shape. */
@@ -198,6 +301,46 @@ export class SlotView {
     );
     this.ring.strokePath();
   }
+}
+
+function isSameLook(a: Look, b: Look): boolean {
+  if (a.kind === 'empty' || b.kind === 'empty') return a.kind === b.kind;
+  return a.kind === b.kind && a.textureKey === b.textureKey;
+}
+
+function circlePoints(center: Point, radius: number, steps = 64): Point[] {
+  return Array.from({ length: steps }, (_, i) => {
+    const a = (i / steps) * Math.PI * 2;
+    return { x: center.x + radius * Math.cos(a), y: center.y + radius * Math.sin(a) };
+  });
+}
+
+/** Phaser has no dashed lines: walks the polyline and strokes every other stretch. */
+function strokeDashed(
+  g: Phaser.GameObjects.Graphics,
+  points: readonly Point[],
+  dash: number,
+  gap: number,
+): void {
+  let drawing = true;
+  let remaining = dash;
+  points.slice(1).forEach((end, i) => {
+    let start = points[i] ?? end;
+    let length = Math.hypot(end.x - start.x, end.y - start.y);
+    while (length > 0) {
+      const step = Math.min(remaining, length);
+      const t = step / length;
+      const next = { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
+      if (drawing) g.lineBetween(start.x, start.y, next.x, next.y);
+      start = next;
+      length -= step;
+      remaining -= step;
+      if (remaining <= 0) {
+        drawing = !drawing;
+        remaining = drawing ? dash : gap;
+      }
+    }
+  });
 }
 
 /** Wide faint strokes under a crisp one fake a glow without a shader. */

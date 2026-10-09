@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { availableArtFiles } from '../map/buildingArt';
 import { Gates, type GateState } from '../map/gates';
 import { MAP_TEXTURE, type LiveMap } from '../map/liveMap';
 import { MAP_TEXTURE_KEYS, textureImage } from '../map/textures';
@@ -54,10 +55,12 @@ export class BaseScene extends Phaser.Scene {
     const stopTheme = theme.subscribe((next) => this.gates?.setTheme(next));
     const stopReference = import.meta.env.DEV ? this.followReference() : () => undefined;
 
+    const art = availableArtFiles(this.store.catalog.assets.images);
     for (const slot of layout.slots) {
       const view = new SlotView(this, {
         slot,
         mapSize: size,
+        art,
         onClick: () => {
           if (!camera.wasDragging) this.selection.open(slot.id);
         },
