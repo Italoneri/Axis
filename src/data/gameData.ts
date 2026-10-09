@@ -1,3 +1,5 @@
+import buildingArtFiles from 'virtual:building-art';
+import { withBuildingArt } from '../map/buildingArt';
 import { parseCatalog } from '../model/catalog';
 import assets from './assets.json';
 import buildings from './buildings.json';
@@ -12,7 +14,7 @@ export const rawGameData = {
   currencies,
   buildings,
   layout,
-  assets,
+  assets: withBuildingArt(assets, buildingArtFiles),
   wallets,
   materials,
   research,
