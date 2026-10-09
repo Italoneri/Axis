@@ -1,4 +1,5 @@
-import type { LogEntry, ResearchStatus, SlotType } from '../model/schema';
+import type { SlotType } from '../map/layout';
+import type { LogEntry, ResearchStatus } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
 import type { ActionError } from '../systems/outcome';
 
@@ -6,6 +7,8 @@ import type { ActionError } from '../systems/outcome';
 export const t = {
   appTitle: 'Axis — Base',
   loading: 'Despertando a Axis…',
+  forgingMap: 'Talhando a muralha e o mármore…',
+  mapError: 'Não foi possível gerar o mapa. Veja o console do navegador.',
   dataError: 'Erro nos dados do jogo',
 
   day: (day: number) => `Dia ${day}`,
@@ -15,7 +18,7 @@ export const t = {
 
   slotTypes: {
     core: 'Coração',
-    inner: 'Anel interno',
+    middle: 'Anel do meio',
     outer: 'Anel externo',
   } satisfies Record<SlotType, string>,
 
@@ -55,6 +58,7 @@ export const t = {
     bonusesTab: 'Bônus ativos',
     logTab: 'Registro',
     masterTab: 'Mestre',
+    mapTab: 'Visual do mapa',
     noBonuses: 'Nenhuma estrutura concluída ainda.',
     emptyLog: 'Nada aconteceu na Axis ainda.',
   },
@@ -74,13 +78,6 @@ export const t = {
     advance: 'Avançar',
     charactersSection: 'Personagens',
     charactersHint: 'O grupo da mesa. Cada personagem tem a própria carteira de moedas.',
-    slotsSection: 'Espaços',
-    slotsHint: 'Com a edição ligada, arraste os espaços sobre o mapa e exporte o slots.json.',
-    editSlots: 'Editar espaços',
-    stopEditing: 'Parar edição',
-    exportSlots: 'Exportar slots.json',
-    resetSlots: 'Descartar alterações',
-    slotsEdited: 'Espaços alterados (ainda não salvos no projeto).',
     buildingsHint: 'Para forçar ou remover estruturas, clique num espaço do mapa.',
     forceSection: 'Mestre',
     forceLevel: 'Nível',
@@ -88,6 +85,42 @@ export const t = {
     completeNow: 'Concluir agora',
     remove: 'Remover estrutura',
     confirmRemove: 'Clique de novo para confirmar',
+  },
+
+  mapVisual: {
+    hint: 'Cada ajuste regenera o mapa na hora. As mudanças valem só nesta aba do navegador: exporte o theme.json e coloque em src/data para salvar.',
+    edited: 'Tema alterado (ainda não salvo no projeto).',
+    reference: 'Sobrepor a referência (só no npm run dev)',
+    veinsSection: 'Veios dourados',
+    discSection: 'Disco azul',
+    wallSection: 'Muralha e chão',
+    prismsSection: 'Prismas dos portões',
+    goldColor: 'Cor do ouro',
+    floorVeins: 'Intensidade no chão',
+    wallVeins: 'Intensidade na muralha',
+    veinCopies: 'Densidade (cópias giradas)',
+    discHueShift: 'Tom (graus)',
+    discBrightness: 'Brilho',
+    wallDesaturation: 'Dessaturação da pedra',
+    wallWarmth: 'Tom quente da pedra',
+    floorScale: 'Escala do ladrilho',
+    innerShadow: 'Sombra interna',
+    prismGlow: 'Intensidade do brilho',
+    prismPulseSeconds: 'Duração da pulsação (s)',
+    export: 'Exportar theme.json',
+    reset: 'Restaurar padrão',
+    timings: (size: number, analysisMs: number, renderMs: number) =>
+      `Mapa ${size}px · análise das texturas ${Math.round(analysisMs)} ms · pintura ${Math.round(renderMs)} ms`,
+  },
+
+  credits: {
+    open: 'Créditos',
+    title: 'Créditos',
+    textures: 'Texturas do mapa',
+    license: (license: string) => `Licença: ${license}`,
+    by: (author: string) => `Autor: ${author}`,
+    authorMissing: 'Autor: (a preencher em src/data/credits.json)',
+    close: 'Fechar',
   },
 
   common: {

@@ -1,5 +1,5 @@
 import { parseCatalog } from '../model/catalog';
-import type { GameState } from '../model/schema';
+import { SAVE_VERSION, type GameState } from '../model/schema';
 
 const currencies = [
   { id: 'emerald', name: 'Esmeralda', icon: 'i', bronzeValue: 10000, order: 1 },
@@ -8,6 +8,11 @@ const currencies = [
   { id: 'silver', name: 'Prata', icon: 'i', bronzeValue: 10, order: 4 },
   { id: 'bronze', name: 'Bronze', icon: 'i', bronzeValue: 1, order: 5 },
 ];
+
+function outerSlot(id: string, startAngle: number) {
+  const arc = { innerRadius: 0.358, outerRadius: 0.44, startAngle, endAngle: startAngle + 17 };
+  return { id, type: 'outer', shape: 'arc', x: 0.5, y: 0.1, angle: startAngle + 8.5, arc };
+}
 
 const seed = {
   wallets: {
@@ -69,12 +74,20 @@ export const testCatalog = parseCatalog({
       levels: [{ cost: { coins: 10, materials: { iron: 5 } }, buildTime: 1, effect: 'a1' }],
     },
   ],
-  slots: {
-    sizes: { core: 0.1, inner: 0.05, outer: 0.05 },
+  layout: {
+    version: 3,
+    wall: { outerRadius: 0.476, thickness: 0.032 },
+    entrances: {
+      width: 0.046,
+      angles: [0],
+      prisms: [{ id: 'roxo', name: 'Roxo', rgb: [128, 52, 200] }],
+    },
+    innerDisc: { radius: 0.214 },
+    core: { radius: 0.092 },
     slots: [
-      { id: 'core', type: 'core', x: 0.5, y: 0.5 },
-      { id: 'outer_n', type: 'outer', x: 0.5, y: 0.2 },
-      { id: 'outer_s', type: 'outer', x: 0.5, y: 0.8 },
+      { id: 'core', type: 'core', shape: 'round', x: 0.5, y: 0.5, angle: 0, size: 0.184 },
+      outerSlot('outer_n', 340),
+      outerSlot('outer_s', 170),
     ],
   },
   assets: { images: { i: 'icon.png', s: 'sprite.png' } },
@@ -84,7 +97,7 @@ export const testCatalog = parseCatalog({
 /** Same content as `createInitialState(testCatalog)`, built by hand so tests can override parts. */
 export function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
-    version: 2,
+    version: SAVE_VERSION,
     day: 1,
     characters: [{ id: 'thorin', name: 'Thorin', color: '#aa5500' }],
     wallets: { camp: { gold: 100 }, characters: { thorin: { gold: 5 } } },

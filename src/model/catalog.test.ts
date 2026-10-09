@@ -20,6 +20,20 @@ describe('shipped game data', () => {
     expect(used.filter((id) => !seeded.has(id))).toEqual([]);
   });
 
+  it('keeps the shipped layout: 23 slots, no inner ring, ids not renumbered', () => {
+    const ids = gameData.layout.slots.map((s) => s.id);
+    expect(ids).toHaveLength(23);
+    expect(gameData.layout.slots.filter((s) => s.type === 'outer')).toHaveLength(14);
+    expect(ids).toContain('outer_13');
+    expect(ids).not.toContain('outer_11');
+  });
+
+  it('places one prism per entrance, Roxo at North', () => {
+    const { angles, prisms } = gameData.layout.entrances;
+    expect(prisms).toHaveLength(angles.length);
+    expect(prisms[0]?.id).toBe('roxo');
+  });
+
   it('lists currencies from the most to the least valuable', () => {
     const values = gameData.currencies.map((c) => c.bronzeValue);
     expect(values).toEqual([...values].sort((a, b) => b - a));
@@ -38,8 +52,22 @@ describe('parseCatalog', () => {
   });
 
   it('rejects an invalid slot type', () => {
-    const slots = { ...rawGameData.slots, slots: [{ id: 'x', type: 'roof', x: 0.5, y: 0.5 }] };
-    expect(() => parseCatalog({ ...rawGameData, slots })).toThrow(/slots.json/);
+    const slots = [{ id: 'x', type: 'roof', shape: 'round', x: 0.5, y: 0.5, angle: 0, size: 0.1 }];
+    const layout = { ...rawGameData.layout, slots };
+    expect(() => parseCatalog({ ...rawGameData, layout })).toThrow(/layout.json/);
+  });
+
+  it('rejects a slot on the reserved stretch of the wall', () => {
+    // outer_1 spans 4.74° → 21.78°.
+    const reserved = [{ id: 'secret', startAngle: 0, endAngle: 30 }];
+    const layout = { ...rawGameData.layout, reserved };
+    expect(() => parseCatalog({ ...rawGameData, layout })).toThrow(/overlaps a reserved stretch/);
+  });
+
+  it('rejects structures allowed only on slot types missing from the layout', () => {
+    const slots = rawGameData.layout.slots.filter((s) => s.type !== 'middle');
+    const layout = { ...rawGameData.layout, slots };
+    expect(() => parseCatalog({ ...rawGameData, layout })).toThrow(/allowedSlots "middle"/);
   });
 
   it('requires a gold currency and a coin worth one bronze', () => {

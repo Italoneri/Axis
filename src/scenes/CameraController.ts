@@ -18,7 +18,7 @@ export class CameraController {
   private dragged = false;
 
   constructor(
-    private readonly scene: Phaser.Scene,
+    scene: Phaser.Scene,
     private readonly worldWidth: number,
     private readonly worldHeight: number,
   ) {
@@ -65,8 +65,7 @@ export class CameraController {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    // Dragging a slot in the editor must not pan the map as well.
-    if (!pointer.isDown || this.scene.input.getDragState(pointer) > 0) return;
+    if (!pointer.isDown) return;
     if (!this.dragged && pointer.getDistance() < DRAG_THRESHOLD_PX) return;
     this.dragged = true;
     const zoom = this.camera.zoom;

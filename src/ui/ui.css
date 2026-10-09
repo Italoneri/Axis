@@ -940,3 +940,64 @@ details > summary {
 .row--wrap > .field {
   flex: 1 1 140px;
 }
+
+/* ---------- Visual do mapa ---------- */
+
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5em;
+  gap: 2px 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.slider__label {
+  grid-column: 1 / -1;
+}
+
+.slider__input {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.slider__value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- Créditos ---------- */
+
+.dialog--credits {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.credits {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.credits__item {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.credits__item strong {
+  color: var(--text);
+}
+
+.credits__item a {
+  color: var(--gold-soft);
+}
+
+.credits__use {
+  font-style: italic;
+}

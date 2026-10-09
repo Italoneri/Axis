@@ -1,5 +1,6 @@
 import { t } from '../i18n/pt-BR';
-import type { BuildingDef, PlacedBuilding, SlotDef } from '../model/schema';
+import type { SlotDef } from '../map/layout';
+import type { BuildingDef, PlacedBuilding } from '../model/schema';
 import type { GameStore } from '../store';
 import { el } from './dom';
 import { confirmButton } from './widgets';

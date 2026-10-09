@@ -1,0 +1,14 @@
+{
+  "goldColor": "#d4a33d",
+  "floorVeins": 0.95,
+  "wallVeins": 0.85,
+  "veinCopies": 0.9,
+  "discHueShift": 0,
+  "discBrightness": 1,
+  "wallDesaturation": 0.85,
+  "wallWarmth": 1,
+  "floorScale": 0.5,
+  "innerShadow": 0.35,
+  "prismGlow": 0.8,
+  "prismPulseSeconds": 3.2
+}

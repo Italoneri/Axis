@@ -1,0 +1,34 @@
+{
+  "textures": [
+    {
+      "id": "floor",
+      "work": "Tiles075 (ladrilhos de mármore negro)",
+      "source": "ambientCG",
+      "url": "https://ambientcg.com/view?id=Tiles075",
+      "license": "CC0",
+      "author": "",
+      "usedFor": "Chão do mapa e folhas dos portões",
+      "requiresAttribution": false
+    },
+    {
+      "id": "wall",
+      "work": "Stone Wall 23",
+      "source": "ShareTextures",
+      "url": "https://www.sharetextures.com/",
+      "license": "CC0",
+      "author": "",
+      "usedFor": "Muralha e pilares dos portões",
+      "requiresAttribution": false
+    },
+    {
+      "id": "marble",
+      "work": "Elegant black and gold marble effect background with gold glitter",
+      "source": "Freepik",
+      "url": "",
+      "license": "Licença Freepik (atribuição obrigatória)",
+      "author": "",
+      "usedFor": "Veios dourados e disco azul",
+      "requiresAttribution": true
+    }
+  ]
+}

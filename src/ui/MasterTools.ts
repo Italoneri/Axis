@@ -1,6 +1,5 @@
 import { t } from '../i18n/pt-BR';
 import type { Character } from '../model/schema';
-import type { SlotEditor } from '../slotEditor';
 import type { GameStore } from '../store';
 import {
   addCharacter,
@@ -8,26 +7,23 @@ import {
   updateCharacter,
   type CharacterFields,
 } from '../systems/Characters';
-import { serializeSlots } from '../systems/SlotLayout';
 import { el } from './dom';
-import { downloadText } from './download';
 import type { MasterSession } from './MasterSession';
 import { confirmButton, field, section, thumb, type Act } from './widgets';
 
 const DEFAULT_COLOR = '#c0703a';
 
 /**
- * Content of the "Mestre" drawer tab: time, characters and the slot editor.
+ * Content of the "Mestre" drawer tab: time and characters.
  * Coins, materials, research and influence are edited in their top bar dropdowns.
  */
 export function renderMasterTools(
   store: GameStore,
-  { session, editor, act }: { session: MasterSession; editor: SlotEditor; act: Act },
+  { session, act }: { session: MasterSession; act: Act },
 ): HTMLElement[] {
   return [
     timeSection(store),
     charactersSection(store, act),
-    slotsSection(editor),
     el('p', { class: 'panel__hint' }, t.master.buildingsHint),
     el('button', { class: 'btn', type: 'button', onclick: () => session.lock() }, t.master.leave),
   ];
@@ -128,42 +124,6 @@ function characterForm(
         'button',
         { class: 'btn btn--primary', type: 'submit' },
         character ? t.common.save : t.common.add,
-      ),
-    ),
-  );
-}
-
-function slotsSection(editor: SlotEditor): HTMLElement {
-  return section(
-    t.master.slotsSection,
-    el('p', { class: 'panel__hint' }, t.master.slotsHint),
-    editor.isDirty && el('p', { class: 'notice' }, t.master.slotsEdited),
-    el(
-      'div',
-      { class: 'row row--wrap' },
-      el(
-        'button',
-        {
-          class: editor.isEditing ? 'btn btn--primary' : 'btn',
-          type: 'button',
-          'aria-pressed': String(editor.isEditing),
-          onclick: () => editor.setEditing(!editor.isEditing),
-        },
-        editor.isEditing ? t.master.stopEditing : t.master.editSlots,
-      ),
-      el(
-        'button',
-        {
-          class: 'btn',
-          type: 'button',
-          onclick: () => downloadText('slots.json', serializeSlots(editor.layout)),
-        },
-        t.master.exportSlots,
-      ),
-      el(
-        'button',
-        { class: 'btn', type: 'button', disabled: !editor.isDirty, onclick: () => editor.reset() },
-        t.master.resetSlots,
       ),
     ),
   );

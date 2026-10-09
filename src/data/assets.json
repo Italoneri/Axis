@@ -1,6 +1,8 @@
 {
   "images": {
-    "map": "assets/map/axis.png",
+    "texture.floor": "assets/textures/floor_tiles.jpg",
+    "texture.wall": "assets/textures/wall_stone.jpg",
+    "texture.marble": "assets/textures/marble_gold.jpg",
     "icon.gold": "assets/icons/gold.png",
     "icon.materials": "assets/icons/materials.png",
     "icon.influence": "assets/icons/influence.png",

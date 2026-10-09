@@ -2,11 +2,14 @@ import Phaser from 'phaser';
 import { logEntryText, t } from './i18n/pt-BR';
 import { BaseScene } from './scenes/BaseScene';
 import { BootScene } from './scenes/BootScene';
+import { LiveMap } from './map/liveMap';
+import { mapResolution } from './map/textures';
+import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
-import { SlotEditor } from './slotEditor';
 import { GameStore } from './store';
 import { InfoDrawer } from './ui/InfoDrawer';
 import { askMasterPassword } from './ui/MasterLogin';
+import { parseCredits, showCredits } from './ui/Credits';
 import { MasterSession } from './ui/MasterSession';
 import { textContext } from './ui/format';
 import { SlotPanel } from './ui/SlotPanel';
@@ -37,7 +40,11 @@ async function start(): Promise<void> {
   const notify = (message: string, tone?: 'error') => showToast(toasts, message, tone);
 
   // Loaded dynamically so a mistake in src/data/*.json shows up on screen instead of a blank page.
-  const { gameData } = await import('./data/gameData');
+  const [{ gameData }, theme, credits] = await Promise.all([
+    import('./data/gameData'),
+    import('./data/theme.json').then((m) => parseTheme(m.default)),
+    import('./data/credits.json').then((m) => parseCredits(m.default)),
+  ]);
   const store = new GameStore(gameData, window.localStorage, (error) => {
     console.error('[save] could not persist state', error);
     notify(t.save.storageFailed, 'error');
@@ -54,14 +61,14 @@ async function start(): Promise<void> {
   });
 
   const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
-  const editor = new SlotEditor(gameData.slots);
+  const liveMap = new LiveMap(gameData.layout, new ThemeStore(theme), mapResolution());
   const act: Act = (action) => {
     const error = store.apply(action);
     if (error) notify(t.errors[error], 'error');
     return error === null;
   };
   const memory = new UiMemory(safeLocalStorage());
-  const drawer = new InfoDrawer(requireElement('drawer'), store, session, editor, act);
+  const drawer = new InfoDrawer(requireElement('drawer'), store, session, liveMap, act);
   const panel = new SlotPanel(requireElement('panel'), store, session);
 
   mountTopBar(
@@ -71,6 +78,7 @@ async function start(): Promise<void> {
     {
       notify,
       toggleDrawer: () => drawer.toggle(),
+      showCredits: () => showCredits(credits),
       openMaster: async () => {
         if (session.isActive) return drawer.open('master');
         if (!session.isConfigured) return notify(t.master.notConfigured, 'error');
@@ -81,21 +89,17 @@ async function start(): Promise<void> {
       },
     },
   );
-  // Leaving master mode also ends any slot editing in progress.
-  session.subscribe((isActive) => {
-    if (!isActive) editor.setEditing(false);
-  });
 
   await document.fonts.ready;
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    backgroundColor: '#0e0c10',
+    backgroundColor: '#2b2a2c',
     scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
     scene: [
       new BootScene(),
-      new PreloadScene(gameData.assets),
-      new BaseScene(store, panel, editor),
+      new PreloadScene(gameData.assets, liveMap),
+      new BaseScene(store, panel, liveMap),
     ],
   });
 }

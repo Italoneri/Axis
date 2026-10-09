@@ -1,13 +1,7 @@
 import { blockReasonText, t } from '../i18n/pt-BR';
+import type { SlotType } from '../map/layout';
 import { findBuilding, findSlot } from '../model/catalog';
-import type {
-  BuildingDef,
-  BuildingLevel,
-  Cost,
-  GameState,
-  PlacedBuilding,
-  SlotType,
-} from '../model/schema';
+import type { BuildingDef, BuildingLevel, Cost, GameState, PlacedBuilding } from '../model/schema';
 import {
   activeLevel,
   checkBuild,

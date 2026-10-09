@@ -13,6 +13,7 @@ export interface TopBarActions {
   notify: (msg: string, tone?: 'error') => void;
   toggleDrawer: () => void;
   openMaster: () => void;
+  showCredits: () => void;
 }
 
 export function mountTopBar(
@@ -39,6 +40,7 @@ export function mountTopBar(
       { class: 'topbar__actions' },
       el('button', { class: 'btn', type: 'button', onclick: actions.toggleDrawer }, t.drawer.open),
       el('button', { class: 'btn', type: 'button', onclick: actions.openMaster }, t.master.enter),
+      el('button', { class: 'btn', type: 'button', onclick: actions.showCredits }, t.credits.open),
     ),
     createSaveControls(store, actions.notify),
   );

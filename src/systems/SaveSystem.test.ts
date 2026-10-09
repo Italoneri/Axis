@@ -39,7 +39,7 @@ describe('parseSave', () => {
 
   it.each([
     { name: 'malformed JSON', text: '{oops', error: /invalid JSON/ },
-    { name: 'wrong shape', text: '{"version":2}', error: /day/ },
+    { name: 'wrong shape', text: '{"version":3}', error: /day/ },
     {
       name: 'unknown building',
       text: JSON.stringify(

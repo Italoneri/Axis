@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { angleRangesOverlap } from '../map/geometry';
+import { layoutSchema, type MapLayout, type SlotDef } from '../map/layout';
 import {
   assetManifestSchema,
   buildingDefSchema,
@@ -6,7 +8,6 @@ import {
   influenceSchema,
   materialsSchema,
   researchBookSchema,
-  slotsFileSchema,
   walletsSeedSchema,
   type AssetManifest,
   type BuildingDef,
@@ -14,8 +15,6 @@ import {
   type Influence,
   type Materials,
   type ResearchBook,
-  type SlotDef,
-  type SlotsFile,
   type WalletsSeed,
 } from './schema';
 
@@ -35,7 +34,7 @@ export interface Catalog {
   /** Sorted by display order: the most valuable coin first. */
   readonly currencies: readonly CurrencyDef[];
   readonly buildings: readonly BuildingDef[];
-  readonly slots: SlotsFile;
+  readonly layout: MapLayout;
   readonly assets: AssetManifest;
   readonly seed: Seed;
 }
@@ -43,7 +42,7 @@ export interface Catalog {
 export interface RawCatalog {
   currencies: unknown;
   buildings: unknown;
-  slots: unknown;
+  layout: unknown;
   assets: unknown;
   wallets: unknown;
   materials: unknown;
@@ -60,7 +59,7 @@ export function parseCatalog(raw: RawCatalog): Catalog {
   const catalog: Catalog = {
     currencies: [...currencies].sort((a, b) => a.order - b.order),
     buildings: parseFile('buildings.json', z.array(buildingDefSchema), raw.buildings),
-    slots: parseFile('slots.json', slotsFileSchema, raw.slots),
+    layout: parseFile('layout.json', layoutSchema, raw.layout),
     assets: parseFile('assets.json', assetManifestSchema, raw.assets),
     seed: {
       wallets: parseFile('wallets.json', walletsSeedSchema, raw.wallets),
@@ -81,7 +80,7 @@ export function findBuilding(catalog: Catalog, id: string): BuildingDef | undefi
 }
 
 export function findSlot(catalog: Catalog, id: string): SlotDef | undefined {
-  return catalog.slots.slots.find((s) => s.id === id);
+  return catalog.layout.slots.find((s) => s.id === id);
 }
 
 /** Bronze worth of one gold coin, the unit costs are written in. */
@@ -131,11 +130,32 @@ function findReferenceProblems(catalog: Catalog): string[] {
   return [
     ...duplicates('building', catalog.buildings),
     ...duplicates('currency', catalog.currencies),
-    ...duplicates('slot', catalog.slots.slots),
+    ...duplicates('slot', catalog.layout.slots),
+    ...layoutProblems(catalog),
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
     ...seedProblems(catalog),
     ...buildingProblems,
+  ];
+}
+
+/** Every slot type a building accepts must exist, and no slot may sit on a reserved stretch. */
+function layoutProblems({ buildings, layout }: Catalog): string[] {
+  const slotTypes = new Set(layout.slots.map((s) => s.type));
+  const onReserved = (slot: SlotDef) =>
+    slot.type === 'outer' &&
+    layout.reserved.some((r) =>
+      angleRangesOverlap([slot.arc.startAngle, slot.arc.endAngle], [r.startAngle, r.endAngle]),
+    );
+  return [
+    ...buildings.flatMap((b) =>
+      b.allowedSlots
+        .filter((type) => !slotTypes.has(type))
+        .map((type) => `${b.id}: allowedSlots "${type}" has no slot in layout.json`),
+    ),
+    ...layout.slots
+      .filter(onReserved)
+      .map((s) => `layout.json: ${s.id} overlaps a reserved stretch of the wall`),
   ];
 }
 

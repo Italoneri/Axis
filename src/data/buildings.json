@@ -57,7 +57,7 @@
     "description": "Leitos limpos, ervas secando no teto e o cheiro de unguento.",
     "icon": "icon.infirmary",
     "sprite": "building.infirmary",
-    "allowedSlots": ["inner", "outer"],
+    "allowedSlots": ["middle", "outer"],
     "levels": [
       {
         "cost": { "coins": 120, "materials": { "wood": 36, "iron": 24 } },
@@ -84,7 +84,7 @@
     "description": "Estantes que sobem até a escuridão do teto, repletas de tomos antigos.",
     "icon": "icon.library",
     "sprite": "building.library",
-    "allowedSlots": ["inner"],
+    "allowedSlots": ["middle"],
     "levels": [
       {
         "cost": { "coins": 150, "materials": { "wood": 30, "iron": 20, "aetherium": 5 } },
@@ -139,7 +139,7 @@
     "description": "Velas eternas e um altar silencioso dedicado aos deuses do grupo.",
     "icon": "icon.sanctuary",
     "sprite": "building.sanctuary",
-    "allowedSlots": ["inner"],
+    "allowedSlots": ["middle"],
     "levels": [
       {
         "cost": { "coins": 180, "materials": { "wood": 24, "iron": 16, "aetherium": 10 } },
@@ -220,7 +220,7 @@
     "description": "Alambiques, círculos de transmutação e o zumbido constante de magia contida.",
     "icon": "icon.arcane_lab",
     "sprite": "building.arcane_lab",
-    "allowedSlots": ["inner"],
+    "allowedSlots": ["middle"],
     "requires": [{ "building": "library", "minLevel": 1 }],
     "levels": [
       {
@@ -248,7 +248,7 @@
     "description": "Mesas, estantes e lousas onde o grupo organiza suas pesquisas.",
     "icon": "icon.study_station",
     "sprite": "building.study_station",
-    "allowedSlots": ["inner", "outer"],
+    "allowedSlots": ["middle", "outer"],
     "levels": [
       {
         "cost": { "coins": 120, "materials": { "wood": 50, "iron": 10 } },

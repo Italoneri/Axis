@@ -1,10 +1,8 @@
 import { z } from 'zod';
+import { slotTypeSchema } from '../map/layout';
 
 // Schemas double as the source of truth for types and as runtime validation
 // for the hand-edited JSON in src/data and for imported save files.
-
-export const SLOT_TYPES = ['core', 'inner', 'outer'] as const;
-export const slotTypeSchema = z.enum(SLOT_TYPES);
 
 const positiveInt = z.number().int().nonnegative();
 const percent = z.number().int().min(0).max(100);
@@ -53,21 +51,6 @@ export const currencyDefSchema = z.object({
   bronzeValue: z.number().int().positive(),
   /** Display order: 1 is shown first (the most valuable coin). */
   order: z.number().int(),
-});
-
-const normalized = z.number().min(0).max(1);
-
-export const slotDefSchema = z.object({
-  id: z.string().min(1),
-  type: slotTypeSchema,
-  x: normalized,
-  y: normalized,
-});
-
-export const slotsFileSchema = z.object({
-  /** Sprite size per slot type, as a fraction of the map width. */
-  sizes: z.record(slotTypeSchema, normalized),
-  slots: z.array(slotDefSchema).min(1),
 });
 
 export const assetManifestSchema = z.object({
@@ -252,7 +235,7 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
@@ -270,15 +253,12 @@ export const gameStateSchema = z.object({
   log: z.array(logEntrySchema),
 });
 
-export type SlotType = z.infer<typeof slotTypeSchema>;
 export type AmountBag = Readonly<z.infer<typeof amountBagSchema>>;
 export type Cost = z.infer<typeof costSchema>;
 export type Requirement = z.infer<typeof requirementSchema>;
 export type BuildingLevel = z.infer<typeof buildingLevelSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;
-export type SlotDef = z.infer<typeof slotDefSchema>;
-export type SlotsFile = z.infer<typeof slotsFileSchema>;
 export type AssetManifest = z.infer<typeof assetManifestSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type Character = z.infer<typeof characterSchema>;
