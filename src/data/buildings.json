@@ -31,6 +31,12 @@
     "icon": "icon.forge",
     "sprite": "building.forge",
     "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "smoke", "x": 0.239, "y": 0.191 },
+      { "type": "glow", "x": 0.239, "y": 0.191, "color": "#ff7a1a", "radius": 0.08 },
+      { "type": "glow", "x": 0.419, "y": 0.747, "color": "#ff7a1a", "radius": 0.07 },
+      { "type": "sparks", "x": 0.612, "y": 0.713 }
+    ],
     "levels": [
       {
         "cost": { "coins": 150, "materials": { "wood": 48, "iron": 32 } },

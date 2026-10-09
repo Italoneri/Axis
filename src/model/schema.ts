@@ -32,6 +32,28 @@ export const buildingLevelSchema = z.object({
   requires: z.array(requirementSchema).optional(),
 });
 
+/** Art coordinates: 0–1 across the building image, origin at its top-left corner. */
+const artCoordinate = z.number().min(0).max(1);
+const fxBase = {
+  x: artCoordinate,
+  y: artCoordinate,
+  /** The effect only shows from this level on. */
+  minLevel: z.number().int().positive().optional(),
+};
+
+/** Animated effects drawn over finished building art (never baked into the PNG). */
+export const buildingFxSchema = z.discriminatedUnion('type', [
+  z.object({ ...fxBase, type: z.literal('smoke') }),
+  z.object({
+    ...fxBase,
+    type: z.literal('glow'),
+    color: hexColor,
+    /** Share of the art width. */
+    radius: artCoordinate,
+  }),
+  z.object({ ...fxBase, type: z.literal('sparks') }),
+]);
+
 export const buildingDefSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -41,6 +63,7 @@ export const buildingDefSchema = z.object({
   allowedSlots: z.array(slotTypeSchema).min(1),
   levels: z.array(buildingLevelSchema).min(1),
   requires: z.array(requirementSchema).optional(),
+  fx: z.array(buildingFxSchema).optional(),
 });
 
 export const currencyDefSchema = z.object({
@@ -257,6 +280,7 @@ export type AmountBag = Readonly<z.infer<typeof amountBagSchema>>;
 export type Cost = z.infer<typeof costSchema>;
 export type Requirement = z.infer<typeof requirementSchema>;
 export type BuildingLevel = z.infer<typeof buildingLevelSchema>;
+export type BuildingFx = z.infer<typeof buildingFxSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;
 export type AssetManifest = z.infer<typeof assetManifestSchema>;

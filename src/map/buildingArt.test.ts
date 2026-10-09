@@ -4,9 +4,11 @@ import {
   artPointToMap,
   availableArtFiles,
   pickArtFile,
+  placeFx,
   withBuildingArt,
 } from './buildingArt';
 import { normalizeAngle, pointToPolar, polarToPoint } from './geometry';
+import type { BuildingFx } from '../model/schema';
 import type { SlotDef } from './layout';
 
 function outerSlot(startAngle: number, endAngle: number): SlotDef {
@@ -133,5 +135,31 @@ describe('building art manifest', () => {
       'forge.outer.png',
       'forge.outer.lv2.png',
     ]);
+  });
+});
+
+describe('placeFx', () => {
+  const effects: BuildingFx[] = [
+    { type: 'smoke', x: 0.5, y: 0 },
+    { type: 'glow', x: 0.5, y: 0.5, color: '#ff7a1a', radius: 0.08 },
+    { type: 'sparks', x: 0.5, y: 1, minLevel: 2 },
+  ];
+
+  it.each([
+    { level: 1, types: ['smoke', 'glow'] },
+    { level: 2, types: ['smoke', 'glow', 'sparks'] },
+  ])('keeps the effects allowed at level $level', ({ level, types }) => {
+    const placed = placeFx(artPlacement(outerSlot(4.74, 21.78)), effects, level);
+    expect(placed.map(({ fx }) => fx.type)).toEqual(types);
+  });
+
+  it.each([
+    { start: 4.74, end: 21.78, wall: { x: 0.6009, y: 0.0717 } },
+    { start: 94.74, end: 111.78, wall: { x: 0.9283, y: 0.6009 } },
+    { start: 184.74, end: 201.78, wall: { x: 0.3991, y: 0.9283 } },
+  ])('turns art points with the arc $start°–$end°', ({ start, end, wall }) => {
+    const [smoke] = placeFx(artPlacement(outerSlot(start, end)), effects, 1);
+    expect(smoke?.point.x).toBeCloseTo(wall.x, 3);
+    expect(smoke?.point.y).toBeCloseTo(wall.y, 3);
   });
 });

@@ -12,6 +12,7 @@ import type { SlotDef } from '../map/layout';
 import type { BuildingDef, PlacedBuilding } from '../model/schema';
 import { constructionProgress } from '../systems/TimeSystem';
 import { SPARK_TEXTURE } from './BootScene';
+import { BuildingFx, type FxBudget } from './BuildingFx';
 
 const GOLD = 0xd4af37;
 const GOLD_SOFT = 0xf3e3a6;
@@ -25,13 +26,14 @@ const DASH = 10;
 const DASH_GAP = 7;
 
 /** Draw order on the map: foundations under the gates, buildings above everything. */
-export const SLOT_DEPTH = { foundation: 10, building: 30, scaffold: 31 };
+export const SLOT_DEPTH = { foundation: 10, building: 30, scaffold: 31, fx: 32 };
 
 export interface SlotViewOptions {
   readonly slot: SlotDef;
   readonly mapSize: number;
   /** Final art files available (see buildingArt.ts); missing art falls back to the placeholder. */
   readonly art: ReadonlySet<string>;
+  readonly fxBudget: FxBudget;
   readonly onClick: () => void;
 }
 
@@ -65,6 +67,7 @@ export class SlotView {
   private hovered = false;
   private selected = false;
   private shown: Look = { kind: 'empty' };
+  private fx: { key: string; effects: BuildingFx } | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -101,6 +104,7 @@ export class SlotView {
     const isBuilding = placed?.status === 'building';
     this.show(this.lookFor(placed, def));
     this.drawScaffold(isBuilding && this.shown.kind === 'art');
+    this.syncFx(placed, def);
 
     this.art.setAlpha(isBuilding ? CONSTRUCTION_ART_ALPHA : 1);
     this.sprite.setAlpha(isBuilding ? 0.55 : 1);
@@ -178,6 +182,30 @@ export class SlotView {
     }
     this.art.setVisible(look.kind === 'art');
     this.sprite.setVisible(look.kind === 'placeholder');
+  }
+
+  /** Effects run on finished final art only: their coordinates point into that image. */
+  private syncFx(placed: PlacedBuilding | undefined, def: BuildingDef | undefined): void {
+    const effects = def?.fx ?? [];
+    const isActive = placed?.status === 'done' && this.shown.kind === 'art' && effects.length > 0;
+    const key = isActive ? `${this.shownKey()}:${placed.level}` : null;
+    if (key === (this.fx?.key ?? null)) return;
+    this.fx?.effects.destroy();
+    this.fx = null;
+    if (!key || !placed) return;
+    const fx = new BuildingFx(this.scene, {
+      placement: this.placement,
+      effects,
+      level: placed.level,
+      mapSize: this.options.mapSize,
+      depth: SLOT_DEPTH.fx,
+      budget: this.options.fxBudget,
+    });
+    this.fx = { key, effects: fx };
+  }
+
+  private shownKey(): string {
+    return this.shown.kind === 'empty' ? '' : this.shown.textureKey;
   }
 
   private shownImage(): Phaser.GameObjects.Image {

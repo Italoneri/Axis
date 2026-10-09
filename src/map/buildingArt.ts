@@ -1,4 +1,5 @@
 import { normalizeAngle, polarToPoint, type Point } from './geometry';
+import type { BuildingFx } from '../model/schema';
 import type { ArcShape, SlotDef, SlotType } from './layout';
 
 /** Final building art lives next to the placeholders, named `<id>.<shape>[.lv<N>].png`. */
@@ -118,4 +119,21 @@ function outerPlacement(arc: ArcShape): ArtPlacement {
     height,
     rotation: angle,
   };
+}
+
+export interface PlacedFx {
+  readonly fx: BuildingFx;
+  /** Normalized map position. */
+  readonly point: Point;
+}
+
+/** The effects active at `level`, moved from art coordinates onto the map. */
+export function placeFx(
+  placement: ArtPlacement,
+  effects: readonly BuildingFx[],
+  level: number,
+): PlacedFx[] {
+  return effects
+    .filter((fx) => level >= (fx.minLevel ?? 1))
+    .map((fx) => ({ fx, point: artPointToMap(placement, fx) }));
 }

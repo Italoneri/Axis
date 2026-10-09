@@ -6,6 +6,7 @@ import { MAP_TEXTURE_KEYS, textureImage } from '../map/textures';
 import { findBuilding } from '../model/catalog';
 import type { GameState } from '../model/schema';
 import type { GameStore, StateChange } from '../store';
+import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
 import { SlotView } from './SlotView';
 
@@ -56,11 +57,13 @@ export class BaseScene extends Phaser.Scene {
     const stopReference = import.meta.env.DEV ? this.followReference() : () => undefined;
 
     const art = availableArtFiles(this.store.catalog.assets.images);
+    const fxBudget = FxBudget.forScreen(this.scale.width);
     for (const slot of layout.slots) {
       const view = new SlotView(this, {
         slot,
         mapSize: size,
         art,
+        fxBudget,
         onClick: () => {
           if (!camera.wasDragging) this.selection.open(slot.id);
         },
