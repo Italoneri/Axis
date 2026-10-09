@@ -122,13 +122,13 @@ export const researchSchema = z.discriminatedUnion('status', [
   }),
 ]);
 
+/** One of the fixed worlds of influence.json; only its percent lives in the save. */
 export const worldSchema = z.object({
   id: z.string().min(1),
   name: displayName,
   color: hexColor,
   icon: imageRef,
   description: z.string().optional(),
-  influence: percent,
 });
 
 export const materialsSchema = z.object({
@@ -141,11 +141,11 @@ export const researchBookSchema = z.object({
   entries: z.array(researchSchema),
 });
 
-export const influenceSchema = z.object({
-  /** Overall standing of the group; not derived from the worlds. */
-  total: percent,
-  worlds: z.array(worldSchema),
-});
+/** influence.json: the fixed list of worlds, in display order. */
+export const worldsFileSchema = z.object({ worlds: z.array(worldSchema).min(1) });
+
+/** Percent per world id. The overall influence is their average, never stored. */
+export const influenceSchema = z.record(z.string(), percent);
 
 export const walletsSeedSchema = z.object({
   camp: amountBagSchema,
@@ -246,19 +246,20 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   z.object({
     day: positiveInt,
     kind: z.literal('influence_changed'),
-    /** Absent for the overall influence. */
-    world: z.string().optional(),
+    world: z.string(),
     from: percent,
     to: percent,
+    /** Overall influence (the average of all worlds) right after the change. */
+    total: z.number().min(0).max(100),
   }),
   z.object({
     day: positiveInt,
-    kind: z.enum(['world_added', 'world_removed', 'character_added', 'character_removed']),
+    kind: z.enum(['character_added', 'character_removed']),
     name: z.string(),
   }),
 ]);
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),

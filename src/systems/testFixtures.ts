@@ -24,10 +24,13 @@ const seed = {
     items: [{ id: 'iron', name: 'Ferro', category: 'ores', quantity: 0 }],
   },
   research: { categories: [{ id: 'arcana', name: 'Arcana' }], entries: [] },
-  influence: {
-    total: 10,
-    worlds: [{ id: 'valdren', name: 'Valdren', color: '#336699', influence: 30 }],
-  },
+};
+
+const influence = {
+  worlds: [
+    { id: 'human', name: 'Mundo Humano', color: '#d9b26a' },
+    { id: 'draconic', name: 'Terras Dracônicas', color: '#c0392b' },
+  ],
 };
 
 /** Small catalog independent of the shipped balance numbers, so data tweaks never break tests. */
@@ -91,6 +94,7 @@ export const testCatalog = parseCatalog({
     ],
   },
   assets: { images: { i: 'icon.png', s: 'sprite.png' } },
+  influence,
   ...seed,
 });
 
@@ -103,7 +107,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     wallets: { camp: { gold: 100 }, characters: { thorin: { gold: 5 } } },
     materials: seed.materials,
     research: seed.research,
-    influence: seed.influence,
+    influence: { human: 0, draconic: 0 },
     slots: {},
     log: [],
     ...overrides,

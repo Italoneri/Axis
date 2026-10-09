@@ -99,9 +99,11 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 
 ### Influência
 
-- O seed fica em `src/data/influence.json`: `total` (0–100) e `worlds` (`id`, `name`, `color`, `icon?`, `description?`, `influence`).
-- A influência total e a de cada mundo são **independentes**: o total não é calculado a partir dos mundos, e os mundos não precisam somar 100%.
-- **Mestre:** **−/+** ou o campo numérico ajustam cada valor (sempre entre 0 e 100). Os mundos podem ser cadastrados, editados e removidos.
+- Os mundos são **fixos** e ficam em `src/data/influence.json` (`worlds`: `id`, `name`, `color`, `icon?`, `description?`), na ordem em que aparecem no jogo: Mundo Humano, Floresta dos Elfos, Bosque das Fadas, Montanhas Anãs, Reino dos Meio-Humanos, Terras Dracônicas e Terras Ínferas. Todos começam em 0%.
+- O save guarda só a % de cada mundo. Nome, cor e descrição vêm sempre do JSON.
+- A **influência total** não é editável: é a **média** das % dos mundos, mostrada com até 1 casa decimal (ex.: "42%", "37,1%").
+- **Mestre:** **−/+** ou o campo numérico ajustam a % de cada mundo (sempre um inteiro entre 0 e 100). Não é possível criar nem remover mundos no jogo.
+- Cada mudança entra no registro com o mundo e o novo total: "Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)".
 
 ### Formato de custo nas estruturas
 
@@ -114,7 +116,7 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 
 ### Registro
 
-Toda alteração de recurso, seja do mestre, de um depósito ou de uma construção, gera uma entrada no registro. Exemplos: "Dia 14 — Thorin depositou 3 Platina e 12 Ouro no Acampamento" e "Dia 20 — Influência em Valdren: 35% → 42%".
+Toda alteração de recurso, seja do mestre, de um depósito ou de uma construção, gera uma entrada no registro. Exemplos: "Dia 14 — Thorin depositou 3 Platina e 12 Ouro no Acampamento" e "Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)".
 
 ## Estrutura
 

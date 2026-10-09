@@ -5,17 +5,17 @@ import {
   assetManifestSchema,
   buildingDefSchema,
   currencyDefSchema,
-  influenceSchema,
   materialsSchema,
   researchBookSchema,
   walletsSeedSchema,
+  worldsFileSchema,
   type AssetManifest,
   type BuildingDef,
   type CurrencyDef,
-  type Influence,
   type Materials,
   type ResearchBook,
   type WalletsSeed,
+  type World,
 } from './schema';
 
 /** The currency whose value is used to write costs ("coins": 150 means 150 of these). */
@@ -26,7 +26,6 @@ export interface Seed {
   readonly wallets: WalletsSeed;
   readonly materials: Materials;
   readonly research: ResearchBook;
-  readonly influence: Influence;
 }
 
 /** All static game data, validated and cross-checked. */
@@ -35,6 +34,8 @@ export interface Catalog {
   readonly currencies: readonly CurrencyDef[];
   readonly buildings: readonly BuildingDef[];
   readonly layout: MapLayout;
+  /** The fixed worlds of influence, in display order; the master only edits their percent. */
+  readonly worlds: readonly World[];
   readonly assets: AssetManifest;
   readonly seed: Seed;
 }
@@ -60,12 +61,12 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     currencies: [...currencies].sort((a, b) => a.order - b.order),
     buildings: parseFile('buildings.json', z.array(buildingDefSchema), raw.buildings),
     layout: parseFile('layout.json', layoutSchema, raw.layout),
+    worlds: parseFile('influence.json', worldsFileSchema, raw.influence).worlds,
     assets: parseFile('assets.json', assetManifestSchema, raw.assets),
     seed: {
       wallets: parseFile('wallets.json', walletsSeedSchema, raw.wallets),
       materials: parseFile('materials.json', materialsSchema, raw.materials),
       research: parseFile('research.json', researchBookSchema, raw.research),
-      influence: parseFile('influence.json', influenceSchema, raw.influence),
     },
   };
   const problems = findReferenceProblems(catalog);
@@ -131,6 +132,7 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('building', catalog.buildings),
     ...duplicates('currency', catalog.currencies),
     ...duplicates('slot', catalog.layout.slots),
+    ...duplicates('world', catalog.worlds),
     ...layoutProblems(catalog),
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
@@ -180,7 +182,6 @@ function seedProblems({ currencies, seed }: Catalog): string[] {
     ...duplicates('material category', seed.materials.categories),
     ...duplicates('research', seed.research.entries),
     ...duplicates('research category', seed.research.categories),
-    ...duplicates('world', seed.influence.worlds),
     ...wallets
       .flatMap((wallet) => Object.keys(wallet))
       .filter((id) => !currencyIds.has(id))

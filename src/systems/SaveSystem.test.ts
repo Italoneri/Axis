@@ -24,10 +24,18 @@ describe('parseSave', () => {
       log: [
         { day: 5, kind: 'build_started', buildingId: 'forge', level: 1, actor: 'Thorin' },
         { day: 6, kind: 'coins_deposited', character: 'Thorin', coins: { gold: 3 } },
-        { day: 6, kind: 'influence_changed', world: 'Valdren', from: 30, to: 42 },
+        { day: 6, kind: 'influence_changed', world: 'Mundo Humano', from: 30, to: 42, total: 21 },
       ],
     });
     expect(parseSave(serializeState(state), testCatalog)).toEqual({ ok: true, state });
+  });
+
+  it('flags a save with the old influence format (version 3) as outdated', () => {
+    const old = { ...makeState(), version: 3, influence: { total: 10, worlds: [] } };
+    expect(parseSave(JSON.stringify(old), testCatalog)).toMatchObject({
+      ok: false,
+      outdated: true,
+    });
   });
 
   it('flags saves from an older format as outdated', () => {
@@ -39,7 +47,7 @@ describe('parseSave', () => {
 
   it.each([
     { name: 'malformed JSON', text: '{oops', error: /invalid JSON/ },
-    { name: 'wrong shape', text: '{"version":3}', error: /day/ },
+    { name: 'wrong shape', text: '{"version":4}', error: /day/ },
     {
       name: 'unknown building',
       text: JSON.stringify(
@@ -60,6 +68,11 @@ describe('parseSave', () => {
         makeState({ wallets: { camp: { ruby: 1 }, characters: { thorin: {} } } }),
       ),
       error: /unknown currency "ruby"/,
+    },
+    {
+      name: 'unknown world',
+      text: JSON.stringify(makeState({ influence: { human: 0, valdren: 40 } })),
+      error: /influence of unknown world "valdren"/,
     },
     {
       name: 'character without wallet',

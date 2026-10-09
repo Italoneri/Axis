@@ -3,6 +3,8 @@ import type { LogEntry, ResearchStatus } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
 import type { ActionError } from '../systems/outcome';
 
+const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+
 /** Every user-facing text lives here. Building, coin and seed names live in src/data/*.json. */
 export const t = {
   appTitle: 'Axis — Base',
@@ -14,6 +16,8 @@ export const t = {
   day: (day: number) => `Dia ${day}`,
   days: (n: number) => (n === 1 ? '1 dia' : `${n} dias`),
   level: (level: number) => `Nv. ${level}`,
+  /** "42%", "37,1%": one decimal at most, no trailing ",0". */
+  percent: (value: number) => `${percentFormat.format(value)}%`,
   instant: 'Imediato',
 
   topbar: {
@@ -235,11 +239,8 @@ export const t = {
 
   influence: {
     total: 'Influência total',
-    totalHint: 'Independente dos mundos: cada valor é definido pelo mestre.',
+    totalHint: 'Média da influência nos mundos.',
     worlds: 'Mundos',
-    noWorlds: 'Nenhum mundo cadastrado.',
-    percent: 'Influência (%)',
-    newWorld: 'Novo mundo',
   },
 
   characters: {
@@ -335,11 +336,7 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'research_progressed':
       return `Pesquisa '${entry.title}': ${entry.from}% → ${entry.to}%`;
     case 'influence_changed':
-      return `${entry.world ? `Influência em ${entry.world}` : 'Influência total'}: ${entry.from}% → ${entry.to}%`;
-    case 'world_added':
-      return `Mundo ${entry.name} cadastrado`;
-    case 'world_removed':
-      return `Mundo ${entry.name} removido`;
+      return `Influência em ${entry.world}: ${t.percent(entry.from)} → ${t.percent(entry.to)} (total: ${t.percent(entry.total)})`;
     case 'character_added':
       return `${entry.name} entrou no grupo`;
     case 'character_removed':

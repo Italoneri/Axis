@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import { gameStateSchema, SAVE_VERSION, type GameState } from '../model/schema';
+import { initialInfluence } from './Influence';
 
 export const STORAGE_KEY = 'axis-base-builder:save';
 
@@ -10,7 +11,7 @@ export type ParseResult =
   | { ok: false; error: string; outdated: boolean };
 
 export function createInitialState(catalog: Catalog): GameState {
-  const { wallets, materials, research, influence } = catalog.seed;
+  const { wallets, materials, research } = catalog.seed;
   return {
     version: SAVE_VERSION,
     day: 1,
@@ -26,7 +27,7 @@ export function createInitialState(catalog: Catalog): GameState {
     },
     materials,
     research,
-    influence,
+    influence: initialInfluence(catalog.worlds),
     slots: {},
     log: [],
   };
@@ -92,6 +93,7 @@ function referenceProblems(state: GameState, catalog: Catalog): string[] {
   const characterIds = new Set(state.characters.map((c) => c.id));
   const materialCategories = new Set(state.materials.categories.map((c) => c.id));
   const researchCategories = new Set(state.research.categories.map((c) => c.id));
+  const worldIds = new Set(catalog.worlds.map((w) => w.id));
   const wallets = [state.wallets.camp, ...Object.values(state.wallets.characters)];
 
   return [
@@ -117,5 +119,8 @@ function referenceProblems(state: GameState, catalog: Catalog): string[] {
     ...state.research.entries
       .filter((r) => !researchCategories.has(r.category))
       .map((r) => `research "${r.id}" in unknown category "${r.category}"`),
+    ...Object.keys(state.influence)
+      .filter((id) => !worldIds.has(id))
+      .map((id) => `influence of unknown world "${id}"`),
   ];
 }
