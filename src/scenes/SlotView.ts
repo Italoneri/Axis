@@ -18,7 +18,6 @@ const GOLD = 0xd4af37;
 const GOLD_SOFT = 0xf3e3a6;
 const FOUNDATION_FILL = 0x141218;
 const FOUNDATION_ALPHA = 0.47;
-const LEVEL_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 /** Final art of a structure still under construction: a faint preview of the target level. */
 const CONSTRUCTION_ART_ALPHA = 0.35;
 const SCAFFOLD_SPACING = 14;
@@ -51,8 +50,9 @@ type Look =
 
 /**
  * Everything drawn for one slot: its foundation (arc, square or the core circle),
- * the building art or placeholder sprite, level badge and progress ring. Clicks are
- * tested against the real shape, so neighbouring arcs never steal each other's taps.
+ * the building art or placeholder sprite and the construction progress ring. Clicks
+ * are tested against the real shape, so neighbouring arcs never steal each other's taps.
+ * The level is shown in the slot panel only.
  */
 export class SlotView {
   private readonly foundation: Phaser.GameObjects.Graphics;
@@ -61,7 +61,6 @@ export class SlotView {
   private readonly sprite: Phaser.GameObjects.Image;
   private readonly art: Phaser.GameObjects.Image;
   private readonly scaffold: Phaser.GameObjects.Graphics;
-  private readonly badge: Phaser.GameObjects.Text;
   private readonly size: number;
   private readonly placement: ArtPlacement;
   private hovered = false;
@@ -83,18 +82,8 @@ export class SlotView {
     this.art = this.createArtImage().setMask(shape);
     this.scaffold = scene.add.graphics().setDepth(SLOT_DEPTH.scaffold).setMask(shape);
     this.ring = scene.add.graphics();
-    this.badge = scene.add
-      .text(0, this.size * 0.46, '', {
-        fontFamily: 'Cinzel, serif',
-        fontStyle: 'bold',
-        fontSize: `${Math.round(this.size * 0.2)}px`,
-        color: '#f3e3a6',
-        stroke: '#000000',
-        strokeThickness: Math.max(3, this.size * 0.04),
-      })
-      .setOrigin(0.5);
     this.container = scene.add
-      .container(center.x, center.y, [this.sprite, this.ring, this.badge])
+      .container(center.x, center.y, [this.sprite, this.ring])
       .setDepth(SLOT_DEPTH.building);
     this.createHitArea();
     this.drawFoundation();
@@ -111,7 +100,6 @@ export class SlotView {
     if (isBuilding) this.sprite.setTint(0x9a9a9a);
     else this.sprite.clearTint();
 
-    this.badge.setText(placed ? (LEVEL_LABELS[placed.level - 1] ?? String(placed.level)) : '');
     this.drawProgress(placed ? constructionProgress(placed, day) : 1, isBuilding);
   }
 
