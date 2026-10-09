@@ -1,9 +1,11 @@
 import { t } from '../i18n/pt-BR';
+import type { BuildingPreview } from '../map/buildingPreview';
 import type { LiveMap, MapTimings } from '../map/liveMap';
 import { serializeTheme, type MapTheme, type NumericThemeKey, type ThemeStore } from '../map/theme';
+import { findBuilding, type Catalog } from '../model/catalog';
 import { el } from './dom';
 import { downloadText } from './download';
-import { section } from './widgets';
+import { field, section } from './widgets';
 
 interface Slider {
   readonly key: NumericThemeKey;
@@ -52,7 +54,11 @@ const GROUPS: { title: string; sliders: Slider[]; withGoldColor?: boolean }[] = 
  * Content of the master's "Visual do mapa" drawer tab. Inputs update the theme
  * in place (the drawer is not re-rendered), so a slider keeps its drag.
  */
-export function renderMapVisual(liveMap: LiveMap): HTMLElement[] {
+export function renderMapVisual(
+  liveMap: LiveMap,
+  catalog: Catalog,
+  preview: BuildingPreview,
+): HTMLElement[] {
   const { theme } = liveMap;
   const dirty = el('p', { class: 'notice', hidden: !theme.isDirty }, t.mapVisual.edited);
   whileShown(dirty, theme, () => (dirty.hidden = !theme.isDirty));
@@ -61,6 +67,7 @@ export function renderMapVisual(liveMap: LiveMap): HTMLElement[] {
     timingsLine(liveMap),
     dirty,
     ...(import.meta.env.DEV ? [referenceField(liveMap)] : []),
+    previewSection(catalog, preview),
     ...GROUPS.map((group) =>
       section(
         group.title,
@@ -87,6 +94,73 @@ export function renderMapVisual(liveMap: LiveMap): HTMLElement[] {
       ),
     ),
   ];
+}
+
+/**
+ * Puts any building, at any level, on any compatible slot, on screen only, so new
+ * art can be checked everywhere before it is saved. Every change applies at once.
+ */
+function previewSection(catalog: Catalog, preview: BuildingPreview): HTMLElement {
+  const current = preview.current;
+  const building = el(
+    'select',
+    { class: 'input' },
+    ...catalog.buildings.map((b) =>
+      el('option', { value: b.id, selected: b.id === current?.buildingId }, b.name),
+    ),
+  );
+  const level = el('select', { class: 'input' });
+  const slot = el('select', { class: 'input' });
+
+  const fillChoices = () => {
+    const def = findBuilding(catalog, building.value);
+    level.replaceChildren(
+      ...(def?.levels ?? []).map((_, i) => el('option', { value: String(i + 1) }, t.level(i + 1))),
+    );
+    slot.replaceChildren(
+      ...catalog.layout.slots
+        .filter((s) => def?.allowedSlots.includes(s.type))
+        .map((s) => el('option', { value: s.id }, `${s.id} · ${t.slotTypes[s.type]}`)),
+    );
+  };
+  const apply = () => {
+    if (!slot.value) return;
+    preview.show({ buildingId: building.value, level: Number(level.value), slotId: slot.value });
+  };
+
+  fillChoices();
+  if (current) {
+    level.value = String(current.level);
+    slot.value = current.slotId;
+  }
+  building.addEventListener('change', () => {
+    fillChoices();
+    apply();
+  });
+  level.addEventListener('change', apply);
+  slot.addEventListener('change', apply);
+
+  return section(
+    t.mapVisual.previewSection,
+    el('p', { class: 'panel__hint' }, t.mapVisual.previewHint),
+    field(t.mapVisual.previewBuilding, building),
+    field(t.mapVisual.previewLevel, level),
+    field(t.mapVisual.previewSlot, slot),
+    el(
+      'div',
+      { class: 'row row--wrap' },
+      el(
+        'button',
+        { class: 'btn btn--primary', type: 'button', onclick: apply },
+        t.mapVisual.previewShow,
+      ),
+      el(
+        'button',
+        { class: 'btn', type: 'button', onclick: () => preview.clear() },
+        t.mapVisual.previewClear,
+      ),
+    ),
+  );
 }
 
 function sliderField(liveMap: LiveMap, { key, min, max, step }: Slider): HTMLElement {

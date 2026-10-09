@@ -113,6 +113,14 @@ export const t = {
     prismPulseSeconds: 'Duração da pulsação (s)',
     export: 'Exportar theme.json',
     reset: 'Restaurar padrão',
+    previewSection: 'Pré-visualizar construção',
+    previewHint:
+      'Mostra uma construção num espaço só na tela, sem mudar o jogo. Some ao limpar ou recarregar a página.',
+    previewBuilding: 'Construção',
+    previewLevel: 'Nível',
+    previewSlot: 'Espaço',
+    previewShow: 'Pré-visualizar',
+    previewClear: 'Limpar pré-visualização',
     timings: (size: number, analysisMs: number, renderMs: number) =>
       `Mapa ${size}px · análise das texturas ${Math.round(analysisMs)} ms · pintura ${Math.round(renderMs)} ms`,
   },

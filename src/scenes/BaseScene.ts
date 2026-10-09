@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { availableArtFiles } from '../map/buildingArt';
+import type { BuildingPreview } from '../map/buildingPreview';
 import { Gates, type GateState } from '../map/gates';
 import { MAP_TEXTURE, type LiveMap } from '../map/liveMap';
 import { MAP_TEXTURE_KEYS, textureImage } from '../map/textures';
 import { findBuilding } from '../model/catalog';
-import type { GameState } from '../model/schema';
+import type { GameState, PlacedBuilding } from '../model/schema';
 import type { GameStore, StateChange } from '../store';
 import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
@@ -31,6 +32,7 @@ export class BaseScene extends Phaser.Scene {
     private readonly store: GameStore,
     private readonly selection: SlotSelection,
     private readonly liveMap: LiveMap,
+    private readonly preview: BuildingPreview,
   ) {
     super('Base');
   }
@@ -88,8 +90,10 @@ export class BaseScene extends Phaser.Scene {
       this.render(state);
       this.animate(state, change);
     });
+    const stopPreview = this.preview.subscribe(() => this.render(this.store.current));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       unsubscribe();
+      stopPreview();
       stopTheme();
       stopReference();
     });
@@ -117,9 +121,15 @@ export class BaseScene extends Phaser.Scene {
     return this.liveMap.onReferenceOpacity(show);
   }
 
+  /** The master's preview replaces what the slot really holds, on screen only. */
   private render(state: GameState): void {
+    const preview = this.preview.current;
     this.slotViews.forEach((view, slotId) => {
-      const placed = state.slots[slotId];
+      const previewed: PlacedBuilding | undefined =
+        preview?.slotId === slotId
+          ? { buildingId: preview.buildingId, level: preview.level, status: 'done' }
+          : undefined;
+      const placed = previewed ?? state.slots[slotId];
       const def = placed && findBuilding(this.store.catalog, placed.buildingId);
       view.update({ placed, def, day: state.day });
     });

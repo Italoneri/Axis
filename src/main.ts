@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { logEntryText, t } from './i18n/pt-BR';
 import { BaseScene } from './scenes/BaseScene';
 import { BootScene } from './scenes/BootScene';
+import { BuildingPreview } from './map/buildingPreview';
 import { LiveMap } from './map/liveMap';
 import { mapResolution } from './map/textures';
 import { parseTheme, ThemeStore } from './map/theme';
@@ -68,7 +69,14 @@ async function start(): Promise<void> {
     return error === null;
   };
   const memory = new UiMemory(safeLocalStorage());
-  const drawer = new InfoDrawer(requireElement('drawer'), store, session, liveMap, act);
+  const preview = new BuildingPreview();
+  const drawer = new InfoDrawer(
+    requireElement('drawer'),
+    store,
+    session,
+    { liveMap, preview },
+    act,
+  );
   const panel = new SlotPanel(requireElement('panel'), store, session);
 
   mountTopBar(
@@ -99,7 +107,7 @@ async function start(): Promise<void> {
     scene: [
       new BootScene(),
       new PreloadScene(gameData.assets, liveMap),
-      new BaseScene(store, panel, liveMap),
+      new BaseScene(store, panel, liveMap, preview),
     ],
   });
 }

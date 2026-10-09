@@ -1,4 +1,5 @@
 import { logEntryText, t } from '../i18n/pt-BR';
+import type { BuildingPreview } from '../map/buildingPreview';
 import type { LiveMap } from '../map/liveMap';
 import type { GameStore } from '../store';
 import { activeBonuses } from '../systems/BonusSystem';
@@ -22,7 +23,7 @@ export class InfoDrawer {
     private readonly root: HTMLElement,
     private readonly store: GameStore,
     private readonly session: MasterSession,
-    private readonly liveMap: LiveMap,
+    private readonly map: { liveMap: LiveMap; preview: BuildingPreview },
     private readonly act: Act,
   ) {
     store.subscribe(() => this.render());
@@ -108,7 +109,8 @@ export class InfoDrawer {
   private renderTab(tab: DrawerTab): HTMLElement[] {
     if (tab === 'master')
       return renderMasterTools(this.store, { session: this.session, act: this.act });
-    if (tab === 'map') return renderMapVisual(this.liveMap);
+    if (tab === 'map')
+      return renderMapVisual(this.map.liveMap, this.store.catalog, this.map.preview);
     if (tab === 'log') return this.renderLog();
     return this.renderBonuses();
   }
