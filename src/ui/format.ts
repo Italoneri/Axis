@@ -9,7 +9,12 @@ const countFormat = new Intl.NumberFormat('pt-BR');
 
 /** "1.234,5 PO". Display only: the division never feeds back into coin math. */
 export function formatGold(catalog: Catalog, bronze: number): string {
-  return `${goldFormat.format(bronze / goldInBronze(catalog))} ${t.resources.goldUnit}`;
+  return `${formatGoldAmount(catalog, bronze)} ${t.resources.goldUnit}`;
+}
+
+/** The gold value without its unit, for tight spots like the compact top bar. */
+export function formatGoldAmount(catalog: Catalog, bronze: number): string {
+  return goldFormat.format(bronze / goldInBronze(catalog));
 }
 
 export function formatCount(n: number): string {

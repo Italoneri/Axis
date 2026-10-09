@@ -16,6 +16,10 @@ export const t = {
   level: (level: number) => `Nv. ${level}`,
   instant: 'Imediato',
 
+  topbar: {
+    more: 'Mais opções',
+  },
+
   slotTypes: {
     core: 'Coração',
     middle: 'Anel do meio',
@@ -149,6 +153,7 @@ export const t = {
     materialsSummary: (units: number) => (units === 1 ? '1 item' : `${units} itens`),
     researchSummary: (done: number, inProgress: number) =>
       `${done} concluídas · ${inProgress} em andamento`,
+    researchCompact: (done: number, inProgress: number) => `${done}/${done + inProgress}`,
   },
 
   gold: {

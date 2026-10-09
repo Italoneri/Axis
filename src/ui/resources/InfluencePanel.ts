@@ -50,6 +50,7 @@ export class InfluencePanel {
       label: t.resources.influence,
       icon: 'icon.influence',
       summary: (state) => `${state.influence.total}%`,
+      compactSummary: (state) => `${state.influence.total}%`,
       render: (redraw) => {
         this.redraw = redraw;
         return this.render();

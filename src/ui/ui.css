@@ -59,8 +59,8 @@ button {
   background: linear-gradient(to bottom, #1d1820, #141117);
   border-bottom: 1px solid var(--border);
   z-index: 2;
-  overflow-x: auto;
-  scrollbar-width: none;
+  /* TopBar.ts collapses the bar step by step until nothing overflows. */
+  overflow: hidden;
 }
 
 .topbar__brand {
@@ -115,9 +115,82 @@ button {
   white-space: nowrap;
 }
 
-.topbar__actions {
+.topbar__actions,
+.topbar__menu {
   display: flex;
   gap: 8px;
+}
+
+.topbar__more {
+  display: none;
+  min-width: var(--control-height);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.resource__amount--compact,
+.topbar.is-compact .resource__name,
+.topbar.is-compact .resource__amount:not(.resource__amount--compact),
+.topbar.is-tight .topbar__brand {
+  display: none;
+}
+
+.topbar.is-compact .resource__amount--compact {
+  display: inline;
+}
+
+.topbar.is-tight {
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.topbar.is-tight .topbar__resources {
+  gap: 0;
+}
+
+.topbar.is-tight .resource {
+  padding: 4px;
+  gap: 4px;
+}
+
+/* Last resort on the narrowest phones: the resources scroll sideways, the day and "☰" stay put. */
+.topbar.is-scrolling .topbar__resources {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar.is-collapsed .topbar__more {
+  display: inline-block;
+}
+
+.topbar.is-collapsed .topbar__menu {
+  position: fixed;
+  top: calc(var(--topbar-height) + 6px);
+  right: 8px;
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.topbar.is-collapsed .topbar__menu.is-open {
+  display: flex;
+}
+
+.topbar.is-collapsed .topbar__menu .topbar__actions {
+  flex-direction: column;
+}
+
+.topbar.is-collapsed .topbar__menu .btn {
+  min-height: 40px;
+  text-align: left;
 }
 
 /* ---------- Buttons ---------- */
@@ -380,11 +453,6 @@ button {
 @media (max-width: 640px) {
   .topbar {
     gap: 12px;
-  }
-
-  .topbar__brand,
-  .resource__name {
-    display: none;
   }
 
   .panel {

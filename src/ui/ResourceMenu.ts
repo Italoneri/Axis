@@ -11,6 +11,8 @@ export interface ResourceMenuItem {
   /** Asset key of the top bar icon. */
   icon: string;
   summary: (state: GameState) => string;
+  /** Just the number, shown when the top bar is too narrow for names and full summaries. */
+  compactSummary: (state: GameState) => string;
   /**
    * Dropdown content; called again after every state change while open.
    * `redraw` lets the panel refresh itself after local UI changes (tabs, toggles).
@@ -30,7 +32,7 @@ export class ResourceMenu {
   /** Item currently drawn in the popover, to tell a re-render from a switch. */
   private renderedId: string | null = null;
   private readonly buttons = new Map<string, HTMLButtonElement>();
-  private readonly values = new Map<string, HTMLElement>();
+  private readonly values = new Map<string, { full: HTMLElement; compact: HTMLElement }>();
 
   constructor(
     private readonly popover: HTMLElement,
@@ -79,7 +81,8 @@ export class ResourceMenu {
   }
 
   private trigger(catalog: Catalog, item: ResourceMenuItem): HTMLButtonElement {
-    const value = el('span', { class: 'resource__amount' });
+    const full = el('span', { class: 'resource__amount' });
+    const compact = el('span', { class: 'resource__amount resource__amount--compact' });
     const node = el(
       'button',
       {
@@ -93,10 +96,11 @@ export class ResourceMenu {
       },
       thumb(catalog, { image: item.icon, name: item.label }),
       el('span', { class: 'resource__name' }, item.label),
-      value,
+      full,
+      compact,
     );
     this.buttons.set(item.id, node);
-    this.values.set(item.id, value);
+    this.values.set(item.id, { full, compact });
     return node;
   }
 
@@ -104,7 +108,9 @@ export class ResourceMenu {
     const state = this.store.current;
     this.items.forEach((item) => {
       const value = this.values.get(item.id);
-      if (value) value.textContent = item.summary(state);
+      if (!value) return;
+      value.full.textContent = item.summary(state);
+      value.compact.textContent = item.compactSummary(state);
     });
   }
 

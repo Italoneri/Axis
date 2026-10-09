@@ -66,6 +66,7 @@ export class MaterialsPanel {
       label: t.resources.materials,
       icon: 'icon.materials',
       summary: (state) => t.resources.materialsSummary(totalMaterialUnits(state.materials)),
+      compactSummary: (state) => formatCount(totalMaterialUnits(state.materials)),
       render: (redraw) => {
         this.redraw = redraw;
         return this.render();

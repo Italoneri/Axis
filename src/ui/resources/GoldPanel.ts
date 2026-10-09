@@ -14,7 +14,7 @@ import {
 } from '../../systems/Wallets';
 import { actingCharacter } from '../currentActor';
 import { el } from '../dom';
-import { formatCount, formatGold } from '../format';
+import { formatCount, formatGold, formatGoldAmount } from '../format';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
@@ -58,6 +58,8 @@ export class GoldPanel {
       label: t.resources.gold,
       icon: 'icon.gold',
       summary: (state) => formatGold(catalog, toBronze(state.wallets.camp, catalog.currencies)),
+      compactSummary: (state) =>
+        formatGoldAmount(catalog, toBronze(state.wallets.camp, catalog.currencies)),
       render: (redraw) => {
         this.redraw = redraw;
         return this.render();

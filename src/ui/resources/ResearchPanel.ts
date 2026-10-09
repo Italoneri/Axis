@@ -58,6 +58,10 @@ export class ResearchPanel {
         const { done, inProgress } = researchCounts(state.research);
         return t.resources.researchSummary(done, inProgress);
       },
+      compactSummary: (state) => {
+        const { done, inProgress } = researchCounts(state.research);
+        return t.resources.researchCompact(done, inProgress);
+      },
       render: (redraw) => {
         this.redraw = redraw;
         return this.render();
