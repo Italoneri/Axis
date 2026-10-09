@@ -185,14 +185,56 @@ art-sources/         originais das texturas (fora do git)
 
 Todas as imagens são carregadas pelo manifesto `src/data/assets.json` (chave → caminho dentro de `public/`). Para trocar um placeholder pela arte final, **substitua o arquivo** no mesmo caminho ou aponte a chave para um arquivo novo. `npm run gen:placeholders` nunca sobrescreve arquivos existentes (só com `-- --force`).
 
-| Asset               | Caminho                             | Formato                    | Tamanho              | Observações                                                                                                      |
-| ------------------- | ----------------------------------- | -------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Sprite de estrutura | `public/assets/buildings/<id>.png`  | PNG com fundo transparente | 256×256 (ou 512×512) | vista top-down, centralizada, ocupando ~85% do quadro                                                            |
-| Ícone de estrutura  | `public/assets/icons/<id>.png`      | PNG com fundo transparente | 64×64 (ou 128×128)   | usado no painel                                                                                                  |
-| Ícone de recurso    | `public/assets/icons/<recurso>.png` | PNG com fundo transparente | 64×64                | ícones da barra (`icon.gold`, `icon.materials`, `icon.research`, `icon.influence`); aparecem pequenos (18–26 px) |
-| Ícone de moeda      | `public/assets/icons/coin_<id>.png` | PNG com fundo transparente | 64×64                | um por moeda de `currencies.json`                                                                                |
+| Asset                    | Caminho                             | Formato                    | Tamanho              | Observações                                                                                                        |
+| ------------------------ | ----------------------------------- | -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Placeholder de estrutura | `public/assets/buildings/<id>.png`  | PNG com fundo transparente | 256×256 (ou 512×512) | quadrado centralizado no espaço; usado enquanto não houver [arte final](#arte-final-das-estruturas) para o formato |
+| Ícone de estrutura       | `public/assets/icons/<id>.png`      | PNG com fundo transparente | 64×64 (ou 128×128)   | usado no painel                                                                                                    |
+| Ícone de recurso         | `public/assets/icons/<recurso>.png` | PNG com fundo transparente | 64×64                | ícones da barra (`icon.gold`, `icon.materials`, `icon.research`, `icon.influence`); aparecem pequenos (18–26 px)   |
+| Ícone de moeda           | `public/assets/icons/coin_<id>.png` | PNG com fundo transparente | 64×64                | um por moeda de `currencies.json`                                                                                  |
 
 O tamanho com que cada estrutura aparece no mapa vem do próprio espaço no `layout.json` (veja [Mapa](#mapa)). As texturas do mapa estão na seção [Trocar texturas](#trocar-texturas).
+
+### Arte final das estruturas
+
+A arte final tem um arquivo por **formato de espaço**, e não precisa ser cadastrada no `assets.json`: basta colocar o PNG em `public/assets/buildings/` com o nome certo (o `npm run dev` recarrega a página sozinho). Enquanto um formato não tiver arte, o jogo usa o placeholder quadrado.
+
+| Tipo de slot | Formato             | Arquivo                                   | Tamanho | Orientação da arte                                                                                  |
+| ------------ | ------------------- | ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `outer`      | arco (setor anelar) | `public/assets/buildings/<id>.outer.png`  | 768×506 | desenhada como no espaço **Norte**: muralha no **topo**, frente voltada para baixo (centro da Axis) |
+| `middle`     | quadrado            | `public/assets/buildings/<id>.middle.png` | 256×256 | frente voltada para baixo (centro da Axis)                                                          |
+| `core`       | círculo             | `public/assets/buildings/<id>.core.png`   | 512×512 | —                                                                                                   |
+
+- **Arcos:** a imagem é escalada para a caixa do arco (calculada a partir do `layout.json`), girada pelo ângulo do espaço e recortada pela forma exata do arco. O molde está em `docs/art-templates/outer_arc_mask.png` (máscara) e `outer_arc_guide.png` (guia).
+- **Quadrados:** a imagem gira para a frente apontar para o centro. Como os quadrados do mapa não giram, nos espaços diagonais a arte encolhe para caber (até 71%).
+- **Círculo:** a imagem é recortada pelo círculo do Coração.
+- **Níveis (opcional):** `<id>.outer.lv2.png`, `<id>.outer.lv3.png`… O jogo usa a arte do nível atual ou, se não existir, a do nível mais próximo abaixo.
+- **Em construção:** aparece a arte do nível-alvo a 35% de opacidade, com um tracejado dourado de andaime e a barra de progresso.
+
+#### Efeitos animados (`fx`)
+
+Fumaça, brilho e faíscas não vão no PNG: ficam no campo opcional `fx` da estrutura em `src/data/buildings.json`. As coordenadas são **na imagem de arte** (0–1, com `0,0` no canto superior esquerdo); o jogo converte para o mapa já com a rotação do espaço.
+
+```json
+"fx": [
+  { "type": "smoke", "x": 0.239, "y": 0.191 },
+  { "type": "glow", "x": 0.239, "y": 0.191, "color": "#ff7a1a", "radius": 0.08 },
+  { "type": "sparks", "x": 0.612, "y": 0.713, "minLevel": 2 }
+]
+```
+
+| `type`   | Efeito                                    | Campos extras                                                  |
+| -------- | ----------------------------------------- | -------------------------------------------------------------- |
+| `smoke`  | partículas cinza subindo e se dispersando | —                                                              |
+| `glow`   | luz pulsante                              | `color` (hex `#rrggbb`) e `radius` (fração da largura da arte) |
+| `sparks` | faíscas curtas em momentos aleatórios     | —                                                              |
+
+- Os efeitos só aparecem com a construção **concluída** e com arte final no formato do espaço.
+- `minLevel` (opcional) mostra o efeito só a partir daquele nível.
+- O número de partículas vivas no mapa inteiro é limitado (menos no celular). Com "reduzir movimento" ligado no sistema, só os brilhos aparecem, parados.
+
+#### Testar arte nova sem mudar o jogo
+
+No modo Mestre, aba **Visual do mapa** → **Pré-visualizar construção**: escolha a construção, o nível e o espaço. Ela aparece ali só na tela, sem mexer no save. **Limpar pré-visualização** (ou recarregar a página) desfaz.
 
 ## Mapa
 
