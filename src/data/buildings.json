@@ -63,7 +63,14 @@
     "description": "Leitos limpos, ervas secando no teto e o cheiro de unguento.",
     "icon": "icon.infirmary",
     "sprite": "building.infirmary",
-    "allowedSlots": ["middle", "outer"],
+    "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.5, "y": 0.248, "color": "#7fe0c8", "radius": 0.07 },
+      { "type": "glow", "x": 0.5, "y": 0.659, "color": "#6ff0d0", "radius": 0.08 },
+      { "type": "sparks", "x": 0.5, "y": 0.659, "color": "#b8fff0", "minLevel": 3 },
+      { "type": "glow", "x": 0.388, "y": 0.525, "color": "#ffb347", "radius": 0.05, "minLevel": 3 },
+      { "type": "glow", "x": 0.612, "y": 0.525, "color": "#ffb347", "radius": 0.05, "minLevel": 3 }
+    ],
     "levels": [
       {
         "cost": { "coins": 120, "materials": { "wood": 36, "iron": 24 } },
