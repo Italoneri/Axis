@@ -45,7 +45,8 @@ const fxBase = {
 
 /** Animated effects drawn over finished building art (never baked into the PNG). */
 export const buildingFxSchema = z.discriminatedUnion('type', [
-  z.object({ ...fxBase, type: z.literal('smoke') }),
+  /** `color` tints the puffs (default: warm grey). */
+  z.object({ ...fxBase, type: z.literal('smoke'), color: hexColor.optional() }),
   z.object({
     ...fxBase,
     type: z.literal('glow'),
@@ -53,7 +54,8 @@ export const buildingFxSchema = z.discriminatedUnion('type', [
     /** Share of the art width. */
     radius: artCoordinate,
   }),
-  z.object({ ...fxBase, type: z.literal('sparks') }),
+  /** `color` sets the spark hue; lighter shades of it are mixed in (default: forge orange). */
+  z.object({ ...fxBase, type: z.literal('sparks'), color: hexColor.optional() }),
 ]);
 
 export const buildingDefSchema = z.object({

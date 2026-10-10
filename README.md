@@ -224,14 +224,14 @@ Fumaça, brilho e faíscas não vão no PNG: ficam no campo opcional `fx` da est
 ]
 ```
 
-| `type`   | Efeito                                    | Campos extras                                                  |
-| -------- | ----------------------------------------- | -------------------------------------------------------------- |
-| `smoke`  | partículas cinza subindo e se dispersando | —                                                              |
-| `glow`   | luz pulsante                              | `color` (hex `#rrggbb`) e `radius` (fração da largura da arte) |
-| `sparks` | faíscas curtas em momentos aleatórios     | —                                                              |
+| `type`   | Efeito                                | Campos extras                                                                   |
+| -------- | ------------------------------------- | ------------------------------------------------------------------------------- |
+| `smoke`  | partículas subindo e se dispersando   | `color` opcional (hex); padrão cinza                                            |
+| `glow`   | luz pulsante                          | `color` (hex `#rrggbb`) e `radius` (fração da largura da arte)                  |
+| `sparks` | faíscas curtas em momentos aleatórios | `color` opcional (hex), misturada com tons mais claros; padrão laranja de forja |
 
 - Os efeitos só aparecem com a construção **concluída** e com arte final no formato do espaço.
-- `minLevel` (opcional) mostra o efeito só a partir daquele nível.
+- `minLevel` (opcional) mostra o efeito só a partir daquele nível; `maxLevel` (opcional) esconde a partir do nível seguinte (útil quando a arte de um nível acima substitui um detalhe).
 - O número de partículas vivas no mapa inteiro é limitado (menos no celular). Com "reduzir movimento" ligado no sistema, só os brilhos aparecem, parados.
 
 #### Testar arte nova sem mudar o jogo

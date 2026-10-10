@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axis — Anel Intermediário</title>
+<style>
+  :root { --bg:#0f0d12; --panel:#1b1820; --line:#3a3242; --text:#e9e3d6; --muted:#9a90a3; --gold:#d4a937; --warn:#e0705a; --ok:#7fbf7a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif; }
+  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; padding:16px; max-width:1400px; margin:0 auto; }
+  @media (max-width:860px){ .wrap{ grid-template-columns:1fr; } }
+  h1 { font:600 20px Georgia,serif; color:var(--gold); letter-spacing:.08em; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 12px; font-size:13px; }
+  .stage { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px; }
+  svg { width:100%; height:auto; display:block; }
+  .side { display:flex; flex-direction:column; gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .card h2 { font:600 13px Georgia,serif; color:var(--gold); text-transform:uppercase; letter-spacing:.1em; margin:0 0 10px; }
+  .row { display:grid; grid-template-columns:1fr 64px; gap:4px 8px; align-items:center; margin-bottom:8px; }
+  .row label { font-size:12px; color:var(--muted); grid-column:1/-1; }
+  .row input[type=range]{ width:100%; accent-color:var(--gold); }
+  .row output { text-align:right; font-variant-numeric:tabular-nums; }
+  .seg { display:flex; gap:6px; margin-bottom:10px; }
+  .seg label { flex:1; text-align:center; border:1px solid var(--line); border-radius:6px; padding:6px; cursor:pointer; font-size:13px; }
+  .seg input { display:none; }
+  .seg label:has(input:checked){ border-color:var(--gold); background:#2a2418; color:var(--gold); }
+  .chk { display:flex; gap:8px; align-items:center; font-size:13px; margin:6px 0; }
+  button { background:linear-gradient(#d9b24a,#a8811f); color:#1a1408; border:0; border-radius:6px; padding:8px 12px; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  ul.warn { margin:0; padding-left:18px; font-size:13px; } ul.warn li { color:var(--warn); margin-bottom:4px; }
+  .okmsg { color:var(--ok); font-size:13px; } .stats { font-size:13px; color:var(--muted); } .stats b { color:var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>AXIS · Anel Intermediário</h1>
+    <p class="sub">Muralha, portões e espaços da muralha vêm do layout atual (v3). Só o anel intermediário é editado aqui.</p>
+    <div class="stage"><svg id="map" viewBox="0 0 1000 1000" aria-label="Mapa da Axis"></svg></div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h2>Formato</h2>
+      <div class="seg">
+        <label><input type="radio" name="shape" value="arc" checked><span>Arco</span></label>
+        <label><input type="radio" name="shape" value="square"><span>Quadrado</span></label>
+      </div>
+      <div class="row"><label for="n">Espaços</label><input type="range" id="n" min="4" max="16" step="1" value="8"><output></output></div>
+      <div class="row"><label for="r">Raio central do anel</label><input type="range" id="r" min="0.23" max="0.34" step="0.001" value="0.286"><output></output></div>
+      <div class="row"><label for="depth">Profundidade (radial)</label><input type="range" id="depth" min="0.03" max="0.13" step="0.001" value="0.09"><output></output></div>
+      <div class="row"><label for="span">Largura (graus de arco)</label><input type="range" id="span" min="6" max="44" step="0.5" value="30"><output></output></div>
+      <div class="row"><label for="rot">Rotação (graus)</label><input type="range" id="rot" min="-22.5" max="22.5" step="0.5" value="0"><output></output></div>
+      <div class="chk"><input type="checkbox" id="labels" checked><label for="labels">Mostrar ids</label></div>
+    </div>
+    <div class="card">
+      <h2>Verificação</h2>
+      <div id="stats" class="stats"></div>
+      <div id="warns" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>Exportar</h2>
+      <div class="btns">
+        <button id="dl">Baixar layout.json</button>
+        <button class="ghost" id="copy">Copiar JSON</button>
+        <button class="ghost" id="reset">Restaurar padrão</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const BASE = {"version":3,"note":"Coordenadas e medidas normalizadas (0\u20131) sobre um quadrado; \u00e2ngulo 0 = Norte, sentido hor\u00e1rio. Linhas de energia no ch\u00e3o s\u00e3o decorativas e n\u00e3o fazem parte do layout.","wall":{"outerRadius":0.476,"thickness":0.032},"entrances":{"count":8,"rotation":0,"width":0.046,"angles":[0,45,90,135,180,225,270,315],"prisms":[{"id":"roxo","name":"Roxo","rgb":[128,52,200]},{"id":"verde","name":"Verde","rgb":[40,170,80]},{"id":"branco","name":"Branco","rgb":[225,230,240],"glow":[220,235,255],"edge":[255,255,255]},{"id":"laranja","name":"Laranja","rgb":[240,120,30]},{"id":"azul","name":"Azul","rgb":[40,90,220]},{"id":"preto","name":"Preto","rgb":[30,26,36],"glow":[120,90,160],"edge":[170,150,200]},{"id":"vermelho","name":"Vermelho","rgb":[205,35,40]},{"id":"amarelo","name":"Amarelo","rgb":[245,205,40]}],"note":"Prismas na ordem dos \u00e2ngulos: a partir do Norte, sentido hor\u00e1rio."},"innerDisc":{"radius":0.214},"core":{"radius":0.092},"rings":{"outer":{"perSector":2,"shape":"arc","depth":0.082,"wallGap":0.004,"slotGap":0.01},"middle":{"count":8,"radius":0.248,"slotSize":0.054,"shifted":false,"shape":"square"},"inner":{"count":0,"radius":0.16,"slotSize":0.056,"shifted":true,"shape":"round","note":"Sem espa\u00e7os na zona azul (exceto o core)."}},"slots":[{"id":"core","type":"core","shape":"round","x":0.5,"y":0.5,"angle":0,"size":0.184},{"id":"mid_1","type":"middle","shape":"square","x":0.5,"y":0.252,"angle":0,"size":0.054},{"id":"mid_2","type":"middle","shape":"square","x":0.6754,"y":0.3246,"angle":45,"size":0.054},{"id":"mid_3","type":"middle","shape":"square","x":0.748,"y":0.5,"angle":90,"size":0.054},{"id":"mid_4","type":"middle","shape":"square","x":0.6754,"y":0.6754,"angle":135,"size":0.054},{"id":"mid_5","type":"middle","shape":"square","x":0.5,"y":0.748,"angle":180,"size":0.054},{"id":"mid_6","type":"middle","shape":"square","x":0.3246,"y":0.6754,"angle":225,"size":0.054},{"id":"mid_7","type":"middle","shape":"square","x":0.252,"y":0.5,"angle":270,"size":0.054},{"id":"mid_8","type":"middle","shape":"square","x":0.3246,"y":0.3246,"angle":315,"size":0.054},{"id":"outer_1","type":"outer","shape":"arc","x":0.5915,"y":0.1116,"angle":13.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":4.74,"endAngle":21.78}},{"id":"outer_2","type":"outer","shape":"arc","x":0.7099,"y":0.1607,"angle":31.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":23.22,"endAngle":40.26}},{"id":"outer_3","type":"outer","shape":"arc","x":0.8393,"y":0.2901,"angle":58.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":49.74,"endAngle":66.78}},{"id":"outer_4","type":"outer","shape":"arc","x":0.8884,"y":0.4085,"angle":76.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":68.22,"endAngle":85.26}},{"id":"outer_5","type":"outer","shape":"arc","x":0.8884,"y":0.5915,"angle":103.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":94.74,"endAngle":111.78}},{"id":"outer_6","type":"outer","shape":"arc","x":0.8393,"y":0.7099,"angle":121.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":113.22,"endAngle":130.26}},{"id":"outer_7","type":"outer","shape":"arc","x":0.7099,"y":0.8393,"angle":148.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":139.74,"endAngle":156.78}},{"id":"outer_8","type":"outer","shape":"arc","x":0.5915,"y":0.8884,"angle":166.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":158.22,"endAngle":175.26}},{"id":"outer_9","type":"outer","shape":"arc","x":0.4085,"y":0.8884,"angle":193.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":184.74,"endAngle":201.78}},{"id":"outer_10","type":"outer","shape":"arc","x":0.2901,"y":0.8393,"angle":211.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":203.22,"endAngle":220.26}},{"id":"outer_13","type":"outer","shape":"arc","x":0.1116,"y":0.4085,"angle":283.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":274.74,"endAngle":291.78}},{"id":"outer_14","type":"outer","shape":"arc","x":0.1607,"y":0.2901,"angle":301.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":293.22,"endAngle":310.26}},{"id":"outer_15","type":"outer","shape":"arc","x":0.2901,"y":0.1607,"angle":328.26,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":319.74,"endAngle":336.78}},{"id":"outer_16","type":"outer","shape":"arc","x":0.4085,"y":0.1116,"angle":346.74,"arc":{"innerRadius":0.358,"outerRadius":0.44,"startAngle":338.22,"endAngle":355.26}}],"reserved":[{"id":"secret_door","startAngle":229.74,"endAngle":265.26,"note":"Trecho da muralha entre SO e O sem constru\u00e7\u00f5es: porta secreta conhecida pelos jogadores. N\u00e3o desenhar nada que a revele."}]};
+const S = 1000, C = 500, NS = 'http://www.w3.org/2000/svg', RAD = Math.PI / 180;
+const svg = document.getElementById('map');
+const ids = ['n','r','depth','span','rot']; const defaults = {}; ids.forEach(i => defaults[i] = document.getElementById(i).value);
+const polar = (rn, a) => [C + rn * S * Math.sin(a * RAD), C - rn * S * Math.cos(a * RAD)];
+const el = (t, at, p = svg) => { const e = document.createElementNS(NS, t); for (const k in at) e.setAttribute(k, at[k]); p.appendChild(e); return e; };
+const v = id => parseFloat(document.getElementById(id).value);
+const shape = () => document.querySelector('input[name=shape]:checked').value;
+function arcPath(r1, r2, a1, a2) {
+  const [x1,y1]=polar(r1,a1),[x2,y2]=polar(r1,a2),[x3,y3]=polar(r2,a2),[x4,y4]=polar(r2,a1);
+  return `M${x1},${y1} A${r1*S},${r1*S} 0 0 1 ${x2},${y2} L${x3},${y3} A${r2*S},${r2*S} 0 0 0 ${x4},${y4} Z`;
+}
+const outerSlots = BASE.slots.filter(s => s.type === 'outer');
+const outerIn = Math.min(...outerSlots.map(s => s.arc.innerRadius));
+const wallIn = BASE.wall.outerRadius - BASE.wall.thickness;
+function compute() {
+  const p = {}; ids.forEach(i => p[i] = v(i)); p.shape = shape();
+  const step = 360 / p.n;
+  const slots = [...Array(p.n)].map((_, i) => {
+    const a = BASE.entrances.rotation + i * step + p.rot;
+    return { i, a };
+  });
+  return { p, step, slots, ri: p.r - p.depth / 2, ro: p.r + p.depth / 2 };
+}
+function draw() {
+  ids.forEach(i => { const e = document.getElementById(i); e.nextElementSibling.value = e.value; });
+  const g = compute(), p = g.p; svg.innerHTML = '';
+  el('rect', { x:0, y:0, width:S, height:S, fill:'#2b2a2c' });
+  el('circle', { cx:C, cy:C, r:wallIn*S, fill:'#16141a' });
+  el('circle', { cx:C, cy:C, r:(BASE.wall.outerRadius - BASE.wall.thickness/2)*S, fill:'none', stroke:'#77706a', 'stroke-width':BASE.wall.thickness*S });
+  el('circle', { cx:C, cy:C, r:BASE.wall.outerRadius*S, fill:'none', stroke:'#d4a937', 'stroke-width':2 });
+  el('circle', { cx:C, cy:C, r:wallIn*S, fill:'none', stroke:'#d4a937', 'stroke-width':2 });
+  BASE.entrances.angles.forEach((a, i) => {
+    const pr = BASE.entrances.prisms[i]; const gr = el('g', { transform:`rotate(${a} ${C} ${C})` });
+    const w = BASE.entrances.width * S;
+    el('rect', { x:C - w/2, y:C - BASE.wall.outerRadius*S - 2, width:w, height:BASE.wall.thickness*S + 4, fill:`rgb(${pr.rgb.join(',')})`, stroke:'#d4a937', 'stroke-width':2 }, gr);
+  });
+  outerSlots.forEach(s => {
+    el('path', { d:arcPath(s.arc.outerRadius, s.arc.innerRadius, s.arc.startAngle, s.arc.endAngle), fill:'#2f2b33', stroke:'#d4a93780', 'stroke-width':1.5 });
+  });
+  el('circle', { cx:C, cy:C, r:BASE.innerDisc.radius*S, fill:'#262a5e', stroke:'#b89a52', 'stroke-width':4 });
+  el('circle', { cx:C, cy:C, r:BASE.core.radius*S, fill:'#22264d', stroke:'#b89a52', 'stroke-width':3 });
+  g.slots.forEach(({ i, a }) => {
+    let cx, cy;
+    if (p.shape === 'arc') {
+      el('path', { d:arcPath(g.ro, g.ri, a - p.span/2, a + p.span/2), fill:'#3a3442', stroke:'#e6c766', 'stroke-width':2.5 });
+      [cx, cy] = polar(p.r, a);
+    } else {
+      const side = p.depth * S; [cx, cy] = polar(p.r, a);
+      const gr = el('g', { transform:`rotate(${a} ${cx} ${cy})` });
+      el('rect', { x:cx - side/2, y:cy - side/2, width:side, height:side, rx:4, fill:'#3a3442', stroke:'#e6c766', 'stroke-width':2.5 }, gr);
+    }
+    if (document.getElementById('labels').checked)
+      el('text', { x:cx, y:cy + 4, 'text-anchor':'middle', fill:'#e9e3d6', 'font-size':12, 'paint-order':'stroke', stroke:'#000', 'stroke-width':3 }).textContent = `mid_${i+1}`;
+  });
+  validate(g);
+}
+function validate(g) {
+  const p = g.p, w = [];
+  const half = p.shape === 'arc' ? 0 : p.depth / Math.SQRT2;
+  const inner = p.shape === 'arc' ? g.ri : p.r - half, outer = p.shape === 'arc' ? g.ro : p.r + half;
+  if (inner < BASE.innerDisc.radius + 0.006) w.push('Invade o disco azul.');
+  if (outer > outerIn - 0.006) w.push('Encosta nos espaços da muralha.');
+  if (p.shape === 'arc' && p.span > g.step - 2) w.push('Os arcos estão se tocando — diminua a largura ou a quantidade.');
+  if (p.shape === 'square' && 2 * p.r * Math.sin(Math.PI / p.n) < p.depth * 1.15) w.push('Os quadrados estão muito próximos.');
+  const px = 2048;
+  const midW = p.shape === 'arc' ? 2 * g.ro * Math.sin(p.span / 2 * RAD) : p.depth;
+  const midH = p.shape === 'arc' ? g.ro - g.ri * Math.cos(p.span / 2 * RAD) : p.depth;
+  const o = outerSlots[0].arc, oh = (o.endAngle - o.startAngle) / 2;
+  const outW = 2 * o.outerRadius * Math.sin(oh * RAD), outH = o.outerRadius - o.innerRadius * Math.cos(oh * RAD);
+  document.getElementById('stats').innerHTML =
+    `Cada espaço: <b>${Math.round(midW*px)}×${Math.round(midH*px)} px</b> no mapa de 2048 ` +
+    `(muralha: ${Math.round(outW*px)}×${Math.round(outH*px)} px; antes: 111×111 px)<br>` +
+    `Área em relação a um espaço da muralha: <b>${Math.round(100 * (p.shape==='arc' ? (p.span*(g.ro**2-g.ri**2)) / ((o.endAngle-o.startAngle)*(o.outerRadius**2-o.innerRadius**2)) : (p.depth**2) / (((o.endAngle-o.startAngle)*RAD/2)*(o.outerRadius**2-o.innerRadius**2))))}%</b>`;
+  document.getElementById('warns').innerHTML = w.length ? `<ul class="warn">${w.map(x => `<li>${x}</li>`).join('')}</ul>` : '<div class="okmsg">Sem conflitos.</div>';
+}
+function exportJSON() {
+  const g = compute(), p = g.p, r4 = x => +x.toFixed(4), r2 = x => +x.toFixed(2);
+  const out = JSON.parse(JSON.stringify(BASE)); out.version = 4;
+  out.rings.middle = p.shape === 'arc'
+    ? { count:p.n, shape:'arc', radius:r4(p.r), depth:r4(p.depth), span:r2(p.span), rotation:r2(p.rot) }
+    : { count:p.n, shape:'square', radius:r4(p.r), slotSize:r4(p.depth), rotation:r2(p.rot) };
+  const mids = g.slots.map(({ i, a }) => {
+    const [x, y] = polar(p.r, a);
+    const base = { id:`mid_${i+1}`, type:'middle', x:r4(x/S), y:r4(y/S), angle:r2(((a % 360) + 360) % 360) };
+    return p.shape === 'arc'
+      ? { ...base, shape:'arc', arc:{ innerRadius:r4(g.ri), outerRadius:r4(g.ro), startAngle:r2(a - p.span/2), endAngle:r2(a + p.span/2) } }
+      : { ...base, shape:'square', size:r4(p.depth) };
+  });
+  out.slots = [...BASE.slots.filter(s => s.type === 'core'), ...mids, ...BASE.slots.filter(s => s.type === 'outer')];
+  return out;
+}
+document.getElementById('dl').onclick = () => {
+  const blob = new Blob([JSON.stringify(exportJSON(), null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'layout.json'; a.click();
+};
+document.getElementById('copy').onclick = async e => {
+  try { await navigator.clipboard.writeText(JSON.stringify(exportJSON(), null, 2)); e.target.textContent = 'Copiado!'; } catch { e.target.textContent = 'Falhou — use Baixar'; }
+  setTimeout(() => e.target.textContent = 'Copiar JSON', 1500);
+};
+document.getElementById('reset').onclick = () => { ids.forEach(i => document.getElementById(i).value = defaults[i]); document.querySelector('input[name=shape][value=arc]').checked = true; draw(); };
+[...ids, 'labels'].forEach(i => document.getElementById(i).addEventListener('input', draw));
+document.querySelectorAll('input[name=shape]').forEach(r => r.addEventListener('change', draw));
+draw();
+</script>
+</body>
+</html>

@@ -3,11 +3,10 @@ import { placeFx, type ArtPlacement, type PlacedFx } from '../map/buildingArt';
 import { toPixels } from '../map/geometry';
 import type { BuildingFx as FxDef } from '../model/schema';
 import { GLOW_TEXTURE, SPARK_TEXTURE } from './BootScene';
+import { smokeTint, sparkTints } from './fxColors';
 
 const SMOKE_PARTICLES = 12;
 const SPARK_PARTICLES = 8;
-const SMOKE_TINT = 0xcfc9c2;
-const SPARK_TINTS = [0xff7a1a, 0xffb347, 0xf3e3a6];
 /** Sparks fly about once every 1.2 s on average, never on a steady beat. */
 const SPARK_CHECK_MS = 400;
 const SPARK_CHANCE = 0.33;
@@ -80,8 +79,8 @@ export class BuildingFx {
       return;
     }
     if (reducedMotion) return;
-    if (fx.type === 'smoke') this.smoke(x, y);
-    if (fx.type === 'sparks') this.sparks(x, y);
+    if (fx.type === 'smoke') this.smoke(x, y, fx.color);
+    if (fx.type === 'sparks') this.sparks(x, y, fx.color);
   }
 
   private glow(x: number, y: number, color: string, radius: number, still: boolean): void {
@@ -107,8 +106,8 @@ export class BuildingFx {
     this.parts.push({ destroy: () => this.scene.tweens.killTweensOf(image) });
   }
 
-  /** Grey puffs that drift up slowly while they grow and fade. */
-  private smoke(x: number, y: number): void {
+  /** Puffs (grey unless colored) that drift up slowly while they grow and fade. */
+  private smoke(x: number, y: number, color?: string): void {
     if (!this.reserve(SMOKE_PARTICLES)) return;
     const puff = this.unit / 64;
     const emitter = this.scene.add
@@ -120,14 +119,14 @@ export class BuildingFx {
         accelerationY: -this.unit * 0.04,
         scale: { start: puff * 0.12, end: puff * 0.4, ease: 'Quad.Out' },
         alpha: { start: 0.6, end: 0, ease: 'Quad.In' },
-        tint: SMOKE_TINT,
+        tint: smokeTint(color),
       })
       .setDepth(this.options.depth);
     this.parts.push(emitter);
   }
 
   /** Short bursts at random intervals, like hammer strikes. */
-  private sparks(x: number, y: number): void {
+  private sparks(x: number, y: number, color?: string): void {
     if (!this.reserve(SPARK_PARTICLES)) return;
     const emitter = this.scene.add
       .particles(x, y, SPARK_TEXTURE, {
@@ -136,7 +135,7 @@ export class BuildingFx {
         speed: { min: this.unit * 0.08, max: this.unit * 0.25 },
         scale: { start: this.unit / 1400, end: 0 },
         alpha: { start: 1, end: 0 },
-        tint: SPARK_TINTS,
+        tint: sparkTints(color),
         blendMode: Phaser.BlendModes.ADD,
         emitting: false,
       })

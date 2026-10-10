@@ -1,0 +1,435 @@
+{
+  "version": 3,
+  "note": "Coordenadas e medidas normalizadas (0–1) sobre um quadrado; ângulo 0 = Norte, sentido horário. Linhas de energia no chão são decorativas e não fazem parte do layout.",
+  "wall": {
+    "outerRadius": 0.476,
+    "thickness": 0.032
+  },
+  "entrances": {
+    "count": 8,
+    "rotation": 0,
+    "width": 0.046,
+    "angles": [
+      0,
+      45,
+      90,
+      135,
+      180,
+      225,
+      270,
+      315
+    ],
+    "prisms": [
+      {
+        "id": "roxo",
+        "name": "Roxo",
+        "rgb": [
+          128,
+          52,
+          200
+        ]
+      },
+      {
+        "id": "verde",
+        "name": "Verde",
+        "rgb": [
+          40,
+          170,
+          80
+        ]
+      },
+      {
+        "id": "branco",
+        "name": "Branco",
+        "rgb": [
+          225,
+          230,
+          240
+        ],
+        "glow": [
+          220,
+          235,
+          255
+        ],
+        "edge": [
+          255,
+          255,
+          255
+        ]
+      },
+      {
+        "id": "laranja",
+        "name": "Laranja",
+        "rgb": [
+          240,
+          120,
+          30
+        ]
+      },
+      {
+        "id": "azul",
+        "name": "Azul",
+        "rgb": [
+          40,
+          90,
+          220
+        ]
+      },
+      {
+        "id": "preto",
+        "name": "Preto",
+        "rgb": [
+          30,
+          26,
+          36
+        ],
+        "glow": [
+          120,
+          90,
+          160
+        ],
+        "edge": [
+          170,
+          150,
+          200
+        ]
+      },
+      {
+        "id": "vermelho",
+        "name": "Vermelho",
+        "rgb": [
+          205,
+          35,
+          40
+        ]
+      },
+      {
+        "id": "amarelo",
+        "name": "Amarelo",
+        "rgb": [
+          245,
+          205,
+          40
+        ]
+      }
+    ],
+    "note": "Prismas na ordem dos ângulos: a partir do Norte, sentido horário."
+  },
+  "innerDisc": {
+    "radius": 0.214
+  },
+  "core": {
+    "radius": 0.092
+  },
+  "rings": {
+    "outer": {
+      "perSector": 2,
+      "shape": "arc",
+      "depth": 0.082,
+      "wallGap": 0.004,
+      "slotGap": 0.01
+    },
+    "middle": {
+      "count": 8,
+      "radius": 0.248,
+      "slotSize": 0.054,
+      "shifted": false,
+      "shape": "square"
+    },
+    "inner": {
+      "count": 0,
+      "radius": 0.16,
+      "slotSize": 0.056,
+      "shifted": true,
+      "shape": "round",
+      "note": "Sem espaços na zona azul (exceto o core)."
+    }
+  },
+  "slots": [
+    {
+      "id": "core",
+      "type": "core",
+      "shape": "round",
+      "x": 0.5,
+      "y": 0.5,
+      "angle": 0,
+      "size": 0.184
+    },
+    {
+      "id": "mid_1",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.5,
+      "y": 0.252,
+      "angle": 0,
+      "size": 0.054
+    },
+    {
+      "id": "mid_2",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.6754,
+      "y": 0.3246,
+      "angle": 45,
+      "size": 0.054
+    },
+    {
+      "id": "mid_3",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.748,
+      "y": 0.5,
+      "angle": 90,
+      "size": 0.054
+    },
+    {
+      "id": "mid_4",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.6754,
+      "y": 0.6754,
+      "angle": 135,
+      "size": 0.054
+    },
+    {
+      "id": "mid_5",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.5,
+      "y": 0.748,
+      "angle": 180,
+      "size": 0.054
+    },
+    {
+      "id": "mid_6",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.3246,
+      "y": 0.6754,
+      "angle": 225,
+      "size": 0.054
+    },
+    {
+      "id": "mid_7",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.252,
+      "y": 0.5,
+      "angle": 270,
+      "size": 0.054
+    },
+    {
+      "id": "mid_8",
+      "type": "middle",
+      "shape": "square",
+      "x": 0.3246,
+      "y": 0.3246,
+      "angle": 315,
+      "size": 0.054
+    },
+    {
+      "id": "outer_1",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.5915,
+      "y": 0.1116,
+      "angle": 13.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 4.74,
+        "endAngle": 21.78
+      }
+    },
+    {
+      "id": "outer_2",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.7099,
+      "y": 0.1607,
+      "angle": 31.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 23.22,
+        "endAngle": 40.26
+      }
+    },
+    {
+      "id": "outer_3",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.8393,
+      "y": 0.2901,
+      "angle": 58.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 49.74,
+        "endAngle": 66.78
+      }
+    },
+    {
+      "id": "outer_4",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.8884,
+      "y": 0.4085,
+      "angle": 76.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 68.22,
+        "endAngle": 85.26
+      }
+    },
+    {
+      "id": "outer_5",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.8884,
+      "y": 0.5915,
+      "angle": 103.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 94.74,
+        "endAngle": 111.78
+      }
+    },
+    {
+      "id": "outer_6",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.8393,
+      "y": 0.7099,
+      "angle": 121.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 113.22,
+        "endAngle": 130.26
+      }
+    },
+    {
+      "id": "outer_7",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.7099,
+      "y": 0.8393,
+      "angle": 148.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 139.74,
+        "endAngle": 156.78
+      }
+    },
+    {
+      "id": "outer_8",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.5915,
+      "y": 0.8884,
+      "angle": 166.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 158.22,
+        "endAngle": 175.26
+      }
+    },
+    {
+      "id": "outer_9",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.4085,
+      "y": 0.8884,
+      "angle": 193.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 184.74,
+        "endAngle": 201.78
+      }
+    },
+    {
+      "id": "outer_10",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.2901,
+      "y": 0.8393,
+      "angle": 211.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 203.22,
+        "endAngle": 220.26
+      }
+    },
+    {
+      "id": "outer_13",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.1116,
+      "y": 0.4085,
+      "angle": 283.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 274.74,
+        "endAngle": 291.78
+      }
+    },
+    {
+      "id": "outer_14",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.1607,
+      "y": 0.2901,
+      "angle": 301.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 293.22,
+        "endAngle": 310.26
+      }
+    },
+    {
+      "id": "outer_15",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.2901,
+      "y": 0.1607,
+      "angle": 328.26,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 319.74,
+        "endAngle": 336.78
+      }
+    },
+    {
+      "id": "outer_16",
+      "type": "outer",
+      "shape": "arc",
+      "x": 0.4085,
+      "y": 0.1116,
+      "angle": 346.74,
+      "arc": {
+        "innerRadius": 0.358,
+        "outerRadius": 0.44,
+        "startAngle": 338.22,
+        "endAngle": 355.26
+      }
+    }
+  ],
+  "reserved": [
+    {
+      "id": "secret_door",
+      "startAngle": 229.74,
+      "endAngle": 265.26,
+      "note": "Trecho da muralha entre SO e O sem construções: porta secreta conhecida pelos jogadores. Não desenhar nada que a revele."
+    }
+  ]
+}

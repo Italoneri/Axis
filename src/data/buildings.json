@@ -226,7 +226,17 @@
     "description": "Alambiques, círculos de transmutação e o zumbido constante de magia contida.",
     "icon": "icon.arcane_lab",
     "sprite": "building.arcane_lab",
-    "allowedSlots": ["middle"],
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.5, "y": 0.372, "color": "#9b6bff", "radius": 0.093 },
+      { "type": "smoke", "x": 0.593, "y": 0.207, "color": "#7dffa0" },
+      { "type": "glow", "x": 0.798, "y": 0.744, "color": "#3cff78", "radius": 0.08 },
+      { "type": "sparks", "x": 0.855, "y": 0.239, "color": "#b48cff" },
+      { "type": "sparks", "x": 0.249, "y": 0.166, "color": "#b48cff", "minLevel": 2 },
+      { "type": "glow", "x": 0.5, "y": 0.372, "color": "#c9a6ff", "radius": 0.035, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.372, "color": "#e0ccff", "minLevel": 3 },
+      { "type": "glow", "x": 0.798, "y": 0.744, "color": "#e2b84a", "radius": 0.1, "minLevel": 3 }
+    ],
     "requires": [{ "building": "library", "minLevel": 1 }],
     "levels": [
       {
