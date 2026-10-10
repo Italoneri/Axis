@@ -355,5 +355,69 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "tavern",
+    "name": "Taverna",
+    "description": "Um barzinho encostado na muralha que cresce até virar o restaurante da Axis.",
+    "icon": "icon.tavern",
+    "sprite": "building.tavern",
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.253, "y": 0.568, "color": "#ffc56b", "radius": 0.04, "maxLevel": 1 },
+      { "type": "glow", "x": 0.5, "y": 0.437, "color": "#ffc56b", "radius": 0.04, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.438,
+        "y": 0.865,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "smoke", "x": 0.812, "y": 0.073, "color": "#8a8580", "minLevel": 2 },
+      { "type": "glow", "x": 0.81, "y": 0.1, "color": "#ff7a1a", "radius": 0.08, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.213,
+        "y": 0.597,
+        "color": "#ffc56b",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.624,
+        "y": 0.452,
+        "color": "#ffc56b",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      { "type": "glow", "x": 0.5, "y": 0.355, "color": "#ffd27a", "radius": 0.09, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 120, "materials": { "wood": 54, "iron": 18 } },
+        "buildTime": 2,
+        "effect": "Comida e bebida na Axis são de graça: o grupo não paga estilo de vida modesto entre sessões."
+      },
+      {
+        "cost": { "coins": 280, "materials": { "wood": 108, "iron": 36, "aetherium": 10 } },
+        "buildTime": 4,
+        "effect": "Uma vez por sessão, o mestre conta ao grupo um boato útil ouvido entre os fregueses.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 650, "materials": { "wood": 200, "iron": 70, "aetherium": 30 } },
+        "buildTime": 7,
+        "effect": "Uma vez por arco, um banquete no restaurante dá ao grupo os efeitos de Banquete de Heróis.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]

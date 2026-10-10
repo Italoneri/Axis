@@ -33,6 +33,8 @@
     "building.arcane_lab": "assets/buildings/arcane_lab.png",
     "building.study_station": "assets/buildings/study_station.png",
     "icon.hot_springs": "assets/icons/hot_springs.png",
-    "building.hot_springs": "assets/buildings/hot_springs.png"
+    "building.hot_springs": "assets/buildings/hot_springs.png",
+    "icon.tavern": "assets/icons/tavern.png",
+    "building.tavern": "assets/buildings/tavern.png"
   }
 }
