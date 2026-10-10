@@ -419,5 +419,41 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "training_hall",
+    "name": "Campo de Treinamento",
+    "description": "Um pátio de terra para treino físico que evolui até uma arena de elite.",
+    "icon": "icon.training_hall",
+    "sprite": "building.training_hall",
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.44, "y": 0.865, "color": "#ffb347", "radius": 0.035, "maxLevel": 1 },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      { "type": "glow", "x": 0.087, "y": 0.279, "color": "#ff9a3a", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.913, "y": 0.279, "color": "#ff9a3a", "radius": 0.04, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 110, "materials": { "wood": 48, "iron": 24 } },
+        "buildTime": 2,
+        "effect": "Aprender uma proficiência em arma ou armadura no tempo livre leva metade do tempo."
+      },
+      {
+        "cost": { "coins": 260, "materials": { "wood": 96, "iron": 60 } },
+        "buildTime": 4,
+        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de Atletismo ou Acrobacia.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 600, "materials": { "wood": 180, "iron": 110, "aetherium": 20 } },
+        "buildTime": 7,
+        "effect": "Uma vez por arco, cada personagem pode trocar um talento ou seu estilo de luta.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]
