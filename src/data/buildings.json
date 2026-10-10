@@ -207,6 +207,25 @@
     "icon": "icon.barracks",
     "sprite": "building.barracks",
     "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "smoke", "x": 0.5, "y": 0.06, "color": "#8a8580" },
+      { "type": "glow", "x": 0.5, "y": 0.078, "color": "#ff7a1a", "radius": 0.05, "maxLevel": 1 },
+      { "type": "glow", "x": 0.5, "y": 0.078, "color": "#ff7a1a", "radius": 0.09, "minLevel": 2 },
+      { "type": "glow", "x": 0.44, "y": 0.865, "color": "#ffb347", "radius": 0.035, "maxLevel": 1 },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.131,
+        "y": 0.423,
+        "color": "#ffd27a",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.869, "y": 0.423, "color": "#ffd27a", "radius": 0.045, "minLevel": 2 }
+    ],
     "levels": [
       {
         "cost": { "coins": 100, "materials": { "wood": 42, "iron": 28 } },
