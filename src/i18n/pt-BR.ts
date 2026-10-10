@@ -180,6 +180,7 @@ export const t = {
     depositTotal: 'Total do depósito',
     confirmDeposit: 'Depositar',
     adjust: 'Ajustar',
+    adjustTotal: 'Valor do ajuste',
     give: 'Dar',
     take: 'Remover',
     consolidate: 'Consolidar',

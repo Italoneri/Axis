@@ -216,7 +216,13 @@ export class GoldPanel {
   }
 
   private adjustForm(ref: WalletRef): HTMLElement {
-    const inputs = coinInputs(this.store.catalog);
+    const { catalog } = this.store;
+    // Shows the value in PO live: an emerald is worth 100 PO, easy to mistype as gold.
+    const total = el('strong', {}, formatGold(catalog, 0));
+    const inputs = coinInputs(catalog, {
+      onInput: (coins) =>
+        (total.textContent = formatGold(catalog, toBronze(coins, catalog.currencies))),
+    });
     const apply = (sign: 1 | -1) => {
       const delta = Object.fromEntries(
         Object.entries(inputs.read()).map(([id, n]) => [id, sign * n]),
@@ -227,6 +233,7 @@ export class GoldPanel {
       'div',
       { class: 'subform card--master' },
       inputs.element,
+      el('p', { class: 'coin-total' }, el('span', {}, t.gold.adjustTotal), total),
       el(
         'div',
         { class: 'row row--end' },

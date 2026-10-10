@@ -166,7 +166,11 @@ export function numberInput({
 
 /** Whole, non-negative number typed in an input; blanks and garbage count as 0. */
 export function readCount(input: HTMLInputElement): number {
-  const value = Math.floor(Number(input.value));
+  return parseCount(input.value);
+}
+
+export function parseCount(text: string): number {
+  const value = Math.floor(Number(text));
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 

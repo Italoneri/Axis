@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { createInitialState, parseSave, serializeState } from './SaveSystem';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  createInitialState,
+  loadState,
+  parseSave,
+  serializeState,
+  STORAGE_KEY,
+} from './SaveSystem';
 import { makeState, testCatalog } from './testFixtures';
 
 describe('createInitialState', () => {
@@ -84,4 +90,79 @@ describe('parseSave', () => {
     expect(result).toMatchObject({ ok: false, outdated: false });
     if (!result.ok) expect(result.error).toMatch(error);
   });
+
+  // Hand-edited or imported saves: a bad number must never reach the top bar.
+  it.each([
+    { name: 'a coin count as text', camp: { gold: '11' } },
+    { name: 'a negative coin count', camp: { gold: -5 } },
+    { name: 'a fractional coin count', camp: { gold: 1.5 } },
+    { name: 'a NaN coin count (saved as null)', camp: { gold: NaN } },
+  ])('rejects $name', ({ camp }) => {
+    const save = { ...makeState(), wallets: { camp, characters: { thorin: {} } } };
+    const result = parseSave(JSON.stringify(save), testCatalog);
+    expect(result).toMatchObject({ ok: false, outdated: false });
+    if (!result.ok) expect(result.error).toMatch(/wallets\.camp\.gold/);
+  });
+
+  it.each([
+    { name: 'a material quantity as text', quantity: '173' },
+    { name: 'a negative material quantity', quantity: -1 },
+  ])('rejects $name', ({ quantity }) => {
+    const state = makeState();
+    const items = state.materials.items.map((m) => ({ ...m, quantity }));
+    const save = { ...state, materials: { ...state.materials, items } };
+    expect(parseSave(JSON.stringify(save), testCatalog)).toMatchObject({ ok: false });
+  });
+
+  it.each([
+    { name: 'influence above 100%', human: 150 },
+    { name: 'influence as text', human: '40' },
+  ])('rejects $name', ({ human }) => {
+    const save = { ...makeState(), influence: { human, draconic: 0 } };
+    expect(parseSave(JSON.stringify(save), testCatalog)).toMatchObject({ ok: false });
+  });
 });
+
+describe('loadState', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('loads a valid stored save as it is', () => {
+    const state = makeState({ day: 9 });
+    const storage = memoryStorage({ [STORAGE_KEY]: serializeState(state) });
+    expect(loadState(storage, testCatalog)).toEqual(state);
+  });
+
+  it('starts fresh when nothing is stored', () => {
+    expect(loadState(memoryStorage(), testCatalog)).toEqual(createInitialState(testCatalog));
+  });
+
+  it('drops an outdated save and starts fresh', () => {
+    const storage = memoryStorage({ [STORAGE_KEY]: '{"version":1,"day":3}' });
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    expect(loadState(storage, testCatalog)).toEqual(createInitialState(testCatalog));
+    expect(storage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('keeps an invalid save aside for recovery and never shows its values', () => {
+    const broken = JSON.stringify({ ...makeState(), wallets: { camp: { gold: '1111' } } });
+    const storage = memoryStorage({ [STORAGE_KEY]: broken });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(loadState(storage, testCatalog)).toEqual(createInitialState(testCatalog));
+    expect(storage.getItem(`${STORAGE_KEY}:corrupted`)).toBe(broken);
+    expect(logged).toHaveBeenCalled();
+  });
+});
+
+function memoryStorage(initial: Record<string, string> = {}): Storage {
+  const items = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return items.size;
+    },
+    clear: () => items.clear(),
+    getItem: (key) => items.get(key) ?? null,
+    key: (index) => [...items.keys()][index] ?? null,
+    removeItem: (key) => void items.delete(key),
+    setItem: (key, value) => void items.set(key, value),
+  };
+}
