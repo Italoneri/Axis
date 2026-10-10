@@ -1,0 +1,43 @@
+{
+  "categories": [
+    { "id": "ores", "name": "Minérios" },
+    { "id": "general", "name": "Gerais" }
+  ],
+  "items": [
+    {
+      "id": "iron",
+      "name": "Ferro",
+      "category": "ores",
+      "description": "Minério comum, base de armas e ferragens.",
+      "quantity": 150
+    },
+    {
+      "id": "mithril",
+      "name": "Mithril",
+      "category": "ores",
+      "description": "Leve como seda e duro como aço.",
+      "quantity": 10
+    },
+    {
+      "id": "adamantine",
+      "name": "Adamantina",
+      "category": "ores",
+      "description": "O metal mais resistente que se conhece.",
+      "quantity": 2
+    },
+    {
+      "id": "wood",
+      "name": "Madeira",
+      "category": "general",
+      "description": "Tábuas e vigas para construção.",
+      "quantity": 250
+    },
+    {
+      "id": "aetherium",
+      "name": "Aetherium",
+      "category": "general",
+      "description": "Cristal que condensa energia arcana.",
+      "quantity": 40
+    }
+  ]
+}

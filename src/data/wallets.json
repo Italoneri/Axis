@@ -1,0 +1,17 @@
+{
+  "camp": { "platinum": 40, "gold": 150, "silver": 40, "bronze": 50 },
+  "characters": [
+    {
+      "id": "thorin",
+      "name": "Thorin",
+      "color": "#c0703a",
+      "wallet": { "platinum": 3, "gold": 25, "silver": 8 }
+    },
+    {
+      "id": "lyra",
+      "name": "Lyra",
+      "color": "#6a8fd4",
+      "wallet": { "gold": 40, "bronze": 35 }
+    }
+  ]
+}

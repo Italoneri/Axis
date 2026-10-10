@@ -1,12 +1,21 @@
 import Phaser from 'phaser';
+import { availableArtFiles } from '../map/buildingArt';
+import type { BuildingPreview } from '../map/buildingPreview';
+import { Gates, type GateState } from '../map/gates';
+import { MAP_TEXTURE, type LiveMap } from '../map/liveMap';
+import { MAP_TEXTURE_KEYS, textureImage } from '../map/textures';
 import { findBuilding } from '../model/catalog';
-import type { GameState } from '../model/schema';
-import type { SlotEditor } from '../slotEditor';
+import type { GameState, PlacedBuilding } from '../model/schema';
 import type { GameStore, StateChange } from '../store';
+import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
 import { SlotView } from './SlotView';
 
-const MAP_KEY = 'map';
+const BACKGROUND = '#2b2a2c';
+/** Served by the Vite dev server from the project root; not part of the build. */
+const REFERENCE_URL = '/docs/map-reference/axis_preview.jpg';
+const REFERENCE_KEY = 'map.reference';
+const REFERENCE_DEPTH = 100;
 
 export interface SlotSelection {
   open(slotId: string): void;
@@ -14,48 +23,55 @@ export interface SlotSelection {
   onSelectionChange(listener: (slotId: string | null) => void): void;
 }
 
-/** The Axis map with its slots. Reads state from the store and reports clicks to the panel. */
+/** The generated Axis map with its gates and slots. Reads state from the store and reports clicks. */
 export class BaseScene extends Phaser.Scene {
   private readonly slotViews = new Map<string, SlotView>();
+  private gates: Gates | undefined;
 
   constructor(
     private readonly store: GameStore,
     private readonly selection: SlotSelection,
-    private readonly editor: SlotEditor,
+    private readonly liveMap: LiveMap,
+    private readonly preview: BuildingPreview,
   ) {
     super('Base');
   }
 
-  create(): void {
-    const map = this.add.image(0, 0, MAP_KEY).setOrigin(0);
-    const camera = new CameraController(this, map.width, map.height);
-    const { sizes, slots } = this.editor.layout;
+  /** Ready for gameplay hooks (an open portal, a sealed gate…); ids are the prism ids. */
+  setGateState(gateId: string, state: GateState): void {
+    this.gates?.setGateState(gateId, state);
+  }
 
-    for (const slot of slots) {
-      const view = new SlotView(
-        this,
-        slot.id,
-        slot.x * map.width,
-        slot.y * map.height,
-        sizes[slot.type] * map.width,
-        {
-          onClick: () => {
-            if (!camera.wasDragging && !this.editor.isEditing) this.selection.open(slot.id);
-          },
-          onDrag: (x, y) => this.editor.move(slot.id, x / map.width, y / map.height),
+  create(): void {
+    const { layout, size, theme } = this.liveMap;
+    this.cameras.main.setBackgroundColor(BACKGROUND);
+    this.add.image(0, 0, MAP_TEXTURE).setOrigin(0);
+    const camera = new CameraController(this, size, size);
+
+    this.gates = new Gates(this, {
+      layout,
+      mapSize: size,
+      theme: theme.current,
+      stone: textureImage(this.textures, MAP_TEXTURE_KEYS.wall),
+      floor: textureImage(this.textures, MAP_TEXTURE_KEYS.floor),
+    });
+    const stopTheme = theme.subscribe((next) => this.gates?.setTheme(next));
+    const stopReference = import.meta.env.DEV ? this.followReference() : () => undefined;
+
+    const art = availableArtFiles(this.store.catalog.assets.images);
+    const fxBudget = FxBudget.forScreen(this.scale.width);
+    for (const slot of layout.slots) {
+      const view = new SlotView(this, {
+        slot,
+        mapSize: size,
+        art,
+        fxBudget,
+        onClick: () => {
+          if (!camera.wasDragging) this.selection.open(slot.id);
         },
-      );
+      });
       this.slotViews.set(slot.id, view);
     }
-
-    this.editor.subscribe(() => {
-      if (this.editor.isEditing) this.selection.close();
-      for (const slot of this.editor.layout.slots) {
-        const view = this.slotViews.get(slot.id);
-        view?.moveTo(slot.x * map.width, slot.y * map.height);
-        view?.setEditable(this.editor.isEditing);
-      }
-    });
 
     // A click on bare map (not a pan) dismisses the panel.
     this.input.on(
@@ -74,12 +90,46 @@ export class BaseScene extends Phaser.Scene {
       this.render(state);
       this.animate(state, change);
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
+    const stopPreview = this.preview.subscribe(() => this.render(this.store.current));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      unsubscribe();
+      stopPreview();
+      stopTheme();
+      stopReference();
+    });
   }
 
+  /** Lays the reference render over the map so the two can be compared by fading it. */
+  private followReference(): () => void {
+    let overlay: Phaser.GameObjects.Image | undefined;
+    let loading = false;
+    const show = (opacity: number) => {
+      overlay?.setAlpha(opacity);
+      if (overlay || loading || opacity === 0) return;
+      loading = true;
+      this.load.image(REFERENCE_KEY, REFERENCE_URL);
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+        overlay = this.add
+          .image(0, 0, REFERENCE_KEY)
+          .setOrigin(0)
+          .setDisplaySize(this.liveMap.size, this.liveMap.size)
+          .setDepth(REFERENCE_DEPTH)
+          .setAlpha(this.liveMap.referenceOpacity);
+      });
+      this.load.start();
+    };
+    return this.liveMap.onReferenceOpacity(show);
+  }
+
+  /** The master's preview replaces what the slot really holds, on screen only. */
   private render(state: GameState): void {
+    const preview = this.preview.current;
     this.slotViews.forEach((view, slotId) => {
-      const placed = state.slots[slotId];
+      const previewed: PlacedBuilding | undefined =
+        preview?.slotId === slotId
+          ? { buildingId: preview.buildingId, level: preview.level, status: 'done' }
+          : undefined;
+      const placed = previewed ?? state.slots[slotId];
       const def = placed && findBuilding(this.store.catalog, placed.buildingId);
       view.update({ placed, def, day: state.day });
     });

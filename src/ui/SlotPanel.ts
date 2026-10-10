@@ -1,26 +1,34 @@
 import { blockReasonText, t } from '../i18n/pt-BR';
-import { catalogNames, findBuilding, findSlot } from '../model/catalog';
-import type {
-  BuildingDef,
-  BuildingLevel,
-  GameState,
-  PlacedBuilding,
-  ResourceBag,
-  SlotType,
-} from '../model/schema';
-import { activeLevel, checkBuild, checkUpgrade, type BuildCheck } from '../systems/BuildSystem';
+import type { SlotType } from '../map/layout';
+import { findBuilding, findSlot } from '../model/catalog';
+import type { BuildingDef, BuildingLevel, Cost, GameState, PlacedBuilding } from '../model/schema';
+import {
+  activeLevel,
+  checkBuild,
+  checkUpgrade,
+  costInBronze,
+  type BuildCheck,
+} from '../systems/BuildSystem';
+import { toBronze } from '../systems/Coins';
+import { findMaterial } from '../systems/Materials';
+import { STUDY_STATION_ID } from '../systems/Research';
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
-import { el } from './dom';
+import { el, replaceKeepingScroll } from './dom';
+import { formatGold, textContext } from './format';
 import type { MasterSession } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
+import { ResearchArchive } from './resources/ResearchArchive';
+import { thumb } from './widgets';
 
 type SelectionListener = (slotId: string | null) => void;
 
 /** Side panel (bottom sheet on phones) showing what can be built in, or is built on, a slot. */
 export class SlotPanel {
   private slotId: string | null = null;
+  private renderedSlotId: string | null = null;
   private readonly selectionListeners = new Set<SelectionListener>();
+  private readonly researchArchive = new ResearchArchive();
 
   constructor(
     private readonly root: HTMLElement,
@@ -54,6 +62,8 @@ export class SlotPanel {
   private render(): void {
     const slot = this.slotId === null ? undefined : findSlot(this.store.catalog, this.slotId);
     this.root.hidden = !slot;
+    const sameView = slot !== undefined && slot.id === this.renderedSlotId;
+    this.renderedSlotId = slot?.id ?? null;
     if (!slot) return;
 
     const state = this.store.current;
@@ -62,28 +72,35 @@ export class SlotPanel {
     const title = placedDef ? placedDef.name : t.panel.emptySlot(t.slotTypes[slot.type]);
     const body =
       placed && placedDef
-        ? this.renderOccupied(slot.id, placed, placedDef, state)
+        ? [
+            ...this.renderOccupied(slot.id, placed, placedDef, state),
+            ...this.extraSections(placed, state),
+          ]
         : this.renderEmpty(slot.id, slot.type, state);
     const masterControls =
       this.session.isActive && renderMasterSlotControls(this.store, slot, placed);
 
-    this.root.replaceChildren(
-      el(
-        'header',
-        { class: 'panel__header' },
-        el('h2', { class: 'panel__title' }, title),
+    replaceKeepingScroll(
+      this.root,
+      [
         el(
-          'button',
-          {
-            class: 'btn btn--icon',
-            type: 'button',
-            'aria-label': t.panel.close,
-            onclick: () => this.close(),
-          },
-          '×',
+          'header',
+          { class: 'panel__header' },
+          el('h2', { class: 'panel__title' }, title),
+          el(
+            'button',
+            {
+              class: 'btn btn--icon',
+              type: 'button',
+              'aria-label': t.panel.close,
+              onclick: () => this.close(),
+            },
+            '×',
+          ),
         ),
-      ),
-      el('div', { class: 'panel__body' }, masterControls, ...body),
+        el('div', { class: 'panel__body' }, masterControls, ...body),
+      ],
+      { sameView, scroller: '.panel__body' },
     );
   }
 
@@ -98,7 +115,7 @@ export class SlotPanel {
         'article',
         { class: check.ok ? 'card' : 'card card--blocked' },
         this.cardHead(def, def.description),
-        levelDef && this.levelStats(levelDef, state.resources),
+        levelDef && this.levelStats(levelDef, state),
         this.reasonList(check),
         el(
           'button',
@@ -177,7 +194,7 @@ export class SlotPanel {
         'div',
         { class: check.ok ? 'card' : 'card card--blocked' },
         el('h3', { class: 'section-title' }, t.panel.nextLevel(placed.level + 1)),
-        this.levelStats(nextLevelDef, state.resources),
+        this.levelStats(nextLevelDef, state),
         this.reasonList(check),
         el(
           'button',
@@ -211,7 +228,7 @@ export class SlotPanel {
     );
   }
 
-  private levelStats(level: BuildingLevel, available: ResourceBag): HTMLElement {
+  private levelStats(level: BuildingLevel, state: GameState): HTMLElement {
     return el(
       'div',
       {},
@@ -219,32 +236,37 @@ export class SlotPanel {
         'p',
         { class: 'stat' },
         el('span', { class: 'stat__label' }, t.panel.cost),
-        this.costList(level.cost, available),
+        this.costList(level.cost, state),
       ),
       this.stat(t.panel.time, level.buildTime === 0 ? t.instant : t.days(level.buildTime)),
       this.stat(t.panel.effect, level.effect),
     );
   }
 
-  private costList(cost: ResourceBag, available: ResourceBag): HTMLElement {
+  /** Coins are checked against the Acampamento; materials against the stock. */
+  private costList(cost: Cost, state: GameState): HTMLElement {
     const { catalog } = this.store;
-    const items = Object.entries(cost).map(([id, amount]) => {
-      const resource = catalog.resources.find((r) => r.id === id);
-      const isShort = (available[id] ?? 0) < amount;
+    const bronze = costInBronze(catalog, cost);
+    const isCampShort = toBronze(state.wallets.camp, catalog.currencies) < bronze;
+    const coins =
+      bronze > 0 &&
+      el(
+        'span',
+        { class: costItemClass(isCampShort), title: t.resources.gold },
+        thumb(catalog, { image: 'icon.gold', name: t.resources.gold }),
+        formatGold(catalog, bronze),
+      );
+    const materials = Object.entries(cost.materials ?? {}).map(([id, amount]) => {
+      const material = findMaterial(state.materials, id);
+      const name = material?.name ?? `${id} (indisponível)`;
       return el(
         'span',
-        {
-          class: isShort ? 'cost__item cost__item--short' : 'cost__item',
-          title: resource?.name ?? id,
-        },
-        el('img', {
-          src: resource ? (catalog.assets.images[resource.icon] ?? '') : '',
-          alt: resource?.name ?? id,
-        }),
+        { class: costItemClass(!material || material.quantity < amount), title: name },
+        thumb(catalog, { image: material?.icon, name: material?.name ?? '?' }),
         String(amount),
       );
     });
-    return el('span', { class: 'cost' }, ...items);
+    return el('span', { class: 'cost' }, coins, ...materials);
   }
 
   private stat(label: string, value: string): HTMLElement {
@@ -253,11 +275,21 @@ export class SlotPanel {
 
   private reasonList(check: BuildCheck): HTMLElement | null {
     if (check.ok) return null;
-    const names = catalogNames(this.store.catalog);
+    const ctx = textContext(this.store.catalog, this.store.current);
     return el(
       'ul',
       { class: 'reasons' },
-      ...check.reasons.map((reason) => el('li', {}, blockReasonText(reason, names))),
+      ...check.reasons.map((reason) => el('li', {}, blockReasonText(reason, ctx))),
     );
   }
+
+  /** The study station shows every research in full once it has been built. */
+  private extraSections(placed: PlacedBuilding, state: GameState): HTMLElement[] {
+    const hasArchive = placed.buildingId === STUDY_STATION_ID && activeLevel(placed) >= 1;
+    return hasArchive ? [this.researchArchive.render(this.store.catalog, state)] : [];
+  }
+}
+
+function costItemClass(isShort: boolean): string {
+  return isShort ? 'cost__item cost__item--short' : 'cost__item';
 }

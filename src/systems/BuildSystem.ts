@@ -1,13 +1,16 @@
-import { findBuilding, findSlot, type Catalog } from '../model/catalog';
+import { findBuilding, findSlot, goldInBronze, type Catalog } from '../model/catalog';
 import type {
+  AmountBag,
   BuildingDef,
   BuildingLevel,
+  Cost,
   GameState,
   PlacedBuilding,
   Requirement,
-  ResourceBag,
 } from '../model/schema';
-import { missingResources, subtractResources } from './ResourceSystem';
+import { goldToBronze, pay } from './Coins';
+import { consumeMaterials, findMaterial, materialNeeds } from './Materials';
+import { campShortfall, CAMP, setWallet, type CoinShortfall } from './Wallets';
 
 export type BlockReason =
   | { kind: 'wrong_slot_type' }
@@ -16,7 +19,9 @@ export type BlockReason =
   | { kind: 'under_construction' }
   | { kind: 'max_level' }
   | { kind: 'missing_requirement'; requirement: Requirement }
-  | { kind: 'missing_resources'; missing: ResourceBag };
+  | ({ kind: 'missing_coins' } & CoinShortfall)
+  | { kind: 'missing_materials'; missing: AmountBag }
+  | { kind: 'unknown_materials'; ids: string[] };
 
 export type BuildCheck =
   { ok: true; level: number; levelDef: BuildingLevel } | { ok: false; reasons: BlockReason[] };
@@ -52,7 +57,7 @@ export function checkBuild(state: GameState, catalog: Catalog, order: BuildOrder
     // Each structure exists once in the base, so bonuses never stack.
     ...(isPlacedAnywhere(state, def.id) ? [{ kind: 'already_built' } as const] : []),
   ];
-  return checkLevel(state, def, 1, placementReasons);
+  return checkLevel(state, catalog, { def, level: 1 }, placementReasons);
 }
 
 export function checkUpgrade(state: GameState, catalog: Catalog, slotId: string): BuildCheck {
@@ -63,13 +68,13 @@ export function checkUpgrade(state: GameState, catalog: Catalog, slotId: string)
 
   if (placed.status === 'building') return { ok: false, reasons: [{ kind: 'under_construction' }] };
   if (placed.level >= def.levels.length) return { ok: false, reasons: [{ kind: 'max_level' }] };
-  return checkLevel(state, def, placed.level + 1, []);
+  return checkLevel(state, catalog, { def, level: placed.level + 1 }, []);
 }
 
 export function startBuild(state: GameState, catalog: Catalog, order: BuildOrder): BuildResult {
   const check = checkBuild(state, catalog, order);
   if (!check.ok) return check;
-  return { ok: true, state: beginConstruction(state, order, check, 'build_started') };
+  return { ok: true, state: beginConstruction(state, catalog, order, check, 'build_started') };
 }
 
 export function startUpgrade(
@@ -82,26 +87,44 @@ export function startUpgrade(
   if (!check.ok) return check;
   const buildingId = state.slots[slotId]?.buildingId ?? '';
   const order = { slotId, buildingId, actor };
-  return { ok: true, state: beginConstruction(state, order, check, 'upgrade_started') };
+  return {
+    ok: true,
+    state: beginConstruction(state, catalog, order, check, 'upgrade_started'),
+  };
+}
+
+/** Cost in bronze; `coins` in the JSON is a value in gold. */
+export function costInBronze(catalog: Catalog, cost: Cost): number {
+  return goldToBronze(cost.coins, goldInBronze(catalog));
+}
+
+/** Coin and material problems of a cost, against the Acampamento and the material stock. */
+export function costReasons(state: GameState, catalog: Catalog, cost: Cost): BlockReason[] {
+  const shortfall = campShortfall(state, catalog, costInBronze(catalog, cost));
+  const { missing, unknown } = materialNeeds(state.materials, cost.materials ?? {});
+  return [
+    ...(shortfall ? [{ kind: 'missing_coins', ...shortfall } as const] : []),
+    ...(Object.keys(missing).length > 0 ? [{ kind: 'missing_materials', missing } as const] : []),
+    ...(unknown.length > 0 ? [{ kind: 'unknown_materials', ids: unknown } as const] : []),
+  ];
 }
 
 function checkLevel(
   state: GameState,
-  def: BuildingDef,
-  level: number,
+  catalog: Catalog,
+  { def, level }: { def: BuildingDef; level: number },
   priorReasons: BlockReason[],
 ): BuildCheck {
   const levelDef = def.levels[level - 1];
   if (!levelDef) return { ok: false, reasons: [...priorReasons, { kind: 'max_level' }] };
 
   const requirements = [...(def.requires ?? []), ...(levelDef.requires ?? [])];
-  const missing = missingResources(state.resources, levelDef.cost);
   const reasons: BlockReason[] = [
     ...priorReasons,
     ...requirements
       .filter((req) => builtLevel(state, req.building) < req.minLevel)
       .map((requirement) => ({ kind: 'missing_requirement', requirement }) as const),
-    ...(Object.keys(missing).length > 0 ? [{ kind: 'missing_resources', missing } as const] : []),
+    ...costReasons(state, catalog, levelDef.cost),
   ];
   return reasons.length > 0 ? { ok: false, reasons } : { ok: true, level, levelDef };
 }
@@ -112,6 +135,7 @@ function isPlacedAnywhere(state: GameState, buildingId: string): boolean {
 
 function beginConstruction(
   state: GameState,
+  catalog: Catalog,
   order: BuildOrder,
   { level, levelDef }: { level: number; levelDef: BuildingLevel },
   kind: 'build_started' | 'upgrade_started',
@@ -127,14 +151,35 @@ function beginConstruction(
         startedOnDay: state.day,
         completesOnDay: state.day + levelDef.buildTime,
       };
+  const paid = charge(state, catalog, levelDef.cost);
   const entries = [
-    { day: state.day, kind, buildingId, level, actor },
+    { day: state.day, kind, buildingId, level, actor, paid: paid.receipt },
     ...(isInstant ? [{ day: state.day, kind: 'build_completed' as const, buildingId, level }] : []),
   ];
   return {
-    ...state,
-    resources: subtractResources(state.resources, levelDef.cost),
+    ...paid.state,
     slots: { ...state.slots, [slotId]: placed },
     log: [...state.log, ...entries],
+  };
+}
+
+/** Takes the cost from the Acampamento and the stock. Caller must check `costReasons` first. */
+function charge(state: GameState, catalog: Catalog, cost: Cost) {
+  const bronze = costInBronze(catalog, cost);
+  const payment = pay(state.wallets.camp, bronze, catalog.currencies);
+  if (!payment.ok) throw new Error(`charge: Acampamento is ${payment.missingBronze} bronze short`);
+  const need = cost.materials ?? {};
+  const materials = Object.fromEntries(
+    Object.entries(need).map(([id, amount]) => [
+      findMaterial(state.materials, id)?.name ?? id,
+      amount,
+    ]),
+  );
+  return {
+    state: {
+      ...setWallet(state, CAMP, payment.wallet),
+      materials: consumeMaterials(state.materials, need),
+    },
+    receipt: { bronze, materials },
   };
 }

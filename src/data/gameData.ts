@@ -1,7 +1,24 @@
+import buildingArtFiles from 'virtual:building-art';
+import { withBuildingArt } from '../map/buildingArt';
 import { parseCatalog } from '../model/catalog';
 import assets from './assets.json';
 import buildings from './buildings.json';
-import resources from './resources.json';
-import slots from './slots.json';
+import currencies from './currencies.json';
+import influence from './influence.json';
+import layout from './layout.json';
+import materials from './materials.json';
+import research from './research.json';
+import wallets from './wallets.json';
 
-export const gameData = parseCatalog({ resources, buildings, slots, assets });
+export const rawGameData = {
+  currencies,
+  buildings,
+  layout,
+  assets: withBuildingArt(assets, buildingArtFiles),
+  wallets,
+  materials,
+  research,
+  influence,
+};
+
+export const gameData = parseCatalog(rawGameData);

@@ -1,0 +1,31 @@
+{
+  "categories": [
+    { "id": "armamentos", "name": "Armamentos" },
+    { "id": "historia", "name": "História" },
+    { "id": "arcana", "name": "Arcana" }
+  ],
+  "entries": [
+    {
+      "id": "laminas_runicas",
+      "title": "Lâminas Rúnicas",
+      "category": "armamentos",
+      "status": "em_andamento",
+      "progress": 40,
+      "startedOnDay": 1,
+      "owner": "Thorin",
+      "description": "Gravar runas de fogo em lâminas forjadas com mithril.",
+      "notes": "",
+      "cost": { "coins": 50, "materials": { "mithril": 2 } }
+    },
+    {
+      "id": "a_queda_de_valdren",
+      "title": "A Queda de Valdren",
+      "category": "historia",
+      "status": "concluida",
+      "completedOnDay": 1,
+      "owner": "Lyra",
+      "description": "Reconstituir o que aconteceu na noite em que Valdren caiu.",
+      "notes": "O portão leste foi aberto por dentro.\nAinda não sabemos por quem."
+    }
+  ]
+}

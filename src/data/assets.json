@@ -1,10 +1,17 @@
 {
   "images": {
-    "map": "assets/map/axis.png",
+    "texture.floor": "assets/textures/floor_tiles.jpg",
+    "texture.wall": "assets/textures/wall_stone.jpg",
+    "texture.marble": "assets/textures/marble_gold.jpg",
     "icon.gold": "assets/icons/gold.png",
     "icon.materials": "assets/icons/materials.png",
-    "icon.arcana": "assets/icons/arcana.png",
     "icon.influence": "assets/icons/influence.png",
+    "icon.research": "assets/icons/research.png",
+    "icon.coin.emerald": "assets/icons/coin_emerald.png",
+    "icon.coin.platinum": "assets/icons/coin_platinum.png",
+    "icon.coin.gold": "assets/icons/coin_gold.png",
+    "icon.coin.silver": "assets/icons/coin_silver.png",
+    "icon.coin.bronze": "assets/icons/coin_bronze.png",
     "icon.axis_heart": "assets/icons/axis_heart.png",
     "icon.forge": "assets/icons/forge.png",
     "icon.infirmary": "assets/icons/infirmary.png",
@@ -14,6 +21,7 @@
     "icon.watchtower": "assets/icons/watchtower.png",
     "icon.barracks": "assets/icons/barracks.png",
     "icon.arcane_lab": "assets/icons/arcane_lab.png",
+    "icon.study_station": "assets/icons/study_station.png",
     "building.axis_heart": "assets/buildings/axis_heart.png",
     "building.forge": "assets/buildings/forge.png",
     "building.infirmary": "assets/buildings/infirmary.png",
@@ -22,6 +30,9 @@
     "building.sanctuary": "assets/buildings/sanctuary.png",
     "building.watchtower": "assets/buildings/watchtower.png",
     "building.barracks": "assets/buildings/barracks.png",
-    "building.arcane_lab": "assets/buildings/arcane_lab.png"
+    "building.arcane_lab": "assets/buildings/arcane_lab.png",
+    "building.study_station": "assets/buildings/study_station.png",
+    "icon.hot_springs": "assets/icons/hot_springs.png",
+    "building.hot_springs": "assets/buildings/hot_springs.png"
   }
 }

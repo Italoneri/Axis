@@ -1,0 +1,11 @@
+{
+  "worlds": [
+    { "id": "human", "name": "Mundo Humano", "color": "#d9b26a" },
+    { "id": "elves", "name": "Floresta dos Elfos", "color": "#4f9d5d" },
+    { "id": "fairies", "name": "Bosque das Fadas", "color": "#d77fd1" },
+    { "id": "dwarves", "name": "Montanhas Anãs", "color": "#9c6b45" },
+    { "id": "halfhumans", "name": "Reino dos Meio-Humanos", "color": "#e08a3c" },
+    { "id": "draconic", "name": "Terras Dracônicas", "color": "#c0392b" },
+    { "id": "infernal", "name": "Terras Ínferas", "color": "#6a3fa0" }
+  ]
+}

@@ -1,29 +1,54 @@
 import { z } from 'zod';
+import { angleRangesOverlap } from '../map/geometry';
+import { layoutSchema, type MapLayout, type SlotDef } from '../map/layout';
 import {
   assetManifestSchema,
   buildingDefSchema,
-  resourceDefSchema,
-  slotsFileSchema,
+  currencyDefSchema,
+  materialsSchema,
+  researchBookSchema,
+  walletsSeedSchema,
+  worldsFileSchema,
   type AssetManifest,
   type BuildingDef,
-  type ResourceDef,
-  type SlotDef,
-  type SlotsFile,
+  type CurrencyDef,
+  type Materials,
+  type ResearchBook,
+  type WalletsSeed,
+  type World,
 } from './schema';
+
+/** The currency whose value is used to write costs ("coins": 150 means 150 of these). */
+export const GOLD_CURRENCY_ID = 'gold';
+
+/** Starting values for the records the master edits in game; they live in GameState afterwards. */
+export interface Seed {
+  readonly wallets: WalletsSeed;
+  readonly materials: Materials;
+  readonly research: ResearchBook;
+}
 
 /** All static game data, validated and cross-checked. */
 export interface Catalog {
-  readonly resources: readonly ResourceDef[];
+  /** Sorted by display order: the most valuable coin first. */
+  readonly currencies: readonly CurrencyDef[];
   readonly buildings: readonly BuildingDef[];
-  readonly slots: SlotsFile;
+  readonly layout: MapLayout;
+  /** The fixed worlds of influence, in display order; the master only edits their percent. */
+  readonly worlds: readonly World[];
   readonly assets: AssetManifest;
+  readonly seed: Seed;
 }
 
 export interface RawCatalog {
-  resources: unknown;
+  currencies: unknown;
   buildings: unknown;
-  slots: unknown;
+  layout: unknown;
   assets: unknown;
+  wallets: unknown;
+  materials: unknown;
+  research: unknown;
+  influence: unknown;
 }
 
 /**
@@ -31,11 +56,18 @@ export interface RawCatalog {
  * typo in buildings.json is reported clearly instead of breaking at runtime.
  */
 export function parseCatalog(raw: RawCatalog): Catalog {
+  const currencies = parseFile('currencies.json', z.array(currencyDefSchema), raw.currencies);
   const catalog: Catalog = {
-    resources: parseFile('resources.json', z.array(resourceDefSchema), raw.resources),
+    currencies: [...currencies].sort((a, b) => a.order - b.order),
     buildings: parseFile('buildings.json', z.array(buildingDefSchema), raw.buildings),
-    slots: parseFile('slots.json', slotsFileSchema, raw.slots),
+    layout: parseFile('layout.json', layoutSchema, raw.layout),
+    worlds: parseFile('influence.json', worldsFileSchema, raw.influence).worlds,
     assets: parseFile('assets.json', assetManifestSchema, raw.assets),
+    seed: {
+      wallets: parseFile('wallets.json', walletsSeedSchema, raw.wallets),
+      materials: parseFile('materials.json', materialsSchema, raw.materials),
+      research: parseFile('research.json', researchBookSchema, raw.research),
+    },
   };
   const problems = findReferenceProblems(catalog);
   if (problems.length > 0) {
@@ -49,15 +81,23 @@ export function findBuilding(catalog: Catalog, id: string): BuildingDef | undefi
 }
 
 export function findSlot(catalog: Catalog, id: string): SlotDef | undefined {
-  return catalog.slots.slots.find((s) => s.id === id);
+  return catalog.layout.slots.find((s) => s.id === id);
 }
 
-/** Display-name lookups, falling back to the id so a missing entry is still readable. */
-export function catalogNames(catalog: Catalog) {
-  return {
-    building: (id: string) => findBuilding(catalog, id)?.name ?? id,
-    resource: (id: string) => catalog.resources.find((r) => r.id === id)?.name ?? id,
-  };
+/** Bronze worth of one gold coin, the unit costs are written in. */
+export function goldInBronze(catalog: Catalog): number {
+  return catalog.currencies.find((c) => c.id === GOLD_CURRENCY_ID)?.bronzeValue ?? 1;
+}
+
+/**
+ * Resolves an image reference: an asset key from assets.json, or a URL typed by
+ * the master. Anything else yields undefined so the UI draws a placeholder.
+ */
+export function resolveImage(catalog: Catalog, ref: string | undefined): string | undefined {
+  if (!ref) return undefined;
+  const asset = catalog.assets.images[ref];
+  if (asset) return asset;
+  return /^(https?:\/\/|data:image\/|\/|assets\/)/.test(ref) ? ref : undefined;
 }
 
 function parseFile<T>(fileName: string, schema: z.ZodType<T>, data: unknown): T {
@@ -69,34 +109,89 @@ function parseFile<T>(fileName: string, schema: z.ZodType<T>, data: unknown): T 
 }
 
 function findReferenceProblems(catalog: Catalog): string[] {
-  const resourceIds = new Set(catalog.resources.map((r) => r.id));
   const buildingIds = new Set(catalog.buildings.map((b) => b.id));
   const assetKeys = new Set(Object.keys(catalog.assets.images));
 
   const missingAsset = (owner: string, key: string) =>
     assetKeys.has(key) ? [] : [`${owner}: asset "${key}" is not in assets.json`];
 
+  // Material ids in costs are not checked here: the master can add and remove
+  // materials in game, so an unknown one is reported as unavailable at build time.
   const buildingProblems = catalog.buildings.flatMap((b) => {
     const requirements = [...(b.requires ?? []), ...b.levels.flatMap((l) => l.requires ?? [])];
-    const costKeys = b.levels.flatMap((l) => Object.keys(l.cost));
     return [
       ...missingAsset(b.id, b.icon),
       ...missingAsset(b.id, b.sprite),
       ...requirements
         .filter((r) => !buildingIds.has(r.building))
         .map((r) => `${b.id}: requires unknown building "${r.building}"`),
-      ...costKeys
-        .filter((key) => !resourceIds.has(key))
-        .map((key) => `${b.id}: cost uses unknown resource "${key}"`),
     ];
   });
 
   return [
     ...duplicates('building', catalog.buildings),
-    ...duplicates('resource', catalog.resources),
-    ...duplicates('slot', catalog.slots.slots),
-    ...catalog.resources.flatMap((r) => missingAsset(r.id, r.icon)),
+    ...duplicates('currency', catalog.currencies),
+    ...duplicates('slot', catalog.layout.slots),
+    ...duplicates('world', catalog.worlds),
+    ...layoutProblems(catalog),
+    ...currencyProblems(catalog.currencies),
+    ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
+    ...seedProblems(catalog),
     ...buildingProblems,
+  ];
+}
+
+/** Every slot type a building accepts must exist, and no slot may sit on a reserved stretch. */
+function layoutProblems({ buildings, layout }: Catalog): string[] {
+  const slotTypes = new Set(layout.slots.map((s) => s.type));
+  const onReserved = (slot: SlotDef) =>
+    slot.type === 'outer' &&
+    layout.reserved.some((r) =>
+      angleRangesOverlap([slot.arc.startAngle, slot.arc.endAngle], [r.startAngle, r.endAngle]),
+    );
+  return [
+    ...buildings.flatMap((b) =>
+      b.allowedSlots
+        .filter((type) => !slotTypes.has(type))
+        .map((type) => `${b.id}: allowedSlots "${type}" has no slot in layout.json`),
+    ),
+    ...layout.slots
+      .filter(onReserved)
+      .map((s) => `layout.json: ${s.id} overlaps a reserved stretch of the wall`),
+  ];
+}
+
+function currencyProblems(currencies: readonly CurrencyDef[]): string[] {
+  const hasGold = currencies.some((c) => c.id === GOLD_CURRENCY_ID);
+  // Change is paid in smaller coins; a coin worth 1 bronze guarantees it is always exact.
+  const hasUnitCoin = currencies.some((c) => c.bronzeValue === 1);
+  return [
+    ...(hasGold ? [] : [`currencies.json: a currency with id "${GOLD_CURRENCY_ID}" is required`]),
+    ...(hasUnitCoin ? [] : ['currencies.json: one currency must have bronzeValue 1']),
+  ];
+}
+
+function seedProblems({ currencies, seed }: Catalog): string[] {
+  const currencyIds = new Set(currencies.map((c) => c.id));
+  const wallets = [seed.wallets.camp, ...seed.wallets.characters.map((c) => c.wallet)];
+  const materialCategories = new Set(seed.materials.categories.map((c) => c.id));
+  const researchCategories = new Set(seed.research.categories.map((c) => c.id));
+  return [
+    ...duplicates('character', seed.wallets.characters),
+    ...duplicates('material', seed.materials.items),
+    ...duplicates('material category', seed.materials.categories),
+    ...duplicates('research', seed.research.entries),
+    ...duplicates('research category', seed.research.categories),
+    ...wallets
+      .flatMap((wallet) => Object.keys(wallet))
+      .filter((id) => !currencyIds.has(id))
+      .map((id) => `wallets.json: unknown currency "${id}"`),
+    ...seed.materials.items
+      .filter((m) => !materialCategories.has(m.category))
+      .map((m) => `materials.json: ${m.id} uses unknown category "${m.category}"`),
+    ...seed.research.entries
+      .filter((r) => !researchCategories.has(r.category))
+      .map((r) => `research.json: ${r.id} uses unknown category "${r.category}"`),
   ];
 }
 
