@@ -170,7 +170,7 @@ art-sources/         originais das texturas (fora do git)
    }
    ```
 
-   - `allowedSlots`: `core` (centro), `middle` (os 8 quadrados em volta do disco azul) e/ou `outer` (os arcos junto à muralha).
+   - `allowedSlots`: `core` (centro), `middle` (os 8 arcos em volta do disco azul) e/ou `outer` (os arcos junto à muralha).
    - `requires` no nível de cima vale para **todos** os níveis; dentro de um nível, só para aquele nível.
    - `buildTime` é em dias de jogo (`0` = imediato). Pode haver quantos níveis você quiser.
    - O `cost` segue o [formato de custo](#formato-de-custo-nas-estruturas).
@@ -200,14 +200,14 @@ O tamanho com que cada estrutura aparece no mapa vem do próprio espaço no `lay
 
 A arte final tem um arquivo por **formato de espaço**, e não precisa ser cadastrada no `assets.json`: basta colocar o PNG em `public/assets/buildings/` com o nome certo (o `npm run dev` recarrega a página sozinho). Enquanto um formato não tiver arte, o jogo usa o placeholder quadrado.
 
-| Tipo de slot | Formato             | Arquivo                                   | Tamanho | Orientação da arte                                                                                  |
-| ------------ | ------------------- | ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
-| `outer`      | arco (setor anelar) | `public/assets/buildings/<id>.outer.png`  | 768×506 | desenhada como no espaço **Norte**: muralha no **topo**, frente voltada para baixo (centro da Axis) |
-| `middle`     | quadrado            | `public/assets/buildings/<id>.middle.png` | 256×256 | frente voltada para baixo (centro da Axis)                                                          |
-| `core`       | círculo             | `public/assets/buildings/<id>.core.png`   | 512×512 | —                                                                                                   |
+| Tipo de slot | Formato             | Arquivo                                   | Tamanho | Orientação da arte                                                                                    |
+| ------------ | ------------------- | ----------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `outer`      | arco (setor anelar) | `public/assets/buildings/<id>.outer.png`  | 768×506 | desenhada como no espaço **Norte**: muralha no **topo**, frente voltada para baixo (centro da Axis)   |
+| `middle`     | arco (setor anelar) | `public/assets/buildings/<id>.middle.png` | 768×311 | desenhada como no espaço **Norte**: borda externa no **topo**, frente voltada para baixo (disco azul) |
+| `core`       | círculo             | `public/assets/buildings/<id>.core.png`   | 512×512 | —                                                                                                     |
 
-- **Arcos:** a imagem é escalada para a caixa do arco (calculada a partir do `layout.json`), girada pelo ângulo do espaço e recortada pela forma exata do arco. O molde está em `docs/art-templates/outer_arc_mask.png` (máscara) e `outer_arc_guide.png` (guia).
-- **Quadrados:** a imagem gira para a frente apontar para o centro. Como os quadrados do mapa não giram, nos espaços diagonais a arte encolhe para caber (até 71%).
+- **Arcos:** a imagem é escalada para a caixa do arco (calculada a partir do `layout.json`), girada pelo ângulo do espaço e recortada pela forma exata do arco. Vale para a muralha (`outer`) e para o anel intermediário (`middle`), cada um com seu molde em `docs/art-templates/`: `outer_arc_mask.png`/`outer_arc_guide.png` (768×506) e `middle_arc_mask.png`/`middle_arc_guide.png` (768×311). Para regerar os moldes depois de mudar o layout: `python docs/art-pipeline/scripts/gerar_moldes.py src/data/layout.json docs/art-templates`.
+- **Quadrados (layout v3):** a imagem gira para a frente apontar para o centro. Como os quadrados do mapa não giram, nos espaços diagonais a arte encolhe para caber (até 71%).
 - **Círculo:** a imagem é recortada pelo círculo do Coração.
 - **Níveis (opcional):** `<id>.outer.lv2.png`, `<id>.outer.lv3.png`… O jogo usa a arte do nível atual ou, se não existir, a do nível mais próximo abaixo.
 - **Em construção:** aparece a arte do nível-alvo a 35% de opacidade, com um tracejado dourado de andaime e a barra de progresso.
@@ -254,7 +254,7 @@ As camadas estáticas são pintadas **uma vez** num canvas fora da tela e regist
 6. Sombra interna junto à muralha.
 7. Linhas douradas da muralha, do disco e do core.
 
-Por cima ficam objetos normais do Phaser: as fundações dos espaços (arcos e quadrados translúcidos que brilham no hover), os **portões** (desenhados por código com as cores de `entrances.prisms`, com sombra e um halo que pulsa devagar) e as construções.
+Por cima ficam objetos normais do Phaser: as fundações dos espaços (arcos translúcidos que brilham no hover), os **portões** (desenhados por código com as cores de `entrances.prisms`, com sombra e um halo que pulsa devagar) e as construções.
 
 - **Resolução:** 2048 px no computador, 1024 px em celulares e telas pequenas (`src/map/textures.ts`).
 - **Tempo:** cerca de 1,2 s em 2048 px e 0,45 s em 1024 px num PC; o tempo real aparece no console (`[map] …`) e na aba **Visual do mapa**.
@@ -270,11 +270,12 @@ Coordenadas e medidas são **normalizadas (0–1)** sobre um quadrado; ângulos 
 - `innerDisc.radius` e `core.radius`: o disco azul e o círculo central.
 - `slots`: cada espaço tem `id`, `type` e `x`/`y` (centro, onde a construção aparece).
   - `core` (`shape: "round"`, `size` = diâmetro).
-  - `middle` (`shape: "square"`, `size` = lado).
-  - `outer` (`shape: "arc"`, com `arc.innerRadius`, `arc.outerRadius`, `arc.startAngle` e `arc.endAngle`).
+  - `middle` (`shape: "arc"`, como o `outer`; o layout v3 usava `shape: "square"` com `size` = lado, e ainda é aceito).
+  - `outer` (`shape: "arc"`, com `arc.innerRadius`, `arc.outerRadius`, `arc.startAngle` e `arc.endAngle`; `startAngle` pode ser negativo para arcos que cruzam o Norte).
+- `rings`: parâmetros do planejador `docs/art-pipeline/axis_anel_intermediario.html` (em `rings.middle`: `count`, `shape`, `radius`, `depth`, `span` e `rotation`). É só documentação: o jogo usa os `slots`.
 - `reserved`: trechos da muralha onde nenhum espaço pode ficar. O trecho existe só nos dados: o mapa não desenha nada que o diferencie.
 
-Os ids dos espaços são a chave das construções no save: **não renumere** (por isso eles pulam de `outer_10` para `outer_13`). O `npm test` acusa id repetido, espaço sobre um trecho reservado, estrutura cujo `allowedSlots` não tem espaço no layout e prismas em número diferente dos portões.
+Os ids dos espaços são a chave das construções no save: **não renumere** (por isso eles pulam de `outer_10` para `outer_13`). Se um save tiver uma construção num espaço que saiu do layout (por exemplo, menos `mid_N`), ela é removida ao carregar e o log registra. O `npm test` acusa id repetido, espaço sobre um trecho reservado, estrutura cujo `allowedSlots` não tem espaço no layout e prismas em número diferente dos portões.
 
 ### Editar o `theme.json`
 
