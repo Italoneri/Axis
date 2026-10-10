@@ -57,10 +57,37 @@ export function parseSave(text: string, catalog: Catalog): ParseResult {
     return { ok: false, error: z.prettifyError(result.error), outdated: false };
   }
 
-  const problems = referenceProblems(result.data, catalog);
+  const state = dropMissingSlots(result.data, catalog);
+  const problems = referenceProblems(state, catalog);
   if (problems.length > 0) return { ok: false, error: problems.join('; '), outdated: false };
 
-  return { ok: true, state: result.data };
+  return { ok: true, state };
+}
+
+/** Buildings on slots the layout no longer has (say, fewer mid_N) are removed and logged. */
+function dropMissingSlots(state: GameState, catalog: Catalog): GameState {
+  const isKnown = ([slotId]: [string, unknown]) => findSlot(catalog, slotId) !== undefined;
+  const entries = Object.entries(state.slots);
+  const missing = entries.filter((entry) => !isKnown(entry));
+  if (missing.length === 0) return state;
+
+  console.warn(
+    '[save] dropping buildings on slots missing from the layout',
+    missing.map(([slotId]) => slotId),
+  );
+  return {
+    ...state,
+    slots: Object.fromEntries(entries.filter(isKnown)),
+    log: [
+      ...state.log,
+      ...missing.map(([, placed]) => ({
+        day: state.day,
+        kind: 'building_dropped' as const,
+        buildingId: placed.buildingId,
+        level: placed.level,
+      })),
+    ],
+  };
 }
 
 /** Loads the saved game, falling back to a fresh one when nothing usable is stored. */
@@ -97,12 +124,9 @@ function referenceProblems(state: GameState, catalog: Catalog): string[] {
   const wallets = [state.wallets.camp, ...Object.values(state.wallets.characters)];
 
   return [
-    ...Object.entries(state.slots).flatMap(([slotId, placed]) => [
-      ...(findSlot(catalog, slotId) ? [] : [`unknown slot "${slotId}"`]),
-      ...(findBuilding(catalog, placed.buildingId)
-        ? []
-        : [`unknown building "${placed.buildingId}"`]),
-    ]),
+    ...Object.values(state.slots)
+      .filter((placed) => !findBuilding(catalog, placed.buildingId))
+      .map((placed) => `unknown building "${placed.buildingId}"`),
     ...wallets
       .flatMap((wallet) => Object.keys(wallet))
       .filter((id) => !currencyIds.has(id))

@@ -184,6 +184,8 @@ const buildingEventSchema = z.object({
     'build_completed',
     'building_forced',
     'building_removed',
+    /** Dropped while loading a save: its slot no longer exists in the layout. */
+    'building_dropped',
   ]),
   buildingId: z.string(),
   level: z.number().int().positive(),

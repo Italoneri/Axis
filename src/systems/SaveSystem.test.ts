@@ -62,13 +62,6 @@ describe('parseSave', () => {
       error: /unknown building "castle"/,
     },
     {
-      name: 'unknown slot',
-      text: JSON.stringify(
-        makeState({ slots: { moon: { buildingId: 'forge', level: 1, status: 'done' } } }),
-      ),
-      error: /unknown slot "moon"/,
-    },
-    {
       name: 'unknown currency',
       text: JSON.stringify(
         makeState({ wallets: { camp: { ruby: 1 }, characters: { thorin: {} } } }),
@@ -89,6 +82,24 @@ describe('parseSave', () => {
     const result = parseSave(text, testCatalog);
     expect(result).toMatchObject({ ok: false, outdated: false });
     if (!result.ok) expect(result.error).toMatch(error);
+  });
+
+  it('drops a building whose slot left the layout, logging it, and keeps the rest', () => {
+    const kept = { buildingId: 'forge', level: 1, status: 'done' } as const;
+    const save = makeState({
+      day: 4,
+      slots: { outer_n: kept, mid_9: { buildingId: 'forge', level: 2, status: 'done' } },
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(parseSave(JSON.stringify(save), testCatalog)).toEqual({
+      ok: true,
+      state: {
+        ...save,
+        slots: { outer_n: kept },
+        log: [{ day: 4, kind: 'building_dropped', buildingId: 'forge', level: 2 }],
+      },
+    });
+    vi.restoreAllMocks();
   });
 
   // Hand-edited or imported saves: a bad number must never reach the top bar.

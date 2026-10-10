@@ -311,6 +311,7 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'build_completed':
     case 'building_forced':
     case 'building_removed':
+    case 'building_dropped':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
       return `Mestre ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
@@ -359,6 +360,7 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_completed: `Concluída: ${what}`,
     building_forced: `Mestre definiu ${what}`,
     building_removed: `Mestre removeu ${what}`,
+    building_dropped: `${what} removida: o espaço não existe mais no mapa`,
   };
   return actions[entry.kind] + paid;
 }
