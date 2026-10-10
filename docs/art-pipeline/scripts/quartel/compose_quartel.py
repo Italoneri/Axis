@@ -461,6 +461,8 @@ def compose(level):
         paste(make_dummy(3), r_y, px2deg(220, r_y), 42)
 
     # recorte final pela máscara + redução
+    clamp = ((R >= ri) & (R <= ro) & (np.abs(A) <= half)).astype(np.float32)
+    out.putalpha(Image.fromarray((np.asarray(out.split()[3], np.float32) * clamp).astype(np.uint8)))
     out = out.resize((W0, H0), Image.LANCZOS)
     m = Image.open(f'{PIPE}/templates/outer_arc_mask.png').convert('L')
     out.putalpha(Image.fromarray(np.minimum(np.asarray(out.split()[3]), np.asarray(m))))
