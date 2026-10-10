@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 const normalized = z.number().min(0).max(1);
 const degrees = z.number().min(0).max(360);
-/** Arc edges may start before North (mid_1 spans -16.5° to 16.5°); geometry normalizes them. */
+/** Arcs that cross North start below 0° (e.g. mid_1); geometry normalizes them. */
 const signedDegrees = z.number().min(-360).max(360);
 const byte = z.number().int().min(0).max(255);
 const rgbSchema = z.tuple([byte, byte, byte]);

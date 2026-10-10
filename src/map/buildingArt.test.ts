@@ -8,6 +8,7 @@ import {
   withBuildingArt,
 } from './buildingArt';
 import { normalizeAngle, pointToPolar, polarToPoint } from './geometry';
+import { gameData } from '../data/gameData';
 import type { BuildingFx } from '../model/schema';
 import type { SlotDef } from './layout';
 
@@ -23,22 +24,10 @@ function outerSlot(startAngle: number, endAngle: number): SlotDef {
   };
 }
 
-/** A middle arc from layout v4: r 0.22–0.274, 33° wide. */
-function middleArcSlot(angle: number): SlotDef {
-  return {
-    id: `mid_${angle}`,
-    type: 'middle',
-    shape: 'arc',
-    ...polarToPoint({ radius: 0.247, angle }),
-    angle,
-    arc: {
-      innerRadius: 0.22,
-      outerRadius: 0.274,
-      startAngle: angle - 16.5,
-      endAngle: angle + 16.5,
-    },
-  };
-}
+/** The middle arcs shipped in layout.json, the source of truth for their geometry. */
+const middleArcs = gameData.layout.slots.flatMap((s) =>
+  s.type === 'middle' && s.shape === 'arc' ? [s] : [],
+);
 
 /** Compares angles across the 0°/360° seam. */
 function expectAngle(actual: number, expected: number): void {
@@ -105,25 +94,33 @@ describe('outer art placement', () => {
 });
 
 describe('middle arc art placement', () => {
-  it('matches the 768×311 middle arc template proportions', () => {
-    const { width, height } = artPlacement(middleArcSlot(0));
-    expect(width / height).toBeCloseTo(768 / 311, 1);
+  it('has middle arcs to place', () => {
+    expect(middleArcs).toHaveLength(8);
   });
 
-  it.each([0, 45, 180, 315])('puts the outer edge on top and the front inwards at %i°', (angle) => {
-    const placement = artPlacement(middleArcSlot(angle));
+  // docs/art-templates/middle_arc_*.png are 768×311, generated from the same layout.
+  it.each(middleArcs)('matches the 768×311 template proportions on $id', (slot) => {
+    const { width, height } = artPlacement(slot);
+    expect(768 * (height / width)).toBeCloseTo(311, -0.5);
+  });
+
+  it.each(middleArcs)('puts the outer edge on top and the front inwards on $id', (slot) => {
+    const { innerRadius, outerRadius, startAngle, endAngle } = slot.arc;
+    const span = normalizeAngle(endAngle - startAngle);
+    const middle = normalizeAngle(startAngle + span / 2);
+    const placement = artPlacement(slot);
     const polarOf = (x: number, y: number) => pointToPolar(artPointToMap(placement, { x, y }));
 
     const outerEdge = polarOf(0.5, 0);
-    expect(outerEdge.radius).toBeCloseTo(0.274);
-    expectAngle(outerEdge.angle, angle);
+    expect(outerEdge.radius).toBeCloseTo(outerRadius);
+    expectAngle(outerEdge.angle, middle);
 
-    const half = (16.5 * Math.PI) / 180;
-    const inset = 0.5 - (0.22 * Math.sin(half)) / placement.width;
+    const half = ((span / 2) * Math.PI) / 180;
+    const inset = 0.5 - (innerRadius * Math.sin(half)) / placement.width;
     const frontLeft = polarOf(inset, 1);
-    expect(frontLeft.radius).toBeCloseTo(0.22);
-    expectAngle(frontLeft.angle, angle - 16.5);
-    expect(placement.rotation).toBeCloseTo(normalizeAngle(angle));
+    expect(frontLeft.radius).toBeCloseTo(innerRadius);
+    expectAngle(frontLeft.angle, startAngle);
+    expectAngle(placement.rotation, middle);
   });
 });
 

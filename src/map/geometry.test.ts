@@ -14,6 +14,7 @@ import {
   toNormalized,
   toPixels,
 } from './geometry';
+import { gameData } from '../data/gameData';
 import type { SlotDef } from './layout';
 
 const arc = { innerRadius: 0.358, outerRadius: 0.44, startAngle: 4.74, endAngle: 21.78 };
@@ -27,16 +28,10 @@ const middle: SlotDef = {
   angle: 0,
   size: 0.054,
 };
-/** mid_1 of layout v4: an arc around North, starting below 0°. */
-const middleArc: SlotDef = {
-  id: 'mid_1',
-  type: 'middle',
-  shape: 'arc',
-  x: 0.5,
-  y: 0.253,
-  angle: 0,
-  arc: { innerRadius: 0.22, outerRadius: 0.274, startAngle: -16.5, endAngle: 16.5 },
-};
+/** The real mid_1 from layout.json: an arc around North whose start is below 0°. */
+const middleArc = shippedMiddleArc('mid_1');
+const { innerRadius, outerRadius, startAngle, endAngle } = middleArc.arc;
+const midRadius = (innerRadius + outerRadius) / 2;
 const core: SlotDef = {
   id: 'c',
   type: 'core',
@@ -137,13 +132,37 @@ describe('hit tests', () => {
     { slot: middle, point: { x: 0.53, y: 0.252 }, inside: false },
     { slot: outer, point: polarToPoint({ radius: 0.36, angle: 5 }), inside: true },
     { slot: outer, point: polarToPoint({ radius: 0.36, angle: 4 }), inside: false },
-    { slot: middleArc, point: polarToPoint({ radius: 0.25, angle: 0 }), inside: true },
-    { slot: middleArc, point: polarToPoint({ radius: 0.25, angle: 350 }), inside: true },
-    { slot: middleArc, point: polarToPoint({ radius: 0.25, angle: 16 }), inside: true },
-    { slot: middleArc, point: polarToPoint({ radius: 0.25, angle: 17 }), inside: false },
-    { slot: middleArc, point: polarToPoint({ radius: 0.25, angle: 343 }), inside: false },
-    { slot: middleArc, point: polarToPoint({ radius: 0.215, angle: 0 }), inside: false },
-    { slot: middleArc, point: polarToPoint({ radius: 0.28, angle: 0 }), inside: false },
+    { slot: middleArc, point: polarToPoint({ radius: midRadius, angle: 0 }), inside: true },
+    {
+      slot: middleArc,
+      point: polarToPoint({ radius: midRadius, angle: startAngle + 1 }),
+      inside: true,
+    },
+    {
+      slot: middleArc,
+      point: polarToPoint({ radius: midRadius, angle: endAngle - 1 }),
+      inside: true,
+    },
+    {
+      slot: middleArc,
+      point: polarToPoint({ radius: midRadius, angle: startAngle - 1 }),
+      inside: false,
+    },
+    {
+      slot: middleArc,
+      point: polarToPoint({ radius: midRadius, angle: endAngle + 1 }),
+      inside: false,
+    },
+    {
+      slot: middleArc,
+      point: polarToPoint({ radius: innerRadius - 0.005, angle: 0 }),
+      inside: false,
+    },
+    {
+      slot: middleArc,
+      point: polarToPoint({ radius: outerRadius + 0.005, angle: 0 }),
+      inside: false,
+    },
   ])(
     'tells whether $point is inside the $slot.type $slot.shape slot',
     ({ slot, point, inside }) => {
@@ -166,8 +185,8 @@ describe('slot footprint', () => {
   it('treats a middle arc like an outer one, across North', () => {
     const bounds = slotBounds(middleArc);
     expect(bounds.left + bounds.width / 2).toBeCloseTo(0.5);
-    expect(bounds.top).toBeCloseTo(0.5 - 0.274);
-    expect(slotSpriteSize(middleArc)).toBeLessThan(0.274 - 0.22);
+    expect(bounds.top).toBeCloseTo(0.5 - outerRadius);
+    expect(slotSpriteSize(middleArc)).toBeLessThan(outerRadius - innerRadius);
   });
 
   it('sizes core and middle sprites from the slot size', () => {
@@ -175,3 +194,9 @@ describe('slot footprint', () => {
     expect(slotSpriteSize(middle)).toBeLessThan(middle.size);
   });
 });
+
+function shippedMiddleArc(id: string) {
+  const slot = gameData.layout.slots.find((s) => s.id === id);
+  if (slot?.type !== 'middle' || slot.shape !== 'arc') throw new Error(`${id} is not a middle arc`);
+  return slot;
+}
