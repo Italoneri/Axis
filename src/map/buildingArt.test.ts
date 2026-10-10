@@ -143,11 +143,13 @@ describe('placeFx', () => {
     { type: 'smoke', x: 0.5, y: 0 },
     { type: 'glow', x: 0.5, y: 0.5, color: '#ff7a1a', radius: 0.08 },
     { type: 'sparks', x: 0.5, y: 1, minLevel: 2 },
+    { type: 'glow', x: 0.2, y: 0.2, color: '#ffb347', radius: 0.05, minLevel: 2, maxLevel: 2 },
   ];
 
   it.each([
     { level: 1, types: ['smoke', 'glow'] },
-    { level: 2, types: ['smoke', 'glow', 'sparks'] },
+    { level: 2, types: ['smoke', 'glow', 'sparks', 'glow'] },
+    { level: 3, types: ['smoke', 'glow', 'sparks'] },
   ])('keeps the effects allowed at level $level', ({ level, types }) => {
     const placed = placeFx(artPlacement(outerSlot(4.74, 21.78)), effects, level);
     expect(placed.map(({ fx }) => fx.type)).toEqual(types);

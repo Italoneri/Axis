@@ -134,6 +134,6 @@ export function placeFx(
   level: number,
 ): PlacedFx[] {
   return effects
-    .filter((fx) => level >= (fx.minLevel ?? 1))
+    .filter((fx) => level >= (fx.minLevel ?? 1) && level <= (fx.maxLevel ?? Infinity))
     .map((fx) => ({ fx, point: artPointToMap(placement, fx) }));
 }

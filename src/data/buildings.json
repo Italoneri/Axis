@@ -287,9 +287,18 @@
       { "type": "smoke", "x": 0.665, "y": 0.481 },
       { "type": "glow", "x": 0.429, "y": 0.472, "color": "#7fe0d6", "radius": 0.12 },
       { "type": "smoke", "x": 0.806, "y": 0.541 },
-      { "type": "glow", "x": 0.083, "y": 0.179, "color": "#ffb347", "radius": 0.05 },
-      { "type": "glow", "x": 0.917, "y": 0.179, "color": "#ffb347", "radius": 0.05 },
-      { "type": "glow", "x": 0.659, "y": 0.303, "color": "#ffb347", "radius": 0.05 }
+      { "type": "glow", "x": 0.083, "y": 0.179, "color": "#ffb347", "radius": 0.05, "minLevel": 2 },
+      { "type": "glow", "x": 0.917, "y": 0.179, "color": "#ffb347", "radius": 0.05, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.659,
+        "y": 0.303,
+        "color": "#ffb347",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "glow", "x": 0.833, "y": 0.296, "color": "#ffb347", "radius": 0.06, "minLevel": 3 }
     ],
     "levels": [
       {

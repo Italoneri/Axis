@@ -39,6 +39,8 @@ const fxBase = {
   y: artCoordinate,
   /** The effect only shows from this level on. */
   minLevel: z.number().int().positive().optional(),
+  /** ...and up to this level (for details later art replaces). */
+  maxLevel: z.number().int().positive().optional(),
 };
 
 /** Animated effects drawn over finished building art (never baked into the PNG). */
