@@ -37,6 +37,8 @@
     "icon.tavern": "assets/icons/tavern.png",
     "building.tavern": "assets/buildings/tavern.png",
     "icon.training_hall": "assets/icons/training_hall.png",
-    "building.training_hall": "assets/buildings/training_hall.png"
+    "building.training_hall": "assets/buildings/training_hall.png",
+    "icon.mage_tower": "assets/icons/mage_tower.png",
+    "building.mage_tower": "assets/buildings/mage_tower.png"
   }
 }

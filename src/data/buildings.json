@@ -455,5 +455,188 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "mage_tower",
+    "name": "Torre dos Magos",
+    "description": "Um círculo de aprendiz a céu aberto que cresce até virar a Torre Arcana da Axis.",
+    "icon": "icon.mage_tower",
+    "sprite": "building.mage_tower",
+    "allowedSlots": ["outer"],
+    "fx": [
+      {
+        "type": "glow",
+        "x": 0.565,
+        "y": 0.414,
+        "color": "#ffd27a",
+        "radius": 0.027,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.5, "y": 0.314, "color": "#ffd27a", "radius": 0.027, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.435,
+        "y": 0.414,
+        "color": "#ffd27a",
+        "radius": 0.027,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.5, "y": 0.512, "color": "#ffd27a", "radius": 0.027, "maxLevel": 1 },
+      { "type": "glow", "x": 0.838, "y": 0.16, "color": "#b48cff", "radius": 0.035, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.791,
+        "y": 0.615,
+        "color": "#b48cff",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.261,
+        "y": 0.608,
+        "color": "#b48cff",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.44, "y": 0.865, "color": "#ffd27a", "radius": 0.037, "maxLevel": 1 },
+      { "type": "smoke", "x": 0.825, "y": 0.585, "color": "#9cffc0", "minLevel": 2, "maxLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.471,
+        "y": 0.075,
+        "color": "#ffd27a",
+        "radius": 0.027,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.471,
+        "color": "#8a6bff",
+        "radius": 0.085,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.254,
+        "y": 0.323,
+        "color": "#ffd27a",
+        "radius": 0.035,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.796,
+        "y": 0.329,
+        "color": "#ffd27a",
+        "radius": 0.035,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.823,
+        "y": 0.614,
+        "color": "#7dffa0",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.294,
+        "y": 0.657,
+        "color": "#b48cff",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.706,
+        "y": 0.657,
+        "color": "#b48cff",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.432,
+        "y": 0.866,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.568,
+        "y": 0.866,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "smoke", "x": 0.813, "y": 0.525, "color": "#9cffc0", "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.413, "color": "#9b6bff", "radius": 0.12, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.413, "color": "#e0ccff", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.085, "color": "#7f8cff", "radius": 0.045, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.222,
+        "y": 0.526,
+        "color": "#ffd27a",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.811, "y": 0.554, "color": "#7dffa0", "radius": 0.04, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.331,
+        "y": 0.677,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.669,
+        "y": 0.677,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#9b6bff", "radius": 0.06, "minLevel": 3 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#9b6bff", "radius": 0.06, "minLevel": 3 },
+      { "type": "glow", "x": 0.236, "y": 0.883, "color": "#b48cff", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.764, "y": 0.883, "color": "#b48cff", "radius": 0.04, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.413, "color": "#c9a8ff", "minLevel": 3 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "color": "#b48cff", "minLevel": 3 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "color": "#b48cff", "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 180, "materials": { "wood": 30, "iron": 20, "aetherium": 15 } },
+        "buildTime": 3,
+        "effect": "Uma vez por sessão, um conjurador que descansar na Axis recupera um espaço de magia de 1º nível."
+      },
+      {
+        "cost": { "coins": 420, "materials": { "wood": 60, "iron": 40, "aetherium": 45 } },
+        "buildTime": 5,
+        "effect": "Magias conjuradas como ritual na Axis não levam os 10 minutos extras.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 950, "materials": { "wood": 100, "iron": 70, "aetherium": 110 } },
+        "buildTime": 10,
+        "effect": "Uma vez por arco, o grupo pode voltar para a Axis de qualquer lugar por um Círculo de Teletransporte.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]
