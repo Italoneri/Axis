@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "note": "Coordenadas e medidas normalizadas (0–1) sobre um quadrado; ângulo 0 = Norte, sentido horário. Linhas de energia no chão são decorativas e não fazem parte do layout.",
   "wall": {
     "outerRadius": 0.476,
@@ -9,51 +9,108 @@
     "count": 8,
     "rotation": 0,
     "width": 0.046,
-    "angles": [0, 45, 90, 135, 180, 225, 270, 315],
+    "angles": [
+      0,
+      45,
+      90,
+      135,
+      180,
+      225,
+      270,
+      315
+    ],
     "prisms": [
       {
         "id": "roxo",
         "name": "Roxo",
-        "rgb": [128, 52, 200]
+        "rgb": [
+          128,
+          52,
+          200
+        ]
       },
       {
         "id": "verde",
         "name": "Verde",
-        "rgb": [40, 170, 80]
+        "rgb": [
+          40,
+          170,
+          80
+        ]
       },
       {
         "id": "branco",
         "name": "Branco",
-        "rgb": [225, 230, 240],
-        "glow": [220, 235, 255],
-        "edge": [255, 255, 255]
+        "rgb": [
+          225,
+          230,
+          240
+        ],
+        "glow": [
+          220,
+          235,
+          255
+        ],
+        "edge": [
+          255,
+          255,
+          255
+        ]
       },
       {
         "id": "laranja",
         "name": "Laranja",
-        "rgb": [240, 120, 30]
+        "rgb": [
+          240,
+          120,
+          30
+        ]
       },
       {
         "id": "azul",
         "name": "Azul",
-        "rgb": [40, 90, 220]
+        "rgb": [
+          40,
+          90,
+          220
+        ]
       },
       {
         "id": "preto",
         "name": "Preto",
-        "rgb": [30, 26, 36],
-        "glow": [120, 90, 160],
-        "edge": [170, 150, 200]
+        "rgb": [
+          30,
+          26,
+          36
+        ],
+        "glow": [
+          120,
+          90,
+          160
+        ],
+        "edge": [
+          170,
+          150,
+          200
+        ]
       },
       {
         "id": "vermelho",
         "name": "Vermelho",
-        "rgb": [205, 35, 40]
+        "rgb": [
+          205,
+          35,
+          40
+        ]
       },
       {
         "id": "amarelo",
         "name": "Amarelo",
-        "rgb": [245, 205, 40]
+        "rgb": [
+          245,
+          205,
+          40
+        ]
       }
     ],
     "note": "Prismas na ordem dos ângulos: a partir do Norte, sentido horário."
@@ -74,10 +131,11 @@
     },
     "middle": {
       "count": 8,
-      "radius": 0.248,
-      "slotSize": 0.054,
-      "shifted": false,
-      "shape": "square"
+      "shape": "arc",
+      "radius": 0.247,
+      "depth": 0.054,
+      "span": 33,
+      "rotation": 0
     },
     "inner": {
       "count": 0,
@@ -101,74 +159,114 @@
     {
       "id": "mid_1",
       "type": "middle",
-      "shape": "square",
       "x": 0.5,
-      "y": 0.252,
+      "y": 0.253,
       "angle": 0,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": -16.5,
+        "endAngle": 16.5
+      }
     },
     {
       "id": "mid_2",
       "type": "middle",
-      "shape": "square",
-      "x": 0.6754,
-      "y": 0.3246,
+      "x": 0.6747,
+      "y": 0.3253,
       "angle": 45,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 28.5,
+        "endAngle": 61.5
+      }
     },
     {
       "id": "mid_3",
       "type": "middle",
-      "shape": "square",
-      "x": 0.748,
+      "x": 0.747,
       "y": 0.5,
       "angle": 90,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 73.5,
+        "endAngle": 106.5
+      }
     },
     {
       "id": "mid_4",
       "type": "middle",
-      "shape": "square",
-      "x": 0.6754,
-      "y": 0.6754,
+      "x": 0.6747,
+      "y": 0.6747,
       "angle": 135,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 118.5,
+        "endAngle": 151.5
+      }
     },
     {
       "id": "mid_5",
       "type": "middle",
-      "shape": "square",
       "x": 0.5,
-      "y": 0.748,
+      "y": 0.747,
       "angle": 180,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 163.5,
+        "endAngle": 196.5
+      }
     },
     {
       "id": "mid_6",
       "type": "middle",
-      "shape": "square",
-      "x": 0.3246,
-      "y": 0.6754,
+      "x": 0.3253,
+      "y": 0.6747,
       "angle": 225,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 208.5,
+        "endAngle": 241.5
+      }
     },
     {
       "id": "mid_7",
       "type": "middle",
-      "shape": "square",
-      "x": 0.252,
+      "x": 0.253,
       "y": 0.5,
       "angle": 270,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 253.5,
+        "endAngle": 286.5
+      }
     },
     {
       "id": "mid_8",
       "type": "middle",
-      "shape": "square",
-      "x": 0.3246,
-      "y": 0.3246,
+      "x": 0.3253,
+      "y": 0.3253,
       "angle": 315,
-      "size": 0.054
+      "shape": "arc",
+      "arc": {
+        "innerRadius": 0.22,
+        "outerRadius": 0.274,
+        "startAngle": 298.5,
+        "endAngle": 331.5
+      }
     },
     {
       "id": "outer_1",

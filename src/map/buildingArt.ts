@@ -8,8 +8,8 @@ export const BUILDING_ART_DIR = 'assets/buildings';
 /**
  * Where a building's art goes on the map, in normalized units. The art is a
  * `width` × `height` box centered on `center`, turned clockwise by `rotation` degrees.
- * Art is always drawn as if the slot sat at North: outer art has the wall on top,
- * middle art faces down (towards the center of the Axis).
+ * Art is always drawn as if the slot sat at North: arc art has its outer edge on top,
+ * and every art faces down (towards the center of the Axis).
  */
 export interface ArtPlacement {
   readonly center: Point;
@@ -69,13 +69,13 @@ export function availableArtFiles(images: Readonly<Record<string, string>>): Rea
 }
 
 export function artPlacement(slot: SlotDef): ArtPlacement {
-  switch (slot.type) {
-    case 'core':
+  switch (slot.shape) {
+    case 'round':
       return { center: slot, width: slot.size, height: slot.size, rotation: 0 };
-    case 'middle':
-      return middlePlacement(slot.size, slot);
-    case 'outer':
-      return outerPlacement(slot.arc);
+    case 'square':
+      return squarePlacement(slot.size, slot);
+    case 'arc':
+      return arcPlacement(slot.arc);
   }
 }
 
@@ -97,7 +97,7 @@ export function artPointToMap(
  * The squares stay axis-aligned on the map, so art turned to face the center
  * shrinks just enough to stay inside them (to 71% on the diagonals).
  */
-function middlePlacement(size: number, slot: SlotDef): ArtPlacement {
+function squarePlacement(size: number, slot: SlotDef): ArtPlacement {
   const a = toRadians(slot.angle);
   const side = size / (Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)));
   return { center: slot, width: side, height: side, rotation: slot.angle };
@@ -107,7 +107,7 @@ function middlePlacement(size: number, slot: SlotDef): ArtPlacement {
  * The box that wraps the annular sector when it sits at North: as wide as the
  * outer edge's chord, from the top of the outer edge down to the inner corners.
  */
-function outerPlacement(arc: ArcShape): ArtPlacement {
+function arcPlacement(arc: ArcShape): ArtPlacement {
   const span = normalizeAngle(arc.endAngle - arc.startAngle);
   const half = toRadians(span / 2);
   const width = 2 * arc.outerRadius * Math.sin(half);
