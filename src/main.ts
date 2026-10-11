@@ -9,7 +9,7 @@ import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
 import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore } from './store';
-import { InfoDrawer } from './ui/InfoDrawer';
+import { InfoDrawer, type DrawerExtras } from './ui/InfoDrawer';
 import { commandContext } from './ui/currentActor';
 import { askMasterPassword } from './ui/MasterLogin';
 import { parseCredits, showCredits } from './ui/Credits';
@@ -50,6 +50,7 @@ interface Mode {
   repository: GameRepository;
   session: MasterAccess;
   contextFor: (command: GameCommand) => CommandContext;
+  drawerExtras: (store: GameStore) => DrawerExtras;
 }
 
 /**
@@ -66,6 +67,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
       repository: new LocalRepository(window.localStorage, catalog, window),
       session,
       contextFor: (command) => commandContext(session, command),
+      drawerExtras: () => ({}),
     };
   }
   const { bootOnline } = await import('./online/onlineBoot');
@@ -76,6 +78,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
     repository: game.repository,
     session: game.access,
     contextFor: game.contextFor,
+    drawerExtras: (store) => game.drawerExtras(store, notify),
   };
 }
 
@@ -118,6 +121,7 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview },
     act,
+    mode.drawerExtras(store),
   );
   const panel = new SlotPanel(requireElement('panel'), store, session);
 

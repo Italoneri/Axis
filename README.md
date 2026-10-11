@@ -144,6 +144,8 @@ Como as mudanças viajam:
 3. **Mesa:** quem ainda não participa de nenhuma mesa pode criar uma (vira o mestre), começando do seed ou de um save exportado. Com várias mesas, `?game=<id>` escolhe qual abrir.
 4. **Papel:** as ferramentas de mestre aparecem para quem tem `role = master` em `players`. No online, "Sair da conta" substitui "Sair do modo mestre". Quem decide de fato é o servidor.
 
+**Convites (mestre):** na aba **Mestre** da gaveta, o cartão **Convites** gera um link por personagem (botão **Copiar link**) e lista os convites pendentes, que podem ser cancelados.
+
 O código online (e o `supabase-js`) só é baixado quando as variáveis do Supabase existem; offline, o jogo carrega como antes.
 
 ### Regras no servidor (Edge Function)

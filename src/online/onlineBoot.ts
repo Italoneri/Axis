@@ -4,7 +4,10 @@ import type { CommandContext } from '../commands/schema';
 import { t } from '../i18n/pt-BR';
 import type { Catalog } from '../model/catalog';
 import { parseSave } from '../systems/SaveSystem';
+import type { GameStore } from '../store';
+import type { DrawerExtras } from '../ui/InfoDrawer';
 import type { MasterAccess } from '../ui/MasterSession';
+import { InvitesPanel } from './InvitesPanel';
 import { showCreateGame, showLogin, showMessage } from './screens';
 import type { OnlineConfig } from './config';
 import { createSupabase, supabaseBackend } from './supabase';
@@ -25,6 +28,8 @@ export interface OnlineGame {
   client: SupabaseClient;
   /** What this device assumes for the optimistic update; the server decides from the login. */
   contextFor: () => CommandContext;
+  /** Online panels of the drawer, built once the store exists. */
+  drawerExtras: (store: GameStore, notify: Notify) => DrawerExtras;
 }
 
 type Notify = (message: string, tone?: 'error') => void;
@@ -71,6 +76,12 @@ export async function bootOnline(
     backend,
     client,
     contextFor: () => onlineContext(membership),
+    drawerExtras: (store, notify) => ({
+      invites:
+        membership.role === 'master'
+          ? new InvitesPanel({ client, backend, gameId: membership.gameId, store, notify })
+          : undefined,
+    }),
   };
 }
 

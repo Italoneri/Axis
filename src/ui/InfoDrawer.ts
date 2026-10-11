@@ -12,6 +12,18 @@ import type { Act } from './widgets';
 
 export type DrawerTab = 'bonuses' | 'log' | 'master' | 'map';
 
+/** A panel that loads its own data (online only); refreshed each time its tab opens. */
+export interface DrawerPanel {
+  readonly element: HTMLElement;
+  refresh(): Promise<void>;
+}
+
+/** Online additions: invites in the master tab, the full history in the log tab. */
+export interface DrawerExtras {
+  invites?: DrawerPanel | undefined;
+  history?: DrawerPanel | undefined;
+}
+
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
 
 /** Left drawer, visible to everyone: active bonuses, event log and (for the master) tools. */
@@ -25,6 +37,7 @@ export class InfoDrawer {
     private readonly session: MasterAccess,
     private readonly map: { liveMap: LiveMap; preview: BuildingPreview },
     private readonly act: Act,
+    private readonly extras: DrawerExtras = {},
   ) {
     store.subscribe(() => this.render());
     session.subscribe((isActive) => {
@@ -36,6 +49,9 @@ export class InfoDrawer {
   open(tab: DrawerTab): void {
     this.tab = tab;
     this.render();
+    this.panelOf(tab)
+      ?.refresh()
+      .catch((error: unknown) => console.error(`[drawer] refresh ${tab}`, error));
   }
 
   toggle(): void {
@@ -107,12 +123,20 @@ export class InfoDrawer {
   }
 
   private renderTab(tab: DrawerTab): HTMLElement[] {
-    if (tab === 'master')
-      return renderMasterTools(this.store, { session: this.session, act: this.act });
+    if (tab === 'master') {
+      const tools = renderMasterTools(this.store, { session: this.session, act: this.act });
+      return this.extras.invites ? [...tools, this.extras.invites.element] : tools;
+    }
     if (tab === 'map')
       return renderMapVisual(this.map.liveMap, this.store.catalog, this.map.preview);
     if (tab === 'log') return this.renderLog();
     return this.renderBonuses();
+  }
+
+  private panelOf(tab: DrawerTab): DrawerPanel | undefined {
+    if (tab === 'master') return this.extras.invites;
+    if (tab === 'log') return this.extras.history;
+    return undefined;
   }
 
   private renderBonuses(): HTMLElement[] {

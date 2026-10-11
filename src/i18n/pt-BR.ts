@@ -126,6 +126,32 @@ export const t = {
     syncFailed: 'Sem conexão com a mesa. A ação fica pendente e será enviada na próxima tentativa.',
   },
 
+  invites: {
+    title: 'Convites',
+    hint: 'Cada link liga um jogador a um personagem. Vale uma vez e expira em 7 dias.',
+    create: 'Gerar convite',
+    copy: 'Copiar link',
+    copied: 'Link copiado.',
+    copyFailed: 'Não foi possível copiar. Selecione o link e copie à mão.',
+    newLink: (name: string) => `Link de convite para ${name}:`,
+    pending: 'Pendentes',
+    noPending: 'Nenhum convite pendente.',
+    expires: (date: string) => `expira em ${date}`,
+    revoke: 'Cancelar',
+    revoked: 'Convite cancelado.',
+    failed: 'Não foi possível concluir. Tente de novo.',
+    loadFailed: 'Não foi possível carregar os convites.',
+  },
+
+  history: {
+    title: 'Histórico completo',
+    hint: 'Tudo o que aconteceu na mesa, do mais recente ao mais antigo.',
+    empty: 'Nenhuma ação registrada ainda.',
+    more: 'Carregar mais',
+    loadFailed: 'Não foi possível carregar o histórico.',
+    restored: 'Mestre restaurou um backup do jogo',
+  },
+
   mapVisual: {
     hint: 'Cada ajuste regenera o mapa na hora. As mudanças valem só nesta aba do navegador: exporte o theme.json e coloque em src/data para salvar.',
     edited: 'Tema alterado (ainda não salvo no projeto).',
