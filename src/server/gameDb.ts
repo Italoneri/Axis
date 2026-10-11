@@ -26,6 +26,28 @@ export interface GameDb {
   loadForMember(gameId: string, userId: string): Promise<MemberGame | null>;
   /** False when the stored revision is no longer `expectedRevision`. */
   commitUpdate(update: GameUpdate): Promise<boolean>;
+  /** Creates the game with `ownerId` as its master; returns the game id. */
+  createGame(name: string, state: unknown, ownerId: string): Promise<string>;
+  createInvite(invite: NewInvite): Promise<string>;
+  acceptInvite(tokenHash: string, userId: string): Promise<InviteAcceptance>;
+  /** False when the invite does not exist in this game or is no longer pending. */
+  revokeInvite(gameId: string, inviteId: string): Promise<boolean>;
+}
+
+export interface NewInvite {
+  gameId: string;
+  characterId: string;
+  tokenHash: string;
+  createdBy: string;
+  expiresAt: Date;
+}
+
+export const inviteStatuses = ['ok', 'invalid', 'expired', 'used', 'revoked', 'is_master'] as const;
+export type InviteStatus = (typeof inviteStatuses)[number];
+
+export interface InviteAcceptance {
+  status: InviteStatus;
+  gameId: string | null;
 }
 
 /** What the function needs from supabase-js: `rpc` only, so the bundle does not ship the client. */
@@ -77,5 +99,31 @@ export function rpcGameDb(client: RpcClient): GameDb {
         },
         z.boolean(),
       ),
+    createGame: (name, state, ownerId) =>
+      call('create_game', { game_name: name, initial_state: state, owner: ownerId }, z.uuid()),
+    createInvite: (invite) =>
+      call(
+        'create_invite',
+        {
+          target_game: invite.gameId,
+          invited_character: invite.characterId,
+          invite_token_hash: invite.tokenHash,
+          creator: invite.createdBy,
+          expires: invite.expiresAt.toISOString(),
+        },
+        z.uuid(),
+      ),
+    acceptInvite: (tokenHash, userId) =>
+      call(
+        'accept_invite',
+        { invite_token_hash: tokenHash, accepting_user: userId },
+        acceptanceSchema,
+      ),
+    revokeInvite: (gameId, inviteId) =>
+      call('revoke_invite', { target_game: gameId, invite: inviteId }, z.boolean()),
   };
 }
+
+const acceptanceSchema = z
+  .object({ status: z.enum(inviteStatuses), game_id: z.uuid().nullable() })
+  .transform(({ status, game_id }) => ({ status, gameId: game_id }));

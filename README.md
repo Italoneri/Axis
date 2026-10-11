@@ -146,7 +146,10 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 
 - **JWT:** sem token ou com token inválido → **401**. O papel e o personagem vêm da tabela `players`, nunca do corpo da requisição.
 - **`command`:** `{ gameId, command, expectedRevision }` → aplica o `applyCommand` e grava com `commit_game_update`. Respostas: **200** `{ state }`, **403** (não membro ou sem permissão), **409** (revisão desatualizada), **422** (requisição ou comando inválidos).
-- Testes em `src/server/http.test.ts`, com o banco simulado em memória.
+- **`create_game`:** cria o jogo a partir do seed ou de um save exportado (`state`); quem cria vira mestre.
+- **`restore_save`:** (mestre) substitui o jogo por um backup, como a próxima revisão.
+- **Convites:** `create_invite` (mestre) gera um token de uso único para um personagem, válido por 7 dias (até 30); o banco guarda só o hash. `accept_invite` liga quem aceitou ao personagem; `revoke_invite` cancela um convite pendente.
+- Testes em `src/server/http.test.ts` e `src/server/handler.test.ts`, com o banco simulado em memória.
 
 | Comando                    | O que faz                                                   |
 | -------------------------- | ----------------------------------------------------------- |
