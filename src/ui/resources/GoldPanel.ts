@@ -2,17 +2,7 @@ import { t } from '../../i18n/pt-BR';
 import type { Character, GameState } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { toBronze, type CoinBag } from '../../systems/Coins';
-import {
-  adjustCoins,
-  CAMP,
-  consolidateWallet,
-  depositToCamp,
-  groupBronze,
-  transferCoins,
-  walletOf,
-  type WalletRef,
-} from '../../systems/Wallets';
-import { actingCharacter } from '../currentActor';
+import { CAMP, groupBronze, walletOf, type WalletRef } from '../../systems/Wallets';
 import { el } from '../dom';
 import { formatCount, formatGold, formatGoldAmount } from '../format';
 import type { MasterSession } from '../MasterSession';
@@ -152,7 +142,7 @@ export class GoldPanel {
             this.adjusting = this.adjusting === key ? null : key;
             this.redraw();
           }),
-          button(t.gold.consolidate, () => this.act((s) => consolidateWallet(s, catalog, ref))),
+          button(t.gold.consolidate, () => this.act({ type: 'consolidate_wallet', wallet: ref })),
         ),
       isMaster && this.adjusting === key && this.adjustForm(ref),
     );
@@ -198,8 +188,7 @@ export class GoldPanel {
     });
     // The form stays open for this character after a deposit; the re-render zeroes the amounts.
     const submit = () => {
-      const depositor = actingCharacter(character.id);
-      this.act((s) => depositToCamp(s, depositor, inputs.read()));
+      this.act({ type: 'deposit', characterId: character.id, coins: inputs.read() });
     };
     return el(
       'div',
@@ -227,7 +216,7 @@ export class GoldPanel {
       const delta = Object.fromEntries(
         Object.entries(inputs.read()).map(([id, n]) => [id, sign * n]),
       );
-      this.act((s) => adjustCoins(s, ref, delta));
+      this.act({ type: 'adjust_coins', wallet: ref, delta });
     };
     return el(
       'div',
@@ -266,7 +255,12 @@ export class GoldPanel {
     });
     const inputs = coinInputs(this.store.catalog);
     const submit = () =>
-      this.act((s) => transferCoins(s, refOf(from.value), refOf(to.value), inputs.read()));
+      this.act({
+        type: 'transfer_coins',
+        from: refOf(from.value),
+        to: refOf(to.value),
+        coins: inputs.read(),
+      });
     return el(
       'section',
       { class: 'card card--master' },

@@ -1,8 +1,8 @@
 import { t } from '../i18n/pt-BR';
 import { resolveImage, type Catalog } from '../model/catalog';
-import type { Category, GameState } from '../model/schema';
+import type { GameCommand } from '../commands/schema';
+import type { Category } from '../model/schema';
 import type { CoinBag } from '../systems/Coins';
-import type { Outcome } from '../systems/outcome';
 import type { GameStore } from '../store';
 import { el } from './dom';
 import type { MasterSession } from './MasterSession';
@@ -10,8 +10,8 @@ import type { UiMemory } from './uiMemory';
 
 // Small building blocks shared by the resource panels, the slot panel and the master tools.
 
-/** Runs a store action and reports a refusal to the user; true when it went through. */
-export type Act = (action: (state: GameState) => Outcome) => boolean;
+/** Dispatches a command (the store reports refusals); true when it went through. */
+export type Act = (command: GameCommand) => boolean;
 
 /** What every resource panel needs; bundled to keep constructors short. */
 export interface PanelDeps {
@@ -257,9 +257,9 @@ export function coinInputs(
 }
 
 export interface CategoryOps {
-  add: (name: string) => (state: GameState) => Outcome;
-  rename: (id: string, name: string) => (state: GameState) => Outcome;
-  remove: (id: string) => (state: GameState) => Outcome;
+  add: (name: string) => GameCommand;
+  rename: (id: string, name: string) => GameCommand;
+  remove: (id: string) => GameCommand;
 }
 
 /** Master card to create categories and rename or remove the one being viewed. */

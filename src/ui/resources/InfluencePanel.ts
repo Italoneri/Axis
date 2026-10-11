@@ -1,12 +1,7 @@
 import { t } from '../../i18n/pt-BR';
 import type { GameState } from '../../model/schema';
 import type { GameStore } from '../../store';
-import {
-  averageInfluence,
-  setWorldInfluence,
-  worldStandings,
-  type WorldStanding,
-} from '../../systems/Influence';
+import { averageInfluence, worldStandings, type WorldStanding } from '../../systems/Influence';
 import { el } from '../dom';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
@@ -74,8 +69,7 @@ export class InfluencePanel {
       this.session.isActive &&
         stepper(
           influence,
-          (value) =>
-            this.act((s) => setWorldInfluence(s, catalog.worlds, { worldId: world.id, value })),
+          (value) => this.act({ type: 'set_influence', worldId: world.id, value }),
           { label: world.name },
         ),
     );

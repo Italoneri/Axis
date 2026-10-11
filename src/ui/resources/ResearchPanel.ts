@@ -1,17 +1,7 @@
 import { t } from '../../i18n/pt-BR';
 import type { Research, ResearchStatus } from '../../model/schema';
 import type { GameStore } from '../../store';
-import {
-  addResearch,
-  addResearchCategory,
-  completeResearch,
-  hasResearchArchive,
-  removeResearch,
-  removeResearchCategory,
-  renameResearchCategory,
-  researchCounts,
-  updateResearch,
-} from '../../systems/Research';
+import { hasResearchArchive, researchCounts } from '../../systems/Research';
 import { el } from '../dom';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
@@ -116,8 +106,12 @@ export class ResearchPanel {
           { class: 'row row--wrap' },
           button(t.common.edit, () => this.update(() => (this.editing = entry.id))),
           entry.status === 'em_andamento' &&
-            button(t.research.complete, () => this.act((s) => completeResearch(s, entry.id))),
-          confirmButton(t.common.remove, () => this.act((s) => removeResearch(s, entry.id))),
+            button(t.research.complete, () =>
+              this.act({ type: 'complete_research', researchId: entry.id }),
+            ),
+          confirmButton(t.common.remove, () =>
+            this.act({ type: 'remove_research', researchId: entry.id }),
+          ),
         ),
       isMaster && this.editing === entry.id && this.form(entry),
     );
@@ -136,9 +130,9 @@ export class ResearchPanel {
         this.act,
         { categories: research.categories, currentId: null, isCurrentEmpty: false },
         {
-          add: (name) => (s) => addResearchCategory(s, name),
-          rename: (id, name) => (s) => renameResearchCategory(s, id, name),
-          remove: (id) => (s) => removeResearchCategory(s, id),
+          add: (name) => ({ type: 'add_research_category', name }),
+          rename: (categoryId, name) => ({ type: 'rename_research_category', categoryId, name }),
+          remove: (categoryId) => ({ type: 'remove_research_category', categoryId }),
         },
       ),
       this.categoryList(),
@@ -159,11 +153,15 @@ export class ResearchPanel {
           { class: 'row row--wrap' },
           input,
           button(t.common.save, () =>
-            this.act((s) => renameResearchCategory(s, category.id, input.value)),
+            this.act({
+              type: 'rename_research_category',
+              categoryId: category.id,
+              name: input.value,
+            }),
           ),
           isEmpty
             ? confirmButton(t.common.remove, () =>
-                this.act((s) => removeResearchCategory(s, category.id)),
+                this.act({ type: 'remove_research_category', categoryId: category.id }),
               )
             : button(t.common.remove, () => undefined, {
                 disabled: true,
@@ -180,8 +178,10 @@ export class ResearchPanel {
       memory: this.memory,
       onCancel: close,
       onSubmit: (draft) => {
-        const done = this.act((s) =>
-          entry ? updateResearch(s, entry.id, draft) : addResearch(s, draft),
+        const done = this.act(
+          entry
+            ? { type: 'update_research', researchId: entry.id, draft }
+            : { type: 'add_research', draft },
         );
         if (done) close();
       },

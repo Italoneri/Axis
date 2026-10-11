@@ -9,6 +9,7 @@ import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
 import { GameStore } from './store';
 import { InfoDrawer } from './ui/InfoDrawer';
+import { commandContext } from './ui/currentActor';
 import { askMasterPassword } from './ui/MasterLogin';
 import { parseCredits, showCredits } from './ui/Credits';
 import { MasterSession } from './ui/MasterSession';
@@ -46,9 +47,14 @@ async function start(): Promise<void> {
     import('./data/theme.json').then((m) => parseTheme(m.default)),
     import('./data/credits.json').then((m) => parseCredits(m.default)),
   ]);
-  const store = new GameStore(gameData, window.localStorage, (error) => {
-    console.error('[save] could not persist state', error);
-    notify(t.save.storageFailed, 'error');
+  const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
+  const store = new GameStore(gameData, window.localStorage, {
+    contextFor: (command) => commandContext(session, command),
+    onRefused: (error) => notify(t.errors[error], 'error'),
+    onPersistError: (error) => {
+      console.error('[save] could not persist state', error);
+      notify(t.save.storageFailed, 'error');
+    },
   });
 
   // Every new log entry becomes a toast; a replaced save just resets the cursor.
@@ -61,13 +67,8 @@ async function start(): Promise<void> {
     shownLogEntries = state.log.length;
   });
 
-  const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
   const liveMap = new LiveMap(gameData.layout, new ThemeStore(theme), mapResolution());
-  const act: Act = (action) => {
-    const error = store.apply(action);
-    if (error) notify(t.errors[error], 'error');
-    return error === null;
-  };
+  const act: Act = (command) => store.dispatch(command) === null;
   const memory = new UiMemory(safeLocalStorage());
   const preview = new BuildingPreview();
   const drawer = new InfoDrawer(

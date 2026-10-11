@@ -1,12 +1,7 @@
 import { t } from '../i18n/pt-BR';
 import type { Character } from '../model/schema';
 import type { GameStore } from '../store';
-import {
-  addCharacter,
-  removeCharacter,
-  updateCharacter,
-  type CharacterFields,
-} from '../systems/Characters';
+import { type CharacterFields } from '../systems/Characters';
 import { el } from './dom';
 import type { MasterSession } from './MasterSession';
 import { confirmButton, field, section, thumb, type Act } from './widgets';
@@ -40,7 +35,7 @@ function timeSection(store: GameStore): HTMLElement {
   });
   const advance = () => {
     const count = Math.floor(Number(days.value));
-    if (count >= 1) store.advanceDays(count);
+    if (count >= 1) store.dispatch({ type: 'advance_days', days: count });
   };
   return section(
     t.master.timeSection,
@@ -76,8 +71,12 @@ function charactersSection(store: GameStore, act: Act): HTMLElement {
           }),
           el('span', { class: 'item-row__name' }, character.name),
         ),
-        characterForm(character, (fields) => act((s) => updateCharacter(s, character.id, fields))),
-        confirmButton(t.common.remove, () => act((s) => removeCharacter(s, character.id))),
+        characterForm(character, (fields) =>
+          act({ type: 'update_character', characterId: character.id, ...fields }),
+        ),
+        confirmButton(t.common.remove, () =>
+          act({ type: 'remove_character', characterId: character.id }),
+        ),
       ),
     ),
   );
@@ -89,7 +88,7 @@ function charactersSection(store: GameStore, act: Act): HTMLElement {
       'details',
       {},
       el('summary', { class: 'section-title' }, t.characters.newCharacter),
-      characterForm(undefined, (fields) => act((s) => addCharacter(s, fields))),
+      characterForm(undefined, (fields) => act({ type: 'add_character', ...fields })),
     ),
   );
 }

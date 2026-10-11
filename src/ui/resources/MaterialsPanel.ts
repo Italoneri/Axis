@@ -1,17 +1,7 @@
 import { t } from '../../i18n/pt-BR';
 import type { Category, Material } from '../../model/schema';
 import type { GameStore } from '../../store';
-import {
-  addMaterial,
-  addMaterialCategory,
-  adjustMaterial,
-  removeMaterial,
-  removeMaterialCategory,
-  renameMaterialCategory,
-  totalMaterialUnits,
-  updateMaterial,
-  type MaterialFields,
-} from '../../systems/Materials';
+import { totalMaterialUnits, type MaterialFields } from '../../systems/Materials';
 import { el } from '../dom';
 import { formatCount } from '../format';
 import type { MasterSession } from '../MasterSession';
@@ -147,7 +137,11 @@ export class MaterialsPanel {
   private masterControls(material: Material, categories: readonly Category[]): HTMLElement {
     const amount = numberInput({ min: 0, label: t.materials.amount });
     const adjust = (sign: 1 | -1) =>
-      this.act((s) => adjustMaterial(s, material.id, sign * readCount(amount)));
+      this.act({
+        type: 'adjust_material',
+        materialId: material.id,
+        delta: sign * readCount(amount),
+      });
     const isEditing = this.editing === material.id;
     return el(
       'div',
@@ -161,11 +155,13 @@ export class MaterialsPanel {
         button(t.common.edit, () =>
           this.update(() => (this.editing = isEditing ? null : material.id)),
         ),
-        confirmButton(t.common.remove, () => this.act((s) => removeMaterial(s, material.id))),
+        confirmButton(t.common.remove, () =>
+          this.act({ type: 'remove_material', materialId: material.id }),
+        ),
       ),
       isEditing &&
         this.materialForm(material, categories, (fields) => {
-          if (this.act((s) => updateMaterial(s, material.id, fields)))
+          if (this.act({ type: 'update_material', materialId: material.id, ...fields }))
             this.update(() => (this.editing = null));
         }),
     );
@@ -177,9 +173,12 @@ export class MaterialsPanel {
       undefined,
       [],
       (fields) => {
-        this.act((s) =>
-          addMaterial(s, { ...fields, category: categoryId, quantity: readCount(quantity) }),
-        );
+        this.act({
+          type: 'add_material',
+          ...fields,
+          category: categoryId,
+          quantity: readCount(quantity),
+        });
       },
       field(t.materials.quantity, quantity),
     );
@@ -245,22 +244,22 @@ export class MaterialsPanel {
   }
 
   private categoriesCard(currentId: string | null, isCurrentEmpty: boolean): HTMLElement {
-    // Tab changes happen inside the action so they are in place when the store re-renders.
+    // A new category opens in its own tab; removing the current one falls back to the first.
+    const act: Act = (command) => {
+      const done = this.act(command);
+      if (done && command.type === 'add_material_category') {
+        this.update(() => (this.tab = this.store.current.materials.categories.at(-1)?.id ?? null));
+      }
+      if (done && command.type === 'remove_material_category') this.update(() => (this.tab = null));
+      return done;
+    };
     return categoryManager(
-      this.act,
+      act,
       { categories: this.store.current.materials.categories, currentId, isCurrentEmpty },
       {
-        add: (name) => (s) => {
-          const outcome = addMaterialCategory(s, name);
-          if (outcome.ok) this.tab = outcome.state.materials.categories.at(-1)?.id ?? null;
-          return outcome;
-        },
-        rename: (id, name) => (s) => renameMaterialCategory(s, id, name),
-        remove: (id) => (s) => {
-          const outcome = removeMaterialCategory(s, id);
-          if (outcome.ok) this.tab = null;
-          return outcome;
-        },
+        add: (name) => ({ type: 'add_material_category', name }),
+        rename: (categoryId, name) => ({ type: 'rename_material_category', categoryId, name }),
+        remove: (categoryId) => ({ type: 'remove_material_category', categoryId }),
       },
     );
   }

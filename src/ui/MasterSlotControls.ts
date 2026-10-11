@@ -37,7 +37,8 @@ export function renderMasterSlotControls(
   );
 
   const force = () =>
-    store.forceBuilding({
+    store.dispatch({
+      type: 'force_building',
       slotId: slot.id,
       buildingId: buildingSelect.value,
       level: Number(levelSelect.value),
@@ -65,7 +66,8 @@ export function renderMasterSlotControls(
           class: 'btn',
           type: 'button',
           onclick: () =>
-            store.forceBuilding({
+            store.dispatch({
+              type: 'force_building',
               slotId: slot.id,
               buildingId: placed.buildingId,
               level: placed.level,
@@ -73,6 +75,9 @@ export function renderMasterSlotControls(
         },
         t.master.completeNow,
       ),
-    placed && confirmButton(t.master.remove, () => store.removeBuilding(slot.id)),
+    placed &&
+      confirmButton(t.master.remove, () =>
+        store.dispatch({ type: 'remove_building', slotId: slot.id }),
+      ),
   );
 }

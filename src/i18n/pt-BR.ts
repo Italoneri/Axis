@@ -1,7 +1,7 @@
 import type { SlotType } from '../map/layout';
 import type { LogEntry, ResearchStatus } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
-import type { ActionError } from '../systems/outcome';
+import type { CommandError } from '../commands/applyCommand';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
@@ -258,7 +258,10 @@ export const t = {
     nothing_to_move: 'Informe ao menos uma moeda.',
     same_wallet: 'Escolha carteiras diferentes.',
     character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
-  } satisfies Record<ActionError, string>,
+    forbidden: 'Somente o Mestre pode fazer isso.',
+    invalid_command: 'Ação inválida. Confira os valores informados.',
+    blocked: 'A construção não atende aos requisitos.',
+  } satisfies Record<CommandError, string>,
 } as const;
 
 /** Lookups and formatters the texts need; built from the catalog and current state in ui/format.ts. */
