@@ -142,6 +142,16 @@ O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota 
 
 O Deno vem como devDependency (`npx deno`), não precisa instalar à parte.
 
+### Banco (Supabase)
+
+`supabase/migrations/` cria as tabelas `games` (estado em jsonb + `revision`), `players` (papel e personagem), `game_log` (histórico completo) e `invites` (convites de uso único, só o hash do token é gravado).
+
+- **RLS:** clientes só **leem**, e só os jogos de que participam. Ninguém grava direto: as escritas passam pela Edge Function, que usa a service role e as funções `commit_game_update` (grava só se a `revision` bater), `create_game` e `accept_invite`.
+- `games` está na publicação do Realtime, que também respeita a RLS.
+- **Verificação:** `supabase/tests/games_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
+
+O Supabase CLI vem como devDependency: use `npx supabase …`.
+
 ## Estrutura
 
 ```
@@ -165,6 +175,7 @@ src/
 scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno
 public/assets/       textures/, buildings/, icons/
 docs/map-reference/  imagem e scripts de referência do mapa
+supabase/            config, migrations SQL (tabelas + RLS), testes pgTAP e Edge Functions
 art-sources/         originais das texturas (fora do git)
 ```
 
