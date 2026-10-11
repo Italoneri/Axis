@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import { gameStateSchema, SAVE_VERSION, type GameState } from '../model/schema';
+import { parseArchive, type Archive } from './Archive';
 import { initialInfluence } from './Influence';
 import { settleNpcs } from './Npcs';
 import { trimLog } from './outcome';
@@ -39,6 +40,35 @@ export function createInitialState(catalog: Catalog): GameState {
 
 export function serializeState(state: GameState): string {
   return JSON.stringify(state, null, 2);
+}
+
+/** The exported file: the game plus, when there is one, the Arquivo de registros beside it. */
+export function serializeSave(state: GameState, archive: Archive | null): string {
+  return JSON.stringify(archive ? { ...state, archive } : state, null, 2);
+}
+
+const saveWithArchiveSchema = z.looseObject({ archive: z.unknown().optional() });
+
+/**
+ * The archive inside an imported save: null for saves without one (older
+ * files, or exported before the archive existed). `parseSave` ignores the key.
+ */
+export function parseSaveArchive(
+  text: string,
+): { ok: true; archive: Archive | null } | { ok: false; error: string } {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (error) {
+    return {
+      ok: false,
+      error: `invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  const save = saveWithArchiveSchema.safeParse(json);
+  if (!save.success || save.data.archive === undefined) return { ok: true, archive: null };
+  const parsed = parseArchive(save.data.archive);
+  return parsed.ok ? parsed : { ok: false, error: `archive: ${parsed.error}` };
 }
 
 /** Parses an untrusted save (file import or localStorage) and checks it against the catalog. */

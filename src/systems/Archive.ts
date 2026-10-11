@@ -57,6 +57,15 @@ export type Archive = z.infer<typeof archiveSchema>;
 
 export const EMPTY_ARCHIVE: Archive = { topics: [], notes: [] };
 
+export type ArchiveParse = { ok: true; archive: Archive } | { ok: false; error: string };
+
+/** Checks an untrusted archive (localStorage, an imported save). */
+export function parseArchive(json: unknown): ArchiveParse {
+  const result = archiveSchema.safeParse(json);
+  if (!result.success) return { ok: false, error: z.prettifyError(result.error) };
+  return { ok: true, archive: result.data };
+}
+
 // ---------------------------------------------------------------- commands
 
 const direction = z.enum(['up', 'down']);

@@ -4,9 +4,12 @@ import {
   loadState,
   migrateSave,
   parseSave,
+  parseSaveArchive,
+  serializeSave,
   serializeState,
   STORAGE_KEY,
 } from './SaveSystem';
+import type { Archive } from './Archive';
 import { LOG_LIMIT } from './outcome';
 import { makeState, memoryStorage, npc, testCatalog } from './testFixtures';
 
@@ -251,5 +254,27 @@ describe('migrateSave', () => {
       error: 'save version 3',
       outdated: true,
     });
+  });
+});
+
+describe('save file with the archive', () => {
+  const archive: Archive = {
+    topics: [{ id: 'npcs', name: 'NPCs', order: 0, authorId: 'mestre', deletedAt: null }],
+    notes: [],
+  };
+
+  it('exports and imports the archive beside the game', () => {
+    const text = serializeSave(makeState({ day: 4 }), archive);
+    expect(parseSave(text, testCatalog)).toMatchObject({ ok: true, state: { day: 4 } });
+    expect(parseSaveArchive(text)).toEqual({ ok: true, archive });
+  });
+
+  it('reads saves without an archive as having none', () => {
+    expect(parseSaveArchive(serializeState(makeState()))).toEqual({ ok: true, archive: null });
+  });
+
+  it('refuses an invalid archive', () => {
+    const text = JSON.stringify({ ...makeState(), archive: { topics: 'x' } });
+    expect(parseSaveArchive(text)).toMatchObject({ ok: false });
   });
 });
