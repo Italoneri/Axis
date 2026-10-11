@@ -146,6 +146,8 @@ Como as mudanças viajam:
 
 **Convites (mestre):** na aba **Mestre** da gaveta, o cartão **Convites** gera um link por personagem (botão **Copiar link**) e lista os convites pendentes, que podem ser cancelados.
 
+**Histórico completo:** na aba **Registro**, abaixo das entradas recentes (o `state.log` guarda só as últimas 200), o cartão **Histórico completo** lê o `game_log` em páginas de 50.
+
 O código online (e o `supabase-js`) só é baixado quando as variáveis do Supabase existem; offline, o jogo carrega como antes.
 
 ### Regras no servidor (Edge Function)

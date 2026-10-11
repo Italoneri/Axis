@@ -129,7 +129,10 @@ export class InfoDrawer {
     }
     if (tab === 'map')
       return renderMapVisual(this.map.liveMap, this.store.catalog, this.map.preview);
-    if (tab === 'log') return this.renderLog();
+    if (tab === 'log') {
+      const log = this.renderLog();
+      return this.extras.history ? [...log, this.extras.history.element] : log;
+    }
     return this.renderBonuses();
   }
 

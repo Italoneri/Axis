@@ -7,6 +7,7 @@ import { parseSave } from '../systems/SaveSystem';
 import type { GameStore } from '../store';
 import type { DrawerExtras } from '../ui/InfoDrawer';
 import type { MasterAccess } from '../ui/MasterSession';
+import { HistoryPanel } from './HistoryPanel';
 import { InvitesPanel } from './InvitesPanel';
 import { showCreateGame, showLogin, showMessage } from './screens';
 import type { OnlineConfig } from './config';
@@ -77,6 +78,7 @@ export async function bootOnline(
     client,
     contextFor: () => onlineContext(membership),
     drawerExtras: (store, notify) => ({
+      history: new HistoryPanel({ client, gameId: membership.gameId, store }),
       invites:
         membership.role === 'master'
           ? new InvitesPanel({ client, backend, gameId: membership.gameId, store, notify })
