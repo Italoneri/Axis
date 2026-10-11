@@ -1,10 +1,8 @@
-import { z } from 'zod';
+import { applyCommand } from '../commands/applyCommand';
 import type { Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
 import { loadState, parseSave, persistState, STORAGE_KEY } from '../systems/SaveSystem';
-import type { GameRepository, SaveResult } from './GameRepository';
-
-const storedRevisionSchema = z.object({ revision: z.number().int().nonnegative().default(0) });
+import type { GameChange, GameRepository, SubmitResult } from './GameRepository';
 
 /** Offline repository: one save per browser, kept in sync across its tabs. */
 export class LocalRepository implements GameRepository {
@@ -19,12 +17,24 @@ export class LocalRepository implements GameRepository {
     return Promise.resolve(loadState(this.storage, this.catalog));
   }
 
-  save(state: GameState, expectedRevision: number): Promise<SaveResult> {
-    if (this.storedRevision() !== expectedRevision) {
+  submit(change: GameChange, expectedRevision: number): Promise<SubmitResult> {
+    // Nothing stored reads as a fresh game, revision 0.
+    const stored = loadState(this.storage, this.catalog);
+    if (stored.revision !== expectedRevision) {
       return Promise.resolve({ ok: false, reason: 'conflict' });
     }
-    persistState(this.storage, state);
-    return Promise.resolve({ ok: true });
+    const result = this.apply(stored, change);
+    if (result.ok) persistState(this.storage, result.state);
+    return Promise.resolve(result);
+  }
+
+  private apply(stored: GameState, change: GameChange): SubmitResult {
+    if (change.kind === 'restore') {
+      return { ok: true, state: { ...change.state, revision: stored.revision + 1 } };
+    }
+    const outcome = applyCommand(stored, this.catalog, change.command, change.ctx);
+    if (!outcome.ok) return { ok: false, reason: 'refused', error: outcome.error };
+    return { ok: true, state: outcome.state };
   }
 
   subscribe(onRemoteChange: (state: GameState) => void): () => void {
@@ -38,18 +48,5 @@ export class LocalRepository implements GameRepository {
     };
     events.addEventListener('storage', listener);
     return () => events.removeEventListener('storage', listener);
-  }
-
-  /** Nothing stored (or unreadable) counts as revision 0, the revision of a fresh game. */
-  private storedRevision(): number {
-    const text = this.storage.getItem(STORAGE_KEY);
-    if (text === null) return 0;
-    try {
-      const parsed = storedRevisionSchema.safeParse(JSON.parse(text));
-      return parsed.success ? parsed.data.revision : 0;
-    } catch (error) {
-      console.warn('[save] stored game is not JSON; treating it as revision 0', error);
-      return 0;
-    }
   }
 }

@@ -95,7 +95,7 @@ describe('GameStore', () => {
     const storeHooks = hooks();
     const repository: GameRepository = {
       load: () => Promise.resolve(makeState()),
-      save: () => Promise.resolve({ ok: false, reason: 'conflict' }),
+      submit: () => Promise.resolve({ ok: false, reason: 'conflict' }),
       subscribe: () => () => undefined,
     };
     const store = await GameStore.open(testCatalog, repository, storeHooks);
@@ -121,7 +121,8 @@ describe('GameStore', () => {
 
     store.dispatch(advance);
     await store.whenSynced();
-    expect(setItem).toHaveBeenCalledTimes(2);
+    // The failed change is retried before the new one.
+    expect(setItem).toHaveBeenCalledTimes(3);
     expect(stored(storage)).toMatchObject({ revision: 2, day: 3 });
   });
 

@@ -118,12 +118,26 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 
 Toda alteração de recurso, seja do mestre, de um depósito ou de uma construção, gera uma entrada no registro. Exemplos: "Dia 14 — Thorin depositou 3 Platina e 12 Ouro no Acampamento" e "Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)".
 
+## Online / Supabase
+
+> Em andamento (Fase 3). Plano completo em [`docs/plans/FASE3_SUPABASE.md`](docs/plans/FASE3_SUPABASE.md).
+
+Sem as variáveis do Supabase, o jogo roda **offline**, como sempre: o save fica no `localStorage` do navegador.
+
+Como as mudanças viajam:
+
+- Toda ação é um **comando** em dados (`src/commands/schema.ts`), aplicado por `applyCommand`, que também confere as permissões (mestre ou jogador).
+- O `GameStore` mostra a mudança na hora e envia o comando ao **repositório** (`src/persistence/`). Offline, o `LocalRepository` aplica o comando no save guardado; online, a Edge Function aplica o mesmo `applyCommand` no servidor.
+- Cada mudança aceita incrementa a `revision` do jogo. Se outra aba (ou outro jogador) gravou antes, o repositório responde **conflito**, a loja recarrega e reaplica os comandos pendentes.
+
 ## Estrutura
 
 ```
 src/
   main.ts            monta UI + jogo
-  store.ts           estado atual, persistência e eventos (camada imperativa)
+  store.ts           estado atual, envio de comandos e eventos (camada imperativa)
+  commands/          comandos serializáveis e applyCommand (regras + permissões)
+  persistence/       GameRepository e LocalRepository (localStorage)
   model/             schemas (zod) e tipos, carregamento/validação do catálogo
   map/               mapa gerado por código: layout, geometria, veios, gerador, portões, tema
   systems/           regras puras: Build, Coins, Wallets, Materials, Research, Influence,

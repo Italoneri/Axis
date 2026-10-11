@@ -2,7 +2,7 @@ import { applyCommand, type CommandError, type StateChange } from './commands/ap
 import type { CommandContext, GameCommand } from './commands/schema';
 import type { Catalog } from './model/catalog';
 import type { GameState, LogEntry } from './model/schema';
-import type { GameRepository } from './persistence/GameRepository';
+import type { GameChange, GameRepository } from './persistence/GameRepository';
 
 export type { StateChange } from './commands/applyCommand';
 
@@ -17,10 +17,7 @@ export interface StoreHooks {
 }
 
 /** A local change not yet accepted by the repository. */
-type Pending =
-  | { kind: 'command'; command: GameCommand; ctx: CommandContext }
-  /** An imported save: it replaces whatever is stored. */
-  | { kind: 'restore'; state: GameState };
+type Pending = GameChange;
 
 /** After this many conflicts in a row, local changes are dropped in favor of the stored game. */
 const MAX_CONFLICTS = 3;
@@ -103,48 +100,53 @@ export class GameStore {
     this.syncing = this.syncing.then(() => this.sync());
   }
 
+  /** Sends pending changes one by one, in order, as the repository accepts them. */
   private async sync(): Promise<void> {
     let conflicts = 0;
+    let isStale = false;
     while (this.pending.length > 0) {
-      const batch = [...this.pending];
-      const { state: candidate, refused } = replay(this.confirmed, batch, this.catalog);
+      const [change] = this.pending;
+      if (!change) break;
       let result;
       try {
-        result = await this.repository.save(candidate, this.confirmed.revision);
+        result = await this.repository.submit(change, this.confirmed.revision);
       } catch (error) {
         // Kept pending: the next change retries them, and the game stays playable meanwhile.
         this.hooks.onPersistError(error);
-        return;
+        break;
       }
       if (result.ok) {
-        this.confirmed = candidate;
-        this.pending = this.pending.slice(batch.length);
-        // After a conflict the optimistic state was built on an old base: show the replayed one.
-        if (refused.length > 0 || conflicts > 0) this.settle(refused);
-        continue;
-      }
-      conflicts++;
-      this.confirmed = await this.repository.load();
-      if (conflicts >= MAX_CONFLICTS) {
+        conflicts = 0;
+        this.confirmed = result.state;
+        this.pending = this.pending.slice(1);
+      } else if (result.reason === 'refused') {
+        this.pending = this.pending.slice(1);
+        this.hooks.onRefused(result.error);
+        isStale = true;
+      } else if (++conflicts >= MAX_CONFLICTS) {
         console.warn('[save] giving up after repeated conflicts', { dropped: this.pending.length });
+        this.confirmed = await this.repository.load();
         this.pending = [];
-        this.settle(['conflict']);
-        return;
+        this.hooks.onRefused('conflict');
+        isStale = true;
+      } else {
+        this.confirmed = await this.repository.load();
+        isStale = true;
       }
     }
+    // The optimistic state was built on an older base or included a refused change.
+    if (isStale) this.showConfirmedPlusPending();
   }
 
   /** Someone else saved: their game becomes the base, and local changes go on top. */
   private receiveRemote(remote: GameState): void {
     if (remote.revision <= this.confirmed.revision) return;
     this.confirmed = remote;
-    this.show(replay(remote, this.pending, this.catalog).state, { kind: 'loaded' });
+    this.showConfirmedPlusPending();
   }
 
-  /** Shows the saved game plus whatever is still pending, and reports what was undone. */
-  private settle(errors: CommandError[]): void {
-    errors.forEach((error) => this.hooks.onRefused(error));
-    this.show(replay(this.confirmed, this.pending, this.catalog).state, { kind: 'loaded' });
+  private showConfirmedPlusPending(): void {
+    this.show(replay(this.confirmed, this.pending, this.catalog), { kind: 'loaded' });
   }
 
   private show(state: GameState, change: StateChange, logged: readonly LogEntry[] = []): void {
@@ -153,22 +155,11 @@ export class GameStore {
   }
 }
 
-/** Applies pending changes over a base; commands the newer base no longer allows are dropped. */
-function replay(
-  base: GameState,
-  pending: readonly Pending[],
-  catalog: Catalog,
-): { state: GameState; refused: CommandError[] } {
-  return pending.reduce<{ state: GameState; refused: CommandError[] }>(
-    ({ state, refused }, change) => {
-      if (change.kind === 'restore') {
-        return { state: { ...change.state, revision: state.revision + 1 }, refused };
-      }
-      const outcome = applyCommand(state, catalog, change.command, change.ctx);
-      return outcome.ok
-        ? { state: outcome.state, refused }
-        : { state, refused: [...refused, outcome.error] };
-    },
-    { state: base, refused: [] },
-  );
+/** What the player sees: pending changes over the stored game, skipping any that no longer apply. */
+function replay(base: GameState, pending: readonly Pending[], catalog: Catalog): GameState {
+  return pending.reduce((state, change) => {
+    if (change.kind === 'restore') return { ...change.state, revision: state.revision + 1 };
+    const outcome = applyCommand(state, catalog, change.command, change.ctx);
+    return outcome.ok ? outcome.state : state;
+  }, base);
 }
