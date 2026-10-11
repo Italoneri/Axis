@@ -1159,3 +1159,8 @@ details > summary {
   color: var(--gold);
   font-weight: 600;
 }
+
+/* NPCs working against their post: spoiled stock, research set back, delayed works. */
+.is-negative {
+  color: var(--danger);
+}

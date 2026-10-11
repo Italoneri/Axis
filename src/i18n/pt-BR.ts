@@ -83,6 +83,7 @@ export const t = {
     emptyLog: 'Nada aconteceu na Axis ainda.',
     postsTitle: 'Postos de trabalho',
     postsSub: 'Efeitos dos NPCs em serviço',
+    penalty: (text: string) => `Penalidade: ${text}`,
   },
 
   master: {

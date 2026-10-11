@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Catalog } from '../model/catalog';
 import { activeBonuses, activePostEffects } from './BonusSystem';
 import { makeState, npc, testCatalog } from './testFixtures';
 
@@ -64,7 +65,63 @@ describe('activePostEffects', () => {
         workers: ['Ana', 'Bia'],
         effect: { type: 'produce', material: 'iron', perDay: 2 },
         tenthsPerDay: 54,
+        hindered: false,
       },
     ]);
   });
+
+  it('sums a good and a bad worker and flags the post as hindered', () => {
+    const forging = { slotId: 'outer_n', activityId: 'forjar', carry: 0 };
+    const state = makeState({
+      slots: { outer_n: { buildingId: 'forge', level: 2, status: 'done' } },
+      npcs: [
+        npc({ id: 'a', name: 'Ana', job: forging, status: 'trabalhando' }),
+        npc({
+          id: 'b',
+          name: 'Bia',
+          skills: { smithing: -5 },
+          job: forging,
+          status: 'trabalhando',
+        }),
+      ],
+    });
+    expect(activePostEffects(state, testCatalog)).toMatchObject([
+      { workers: ['Ana', 'Bia'], tenthsPerDay: 0, hindered: true },
+    ]);
+  });
+
+  it.each([
+    { name: 'with a penalty text', catalog: withPrayerPenalty('maldição'), shown: true },
+    { name: 'without a penalty text', catalog: testCatalog, shown: false },
+  ])('shows a hindered bonus post only $name', ({ catalog, shown }) => {
+    const praying = { slotId: 'core', activityId: 'rezar', carry: 0 };
+    const state = makeState({
+      slots: { core: { buildingId: 'heart', level: 2, status: 'done' } },
+      npcs: [
+        npc({
+          id: 'c',
+          name: 'Caio',
+          skills: { research: -1 },
+          job: praying,
+          status: 'trabalhando',
+        }),
+      ],
+    });
+    const posts = activePostEffects(state, catalog);
+    expect(posts.map((p) => p.hindered)).toEqual(shown ? [true] : []);
+  });
 });
+
+/** The test catalog with a penalty on the Coração's bonus post. */
+function withPrayerPenalty(penalty: string): Catalog {
+  const buildings = testCatalog.buildings.map((b) => ({
+    ...b,
+    levels: b.levels.map((level) => ({
+      ...level,
+      jobs: level.jobs?.map((job) =>
+        job.effect.type === 'bonus' ? { ...job, effect: { ...job.effect, penalty } } : job,
+      ),
+    })),
+  }));
+  return { ...testCatalog, buildings };
+}
