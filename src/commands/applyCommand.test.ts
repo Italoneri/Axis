@@ -245,6 +245,11 @@ describe('applyCommand permissions', () => {
     },
   );
 
+  it('refuses a home where the slot offers no housing', () => {
+    const command = { type: 'npc_set_home', npcId: 'tomas', slotId: 'outer_n' };
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'no_housing' });
+  });
+
   it('lets a player deposit only from their own character', () => {
     const otherPlayer: CommandContext = { actor: { role: 'player', characterId: 'lyra' } };
     const anonymous: CommandContext = { actor: { role: 'player' } };

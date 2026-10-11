@@ -89,7 +89,7 @@ npc = {
 | `npc_create`     | mestre           | `empty_name`, `duplicate_name`, `duplicate_id`, `not_found` (habilidade) |
 | `npc_update`     | mestre           | idem; inclui habilidades, salário e status                               |
 | `npc_remove`     | mestre           | `not_found`                                                              |
-| `npc_set_home`   | jogador e mestre | `not_found`, `home_full` (lotada ou sem moradia)                         |
+| `npc_set_home`   | jogador e mestre | `not_found`, `home_full` (lotada), `no_housing` (espaço sem moradia)     |
 | `npc_assign_job` | jogador e mestre | `no_home`, `invalid_post`, `post_full`, `invalid_target` (pesquisa)      |
 | `npc_unassign`   | jogador e mestre | `not_found`                                                              |
 

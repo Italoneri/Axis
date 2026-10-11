@@ -117,9 +117,26 @@ describe('setNpcHome', () => {
     });
   });
 
-  it('refuses a building without housing', () => {
-    const outcome = setNpcHome(base(), testCatalog, { npcId: 'tomas', slotId: 'outer_n' });
-    expect(outcome).toEqual({ ok: false, error: 'home_full' });
+  it.each([
+    { place: 'a building without housing', slotId: 'outer_n' },
+    { place: 'an empty slot', slotId: 'outer_w' },
+    { place: 'a slot that does not exist', slotId: 'nowhere' },
+    { place: 'a first construction', slotId: 'outer_s' },
+  ])('refuses $place with no_housing', ({ slotId }) => {
+    const state = base({
+      slots: {
+        ...base().slots,
+        outer_s: {
+          buildingId: 'barracks',
+          level: 1,
+          status: 'building',
+          startedOnDay: 1,
+          completesOnDay: 3,
+        },
+      },
+    });
+    const outcome = setNpcHome(state, testCatalog, { npcId: 'tomas', slotId });
+    expect(outcome).toEqual({ ok: false, error: 'no_housing' });
   });
 
   it('frees the post when the NPC moves out', () => {

@@ -79,6 +79,7 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   character_has_coins: true,
   no_home: true,
   home_full: true,
+  no_housing: true,
   post_full: true,
   invalid_post: true,
   invalid_target: true,

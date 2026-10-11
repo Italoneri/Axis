@@ -164,8 +164,9 @@ export function setNpcHome(
     );
   }
 
-  const others = residentsOf(state, slotId).length;
-  if (others >= housingCapacity(state, catalog, slotId)) return fail('home_full');
+  const capacity = housingCapacity(state, catalog, slotId);
+  if (capacity === 0) return fail('no_housing');
+  if (residentsOf(state, slotId).length >= capacity) return fail('home_full');
   const place = state.slots[slotId]?.buildingId ?? '';
   return ok(
     withLog(replaceNpc(state, { ...npc, home: slotId }), {

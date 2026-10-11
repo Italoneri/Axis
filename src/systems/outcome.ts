@@ -13,8 +13,10 @@ export type ActionError =
   | 'character_has_coins'
   /** NPCs: work needs a home. */
   | 'no_home'
-  /** The building has no housing left (or none at all). */
+  /** The building has no housing left. */
   | 'home_full'
+  /** The slot offers no housing at all: empty, first construction or no `housing`. */
+  | 'no_housing'
   | 'post_full'
   /** The building offers no such post at its level in force. */
   | 'invalid_post'

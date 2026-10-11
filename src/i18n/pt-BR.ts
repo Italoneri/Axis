@@ -376,6 +376,7 @@ export const t = {
     character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
     no_home: 'O NPC precisa de moradia antes de trabalhar.',
     home_full: 'Não há vaga de moradia nesta construção.',
+    no_housing: 'Este espaço não oferece moradia.',
     post_full: 'Todas as vagas deste posto estão ocupadas.',
     invalid_post: 'Esta construção não oferece esse posto agora.',
     invalid_target: 'Escolha uma pesquisa em andamento para este posto.',
