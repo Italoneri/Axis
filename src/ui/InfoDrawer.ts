@@ -1,8 +1,8 @@
-import { logEntryText, t } from '../i18n/pt-BR';
+import { jobEffectText, logEntryText, t } from '../i18n/pt-BR';
 import type { BuildingPreview } from '../map/buildingPreview';
 import type { LiveMap } from '../map/liveMap';
 import type { GameStore } from '../store';
-import { activeBonuses } from '../systems/BonusSystem';
+import { activeBonuses, activePostEffects } from '../systems/BonusSystem';
 import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
 import type { MasterAccess } from './MasterSession';
@@ -145,9 +145,12 @@ export class InfoDrawer {
   private renderBonuses(): HTMLElement[] {
     const { catalog } = this.store;
     const bonuses = activeBonuses(this.store.current, catalog);
-    if (bonuses.length === 0) return [el('p', { class: 'panel__hint' }, t.drawer.noBonuses)];
+    const posts = this.renderPostEffects();
+    if (bonuses.length === 0) {
+      return [el('p', { class: 'panel__hint' }, t.drawer.noBonuses), ...posts];
+    }
 
-    return bonuses.map((bonus) => {
+    const cards = bonuses.map((bonus) => {
       const icon = catalog.buildings.find((b) => b.id === bonus.buildingId)?.icon ?? '';
       return el(
         'article',
@@ -166,6 +169,43 @@ export class InfoDrawer {
         el('ul', { class: 'effects' }, ...bonus.effects.map((effect) => el('li', {}, effect))),
       );
     });
+    return [...cards, ...posts];
+  }
+
+  /** Occupied posts: their bonus text or what they yield each day. */
+  private renderPostEffects(): HTMLElement[] {
+    const { catalog, current } = this.store;
+    const posts = activePostEffects(current, catalog);
+    if (posts.length === 0) return [];
+    const ctx = textContext(catalog, current);
+    return [
+      el(
+        'article',
+        { class: 'card' },
+        el(
+          'div',
+          { class: 'card__head' },
+          el(
+            'div',
+            {},
+            el('h3', { class: 'card__name' }, t.drawer.postsTitle),
+            el('p', { class: 'card__sub' }, t.drawer.postsSub),
+          ),
+        ),
+        el(
+          'ul',
+          { class: 'effects' },
+          ...posts.map((post) =>
+            el(
+              'li',
+              {},
+              `${ctx.building(post.buildingId)} · ${post.activity} (${post.workers.join(', ')}): `,
+              jobEffectText(post.effect, post.tenthsPerDay, ctx),
+            ),
+          ),
+        ),
+      ),
+    ];
   }
 
   private renderLog(): HTMLElement[] {

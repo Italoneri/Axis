@@ -1,9 +1,13 @@
 import type { SlotType } from '../map/layout';
-import type { LogEntry, NpcReleaseReason, ResearchStatus } from '../model/schema';
+import type { JobEffect, LogEntry, NpcReleaseReason, ResearchStatus } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+const decimalFormat = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 /** Every user-facing text lives here. Building, coin and seed names live in src/data/*.json. */
 export const t = {
@@ -19,6 +23,8 @@ export const t = {
   /** "42%", "37,1%": one decimal at most, no trailing ",0". */
   percent: (value: number) => `${percentFormat.format(value)}%`,
   instant: 'Imediato',
+  /** Yield stored in tenths: 34 → "3,4". */
+  tenths: (tenths: number) => decimalFormat.format(tenths / 10),
 
   topbar: {
     more: 'Mais opções',
@@ -69,6 +75,8 @@ export const t = {
     mapTab: 'Visual do mapa',
     noBonuses: 'Nenhuma estrutura concluída ainda.',
     emptyLog: 'Nada aconteceu na Axis ainda.',
+    postsTitle: 'Postos de trabalho',
+    postsSub: 'Efeitos dos NPCs em serviço',
   },
 
   master: {
@@ -430,6 +438,23 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return npcAction(entry, ctx);
     default:
       return assertNever(entry);
+  }
+}
+
+/** "+3,4 Ferro por dia"; a bonus reads as its own text. */
+export function jobEffectText(effect: JobEffect, tenthsPerDay: number, ctx: TextContext): string {
+  const amount = t.tenths(tenthsPerDay);
+  switch (effect.type) {
+    case 'produce':
+      return `+${amount} ${ctx.material(effect.material)} por dia`;
+    case 'research':
+      return `+${amount} de progresso por dia`;
+    case 'construction':
+      return `obra adiantada em ${amount} dia por dia`;
+    case 'bonus':
+      return effect.text;
+    default:
+      return assertNever(effect);
   }
 }
 
