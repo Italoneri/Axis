@@ -60,7 +60,11 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
           el(
             'li',
             { class: 'row row--wrap' },
-            el('span', {}, t.npcs.preview(npc.name, preview(catalog, post, npc, ctx))),
+            el(
+              'span',
+              { class: hinders(post, npc) ? 'is-negative' : undefined },
+              t.npcs.preview(npc.name, preview(catalog, post, npc, ctx)),
+            ),
             button(t.npcs.unassign, () => store.dispatch({ type: 'npc_unassign', npcId: npc.id })),
           ),
         ),
@@ -117,14 +121,14 @@ function researchSelect(state: GameState, post: Post): HTMLSelectElement | null 
   });
 }
 
-/** "Bia (10) · +3,0 … · posto atual: Biblioteca · Ferido", so moves and absences show up front. */
+/** "Bia (10) · +3,0 … · posto atual: Biblioteca · Ferido": moves, absences and hindering up front. */
 function candidateLabel(store: GameStore, post: Post, npc: Npc, ctx: TextContext): string {
   const { catalog, current: state } = store;
   const away = npc.status === 'ferido' || npc.status === 'em_missao';
   const workplace = npc.job && state.slots[npc.job.slotId]?.buildingId;
   return [
     `${npc.name} (${skillOf(npc, post.job.skill)})`,
-    preview(catalog, post, npc, ctx),
+    preview(catalog, post, npc, ctx) + (hinders(post, npc) ? ` ${t.npcs.hinders}` : ''),
     workplace && t.npcs.currentPost(ctx.building(workplace)),
     away && t.npcs.statuses[npc.status],
   ]
@@ -134,6 +138,10 @@ function candidateLabel(store: GameStore, post: Post, npc: Npc, ctx: TextContext
 
 function preview(catalog: Catalog, post: Post, npc: Npc, ctx: TextContext): string {
   return jobEffectText(post.job.effect, postYieldTenths(catalog, post, npc), ctx);
+}
+
+function hinders(post: Post, npc: Npc): boolean {
+  return skillOf(npc, post.job.skill) < 0;
 }
 
 function isAt(npc: Npc, post: Post): boolean {

@@ -1128,7 +1128,7 @@ details > summary {
 
 .npc-skill {
   display: grid;
-  grid-template-columns: minmax(110px, auto) 1fr 2ch;
+  grid-template-columns: minmax(110px, auto) 1fr 3ch;
   align-items: center;
   gap: 8px;
   font-size: 13px;
@@ -1137,6 +1137,32 @@ details > summary {
 .npc-skill__value {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.npc-skill-bar {
+  position: relative;
+}
+
+/* The zero mark: skills grow right from it, hindering ones grow left. */
+.npc-skill-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.npc-skill-bar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(to right, #8a6a17, var(--gold));
+}
+
+.npc-skill-bar__fill.is-negative {
+  background: var(--danger);
 }
 
 .npc-skill-inputs {

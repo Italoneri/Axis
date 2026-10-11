@@ -244,6 +244,7 @@ export const t = {
     noJob: 'Sem trabalho',
     jobAt: (activity: string, building: string) => `${activity} em ${building}`,
     currentPost: (building: string) => `posto atual: ${building}`,
+    hinders: '⚠ atrapalha',
     unassign: 'Dispensar',
     newNpc: 'Novo NPC',
     titleField: 'Título (ex.: Maga)',
@@ -494,15 +495,17 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
 }
 
 /** "+3,4 Ferro por dia"; a bonus reads as its own text. */
+/** "+3,4 Ferro por dia"; a negative yield reads "-2,0 Ferro por dia" or "obra atrasada…". */
 export function jobEffectText(effect: JobEffect, tenthsPerDay: number, ctx: TextContext): string {
-  const amount = t.tenths(tenthsPerDay);
+  const amount = t.tenths(Math.abs(tenthsPerDay));
+  const signed = `${tenthsPerDay < 0 ? '-' : '+'}${amount}`;
   switch (effect.type) {
     case 'produce':
-      return `+${amount} ${ctx.material(effect.material)} por dia`;
+      return `${signed} ${ctx.material(effect.material)} por dia`;
     case 'research':
-      return `+${amount} de progresso por dia`;
+      return `${signed} de progresso por dia`;
     case 'construction':
-      return `obra adiantada em ${amount} dia por dia`;
+      return `obra ${tenthsPerDay < 0 ? 'atrasada' : 'adiantada'} em ${amount} dia por dia`;
     case 'bonus':
       return effect.text;
     default:
@@ -552,14 +555,20 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
   }
 }
 
+/** A negative amount means the NPC worked against the post. */
 function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: TextContext): string {
+  const { npc, target } = entry;
+  const amount = Math.abs(entry.amount);
+  const hindered = entry.amount < 0;
   switch (entry.effect) {
     case 'produce':
-      return `${entry.npc} produziu ${entry.amount} ${entry.target}`;
+      return `${npc} ${hindered ? 'estragou' : 'produziu'} ${amount} ${target}`;
     case 'research':
-      return `${entry.npc} avançou a pesquisa '${entry.target}' em ${entry.amount}%`;
+      return hindered
+        ? `${npc} fez a pesquisa '${target}' regredir ${amount}%`
+        : `${npc} avançou a pesquisa '${target}' em ${amount}%`;
     case 'construction':
-      return `${entry.npc} adiantou a obra de ${ctx.building(entry.target)} em ${t.days(entry.amount)}`;
+      return `${npc} ${hindered ? 'atrasou' : 'adiantou'} a obra de ${ctx.building(target)} em ${t.days(amount)}`;
     default:
       return assertNever(entry.effect);
   }
