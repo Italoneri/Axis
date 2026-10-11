@@ -35,6 +35,10 @@ export class GameStore {
   private state: GameState;
   private pending: Pending[] = [];
   private syncing: Promise<void> = Promise.resolve();
+  /** A submit is in flight: remote updates wait for it (they may be its own echo). */
+  private isSubmitting = false;
+  /** A remote update arrived while submitting; refresh the view once the queue settles. */
+  private hasDeferredRemote = false;
   private readonly listeners = new Set<Listener>();
 
   static async open(
@@ -104,6 +108,7 @@ export class GameStore {
   private async sync(): Promise<void> {
     let conflicts = 0;
     let isStale = false;
+    this.isSubmitting = true;
     while (this.pending.length > 0) {
       const [change] = this.pending;
       if (!change) break;
@@ -117,7 +122,8 @@ export class GameStore {
       }
       if (result.ok) {
         conflicts = 0;
-        this.confirmed = result.state;
+        // Realtime may already have brought this revision (or a newer one).
+        if (result.state.revision > this.confirmed.revision) this.confirmed = result.state;
         this.pending = this.pending.slice(1);
       } else if (result.reason === 'refused') {
         this.pending = this.pending.slice(1);
@@ -135,14 +141,18 @@ export class GameStore {
       }
     }
     // The optimistic state was built on an older base or included a refused change.
-    if (isStale) this.showConfirmedPlusPending();
+    this.isSubmitting = false;
+    if (isStale || this.hasDeferredRemote) this.showConfirmedPlusPending();
+    this.hasDeferredRemote = false;
   }
 
   /** Someone else saved: their game becomes the base, and local changes go on top. */
   private receiveRemote(remote: GameState): void {
     if (remote.revision <= this.confirmed.revision) return;
     this.confirmed = remote;
-    this.showConfirmedPlusPending();
+    // Mid-submit, this can be the echo of the change being sent: replaying it on top would apply it twice.
+    if (this.isSubmitting) this.hasDeferredRemote = true;
+    else this.showConfirmedPlusPending();
   }
 
   private showConfirmedPlusPending(): void {

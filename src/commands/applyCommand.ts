@@ -55,6 +55,27 @@ export type CommandError =
   /** Raised by the store when the stored game kept changing under a local change. */
   | 'conflict';
 
+/** Every error, so answers from the server can be checked at runtime (the Record keeps it exhaustive). */
+const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
+  empty_name: true,
+  duplicate_name: true,
+  duplicate_id: true,
+  not_found: true,
+  category_not_empty: true,
+  insufficient_coins: true,
+  nothing_to_move: true,
+  same_wallet: true,
+  character_has_coins: true,
+  forbidden: true,
+  invalid_command: true,
+  blocked: true,
+  conflict: true,
+};
+
+export function isCommandError(value: unknown): value is CommandError {
+  return typeof value === 'string' && Object.hasOwn(COMMAND_ERRORS, value);
+}
+
 type Refusal = { ok: false; error: CommandError; reasons?: BlockReason[] };
 type HandlerOutcome = { ok: true; state: GameState; change: StateChange } | Refusal;
 

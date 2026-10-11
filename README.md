@@ -131,6 +131,12 @@ Como as mudanças viajam:
 - O save é um JSON versionado (`version`). Formatos novos (como os NPCs) entram com uma migração em `SAVE_MIGRATIONS` (`src/systems/SaveSystem.ts`), sem mudar as tabelas; saves antigos são migrados, não descartados.
 - Cada mudança aceita incrementa a `revision` do jogo. Se outra aba (ou outro jogador) gravou antes, o repositório responde **conflito**, a loja recarrega e reaplica os comandos pendentes.
 
+### No navegador
+
+- `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (veja `.env.example`) ligam o modo online. Só a chave **anon** vai para o front; a service role fica na Edge Function.
+- `SupabaseRepository` (`src/online/`): `load` lê `games.state` (RLS), `submit` chama a Edge Function e transforma 409 em conflito e as recusas em mensagens do jogo, e `subscribe` escuta o Realtime de `games`. Toda chamada tem tempo limite (15 s).
+- O eco do próprio comando pelo Realtime é ignorado enquanto o envio está em andamento, para não aplicar a mudança duas vezes.
+
 ### Regras no servidor (Edge Function)
 
 O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota (esbuild) as regras, o zod e os JSONs de `src/data` num único módulo, `supabase/functions/_shared/game.js` (gerado, fora do git). Assim a Edge Function valida com exatamente os dados do commit publicado.
@@ -174,7 +180,8 @@ src/
   store.ts           estado atual, envio de comandos e eventos (camada imperativa)
   commands/          comandos serializáveis e applyCommand (regras + permissões)
   persistence/       GameRepository e LocalRepository (localStorage)
-  server/            entrada do bundle da Edge Function e catálogo do servidor
+  server/            Edge Function: handler, acesso ao banco, catálogo e entrada do bundle
+  online/            SupabaseRepository, cliente Supabase e configuração online/offline
   model/             schemas (zod) e tipos, carregamento/validação do catálogo
   map/               mapa gerado por código: layout, geometria, veios, gerador, portões, tema
   systems/           regras puras: Build, Coins, Wallets, Materials, Research, Influence,
