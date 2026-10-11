@@ -131,6 +131,17 @@ Como as mudanças viajam:
 - O save é um JSON versionado (`version`). Formatos novos (como os NPCs) entram com uma migração em `SAVE_MIGRATIONS` (`src/systems/SaveSystem.ts`), sem mudar as tabelas; saves antigos são migrados, não descartados.
 - Cada mudança aceita incrementa a `revision` do jogo. Se outra aba (ou outro jogador) gravou antes, o repositório responde **conflito**, a loja recarrega e reaplica os comandos pendentes.
 
+### Regras no servidor (Edge Function)
+
+O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota (esbuild) as regras, o zod e os JSONs de `src/data` num único módulo, `supabase/functions/_shared/game.js` (gerado, fora do git). Assim a Edge Function valida com exatamente os dados do commit publicado.
+
+| Comando                   | O que faz                                                                   |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `npm run build:functions` | Gera o bundle das regras para as Edge Functions                             |
+| `npm run parity`          | Gera o bundle e roda os mesmos comandos em Node e em Deno; falha se divergir |
+
+O Deno vem como devDependency (`npx deno`), não precisa instalar à parte.
+
 ## Estrutura
 
 ```
@@ -139,6 +150,7 @@ src/
   store.ts           estado atual, envio de comandos e eventos (camada imperativa)
   commands/          comandos serializáveis e applyCommand (regras + permissões)
   persistence/       GameRepository e LocalRepository (localStorage)
+  server/            entrada do bundle da Edge Function e catálogo do servidor
   model/             schemas (zod) e tipos, carregamento/validação do catálogo
   map/               mapa gerado por código: layout, geometria, veios, gerador, portões, tema
   systems/           regras puras: Build, Coins, Wallets, Materials, Research, Influence,
@@ -150,7 +162,7 @@ src/
   data/              buildings.json, layout.json, theme.json, credits.json, assets.json,
                      currencies.json e os seeds
                      wallets.json, materials.json, research.json, influence.json
-scripts/             gerador de placeholders
+scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno
 public/assets/       textures/, buildings/, icons/
 docs/map-reference/  imagem e scripts de referência do mapa
 art-sources/         originais das texturas (fora do git)

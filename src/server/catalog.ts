@@ -1,0 +1,25 @@
+import assets from '../data/assets.json';
+import buildings from '../data/buildings.json';
+import currencies from '../data/currencies.json';
+import influence from '../data/influence.json';
+import layout from '../data/layout.json';
+import materials from '../data/materials.json';
+import research from '../data/research.json';
+import wallets from '../data/wallets.json';
+import { parseCatalog } from '../model/catalog';
+
+/**
+ * The same JSON files the game ships, minus the building art (a Vite-only
+ * virtual module the rules never read). Bundled into the Edge Function, so the
+ * server always validates with the data of the commit it was deployed from.
+ */
+export const serverCatalog = parseCatalog({
+  currencies,
+  buildings,
+  layout,
+  assets,
+  wallets,
+  materials,
+  research,
+  influence,
+});
