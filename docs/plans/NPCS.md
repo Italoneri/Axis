@@ -97,11 +97,15 @@ Todo comando registra o `actor` no log.
 
 ## Interface
 
-- Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel.
+- Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel. No seletor de moradia, as construções lotadas ficam desabilitadas (exceto a casa atual).
 - Salário: digitado em moedas (prata, bronze…) e salvo em PO; o card mostra "Salário: 1 Prata e 2 Bronze/dia", ou "Sem salário".
-- Painel da construção: moradores (x de y) e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento.
-- Mapa: iniciais dos trabalhadores sobre as construções.
+- Painel da construção: moradores (x de y) e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento. O rótulo de cada candidato mostra o posto atual e se está ferido ou em missão.
+- Mapa: iniciais de quem está em serviço (feridos e em missão não contam) sobre as construções.
 - Bônus ativos: incluem os efeitos dos postos ocupados.
+
+## Detalhes conhecidos
+
+- No log de um avanço de dias, o "saiu do posto" (`npc_released`) aparece antes do resumo do trabalho (`npc_worked`): as liberações são registradas no dia em que acontecem e os resumos só no fim do avanço. Fica assim de propósito.
 
 ## Futuro (fora do escopo agora)
 
