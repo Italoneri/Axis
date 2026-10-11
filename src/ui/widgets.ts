@@ -5,7 +5,7 @@ import type { Category } from '../model/schema';
 import type { CoinBag } from '../systems/Coins';
 import type { GameStore } from '../store';
 import { el } from './dom';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import type { UiMemory } from './uiMemory';
 
 // Small building blocks shared by the resource panels, the slot panel and the master tools.
@@ -16,7 +16,7 @@ export type Act = (command: GameCommand) => boolean;
 /** What every resource panel needs; bundled to keep constructors short. */
 export interface PanelDeps {
   store: GameStore;
-  session: MasterSession;
+  session: MasterAccess;
   act: Act;
   memory: UiMemory;
 }

@@ -5,7 +5,7 @@ import { totalMaterialUnits, type MaterialFields } from '../../systems/Materials
 import { newId } from '../../commands/newId';
 import { el } from '../dom';
 import { formatCount } from '../format';
-import type { MasterSession } from '../MasterSession';
+import type { MasterAccess } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
 import {
@@ -31,7 +31,7 @@ export class MaterialsPanel {
   private redraw: () => void = () => undefined;
 
   private readonly store: GameStore;
-  private readonly session: MasterSession;
+  private readonly session: MasterAccess;
   private readonly act: Act;
   private readonly memory: UiMemory;
 

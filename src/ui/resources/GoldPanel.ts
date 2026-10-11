@@ -5,7 +5,7 @@ import { toBronze, type CoinBag } from '../../systems/Coins';
 import { CAMP, groupBronze, walletOf, type WalletRef } from '../../systems/Wallets';
 import { el } from '../dom';
 import { formatCount, formatGold, formatGoldAmount } from '../format';
-import type { MasterSession } from '../MasterSession';
+import type { MasterAccess } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
 import { button, coinInputs, rememberedSelect, thumb, type Act, type PanelDeps } from '../widgets';
@@ -30,7 +30,7 @@ export class GoldPanel {
   private redraw: () => void = () => undefined;
 
   private readonly store: GameStore;
-  private readonly session: MasterSession;
+  private readonly session: MasterAccess;
   private readonly act: Act;
   private readonly memory: UiMemory;
 

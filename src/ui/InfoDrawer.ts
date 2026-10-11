@@ -5,7 +5,7 @@ import type { GameStore } from '../store';
 import { activeBonuses } from '../systems/BonusSystem';
 import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import { renderMapVisual } from './MapVisualPanel';
 import { renderMasterTools } from './MasterTools';
 import type { Act } from './widgets';
@@ -22,7 +22,7 @@ export class InfoDrawer {
   constructor(
     private readonly root: HTMLElement,
     private readonly store: GameStore,
-    private readonly session: MasterSession,
+    private readonly session: MasterAccess,
     private readonly map: { liveMap: LiveMap; preview: BuildingPreview },
     private readonly act: Act,
   ) {

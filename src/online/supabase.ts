@@ -1,24 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import type { OnlineConfig } from './config';
 import type { FunctionReply, GameBackend } from './SupabaseRepository';
-
-export interface OnlineConfig {
-  url: string;
-  anonKey: string;
-}
 
 /** Every request to Supabase gives up after this, so a dead network never freezes the game. */
 const REQUEST_TIMEOUT_MS = 15_000;
-
-/** Null keeps the game offline: both variables are needed to go online. */
-export function onlineConfig(env: {
-  VITE_SUPABASE_URL?: string | undefined;
-  VITE_SUPABASE_ANON_KEY?: string | undefined;
-}): OnlineConfig | null {
-  const url = env.VITE_SUPABASE_URL?.trim();
-  const anonKey = env.VITE_SUPABASE_ANON_KEY?.trim();
-  return url && anonKey ? { url, anonKey } : null;
-}
 
 export function createSupabase({ url, anonKey }: OnlineConfig): SupabaseClient {
   return createClient(url, anonKey, {

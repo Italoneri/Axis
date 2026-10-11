@@ -4,7 +4,7 @@ import type { GameStore } from '../../store';
 import { hasResearchArchive, researchCounts } from '../../systems/Research';
 import { newId } from '../../commands/newId';
 import { el } from '../dom';
-import type { MasterSession } from '../MasterSession';
+import type { MasterAccess } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
 import { button, categoryManager, confirmButton, type Act, type PanelDeps } from '../widgets';
@@ -20,7 +20,7 @@ export class ResearchPanel {
   private redraw: () => void = () => undefined;
 
   private readonly store: GameStore;
-  private readonly session: MasterSession;
+  private readonly session: MasterAccess;
   private readonly act: Act;
   private readonly memory: UiMemory;
 

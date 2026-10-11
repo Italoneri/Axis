@@ -137,6 +137,15 @@ Como as mudanças viajam:
 - `SupabaseRepository` (`src/online/`): `load` lê `games.state` (RLS), `submit` chama a Edge Function e transforma 409 em conflito e as recusas em mensagens do jogo, e `subscribe` escuta o Realtime de `games`. Toda chamada tem tempo limite (15 s).
 - O eco do próprio comando pelo Realtime é ignorado enquanto o envio está em andamento, para não aplicar a mudança duas vezes.
 
+### Entrar na mesa (online)
+
+1. **Login por e-mail:** a pessoa digita o e-mail e recebe um link (magic link), sem senha.
+2. **Convite:** o link de convite do mestre (`?invite=…`) liga o jogador ao personagem. Ele sobrevive ao login, porque o magic link volta para a mesma URL.
+3. **Mesa:** quem ainda não participa de nenhuma mesa pode criar uma (vira o mestre), começando do seed ou de um save exportado. Com várias mesas, `?game=<id>` escolhe qual abrir.
+4. **Papel:** as ferramentas de mestre aparecem para quem tem `role = master` em `players`. No online, "Sair da conta" substitui "Sair do modo mestre". Quem decide de fato é o servidor.
+
+O código online (e o `supabase-js`) só é baixado quando as variáveis do Supabase existem; offline, o jogo carrega como antes.
+
 ### Regras no servidor (Edge Function)
 
 O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota (esbuild) as regras, o zod e os JSONs de `src/data` num único módulo, `supabase/functions/_shared/game.js` (gerado, fora do git). Assim a Edge Function valida com exatamente os dados do commit publicado.

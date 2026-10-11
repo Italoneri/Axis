@@ -5,7 +5,7 @@ import { handleGameRequest } from '../server/handler';
 import { MemoryDb } from '../server/memoryDb';
 import { GameStore, type StoreHooks } from '../store';
 import { createInitialState } from '../systems/SaveSystem';
-import { onlineConfig } from './supabase';
+import { onlineConfig } from './config';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
 
 const MASTER = 'user-master';

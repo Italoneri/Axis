@@ -1,5 +1,5 @@
 import type { CommandContext, GameCommand } from '../commands/schema';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 
 /**
  * Character acting on this device. Until phase 3 adds logins, the player picks
@@ -11,7 +11,7 @@ export function actingCharacter(command: GameCommand): string | undefined {
 }
 
 /** Who runs a command from this device: the only place the UI decides the actor. */
-export function commandContext(session: MasterSession, command: GameCommand): CommandContext {
+export function commandContext(session: MasterAccess, command: GameCommand): CommandContext {
   if (session.isActive) return { actor: { role: 'master' } };
   return { actor: { role: 'player', characterId: actingCharacter(command) } };
 }

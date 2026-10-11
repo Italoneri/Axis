@@ -16,7 +16,7 @@ import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
 import { el, replaceKeepingScroll } from './dom';
 import { formatGold, textContext } from './format';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { ResearchArchive } from './resources/ResearchArchive';
 import { thumb } from './widgets';
@@ -33,7 +33,7 @@ export class SlotPanel {
   constructor(
     private readonly root: HTMLElement,
     private readonly store: GameStore,
-    private readonly session: MasterSession,
+    private readonly session: MasterAccess,
   ) {
     store.subscribe(() => this.render());
     session.subscribe(() => this.render());

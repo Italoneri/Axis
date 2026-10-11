@@ -3,14 +3,14 @@ import type { GameState } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { averageInfluence, worldStandings, type WorldStanding } from '../../systems/Influence';
 import { el } from '../dom';
-import type { MasterSession } from '../MasterSession';
+import type { MasterAccess } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import { progressBar, stepper, thumb, type Act, type PanelDeps } from '../widgets';
 
 /** Influência: the fixed worlds and their average, the overall influence. */
 export class InfluencePanel {
   private readonly store: GameStore;
-  private readonly session: MasterSession;
+  private readonly session: MasterAccess;
   private readonly act: Act;
 
   constructor({ store, session, act }: PanelDeps) {

@@ -4,7 +4,7 @@ import type { GameStore } from '../store';
 import { type CharacterFields } from '../systems/Characters';
 import { newId } from '../commands/newId';
 import { el } from './dom';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import { confirmButton, field, section, thumb, type Act } from './widgets';
 
 const DEFAULT_COLOR = '#c0703a';
@@ -15,13 +15,13 @@ const DEFAULT_COLOR = '#c0703a';
  */
 export function renderMasterTools(
   store: GameStore,
-  { session, act }: { session: MasterSession; act: Act },
+  { session, act }: { session: MasterAccess; act: Act },
 ): HTMLElement[] {
   return [
     timeSection(store),
     charactersSection(store, act),
     el('p', { class: 'panel__hint' }, t.master.buildingsHint),
-    el('button', { class: 'btn', type: 'button', onclick: () => session.lock() }, t.master.leave),
+    el('button', { class: 'btn', type: 'button', onclick: () => session.lock() }, session.leaveLabel),
   ];
 }
 

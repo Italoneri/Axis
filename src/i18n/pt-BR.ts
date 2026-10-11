@@ -95,6 +95,37 @@ export const t = {
     confirmRemove: 'Clique de novo para confirmar',
   },
 
+  online: {
+    title: 'Axis — mesa online',
+    loginHint: 'Entre com seu e-mail. Você recebe um link para acessar, sem senha.',
+    email: 'E-mail',
+    sendLink: 'Enviar link',
+    linkSent: (email: string) => `Link enviado para ${email}. Abra o e-mail neste aparelho.`,
+    loginFailed: 'Não foi possível enviar o link. Tente de novo em instantes.',
+    loading: 'Carregando a mesa…',
+    noGameHint:
+      'Você ainda não participa de nenhuma mesa. Peça um link de convite ao mestre, ou crie uma mesa (você será o mestre).',
+    gameName: 'Nome da mesa',
+    defaultGameName: 'Axis',
+    createFromSeed: 'Criar mesa nova',
+    createFromSave: 'Criar a partir de um save…',
+    createFailed: 'Não foi possível criar a mesa.',
+    inviteAccepted: 'Convite aceito. Bem-vindo à mesa!',
+    /** Keyed by the `error` the game function answers when an invite cannot be used. */
+    inviteRefused: new Map([
+      ['invite_invalid', 'Este convite não existe.'],
+      ['invite_expired', 'Este convite expirou. Peça um novo ao mestre.'],
+      ['invite_used', 'Este convite já foi usado.'],
+      ['invite_revoked', 'Este convite foi cancelado pelo mestre.'],
+      ['invite_is_master', 'Você é o mestre desta mesa; o convite é para um jogador.'],
+    ]),
+    inviteFailed: 'Não foi possível aceitar o convite.',
+    signOut: 'Sair da conta',
+    loadFailed: 'Não foi possível carregar a mesa. Confira a conexão e recarregue a página.',
+    masterOnly: 'Só o mestre da mesa tem as ferramentas de mestre.',
+    syncFailed: 'Sem conexão com a mesa. A ação fica pendente e será enviada na próxima tentativa.',
+  },
+
   mapVisual: {
     hint: 'Cada ajuste regenera o mapa na hora. As mudanças valem só nesta aba do navegador: exporte o theme.json e coloque em src/data para salvar.',
     edited: 'Tema alterado (ainda não salvo no projeto).',

@@ -2,7 +2,7 @@ import type { Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
 import type { GameStore } from '../store';
 import { el, replaceKeepingScroll } from './dom';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import { thumb } from './widgets';
 
 export interface ResourceMenuItem {
@@ -52,7 +52,7 @@ export class ResourceMenu {
   }
 
   /** Builds the top bar buttons and keeps them (and the open dropdown) in sync. */
-  mount(catalog: Catalog, session: MasterSession): HTMLElement {
+  mount(catalog: Catalog, session: MasterAccess): HTMLElement {
     const list = el(
       'ul',
       { class: 'topbar__resources' },
