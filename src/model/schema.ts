@@ -406,6 +406,33 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
+/**
+ * What changed in the Arquivo de registros (kept outside the state, see
+ * docs/plans/ARQUIVO.md). Names at the time, like every other entry.
+ */
+export const archiveChangeSchema = z.discriminatedUnion('target', [
+  z.object({
+    target: z.enum(['topic', 'note']),
+    action: z.enum(['created', 'edited', 'reordered', 'removed', 'restored']),
+    title: z.string(),
+  }),
+  z.object({
+    target: z.literal('note'),
+    action: z.literal('moved'),
+    title: z.string(),
+    from: z.string(),
+    to: z.string(),
+  }),
+  /** `title` is the topic the records were pasted into. */
+  z.object({
+    target: z.literal('notes'),
+    action: z.literal('pasted'),
+    title: z.string(),
+    count: z.number().int().positive(),
+  }),
+  z.object({ target: z.literal('trash'), action: z.literal('emptied') }),
+]);
+
 export const SAVE_VERSION = 5;
 
 export const gameStateSchema = z.object({
@@ -457,5 +484,6 @@ export type Npc = z.infer<typeof npcSchema>;
 export type NpcReleaseReason = z.infer<typeof npcReleaseReasonSchema>;
 export type WalletsSeed = z.infer<typeof walletsSeedSchema>;
 export type PlacedBuilding = z.infer<typeof placedBuildingSchema>;
+export type ArchiveChange = z.infer<typeof archiveChangeSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
