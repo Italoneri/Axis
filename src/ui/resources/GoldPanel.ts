@@ -2,20 +2,10 @@ import { t } from '../../i18n/pt-BR';
 import type { Character, GameState } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { toBronze, type CoinBag } from '../../systems/Coins';
-import {
-  adjustCoins,
-  CAMP,
-  consolidateWallet,
-  depositToCamp,
-  groupBronze,
-  transferCoins,
-  walletOf,
-  type WalletRef,
-} from '../../systems/Wallets';
-import { actingCharacter } from '../currentActor';
+import { CAMP, groupBronze, walletOf, type WalletRef } from '../../systems/Wallets';
 import { el } from '../dom';
 import { formatCount, formatGold, formatGoldAmount } from '../format';
-import type { MasterSession } from '../MasterSession';
+import type { MasterAccess } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
 import { button, coinInputs, rememberedSelect, thumb, type Act, type PanelDeps } from '../widgets';
@@ -40,7 +30,7 @@ export class GoldPanel {
   private redraw: () => void = () => undefined;
 
   private readonly store: GameStore;
-  private readonly session: MasterSession;
+  private readonly session: MasterAccess;
   private readonly act: Act;
   private readonly memory: UiMemory;
 
@@ -152,7 +142,7 @@ export class GoldPanel {
             this.adjusting = this.adjusting === key ? null : key;
             this.redraw();
           }),
-          button(t.gold.consolidate, () => this.act((s) => consolidateWallet(s, catalog, ref))),
+          button(t.gold.consolidate, () => this.act({ type: 'consolidate_wallet', wallet: ref })),
         ),
       isMaster && this.adjusting === key && this.adjustForm(ref),
     );
@@ -198,8 +188,7 @@ export class GoldPanel {
     });
     // The form stays open for this character after a deposit; the re-render zeroes the amounts.
     const submit = () => {
-      const depositor = actingCharacter(character.id);
-      this.act((s) => depositToCamp(s, depositor, inputs.read()));
+      this.act({ type: 'deposit', characterId: character.id, coins: inputs.read() });
     };
     return el(
       'div',
@@ -216,17 +205,24 @@ export class GoldPanel {
   }
 
   private adjustForm(ref: WalletRef): HTMLElement {
-    const inputs = coinInputs(this.store.catalog);
+    const { catalog } = this.store;
+    // Shows the value in PO live: an emerald is worth 100 PO, easy to mistype as gold.
+    const total = el('strong', {}, formatGold(catalog, 0));
+    const inputs = coinInputs(catalog, {
+      onInput: (coins) =>
+        (total.textContent = formatGold(catalog, toBronze(coins, catalog.currencies))),
+    });
     const apply = (sign: 1 | -1) => {
       const delta = Object.fromEntries(
         Object.entries(inputs.read()).map(([id, n]) => [id, sign * n]),
       );
-      this.act((s) => adjustCoins(s, ref, delta));
+      this.act({ type: 'adjust_coins', wallet: ref, delta });
     };
     return el(
       'div',
       { class: 'subform card--master' },
       inputs.element,
+      el('p', { class: 'coin-total' }, el('span', {}, t.gold.adjustTotal), total),
       el(
         'div',
         { class: 'row row--end' },
@@ -259,7 +255,12 @@ export class GoldPanel {
     });
     const inputs = coinInputs(this.store.catalog);
     const submit = () =>
-      this.act((s) => transferCoins(s, refOf(from.value), refOf(to.value), inputs.read()));
+      this.act({
+        type: 'transfer_coins',
+        from: refOf(from.value),
+        to: refOf(to.value),
+        coins: inputs.read(),
+      });
     return el(
       'section',
       { class: 'card card--master' },

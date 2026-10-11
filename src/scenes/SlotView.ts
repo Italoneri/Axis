@@ -220,7 +220,7 @@ export class SlotView {
 
   private outlinePixels(): Point[] {
     const { slot, mapSize } = this.options;
-    if (slot.type === 'core') {
+    if (slot.shape === 'round') {
       return circlePoints(toPixels(slot, mapSize), (slot.size / 2) * mapSize);
     }
     return slotOutline(slot).map((p) => toPixels(p, mapSize));
@@ -279,7 +279,7 @@ export class SlotView {
     const stroke = Math.max(1, mapSize / 800);
     const g = this.foundation.clear();
 
-    if (slot.type === 'core') {
+    if (slot.shape === 'round') {
       if (!highlighted) return;
       const { x, y } = toPixels(slot, mapSize);
       const radius = (slot.size / 2) * mapSize;

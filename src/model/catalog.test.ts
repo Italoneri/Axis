@@ -8,6 +8,34 @@ describe('shipped game data', () => {
     expect(gameData.buildings.length).toBeGreaterThan(0);
   });
 
+  it('uses layout v4, with the middle ring drawn as arcs', () => {
+    const middle = gameData.layout.slots.filter((s) => s.type === 'middle');
+    expect(gameData.layout.version).toBe(4);
+    expect(middle).toHaveLength(8);
+    expect(middle.every((s) => s.shape === 'arc')).toBe(true);
+  });
+
+  it('still reads a v3 layout with square middle slots', () => {
+    const square = {
+      id: 'mid_1',
+      type: 'middle',
+      shape: 'square',
+      x: 0.5,
+      y: 0.252,
+      angle: 0,
+      size: 0.054,
+    };
+    const slots = [...rawGameData.layout.slots.filter((s) => s.type !== 'middle'), square];
+    const layout = { ...rawGameData.layout, version: 3, slots };
+    expect(parseCatalog({ ...rawGameData, layout }).layout.slots).toContainEqual(square);
+  });
+
+  it('rejects a middle slot with an unknown shape', () => {
+    const odd = { id: 'mid_1', type: 'middle', shape: 'hexagon', x: 0.5, y: 0.25, angle: 0 };
+    const layout = { ...rawGameData.layout, slots: [...rawGameData.layout.slots, odd] };
+    expect(() => parseCatalog({ ...rawGameData, layout })).toThrow(/layout\.json/);
+  });
+
   it('has exactly one structure for the core slot', () => {
     expect(gameData.buildings.filter((b) => b.allowedSlots.includes('core'))).toHaveLength(1);
   });
@@ -83,5 +111,30 @@ describe('parseCatalog', () => {
       items: [{ id: 'x', name: 'X', category: 'nowhere', quantity: 1 }],
     };
     expect(() => parseCatalog({ ...rawGameData, materials })).toThrow(/unknown category "nowhere"/);
+  });
+
+  it('rejects posts with unknown skills, repeated activities or the construction activity', () => {
+    const post = (activity: string, skill: string) => ({
+      activity,
+      name: activity,
+      skill,
+      slots: 1,
+      effect: { type: 'bonus', text: 'x' },
+    });
+    const buildings = rawGameData.buildings.slice(0, 1).map((building) => ({
+      ...building,
+      levels: building.levels.map((level) => ({
+        ...level,
+        jobs: [
+          post('a', 'juggling'),
+          post('b', 'research'),
+          post('b', 'research'),
+          post('construir', 'research'),
+        ],
+      })),
+    }));
+    expect(() => parseCatalog({ ...rawGameData, buildings })).toThrow(
+      /unknown skill "juggling"[\s\S]*duplicate .* post id "b"[\s\S]*"construir" is reserved/,
+    );
   });
 });

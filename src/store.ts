@@ -1,36 +1,63 @@
+import { applyCommand, type CommandError, type StateChange } from './commands/applyCommand';
+import type { CommandContext, GameCommand } from './commands/schema';
 import type { Catalog } from './model/catalog';
-import type { GameState } from './model/schema';
-import { startBuild, startUpgrade, type BlockReason, type BuildOrder } from './systems/BuildSystem';
-import { forceBuilding, removeBuilding, type ForceOrder } from './systems/MasterSystem';
-import type { ActionError, Outcome } from './systems/outcome';
-import { loadState, persistState } from './systems/SaveSystem';
-import { advanceDays } from './systems/TimeSystem';
+import type { GameState, LogEntry } from './model/schema';
+import type { GameChange, GameRepository } from './persistence/GameRepository';
 
-/** What happened, so views can animate the right thing instead of diffing states. */
-export type StateChange =
-  | { kind: 'loaded' }
-  | { kind: 'construction_started'; slotId: string }
-  | { kind: 'days_advanced'; completedSlotIds: string[] }
-  | { kind: 'building_forced'; slotId: string }
-  | { kind: 'building_removed'; slotId: string }
-  | { kind: 'resources_changed' };
+export type { StateChange } from './commands/applyCommand';
 
-type Listener = (state: GameState, change: StateChange) => void;
+/** `logged`: entries a local command just added (empty for loads and remote changes). */
+type Listener = (state: GameState, change: StateChange, logged: readonly LogEntry[]) => void;
+
+export interface StoreHooks {
+  /** Who is acting for this command; the store never decides permissions itself. */
+  contextFor: (command: GameCommand) => CommandContext;
+  onRefused: (error: CommandError) => void;
+  onPersistError: (error: unknown) => void;
+}
+
+/** A local change not yet accepted by the repository. */
+type Pending = GameChange;
+
+/** After this many conflicts in a row, local changes are dropped in favor of the stored game. */
+const MAX_CONFLICTS = 3;
 
 /**
- * Imperative shell around the pure systems: owns the current state,
- * persists every change and notifies the Phaser scene and the HTML UI.
+ * Imperative shell around `applyCommand`. Changes show up immediately
+ * (optimistic) and are then saved in order; when the repository reports that
+ * someone else saved first, the store reloads and replays its pending
+ * commands on top, so the rules always run against the latest game.
  */
 export class GameStore {
+  /** Last state the repository accepted. */
+  private confirmed: GameState;
+  /** `confirmed` plus the pending changes: what the player sees. */
   private state: GameState;
+  private pending: Pending[] = [];
+  private syncing: Promise<void> = Promise.resolve();
+  /** A submit is in flight: remote updates wait for it (they may be its own echo). */
+  private isSubmitting = false;
+  /** A remote update arrived while submitting; refresh the view once the queue settles. */
+  private hasDeferredRemote = false;
   private readonly listeners = new Set<Listener>();
 
-  constructor(
+  static async open(
+    catalog: Catalog,
+    repository: GameRepository,
+    hooks: StoreHooks,
+  ): Promise<GameStore> {
+    return new GameStore(catalog, repository, hooks, await repository.load());
+  }
+
+  private constructor(
     readonly catalog: Catalog,
-    private readonly storage: Storage,
-    private readonly onPersistError: (error: unknown) => void,
+    private readonly repository: GameRepository,
+    private readonly hooks: StoreHooks,
+    initial: GameState,
   ) {
-    this.state = loadState(storage, catalog);
+    this.confirmed = initial;
+    this.state = initial;
+    repository.subscribe((remote) => this.receiveRemote(remote));
   }
 
   get current(): GameState {
@@ -42,61 +69,107 @@ export class GameStore {
     return () => this.listeners.delete(listener);
   }
 
-  build(order: BuildOrder): BlockReason[] {
-    const result = startBuild(this.state, this.catalog, order);
-    if (!result.ok) return result.reasons;
-    this.commit(result.state, { kind: 'construction_started', slotId: order.slotId });
-    return [];
-  }
-
-  upgrade(slotId: string): BlockReason[] {
-    const result = startUpgrade(this.state, this.catalog, slotId);
-    if (!result.ok) return result.reasons;
-    this.commit(result.state, { kind: 'construction_started', slotId });
-    return [];
-  }
-
-  advanceDays(days: number): void {
-    const { state, completedSlotIds } = advanceDays(this.state, days);
-    this.commit(state, { kind: 'days_advanced', completedSlotIds });
-  }
-
-  /**
-   * Runs a pure resource action (deposit, master edits of coins, materials,
-   * research, influence and characters). Returns the refusal, if any.
-   */
-  apply(action: (state: GameState) => Outcome): ActionError | null {
-    const outcome = action(this.state);
-    if (!outcome.ok) return outcome.error;
-    if (outcome.state !== this.state) this.commit(outcome.state, { kind: 'resources_changed' });
+  /** Runs one command; returns the refusal (already reported through `onRefused`), if any. */
+  dispatch(command: GameCommand): CommandError | null {
+    const ctx = this.hooks.contextFor(command);
+    const outcome = applyCommand(this.state, this.catalog, command, ctx);
+    if (!outcome.ok) {
+      this.hooks.onRefused(outcome.error);
+      return outcome.error;
+    }
+    if (outcome.state === this.state) return null;
+    this.enqueue({ kind: 'command', command, ctx }, outcome.state, outcome.change, outcome.logged);
     return null;
   }
 
-  // Master actions: the UI only exposes them after the master password is entered.
-
-  forceBuilding(order: ForceOrder): void {
-    this.commit(forceBuilding(this.state, this.catalog, order), {
-      kind: 'building_forced',
-      slotId: order.slotId,
-    });
-  }
-
-  removeBuilding(slotId: string): void {
-    this.commit(removeBuilding(this.state, slotId), { kind: 'building_removed', slotId });
-  }
-
+  /** Restores an imported save (already validated by `parseSave`), overwriting the stored game. */
   replace(state: GameState): void {
-    this.commit(state, { kind: 'loaded' });
+    const restored = { ...state, revision: this.state.revision + 1 };
+    this.enqueue({ kind: 'restore', state }, restored, { kind: 'loaded' });
   }
 
-  private commit(state: GameState, change: StateChange): void {
-    this.state = state;
-    try {
-      persistState(this.storage, state);
-    } catch (error) {
-      // Quota or private-mode failures must not block play; the UI tells the user to export.
-      this.onPersistError(error);
-    }
-    this.listeners.forEach((listener) => listener(state, change));
+  /** Resolves once every change so far was saved (or given up on). */
+  whenSynced(): Promise<void> {
+    return this.syncing;
   }
+
+  private enqueue(
+    change: Pending,
+    next: GameState,
+    stateChange: StateChange,
+    logged: readonly LogEntry[] = [],
+  ): void {
+    this.pending.push(change);
+    this.show(next, stateChange, logged);
+    this.syncing = this.syncing.then(() => this.sync());
+  }
+
+  /** Sends pending changes one by one, in order, as the repository accepts them. */
+  private async sync(): Promise<void> {
+    let conflicts = 0;
+    let isStale = false;
+    this.isSubmitting = true;
+    while (this.pending.length > 0) {
+      const [change] = this.pending;
+      if (!change) break;
+      let result;
+      try {
+        result = await this.repository.submit(change, this.confirmed.revision);
+      } catch (error) {
+        // Kept pending: the next change retries them, and the game stays playable meanwhile.
+        this.hooks.onPersistError(error);
+        break;
+      }
+      if (result.ok) {
+        conflicts = 0;
+        // Realtime may already have brought this revision (or a newer one).
+        if (result.state.revision > this.confirmed.revision) this.confirmed = result.state;
+        this.pending = this.pending.slice(1);
+      } else if (result.reason === 'refused') {
+        this.pending = this.pending.slice(1);
+        this.hooks.onRefused(result.error);
+        isStale = true;
+      } else if (++conflicts >= MAX_CONFLICTS) {
+        console.warn('[save] giving up after repeated conflicts', { dropped: this.pending.length });
+        this.confirmed = await this.repository.load();
+        this.pending = [];
+        this.hooks.onRefused('conflict');
+        isStale = true;
+      } else {
+        this.confirmed = await this.repository.load();
+        isStale = true;
+      }
+    }
+    // The optimistic state was built on an older base or included a refused change.
+    this.isSubmitting = false;
+    if (isStale || this.hasDeferredRemote) this.showConfirmedPlusPending();
+    this.hasDeferredRemote = false;
+  }
+
+  /** Someone else saved: their game becomes the base, and local changes go on top. */
+  private receiveRemote(remote: GameState): void {
+    if (remote.revision <= this.confirmed.revision) return;
+    this.confirmed = remote;
+    // Mid-submit, this can be the echo of the change being sent: replaying it on top would apply it twice.
+    if (this.isSubmitting) this.hasDeferredRemote = true;
+    else this.showConfirmedPlusPending();
+  }
+
+  private showConfirmedPlusPending(): void {
+    this.show(replay(this.confirmed, this.pending, this.catalog), { kind: 'loaded' });
+  }
+
+  private show(state: GameState, change: StateChange, logged: readonly LogEntry[] = []): void {
+    this.state = state;
+    this.listeners.forEach((listener) => listener(state, change, logged));
+  }
+}
+
+/** What the player sees: pending changes over the stored game, skipping any that no longer apply. */
+function replay(base: GameState, pending: readonly Pending[], catalog: Catalog): GameState {
+  return pending.reduce((state, change) => {
+    if (change.kind === 'restore') return { ...change.state, revision: state.revision + 1 };
+    const outcome = applyCommand(state, catalog, change.command, change.ctx);
+    return outcome.ok ? outcome.state : state;
+  }, base);
 }

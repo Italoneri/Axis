@@ -1,0 +1,9 @@
+{
+  "construction": {
+    "activity": "construir",
+    "name": "Construir",
+    "skill": "construction",
+    "slots": 2,
+    "effect": { "type": "construction", "perDay": 1 }
+  }
+}

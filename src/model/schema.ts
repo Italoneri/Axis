@@ -25,11 +25,53 @@ export const costSchema = z.object({
   materials: amountBagSchema.optional(),
 });
 
+/** Skill score of an NPC: 0 still works, at the base rate. */
+export const skillLevelSchema = z.number().int().min(0).max(10);
+
+export const skillDefSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  /** Shown as text (an emoji), next to the name. */
+  icon: z.string(),
+  description: z.string(),
+});
+
+/** Base amount per day; the worker's skill scales it (see `yieldTenths`). */
+const perDay = z.number().positive();
+
+export const jobEffectSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('produce'), material: z.string().min(1), perDay }),
+  /** Percent points added to the research the NPC was assigned to. */
+  z.object({ type: z.literal('research'), perDay }),
+  /** Days taken off the construction the NPC works on. */
+  z.object({ type: z.literal('construction'), perDay }),
+  /** Shown among the active bonuses while the post is filled. */
+  z.object({ type: z.literal('bonus'), text: z.string().min(1) }),
+]);
+
+/** A work post: `slots` NPCs can fill it at once. */
+export const jobDefSchema = z.object({
+  activity: z.string().min(1),
+  name: z.string().min(1),
+  skill: z.string().min(1),
+  slots: z.number().int().positive(),
+  effect: jobEffectSchema,
+});
+
 export const buildingLevelSchema = z.object({
   cost: costSchema,
   buildTime: positiveInt,
   effect: z.string().min(1),
   requires: z.array(requirementSchema).optional(),
+  housing: z.object({ capacity: z.number().int().positive() }).optional(),
+  jobs: z.array(jobDefSchema).optional(),
+});
+
+/** npcs.json: the post every construction in progress offers. */
+export const npcsConfigSchema = z.object({
+  construction: jobDefSchema.extend({
+    effect: jobEffectSchema.options[2],
+  }),
 });
 
 /** Art coordinates: 0–1 across the building image, origin at its top-left corner. */
@@ -39,11 +81,14 @@ const fxBase = {
   y: artCoordinate,
   /** The effect only shows from this level on. */
   minLevel: z.number().int().positive().optional(),
+  /** ...and up to this level (for details later art replaces). */
+  maxLevel: z.number().int().positive().optional(),
 };
 
 /** Animated effects drawn over finished building art (never baked into the PNG). */
 export const buildingFxSchema = z.discriminatedUnion('type', [
-  z.object({ ...fxBase, type: z.literal('smoke') }),
+  /** `color` tints the puffs (default: warm grey). */
+  z.object({ ...fxBase, type: z.literal('smoke'), color: hexColor.optional() }),
   z.object({
     ...fxBase,
     type: z.literal('glow'),
@@ -51,7 +96,8 @@ export const buildingFxSchema = z.discriminatedUnion('type', [
     /** Share of the art width. */
     radius: artCoordinate,
   }),
-  z.object({ ...fxBase, type: z.literal('sparks') }),
+  /** `color` sets the spark hue; lighter shades of it are mixed in (default: forge orange). */
+  z.object({ ...fxBase, type: z.literal('sparks'), color: hexColor.optional() }),
 ]);
 
 export const buildingDefSchema = z.object({
@@ -131,6 +177,35 @@ export const worldSchema = z.object({
   description: z.string().optional(),
 });
 
+export const npcStatusSchema = z.enum(['disponivel', 'trabalhando', 'ferido', 'em_missao']);
+
+/** One filled post. `carry` holds the tenths of yield not delivered yet (0–9). */
+export const npcJobSchema = z.object({
+  slotId: z.string().min(1),
+  activityId: z.string().min(1),
+  /** Target of a research post. */
+  researchId: z.string().min(1).optional(),
+  carry: z.number().int().min(0).max(9),
+});
+
+export const npcSchema = z.object({
+  id: z.string().min(1),
+  name: displayName,
+  /** Role shown under the name, such as "Maga". */
+  title: z.string(),
+  portrait: imageRef,
+  description: z.string(),
+  /** Score per skill id; a missing skill counts as 0. */
+  skills: z.record(z.string(), skillLevelSchema),
+  /** Slot of the building the NPC lives in. */
+  home: z.string().nullable(),
+  job: npcJobSchema.nullable(),
+  /** `disponivel`/`trabalhando` follow the job; `ferido`/`em_missao` are set by the master. */
+  status: npcStatusSchema,
+  /** Gold (PO) paid by the Acampamento for each day of work. */
+  wage: z.number().nonnegative().optional(),
+});
+
 export const materialsSchema = z.object({
   categories: z.array(categorySchema),
   items: z.array(materialSchema),
@@ -172,22 +247,37 @@ const placedBuildingSchema = z.discriminatedUnion('status', [
 /** What a construction charged: coins in bronze, materials by display name at the time. */
 const paidSchema = z.object({ bronze: positiveInt, materials: amountBagSchema });
 
+/**
+ * Fields every log entry shares. `actor` is who ran the command: a character
+ * name or "Mestre"; absent for entries from before it was recorded.
+ */
+const entryBase = { day: positiveInt, actor: z.string().optional() };
+
 const buildingEventSchema = z.object({
-  day: positiveInt,
+  ...entryBase,
   kind: z.enum([
     'build_started',
     'upgrade_started',
     'build_completed',
     'building_forced',
     'building_removed',
+    /** Dropped while loading a save: its slot no longer exists in the layout. */
+    'building_dropped',
   ]),
   buildingId: z.string(),
   level: z.number().int().positive(),
-  actor: z.string().optional(),
   paid: paidSchema.optional(),
 });
 
 const signedBag = z.record(z.string(), z.number().int());
+/** Why an NPC lost a home or a post without a command asking for it. */
+export const npcReleaseReasonSchema = z.enum([
+  'building_removed',
+  'capacity',
+  'construction_done',
+  'research_closed',
+  'no_home',
+]);
 /** Character name; absent means the Acampamento. */
 const walletLabel = z.string().optional();
 
@@ -196,55 +286,55 @@ const walletLabel = z.string().optional();
 export const logEntrySchema = z.discriminatedUnion('kind', [
   buildingEventSchema,
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('days_advanced'),
     days: z.number().int().positive(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('coins_adjusted'),
     wallet: walletLabel,
     delta: signedBag,
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('coins_deposited'),
     character: z.string(),
     coins: amountBagSchema,
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('coins_transferred'),
     from: walletLabel,
     to: walletLabel,
     coins: amountBagSchema,
   }),
-  z.object({ day: positiveInt, kind: z.literal('coins_consolidated'), wallet: walletLabel }),
+  z.object({ ...entryBase, kind: z.literal('coins_consolidated'), wallet: walletLabel }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('material_adjusted'),
     material: z.string(),
     delta: z.number().int(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.enum(['material_added', 'material_removed']),
     material: z.string(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.enum(['research_added', 'research_completed', 'research_removed']),
     title: z.string(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('research_progressed'),
     title: z.string(),
     from: percent,
     to: percent,
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('influence_changed'),
     world: z.string(),
     from: percent,
@@ -253,16 +343,66 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     total: z.number().min(0).max(100),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.enum(['character_added', 'character_removed']),
     name: z.string(),
   }),
+  z.object({ ...entryBase, kind: z.literal('research_ready'), title: z.string() }),
+  // NPCs: `place` is a building id (fixed catalog data), `npc` the name at the time.
+  z.object({
+    ...entryBase,
+    kind: z.enum(['npc_added', 'npc_updated', 'npc_removed', 'npc_unassigned']),
+    npc: z.string(),
+  }),
+  /** No `place`: the NPC moved out. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_home_set'),
+    npc: z.string(),
+    place: z.string().optional(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_job_set'),
+    npc: z.string(),
+    place: z.string(),
+    activity: z.string(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_released'),
+    npc: z.string(),
+    from: z.enum(['home', 'job']),
+    reason: npcReleaseReasonSchema,
+  }),
+  /** Summary of one advance: what the NPC delivered, in whole units. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_worked'),
+    npc: z.string(),
+    effect: z.enum(['produce', 'research', 'construction']),
+    amount: positiveInt,
+    /** Material name, research title or building id. */
+    target: z.string(),
+  }),
+  z.object({ ...entryBase, kind: z.literal('npc_wages_paid'), bronze: positiveInt }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_unpaid'),
+    npc: z.string(),
+    days: z.number().int().positive(),
+  }),
 ]);
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
+  /**
+   * Bumped by every accepted change; a save only goes through when the stored
+   * revision is the one it started from. Saves from before it start at 0.
+   */
+  revision: positiveInt.default(0),
   day: positiveInt,
   characters: z.array(characterSchema),
   wallets: z.object({
@@ -273,6 +413,7 @@ export const gameStateSchema = z.object({
   materials: materialsSchema,
   research: researchBookSchema,
   influence: influenceSchema,
+  npcs: z.array(npcSchema),
   slots: z.record(z.string(), placedBuildingSchema),
   log: z.array(logEntrySchema),
 });
@@ -281,6 +422,10 @@ export type AmountBag = Readonly<z.infer<typeof amountBagSchema>>;
 export type Cost = z.infer<typeof costSchema>;
 export type Requirement = z.infer<typeof requirementSchema>;
 export type BuildingLevel = z.infer<typeof buildingLevelSchema>;
+export type SkillDef = z.infer<typeof skillDefSchema>;
+export type JobEffect = z.infer<typeof jobEffectSchema>;
+export type JobDef = z.infer<typeof jobDefSchema>;
+export type NpcsConfig = z.infer<typeof npcsConfigSchema>;
 export type BuildingFx = z.infer<typeof buildingFxSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;
@@ -294,6 +439,10 @@ export type World = z.infer<typeof worldSchema>;
 export type Materials = z.infer<typeof materialsSchema>;
 export type ResearchBook = z.infer<typeof researchBookSchema>;
 export type Influence = z.infer<typeof influenceSchema>;
+export type NpcStatus = z.infer<typeof npcStatusSchema>;
+export type NpcJob = z.infer<typeof npcJobSchema>;
+export type Npc = z.infer<typeof npcSchema>;
+export type NpcReleaseReason = z.infer<typeof npcReleaseReasonSchema>;
 export type WalletsSeed = z.infer<typeof walletsSeedSchema>;
 export type PlacedBuilding = z.infer<typeof placedBuildingSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;

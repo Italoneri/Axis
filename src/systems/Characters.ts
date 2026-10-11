@@ -1,5 +1,5 @@
 import type { Character, GameState } from '../model/schema';
-import { nameError, uniqueId } from './Categories';
+import { idError, nameError } from './Categories';
 import { isEmptyBag } from './Coins';
 import { fail, ok, withLog, type Outcome } from './outcome';
 
@@ -11,16 +11,10 @@ export interface CharacterFields {
   portrait?: string | undefined;
 }
 
-export function addCharacter(state: GameState, fields: CharacterFields): Outcome {
-  const error = nameError(fields.name, state.characters);
+export function addCharacter(state: GameState, fields: CharacterFields & { id: string }): Outcome {
+  const error = idError(fields.id, state.characters) ?? nameError(fields.name, state.characters);
   if (error) return fail(error);
-  const character: Character = {
-    ...cleanFields(fields),
-    id: uniqueId(
-      fields.name,
-      state.characters.map((c) => c.id),
-    ),
-  };
+  const character: Character = { ...cleanFields(fields), id: fields.id };
   return ok(
     withLog(
       {

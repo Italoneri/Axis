@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 const normalized = z.number().min(0).max(1);
 const degrees = z.number().min(0).max(360);
+/** Arcs that cross North start below 0° (e.g. mid_1); geometry normalizes them. */
+const signedDegrees = z.number().min(-360).max(360);
 const byte = z.number().int().min(0).max(255);
 const rgbSchema = z.tuple([byte, byte, byte]);
 
@@ -22,14 +24,16 @@ export const arcSchema = z
   .object({
     innerRadius: normalized,
     outerRadius: normalized,
-    startAngle: degrees,
-    endAngle: degrees,
+    startAngle: signedDegrees,
+    endAngle: signedDegrees,
   })
   .refine((arc) => arc.innerRadius < arc.outerRadius, 'innerRadius must be below outerRadius');
 
 const slotBase = { id: z.string().min(1), x: normalized, y: normalized, angle: degrees };
 
-export const slotDefSchema = z.discriminatedUnion('type', [
+// Slots are told apart by shape: the geometry and the art only care about the form,
+// while `type` says which buildings may go there.
+export const slotDefSchema = z.discriminatedUnion('shape', [
   z.object({ ...slotBase, type: z.literal('core'), shape: z.literal('round'), size: normalized }),
   z.object({
     ...slotBase,
@@ -37,7 +41,30 @@ export const slotDefSchema = z.discriminatedUnion('type', [
     shape: z.literal('square'),
     size: normalized,
   }),
-  z.object({ ...slotBase, type: z.literal('outer'), shape: z.literal('arc'), arc: arcSchema }),
+  z.object({
+    ...slotBase,
+    type: z.enum(['middle', 'outer']),
+    shape: z.literal('arc'),
+    arc: arcSchema,
+  }),
+]);
+
+/** Planner parameters for the middle ring; documentation only, the slots carry the geometry. */
+const middleRingSchema = z.discriminatedUnion('shape', [
+  z.object({
+    shape: z.literal('square'),
+    count: z.number().int().nonnegative(),
+    radius: normalized,
+    slotSize: normalized,
+  }),
+  z.object({
+    shape: z.literal('arc'),
+    count: z.number().int().nonnegative(),
+    radius: normalized,
+    depth: normalized,
+    span: degrees,
+    rotation: degrees,
+  }),
 ]);
 
 export const reservedSchema = z.object({
@@ -48,7 +75,7 @@ export const reservedSchema = z.object({
 
 export const layoutSchema = z
   .object({
-    version: z.literal(3),
+    version: z.union([z.literal(3), z.literal(4)]),
     wall: z.object({ outerRadius: normalized, thickness: normalized }),
     entrances: z.object({
       width: normalized,
@@ -57,6 +84,7 @@ export const layoutSchema = z
     }),
     innerDisc: z.object({ radius: normalized }),
     core: z.object({ radius: normalized }),
+    rings: z.looseObject({ middle: middleRingSchema.optional() }).optional(),
     slots: z.array(slotDefSchema).min(1),
     reserved: z.array(reservedSchema).default([]),
   })
@@ -70,6 +98,7 @@ export type Prism = z.infer<typeof prismSchema>;
 export type ArcShape = z.infer<typeof arcSchema>;
 export type SlotDef = z.infer<typeof slotDefSchema>;
 export type SlotType = SlotDef['type'];
+export type SlotShape = SlotDef['shape'];
 export type ReservedStretch = z.infer<typeof reservedSchema>;
 export type MapLayout = z.infer<typeof layoutSchema>;
 

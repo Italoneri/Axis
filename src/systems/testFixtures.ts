@@ -1,5 +1,5 @@
 import { parseCatalog } from '../model/catalog';
-import { SAVE_VERSION, type GameState } from '../model/schema';
+import { SAVE_VERSION, type GameState, type Npc } from '../model/schema';
 
 const currencies = [
   { id: 'emerald', name: 'Esmeralda', icon: 'i', bronzeValue: 10000, order: 1 },
@@ -33,6 +33,11 @@ const influence = {
   ],
 };
 
+function forging(slots: number, perDay: number) {
+  const effect = { type: 'produce', material: 'iron', perDay };
+  return { activity: 'forjar', name: 'Forjar', skill: 'smithing', slots, effect };
+}
+
 /** Small catalog independent of the shipped balance numbers, so data tweaks never break tests. */
 export const testCatalog = parseCatalog({
   currencies,
@@ -45,8 +50,34 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['core'],
       levels: [
-        { cost: { coins: 10 }, buildTime: 2, effect: 'h1' },
-        { cost: { coins: 10 }, buildTime: 2, effect: 'h2' },
+        {
+          cost: { coins: 10 },
+          buildTime: 2,
+          effect: 'h1',
+          jobs: [
+            {
+              activity: 'estudar',
+              name: 'Estudar',
+              skill: 'research',
+              slots: 1,
+              effect: { type: 'research', perDay: 2 },
+            },
+          ],
+        },
+        {
+          cost: { coins: 10 },
+          buildTime: 2,
+          effect: 'h2',
+          jobs: [
+            {
+              activity: 'rezar',
+              name: 'Rezar',
+              skill: 'research',
+              slots: 1,
+              effect: { type: 'bonus', text: 'bênção' },
+            },
+          ],
+        },
       ],
     },
     {
@@ -57,12 +88,13 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 20 }, buildTime: 3, effect: 'f1' },
+        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1, 1)] },
         {
           cost: { coins: 30 },
           buildTime: 0,
           effect: 'f2',
           requires: [{ building: 'heart', minLevel: 1 }],
+          jobs: [forging(2, 2)],
         },
       ],
     },
@@ -75,6 +107,18 @@ export const testCatalog = parseCatalog({
       allowedSlots: ['outer'],
       requires: [{ building: 'forge', minLevel: 1 }],
       levels: [{ cost: { coins: 10, materials: { iron: 5 } }, buildTime: 1, effect: 'a1' }],
+    },
+    {
+      id: 'barracks',
+      name: 'Alojamento',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [
+        { cost: { coins: 10 }, buildTime: 2, effect: 'b1', housing: { capacity: 2 } },
+        { cost: { coins: 10 }, buildTime: 2, effect: 'b2', housing: { capacity: 3 } },
+      ],
     },
   ],
   layout: {
@@ -91,10 +135,28 @@ export const testCatalog = parseCatalog({
       { id: 'core', type: 'core', shape: 'round', x: 0.5, y: 0.5, angle: 0, size: 0.184 },
       outerSlot('outer_n', 340),
       outerSlot('outer_s', 170),
+      outerSlot('outer_e', 80),
+      outerSlot('outer_w', 260),
     ],
   },
   assets: { images: { i: 'icon.png', s: 'sprite.png' } },
   influence,
+  skills: {
+    skills: [
+      { id: 'construction', name: 'Construção', icon: 'c', description: '' },
+      { id: 'smithing', name: 'Ferraria', icon: 's', description: '' },
+      { id: 'research', name: 'Pesquisa', icon: 'r', description: '' },
+    ],
+  },
+  npcs: {
+    construction: {
+      activity: 'construir',
+      name: 'Construir',
+      skill: 'construction',
+      slots: 2,
+      effect: { type: 'construction', perDay: 1 },
+    },
+  },
   ...seed,
 });
 
@@ -102,14 +164,29 @@ export const testCatalog = parseCatalog({
 export function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
     version: SAVE_VERSION,
+    revision: 0,
     day: 1,
     characters: [{ id: 'thorin', name: 'Thorin', color: '#aa5500' }],
     wallets: { camp: { gold: 100 }, characters: { thorin: { gold: 5 } } },
     materials: seed.materials,
     research: seed.research,
     influence: { human: 0, draconic: 0 },
+    npcs: [],
     slots: {},
     log: [],
+    ...overrides,
+  };
+}
+
+/** An NPC with every optional part empty, for tests to override. */
+export function npc(overrides: Partial<Npc> & Pick<Npc, 'id' | 'name'>): Npc {
+  return {
+    title: '',
+    description: '',
+    skills: {},
+    home: null,
+    job: null,
+    status: 'disponivel',
     ...overrides,
   };
 }
@@ -128,5 +205,20 @@ export function withIron(quantity: number, overrides: Partial<GameState> = {}): 
       ...base.materials,
       items: base.materials.items.map((m) => (m.id === 'iron' ? { ...m, quantity } : m)),
     },
+  };
+}
+
+/** localStorage stand-in for tests of the persistence layer. */
+export function memoryStorage(initial: Record<string, string> = {}): Storage {
+  const items = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return items.size;
+    },
+    clear: () => items.clear(),
+    getItem: (key) => items.get(key) ?? null,
+    key: (index) => [...items.keys()][index] ?? null,
+    removeItem: (key) => void items.delete(key),
+    setItem: (key, value) => void items.set(key, value),
   };
 }

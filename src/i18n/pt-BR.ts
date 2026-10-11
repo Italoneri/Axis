@@ -1,9 +1,19 @@
 import type { SlotType } from '../map/layout';
-import type { LogEntry, ResearchStatus } from '../model/schema';
+import type {
+  JobEffect,
+  LogEntry,
+  NpcReleaseReason,
+  NpcStatus,
+  ResearchStatus,
+} from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
-import type { ActionError } from '../systems/outcome';
+import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+const decimalFormat = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 /** Every user-facing text lives here. Building, coin and seed names live in src/data/*.json. */
 export const t = {
@@ -19,6 +29,8 @@ export const t = {
   /** "42%", "37,1%": one decimal at most, no trailing ",0". */
   percent: (value: number) => `${percentFormat.format(value)}%`,
   instant: 'Imediato',
+  /** Yield stored in tenths: 34 → "3,4". */
+  tenths: (tenths: number) => decimalFormat.format(tenths / 10),
 
   topbar: {
     more: 'Mais opções',
@@ -69,6 +81,8 @@ export const t = {
     mapTab: 'Visual do mapa',
     noBonuses: 'Nenhuma estrutura concluída ainda.',
     emptyLog: 'Nada aconteceu na Axis ainda.',
+    postsTitle: 'Postos de trabalho',
+    postsSub: 'Efeitos dos NPCs em serviço',
   },
 
   master: {
@@ -93,6 +107,63 @@ export const t = {
     completeNow: 'Concluir agora',
     remove: 'Remover estrutura',
     confirmRemove: 'Clique de novo para confirmar',
+  },
+
+  online: {
+    title: 'Axis — mesa online',
+    loginHint: 'Entre com seu e-mail. Você recebe um link para acessar, sem senha.',
+    email: 'E-mail',
+    sendLink: 'Enviar link',
+    linkSent: (email: string) => `Link enviado para ${email}. Abra o e-mail neste aparelho.`,
+    loginFailed: 'Não foi possível enviar o link. Tente de novo em instantes.',
+    loading: 'Carregando a mesa…',
+    noGameHint:
+      'Você ainda não participa de nenhuma mesa. Peça um link de convite ao mestre, ou crie uma mesa (você será o mestre).',
+    gameName: 'Nome da mesa',
+    defaultGameName: 'Axis',
+    createFromSeed: 'Criar mesa nova',
+    createFromSave: 'Criar a partir de um save…',
+    createFailed: 'Não foi possível criar a mesa.',
+    inviteAccepted: 'Convite aceito. Bem-vindo à mesa!',
+    /** Keyed by the `error` the game function answers when an invite cannot be used. */
+    inviteRefused: new Map([
+      ['invite_invalid', 'Este convite não existe.'],
+      ['invite_expired', 'Este convite expirou. Peça um novo ao mestre.'],
+      ['invite_used', 'Este convite já foi usado.'],
+      ['invite_revoked', 'Este convite foi cancelado pelo mestre.'],
+      ['invite_is_master', 'Você é o mestre desta mesa; o convite é para um jogador.'],
+    ]),
+    inviteFailed: 'Não foi possível aceitar o convite.',
+    signOut: 'Sair da conta',
+    loadFailed: 'Não foi possível carregar a mesa. Confira a conexão e recarregue a página.',
+    masterOnly: 'Só o mestre da mesa tem as ferramentas de mestre.',
+    syncFailed: 'Sem conexão com a mesa. A ação fica pendente e será enviada na próxima tentativa.',
+  },
+
+  invites: {
+    title: 'Convites',
+    hint: 'Cada link liga um jogador a um personagem. Vale uma vez e expira em 7 dias.',
+    create: 'Gerar convite',
+    copy: 'Copiar link',
+    copied: 'Link copiado.',
+    copyFailed: 'Não foi possível copiar. Selecione o link e copie à mão.',
+    newLink: (name: string) => `Link de convite para ${name}:`,
+    pending: 'Pendentes',
+    noPending: 'Nenhum convite pendente.',
+    expires: (date: string) => `expira em ${date}`,
+    revoke: 'Cancelar',
+    revoked: 'Convite cancelado.',
+    failed: 'Não foi possível concluir. Tente de novo.',
+    loadFailed: 'Não foi possível carregar os convites.',
+  },
+
+  history: {
+    title: 'Histórico completo',
+    hint: 'Tudo o que aconteceu na mesa, do mais recente ao mais antigo.',
+    empty: 'Nenhuma ação registrada ainda.',
+    more: 'Carregar mais',
+    loadFailed: 'Não foi possível carregar o histórico.',
+    restored: 'Mestre restaurou um backup do jogo',
   },
 
   mapVisual: {
@@ -155,6 +226,49 @@ export const t = {
     decrease: 'Diminuir',
   },
 
+  npcs: {
+    title: 'NPCs',
+    summary: (total: number, working: number) => `${total} · ${working} trabalhando`,
+    compact: (total: number) => String(total),
+    empty: 'Nenhum NPC na Axis ainda.',
+    noMatch: 'Nenhum NPC com esse filtro.',
+    filterSkill: 'Habilidade',
+    allSkills: 'Todas as habilidades',
+    onlyIdle: 'Só sem trabalho',
+    home: 'Moradia',
+    noHome: 'Sem moradia',
+    homeOption: (building: string, used: number, capacity: number) =>
+      `${building} (${used}/${capacity})`,
+    job: 'Trabalho',
+    noJob: 'Sem trabalho',
+    jobAt: (activity: string, building: string) => `${activity} em ${building}`,
+    currentPost: (building: string) => `posto atual: ${building}`,
+    unassign: 'Dispensar',
+    newNpc: 'Novo NPC',
+    titleField: 'Título (ex.: Maga)',
+    portrait: 'Retrato (chave do assets.json ou URL)',
+    wage: 'Salário diário',
+    wageText: (coins: string) => `Salário: ${coins}/dia`,
+    noWage: 'Sem salário',
+    status: 'Situação',
+    statuses: {
+      disponivel: 'Disponível',
+      trabalhando: 'Trabalhando',
+      ferido: 'Ferido',
+      em_missao: 'Em missão',
+    } satisfies Record<NpcStatus, string>,
+    residents: (used: number, capacity: number) => `Moradores: ${used} de ${capacity}`,
+    posts: 'Postos de trabalho',
+    slotsUsed: (used: number, slots: number) => `${used}/${slots} vagas`,
+    assign: 'Designar NPC',
+    chooseNpc: 'Escolha um NPC',
+    chooseResearch: 'Pesquisa',
+    noResearch: 'Nenhuma pesquisa em andamento.',
+    noCandidates: 'Nenhum outro NPC com moradia para designar.',
+    preview: (name: string, effect: string) => `${name}: ${effect}`,
+    skillHint: (skill: string, level: number) => `${skill} ${level}`,
+  },
+
   resources: {
     gold: 'Ouro',
     materials: 'Materiais',
@@ -180,6 +294,7 @@ export const t = {
     depositTotal: 'Total do depósito',
     confirmDeposit: 'Depositar',
     adjust: 'Ajustar',
+    adjustTotal: 'Valor do ajuste',
     give: 'Dar',
     take: 'Remover',
     consolidate: 'Consolidar',
@@ -223,6 +338,7 @@ export const t = {
     search: 'Buscar por título',
     title: 'Título',
     progress: 'Progresso (%)',
+    readyToComplete: 'Pronta para concluir',
     startedOnDay: 'Dia de início',
     completedOnDay: 'Dia de conclusão',
     owner: 'Responsável',
@@ -251,13 +367,24 @@ export const t = {
   errors: {
     empty_name: 'Informe um nome.',
     duplicate_name: 'Já existe um item com esse nome.',
+    duplicate_id: 'Esse item já foi criado.',
     not_found: 'Item não encontrado (talvez já tenha sido removido).',
     category_not_empty: 'A categoria ainda tem itens. Mova-os ou remova-os antes.',
     insufficient_coins: 'Não há moedas suficientes nessa carteira.',
     nothing_to_move: 'Informe ao menos uma moeda.',
     same_wallet: 'Escolha carteiras diferentes.',
     character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
-  } satisfies Record<ActionError, string>,
+    no_home: 'O NPC precisa de moradia antes de trabalhar.',
+    home_full: 'Não há vaga de moradia nesta construção.',
+    no_housing: 'Este espaço não oferece moradia.',
+    post_full: 'Todas as vagas deste posto estão ocupadas.',
+    invalid_post: 'Esta construção não oferece esse posto agora.',
+    invalid_target: 'Escolha uma pesquisa em andamento para este posto.',
+    forbidden: 'Somente o Mestre pode fazer isso.',
+    invalid_command: 'Ação inválida. Confira os valores informados.',
+    blocked: 'A construção não atende aos requisitos.',
+    conflict: 'O jogo mudou em outro lugar; sua última ação foi desfeita.',
+  } satisfies Record<CommandError, string>,
 } as const;
 
 /** Lookups and formatters the texts need; built from the catalog and current state in ui/format.ts. */
@@ -297,6 +424,11 @@ export function blockReasonText(reason: BlockReason, ctx: TextContext): string {
   }
 }
 
+/** Master-only entries from before actors were logged read as the master's. */
+function masterActor(entry: LogEntry): string {
+  return entry.actor ?? MASTER_ACTOR;
+}
+
 export function logEntryText(entry: LogEntry, ctx: TextContext): string {
   return `Dia ${entry.day} — ${logAction(entry, ctx)}`;
 }
@@ -304,29 +436,30 @@ export function logEntryText(entry: LogEntry, ctx: TextContext): string {
 function logAction(entry: LogEntry, ctx: TextContext): string {
   switch (entry.kind) {
     case 'days_advanced':
-      return `${t.days(entry.days)} se passaram`;
+      return `${t.days(entry.days)} ${entry.days === 1 ? 'se passou' : 'se passaram'}`;
     case 'build_started':
     case 'upgrade_started':
     case 'build_completed':
     case 'building_forced':
     case 'building_removed':
+    case 'building_dropped':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
-      return `Mestre ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
+      return `${masterActor(entry)} ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
     case 'coins_deposited':
       return `${entry.character} depositou ${ctx.coins(entry.coins)} no Acampamento`;
     case 'coins_transferred':
-      return `Mestre transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
+      return `${masterActor(entry)} transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
     case 'coins_consolidated':
-      return `Mestre consolidou as moedas ${walletOf(entry.wallet)}`;
+      return `${masterActor(entry)} consolidou as moedas ${walletOf(entry.wallet)}`;
     case 'material_adjusted':
       return entry.delta > 0
-        ? `Mestre adicionou ${entry.delta} ${entry.material}`
-        : `Mestre removeu ${-entry.delta} ${entry.material}`;
+        ? `${masterActor(entry)} adicionou ${entry.delta} ${entry.material}`
+        : `${masterActor(entry)} removeu ${-entry.delta} ${entry.material}`;
     case 'material_added':
-      return `Mestre cadastrou o material ${entry.material}`;
+      return `${masterActor(entry)} cadastrou o material ${entry.material}`;
     case 'material_removed':
-      return `Mestre removeu o material ${entry.material}`;
+      return `${masterActor(entry)} removeu o material ${entry.material}`;
     case 'research_added':
       return `Pesquisa '${entry.title}' registrada`;
     case 'research_completed':
@@ -341,8 +474,93 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return `${entry.name} entrou no grupo`;
     case 'character_removed':
       return `${entry.name} saiu do grupo`;
+    case 'research_ready':
+      return `Pesquisa '${entry.title}' chegou a 100% e está pronta para concluir`;
+    case 'npc_added':
+    case 'npc_updated':
+    case 'npc_removed':
+    case 'npc_unassigned':
+    case 'npc_home_set':
+    case 'npc_job_set':
+    case 'npc_released':
+    case 'npc_worked':
+    case 'npc_wages_paid':
+    case 'npc_unpaid':
+      return npcAction(entry, ctx);
     default:
       return assertNever(entry);
+  }
+}
+
+/** "+3,4 Ferro por dia"; a bonus reads as its own text. */
+export function jobEffectText(effect: JobEffect, tenthsPerDay: number, ctx: TextContext): string {
+  const amount = t.tenths(tenthsPerDay);
+  switch (effect.type) {
+    case 'produce':
+      return `+${amount} ${ctx.material(effect.material)} por dia`;
+    case 'research':
+      return `+${amount} de progresso por dia`;
+    case 'construction':
+      return `obra adiantada em ${amount} dia por dia`;
+    case 'bonus':
+      return effect.text;
+    default:
+      return assertNever(effect);
+  }
+}
+
+type NpcEntry = Extract<LogEntry, { kind: `npc_${string}` }>;
+
+const releaseReasons: Record<NpcReleaseReason, string> = {
+  building_removed: 'a construção foi removida',
+  capacity: 'a construção perdeu vagas',
+  construction_done: 'a obra terminou',
+  research_closed: 'a pesquisa foi encerrada',
+  no_home: 'ficou sem moradia',
+};
+
+function npcAction(entry: NpcEntry, ctx: TextContext): string {
+  const who = entry.actor ? `${entry.actor}: ` : '';
+  switch (entry.kind) {
+    case 'npc_added':
+      return `${masterActor(entry)} criou o NPC ${entry.npc}`;
+    case 'npc_updated':
+      return `${masterActor(entry)} editou o NPC ${entry.npc}`;
+    case 'npc_removed':
+      return `${masterActor(entry)} removeu o NPC ${entry.npc}`;
+    case 'npc_unassigned':
+      return `${who}${entry.npc} deixou o posto de trabalho`;
+    case 'npc_home_set':
+      return entry.place
+        ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
+        : `${who}${entry.npc} deixou a moradia`;
+    case 'npc_job_set':
+      return `${who}${entry.npc} assumiu o posto ${entry.activity} em ${ctx.building(entry.place)}`;
+    case 'npc_released': {
+      const what = entry.from === 'home' ? 'perdeu a moradia' : 'perdeu o posto de trabalho';
+      return `${entry.npc} ${what}: ${releaseReasons[entry.reason]}`;
+    }
+    case 'npc_worked':
+      return npcWorkText(entry, ctx);
+    case 'npc_wages_paid':
+      return `Salários de NPCs pagos pelo Acampamento: ${ctx.gold(entry.bronze)}`;
+    case 'npc_unpaid':
+      return `${entry.npc} ficou sem pagamento e não trabalhou por ${t.days(entry.days)}`;
+    default:
+      return assertNever(entry);
+  }
+}
+
+function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: TextContext): string {
+  switch (entry.effect) {
+    case 'produce':
+      return `${entry.npc} produziu ${entry.amount} ${entry.target}`;
+    case 'research':
+      return `${entry.npc} avançou a pesquisa '${entry.target}' em ${entry.amount}%`;
+    case 'construction':
+      return `${entry.npc} adiantou a obra de ${ctx.building(entry.target)} em ${t.days(entry.amount)}`;
+    default:
+      return assertNever(entry.effect);
   }
 }
 
@@ -356,8 +574,9 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_started: who ? `${who}iniciou ${what}` : `Iniciada: ${what}`,
     upgrade_started: who ? `${who}começou a melhorar ${what}` : `Melhoria iniciada: ${what}`,
     build_completed: `Concluída: ${what}`,
-    building_forced: `Mestre definiu ${what}`,
-    building_removed: `Mestre removeu ${what}`,
+    building_forced: `${masterActor(entry)} definiu ${what}`,
+    building_removed: `${masterActor(entry)} removeu ${what}`,
+    building_dropped: `${what} removida: o espaço não existe mais no mapa`,
   };
   return actions[entry.kind] + paid;
 }

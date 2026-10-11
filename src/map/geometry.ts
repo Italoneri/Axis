@@ -113,30 +113,30 @@ export function arcOutline(arc: ArcShape, steps = ARC_STEPS): Point[] {
 }
 
 export function slotContains(slot: SlotDef, point: Point): boolean {
-  switch (slot.type) {
-    case 'core':
+  switch (slot.shape) {
+    case 'round':
       return isInsideCircle(point, slot, slot.size / 2);
-    case 'middle':
+    case 'square':
       return isInsidePolygon(point, squareCorners(slot, slot.size, SQUARE_ROTATION));
-    case 'outer':
+    case 'arc':
       return isInsideArc(point, slot.arc);
   }
 }
 
 /** Polygon drawn as the slot's foundation; the core is a circle and has none. */
 export function slotOutline(slot: SlotDef): Point[] {
-  switch (slot.type) {
-    case 'core':
+  switch (slot.shape) {
+    case 'round':
       return [];
-    case 'middle':
+    case 'square':
       return squareCorners(slot, slot.size, SQUARE_ROTATION);
-    case 'outer':
+    case 'arc':
       return arcOutline(slot.arc);
   }
 }
 
 export function slotBounds(slot: SlotDef): Bounds {
-  if (slot.type === 'core') {
+  if (slot.shape === 'round') {
     return { left: slot.x - slot.size / 2, top: slot.y - slot.size / 2, ...square(slot.size) };
   }
   const points = slotOutline(slot);
@@ -149,11 +149,11 @@ export function slotBounds(slot: SlotDef): Bounds {
 
 /** Side of the square a building sprite gets, centered on the slot's (x, y). */
 export function slotSpriteSize(slot: SlotDef): number {
-  switch (slot.type) {
-    case 'core':
-    case 'middle':
+  switch (slot.shape) {
+    case 'round':
+    case 'square':
       return slot.size * SPRITE_FILL;
-    case 'outer':
+    case 'arc':
       return arcSpriteSize(slot.arc);
   }
 }

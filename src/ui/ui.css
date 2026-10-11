@@ -1069,3 +1069,93 @@ details > summary {
 .credits__use {
   font-style: italic;
 }
+
+/* Online: login and "create a game" cards, shown before the map is mounted. */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.gate__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gate__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--gold);
+}
+
+.gate__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gate__text {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ---------- NPCs ---------- */
+
+.npc-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.npc-skills {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.npc-skill {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) 1fr 2ch;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.npc-skill__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.npc-skill-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+
+.npc-post {
+  display: grid;
+  gap: 6px;
+}
+
+.npc-post__preview {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.research-ready {
+  color: var(--gold);
+  font-weight: 600;
+}

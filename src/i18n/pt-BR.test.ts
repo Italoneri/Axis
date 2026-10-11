@@ -36,3 +36,12 @@ describe('influence log', () => {
     expect(text).toBe('Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)');
   });
 });
+
+describe('days advanced log', () => {
+  it.each([
+    { days: 1, text: 'Dia 5 — 1 dia se passou' },
+    { days: 3, text: 'Dia 5 — 3 dias se passaram' },
+  ])('agrees with $days day(s)', ({ days, text }) => {
+    expect(logEntryText({ day: 5, kind: 'days_advanced', days }, ctx)).toBe(text);
+  });
+});

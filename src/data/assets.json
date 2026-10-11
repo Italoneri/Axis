@@ -33,6 +33,14 @@
     "building.arcane_lab": "assets/buildings/arcane_lab.png",
     "building.study_station": "assets/buildings/study_station.png",
     "icon.hot_springs": "assets/icons/hot_springs.png",
-    "building.hot_springs": "assets/buildings/hot_springs.png"
+    "building.hot_springs": "assets/buildings/hot_springs.png",
+    "icon.tavern": "assets/icons/tavern.png",
+    "building.tavern": "assets/buildings/tavern.png",
+    "icon.training_hall": "assets/icons/training_hall.png",
+    "building.training_hall": "assets/buildings/training_hall.png",
+    "icon.mage_tower": "assets/icons/mage_tower.png",
+    "building.mage_tower": "assets/buildings/mage_tower.png",
+    "icon.archive": "assets/icons/archive.png",
+    "building.archive": "assets/buildings/archive.png"
   }
 }

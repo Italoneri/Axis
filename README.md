@@ -62,7 +62,7 @@ Todas as ações do mestre vão para o registro de eventos.
 
 A barra superior mostra quatro recursos. Jogadores só **visualizam**. Criar, editar e remover itens e quantidades é exclusivo do Modo Mestre.
 
-Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre muda em jogo vive no estado salvo (`GameState`), que entra no export/import de save. Se o navegador tiver um save de formato antigo, ele é descartado e o jogo começa do seed.
+Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre muda em jogo vive no estado salvo (`GameState`), que entra no export/import de save. Saves de formatos anteriores à versão 4 são descartados e o jogo começa do seed; a partir dela, cada formato novo vem com uma migração.
 
 ### Ouro (moedas)
 
@@ -118,12 +118,118 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 
 Toda alteração de recurso, seja do mestre, de um depósito ou de uma construção, gera uma entrada no registro. Exemplos: "Dia 14 — Thorin depositou 3 Platina e 12 Ouro no Acampamento" e "Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)".
 
+## NPCs
+
+Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.md`.
+
+- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de 0 a 10 em cada uma.
+- **Moradia e postos** ficam por nível no `buildings.json`:
+
+  ```json
+  "housing": { "capacity": 4 },
+  "jobs": [
+    { "activity": "forjar", "name": "Forjar", "skill": "smithing", "slots": 2,
+      "effect": { "type": "produce", "material": "iron", "perDay": 2 } }
+  ]
+  ```
+
+  Moradia por nível: Alojamento 6/14/14, Torre dos Magos 2/3/4 e Taverna 2/2/3.
+
+  Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos). O posto **Construir**, que aparece em toda obra em andamento, fica em `src/data/npcs.json`.
+
+- **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
+- **Quem faz o quê:** só o mestre cria, edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
+- **Regras:**
+  - Trabalho exige moradia.
+  - Um trabalho por vez.
+  - Capacidade e postos vêm do nível em vigor: durante uma melhoria a construção continua funcionando no nível atual.
+  - Remover uma construção, reduzir a capacidade, terminar uma obra ou encerrar a pesquisa alvo libera os NPCs, com registro no log.
+- **Ao avançar dias**, cada dia processa, nesta ordem:
+  1. Salários: o Acampamento paga (o salário é digitado em moedas e salvo em PO); sem saldo, o NPC não trabalha naquele dia.
+  2. Efeitos dos postos.
+  3. Conclusão das obras.
+
+  Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
+
+- **Save:** versão 5. Saves da versão 4 ganham `npcs: []` ao carregar; online o estado continua no mesmo jsonb.
+
+## Online / Supabase
+
+> Em andamento (Fase 3). Plano completo em [`docs/plans/FASE3_SUPABASE.md`](docs/plans/FASE3_SUPABASE.md).
+
+Sem as variáveis do Supabase, o jogo roda **offline**, como sempre: o save fica no `localStorage` do navegador.
+
+Como as mudanças viajam:
+
+- Toda ação é um **comando** em dados (`src/commands/schema.ts`), aplicado por `applyCommand`, que também confere as permissões (mestre ou jogador).
+- O `GameStore` mostra a mudança na hora e envia o comando ao **repositório** (`src/persistence/`). Offline, o `LocalRepository` aplica o comando no save guardado; online, a Edge Function aplica o mesmo `applyCommand` no servidor.
+- O save é um JSON versionado (`version`). Formatos novos (como os NPCs) entram com uma migração em `SAVE_MIGRATIONS` (`src/systems/SaveSystem.ts`), sem mudar as tabelas; saves antigos são migrados, não descartados.
+- Cada mudança aceita incrementa a `revision` do jogo. Se outra aba (ou outro jogador) gravou antes, o repositório responde **conflito**, a loja recarrega e reaplica os comandos pendentes.
+
+### No navegador
+
+- `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (veja `.env.example`) ligam o modo online. Só a chave **anon** vai para o front; a service role fica na Edge Function.
+- `SupabaseRepository` (`src/online/`): `load` lê `games.state` (RLS), `submit` chama a Edge Function e transforma 409 em conflito e as recusas em mensagens do jogo, e `subscribe` escuta o Realtime de `games`. Toda chamada tem tempo limite (15 s).
+- O eco do próprio comando pelo Realtime é ignorado enquanto o envio está em andamento, para não aplicar a mudança duas vezes.
+
+### Entrar na mesa (online)
+
+1. **Login por e-mail:** a pessoa digita o e-mail e recebe um link (magic link), sem senha.
+2. **Convite:** o link de convite do mestre (`?invite=…`) liga o jogador ao personagem. Ele sobrevive ao login, porque o magic link volta para a mesma URL.
+3. **Mesa:** quem ainda não participa de nenhuma mesa pode criar uma (vira o mestre), começando do seed ou de um save exportado. Com várias mesas, `?game=<id>` escolhe qual abrir.
+4. **Papel:** as ferramentas de mestre aparecem para quem tem `role = master` em `players`. No online, "Sair da conta" substitui "Sair do modo mestre". Quem decide de fato é o servidor.
+
+**Convites (mestre):** na aba **Mestre** da gaveta, o cartão **Convites** gera um link por personagem (botão **Copiar link**) e lista os convites pendentes, que podem ser cancelados.
+
+**Histórico completo:** na aba **Registro**, abaixo das entradas recentes (o `state.log` guarda só as últimas 200), o cartão **Histórico completo** lê o `game_log` em páginas de 50.
+
+O código online (e o `supabase-js`) só é baixado quando as variáveis do Supabase existem; offline, o jogo carrega como antes.
+
+### Regras no servidor (Edge Function)
+
+O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota (esbuild) as regras, o zod e os JSONs de `src/data` num único módulo, `supabase/functions/_shared/game.js` (gerado, fora do git). Assim a Edge Function valida com exatamente os dados do commit publicado.
+
+| Comando                   | O que faz                                                                   |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `npm run build:functions` | Gera o bundle das regras para as Edge Functions                             |
+| `npm run parity`          | Gera o bundle e roda os mesmos comandos em Node e em Deno; falha se divergir |
+
+O Deno vem como devDependency (`npx deno`), não precisa instalar à parte.
+
+A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `supabase-js`. A lógica está em `src/server/`:
+
+- **JWT:** sem token ou com token inválido → **401**. O papel e o personagem vêm da tabela `players`, nunca do corpo da requisição.
+- **`command`:** `{ gameId, command, expectedRevision }` → aplica o `applyCommand` e grava com `commit_game_update`. Respostas: **200** `{ state }`, **403** (não membro ou sem permissão), **409** (revisão desatualizada), **422** (requisição ou comando inválidos).
+- **`create_game`:** cria o jogo a partir do seed ou de um save exportado (`state`); quem cria vira mestre.
+- **`restore_save`:** (mestre) substitui o jogo por um backup, como a próxima revisão.
+- **Convites:** `create_invite` (mestre) gera um token de uso único para um personagem, válido por 7 dias (até 30); o banco guarda só o hash. `accept_invite` liga quem aceitou ao personagem; `revoke_invite` cancela um convite pendente.
+- Testes em `src/server/http.test.ts` e `src/server/handler.test.ts`, com o banco simulado em memória.
+
+| Comando                    | O que faz                                                   |
+| -------------------------- | ----------------------------------------------------------- |
+| `npm run check:functions`  | Gera o bundle e confere os tipos da função com o Deno        |
+| `npm run deploy:functions` | Gera o bundle e publica a função (precisa do CLI logado)      |
+
+### Banco (Supabase)
+
+`supabase/migrations/` cria as tabelas `games` (estado em jsonb + `revision`), `players` (papel e personagem), `game_log` (histórico completo) e `invites` (convites de uso único, só o hash do token é gravado).
+
+- **RLS:** clientes só **leem**, e só os jogos de que participam. Ninguém grava direto: as escritas passam pela Edge Function, que usa a service role e as funções `commit_game_update` (grava só se a `revision` bater), `create_game` e `accept_invite`.
+- `games` está na publicação do Realtime, que também respeita a RLS.
+- **Verificação:** `supabase/tests/games_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
+
+O Supabase CLI vem como devDependency: use `npx supabase …`.
+
 ## Estrutura
 
 ```
 src/
   main.ts            monta UI + jogo
-  store.ts           estado atual, persistência e eventos (camada imperativa)
+  store.ts           estado atual, envio de comandos e eventos (camada imperativa)
+  commands/          comandos serializáveis e applyCommand (regras + permissões)
+  persistence/       GameRepository e LocalRepository (localStorage)
+  server/            Edge Function: handler, acesso ao banco, catálogo e entrada do bundle
+  online/            SupabaseRepository, cliente Supabase e configuração online/offline
   model/             schemas (zod) e tipos, carregamento/validação do catálogo
   map/               mapa gerado por código: layout, geometria, veios, gerador, portões, tema
   systems/           regras puras: Build, Coins, Wallets, Materials, Research, Influence,
@@ -135,9 +241,10 @@ src/
   data/              buildings.json, layout.json, theme.json, credits.json, assets.json,
                      currencies.json e os seeds
                      wallets.json, materials.json, research.json, influence.json
-scripts/             gerador de placeholders
+scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno
 public/assets/       textures/, buildings/, icons/
 docs/map-reference/  imagem e scripts de referência do mapa
+supabase/            config, migrations SQL (tabelas + RLS), testes pgTAP e Edge Functions
 art-sources/         originais das texturas (fora do git)
 ```
 
@@ -170,7 +277,7 @@ art-sources/         originais das texturas (fora do git)
    }
    ```
 
-   - `allowedSlots`: `core` (centro), `middle` (os 8 quadrados em volta do disco azul) e/ou `outer` (os arcos junto à muralha).
+   - `allowedSlots`: `core` (centro), `middle` (os 8 arcos em volta do disco azul) e/ou `outer` (os arcos junto à muralha).
    - `requires` no nível de cima vale para **todos** os níveis; dentro de um nível, só para aquele nível.
    - `buildTime` é em dias de jogo (`0` = imediato). Pode haver quantos níveis você quiser.
    - O `cost` segue o [formato de custo](#formato-de-custo-nas-estruturas).
@@ -200,14 +307,14 @@ O tamanho com que cada estrutura aparece no mapa vem do próprio espaço no `lay
 
 A arte final tem um arquivo por **formato de espaço**, e não precisa ser cadastrada no `assets.json`: basta colocar o PNG em `public/assets/buildings/` com o nome certo (o `npm run dev` recarrega a página sozinho). Enquanto um formato não tiver arte, o jogo usa o placeholder quadrado.
 
-| Tipo de slot | Formato             | Arquivo                                   | Tamanho | Orientação da arte                                                                                  |
-| ------------ | ------------------- | ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
-| `outer`      | arco (setor anelar) | `public/assets/buildings/<id>.outer.png`  | 768×506 | desenhada como no espaço **Norte**: muralha no **topo**, frente voltada para baixo (centro da Axis) |
-| `middle`     | quadrado            | `public/assets/buildings/<id>.middle.png` | 256×256 | frente voltada para baixo (centro da Axis)                                                          |
-| `core`       | círculo             | `public/assets/buildings/<id>.core.png`   | 512×512 | —                                                                                                   |
+| Tipo de slot | Formato             | Arquivo                                   | Tamanho | Orientação da arte                                                                                    |
+| ------------ | ------------------- | ----------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `outer`      | arco (setor anelar) | `public/assets/buildings/<id>.outer.png`  | 768×506 | desenhada como no espaço **Norte**: muralha no **topo**, frente voltada para baixo (centro da Axis)   |
+| `middle`     | arco (setor anelar) | `public/assets/buildings/<id>.middle.png` | 768×311 | desenhada como no espaço **Norte**: borda externa no **topo**, frente voltada para baixo (disco azul) |
+| `core`       | círculo             | `public/assets/buildings/<id>.core.png`   | 512×512 | —                                                                                                     |
 
-- **Arcos:** a imagem é escalada para a caixa do arco (calculada a partir do `layout.json`), girada pelo ângulo do espaço e recortada pela forma exata do arco. O molde está em `docs/art-templates/outer_arc_mask.png` (máscara) e `outer_arc_guide.png` (guia).
-- **Quadrados:** a imagem gira para a frente apontar para o centro. Como os quadrados do mapa não giram, nos espaços diagonais a arte encolhe para caber (até 71%).
+- **Arcos:** a imagem é escalada para a caixa do arco (calculada a partir do `layout.json`), girada pelo ângulo do espaço e recortada pela forma exata do arco. Vale para a muralha (`outer`) e para o anel intermediário (`middle`), cada um com seu molde em `docs/art-templates/`: `outer_arc_mask.png`/`outer_arc_guide.png` (768×506) e `middle_arc_mask.png`/`middle_arc_guide.png` (768×311). Para regerar os moldes depois de mudar o layout: `python docs/art-pipeline/scripts/gerar_moldes.py src/data/layout.json docs/art-templates`.
+- **Quadrados (layout v3):** a imagem gira para a frente apontar para o centro. Como os quadrados do mapa não giram, nos espaços diagonais a arte encolhe para caber (até 71%).
 - **Círculo:** a imagem é recortada pelo círculo do Coração.
 - **Níveis (opcional):** `<id>.outer.lv2.png`, `<id>.outer.lv3.png`… O jogo usa a arte do nível atual ou, se não existir, a do nível mais próximo abaixo.
 - **Em construção:** aparece a arte do nível-alvo a 35% de opacidade, com um tracejado dourado de andaime e a barra de progresso.
@@ -224,14 +331,14 @@ Fumaça, brilho e faíscas não vão no PNG: ficam no campo opcional `fx` da est
 ]
 ```
 
-| `type`   | Efeito                                    | Campos extras                                                  |
-| -------- | ----------------------------------------- | -------------------------------------------------------------- |
-| `smoke`  | partículas cinza subindo e se dispersando | —                                                              |
-| `glow`   | luz pulsante                              | `color` (hex `#rrggbb`) e `radius` (fração da largura da arte) |
-| `sparks` | faíscas curtas em momentos aleatórios     | —                                                              |
+| `type`   | Efeito                                | Campos extras                                                                   |
+| -------- | ------------------------------------- | ------------------------------------------------------------------------------- |
+| `smoke`  | partículas subindo e se dispersando   | `color` opcional (hex); padrão cinza                                            |
+| `glow`   | luz pulsante                          | `color` (hex `#rrggbb`) e `radius` (fração da largura da arte)                  |
+| `sparks` | faíscas curtas em momentos aleatórios | `color` opcional (hex), misturada com tons mais claros; padrão laranja de forja |
 
 - Os efeitos só aparecem com a construção **concluída** e com arte final no formato do espaço.
-- `minLevel` (opcional) mostra o efeito só a partir daquele nível.
+- `minLevel` (opcional) mostra o efeito só a partir daquele nível; `maxLevel` (opcional) esconde a partir do nível seguinte (útil quando a arte de um nível acima substitui um detalhe).
 - O número de partículas vivas no mapa inteiro é limitado (menos no celular). Com "reduzir movimento" ligado no sistema, só os brilhos aparecem, parados.
 
 #### Testar arte nova sem mudar o jogo
@@ -254,7 +361,7 @@ As camadas estáticas são pintadas **uma vez** num canvas fora da tela e regist
 6. Sombra interna junto à muralha.
 7. Linhas douradas da muralha, do disco e do core.
 
-Por cima ficam objetos normais do Phaser: as fundações dos espaços (arcos e quadrados translúcidos que brilham no hover), os **portões** (desenhados por código com as cores de `entrances.prisms`, com sombra e um halo que pulsa devagar) e as construções.
+Por cima ficam objetos normais do Phaser: as fundações dos espaços (arcos translúcidos que brilham no hover), os **portões** (desenhados por código com as cores de `entrances.prisms`, com sombra e um halo que pulsa devagar) e as construções.
 
 - **Resolução:** 2048 px no computador, 1024 px em celulares e telas pequenas (`src/map/textures.ts`).
 - **Tempo:** cerca de 1,2 s em 2048 px e 0,45 s em 1024 px num PC; o tempo real aparece no console (`[map] …`) e na aba **Visual do mapa**.
@@ -270,11 +377,12 @@ Coordenadas e medidas são **normalizadas (0–1)** sobre um quadrado; ângulos 
 - `innerDisc.radius` e `core.radius`: o disco azul e o círculo central.
 - `slots`: cada espaço tem `id`, `type` e `x`/`y` (centro, onde a construção aparece).
   - `core` (`shape: "round"`, `size` = diâmetro).
-  - `middle` (`shape: "square"`, `size` = lado).
-  - `outer` (`shape: "arc"`, com `arc.innerRadius`, `arc.outerRadius`, `arc.startAngle` e `arc.endAngle`).
+  - `middle` (`shape: "arc"`, como o `outer`; o layout v3 usava `shape: "square"` com `size` = lado, e ainda é aceito).
+  - `outer` (`shape: "arc"`, com `arc.innerRadius`, `arc.outerRadius`, `arc.startAngle` e `arc.endAngle`; `startAngle` pode ser negativo para arcos que cruzam o Norte).
+- `rings`: parâmetros do planejador `docs/art-pipeline/axis_anel_intermediario.html` (em `rings.middle`: `count`, `shape`, `radius`, `depth`, `span` e `rotation`). É só documentação: o jogo usa os `slots`.
 - `reserved`: trechos da muralha onde nenhum espaço pode ficar. O trecho existe só nos dados: o mapa não desenha nada que o diferencie.
 
-Os ids dos espaços são a chave das construções no save: **não renumere** (por isso eles pulam de `outer_10` para `outer_13`). O `npm test` acusa id repetido, espaço sobre um trecho reservado, estrutura cujo `allowedSlots` não tem espaço no layout e prismas em número diferente dos portões.
+Os ids dos espaços são a chave das construções no save: **não renumere** (por isso eles pulam de `outer_10` para `outer_13`). Se um save tiver uma construção num espaço que saiu do layout (por exemplo, menos `mid_N`), ela é removida ao carregar e o log registra. O `npm test` acusa id repetido, espaço sobre um trecho reservado, estrutura cujo `allowedSlots` não tem espaço no layout e prismas em número diferente dos portões.
 
 ### Editar o `theme.json`
 

@@ -41,18 +41,45 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 48, "iron": 32 } },
         "buildTime": 3,
-        "effect": "Reparos de equipamento custam metade do preço."
+        "effect": "Reparos de equipamento custam metade do preço.",
+        "jobs": [
+          {
+            "activity": "forjar",
+            "name": "Forjar",
+            "skill": "smithing",
+            "slots": 1,
+            "effect": { "type": "produce", "material": "iron", "perDay": 1 }
+          }
+        ]
       },
       {
         "cost": { "coins": 350, "materials": { "wood": 108, "iron": 72, "aetherium": 10 } },
         "buildTime": 5,
         "effect": "Armas e armaduras comuns são forjadas na metade do tempo.",
+        "jobs": [
+          {
+            "activity": "forjar",
+            "name": "Forjar",
+            "skill": "smithing",
+            "slots": 2,
+            "effect": { "type": "produce", "material": "iron", "perDay": 2 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 800, "materials": { "wood": 210, "iron": 140, "aetherium": 40 } },
         "buildTime": 8,
         "effect": "Uma vez por arco, aprimora uma arma ou armadura para +1.",
+        "jobs": [
+          {
+            "activity": "forjar",
+            "name": "Forjar",
+            "skill": "smithing",
+            "slots": 3,
+            "effect": { "type": "produce", "material": "iron", "perDay": 3 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -63,23 +90,66 @@
     "description": "Leitos limpos, ervas secando no teto e o cheiro de unguento.",
     "icon": "icon.infirmary",
     "sprite": "building.infirmary",
-    "allowedSlots": ["middle", "outer"],
+    "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.5, "y": 0.248, "color": "#7fe0c8", "radius": 0.07 },
+      { "type": "glow", "x": 0.5, "y": 0.659, "color": "#6ff0d0", "radius": 0.08 },
+      { "type": "sparks", "x": 0.5, "y": 0.659, "color": "#b8fff0", "minLevel": 3 },
+      { "type": "glow", "x": 0.388, "y": 0.525, "color": "#ffb347", "radius": 0.05, "minLevel": 3 },
+      { "type": "glow", "x": 0.612, "y": 0.525, "color": "#ffb347", "radius": 0.05, "minLevel": 3 }
+    ],
     "levels": [
       {
         "cost": { "coins": 120, "materials": { "wood": 36, "iron": 24 } },
         "buildTime": 2,
-        "effect": "Descanso longo recupera +1 dado de vida."
+        "effect": "Descanso longo recupera +1 dado de vida.",
+        "jobs": [
+          {
+            "activity": "tratar",
+            "name": "Tratar",
+            "skill": "medicine",
+            "slots": 1,
+            "effect": {
+              "type": "bonus",
+              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado."
+            }
+          }
+        ]
       },
       {
         "cost": { "coins": 300, "materials": { "wood": 72, "iron": 48, "aetherium": 15 } },
         "buildTime": 4,
         "effect": "Descanso longo remove 1 nível de exaustão adicional.",
+        "jobs": [
+          {
+            "activity": "tratar",
+            "name": "Tratar",
+            "skill": "medicine",
+            "slots": 2,
+            "effect": {
+              "type": "bonus",
+              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado."
+            }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 700, "materials": { "wood": 150, "iron": 100, "aetherium": 40 } },
         "buildTime": 7,
         "effect": "Poções de cura custam metade e personagens caídos na Axis estabilizam sozinhos.",
+        "jobs": [
+          {
+            "activity": "tratar",
+            "name": "Tratar",
+            "skill": "medicine",
+            "slots": 2,
+            "effect": {
+              "type": "bonus",
+              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado."
+            }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -95,18 +165,45 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 30, "iron": 20, "aetherium": 5 } },
         "buildTime": 3,
-        "effect": "Vantagem em testes de História e Arcanismo para pesquisas feitas na Axis."
+        "effect": "Vantagem em testes de História e Arcanismo para pesquisas feitas na Axis.",
+        "jobs": [
+          {
+            "activity": "pesquisar",
+            "name": "Pesquisar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ]
       },
       {
         "cost": { "coins": 350, "materials": { "wood": 60, "iron": 40, "aetherium": 20 } },
         "buildTime": 5,
         "effect": "Uma pergunta por sessão ao mestre sobre o mundo (resposta verdadeira, talvez vaga).",
+        "jobs": [
+          {
+            "activity": "pesquisar",
+            "name": "Pesquisar",
+            "skill": "research",
+            "slots": 2,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 750, "materials": { "wood": 120, "iron": 80, "aetherium": 50 } },
         "buildTime": 8,
         "effect": "Copiar magias para o grimório custa metade do tempo e do ouro.",
+        "jobs": [
+          {
+            "activity": "pesquisar",
+            "name": "Pesquisar",
+            "skill": "research",
+            "slots": 3,
+            "effect": { "type": "research", "perDay": 2 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -150,18 +247,54 @@
       {
         "cost": { "coins": 180, "materials": { "wood": 24, "iron": 16, "aetherium": 10 } },
         "buildTime": 3,
-        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de resistência contra medo."
+        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de resistência contra medo.",
+        "jobs": [
+          {
+            "activity": "cuidar",
+            "name": "Cuidar",
+            "skill": "medicine",
+            "slots": 1,
+            "effect": {
+              "type": "bonus",
+              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte."
+            }
+          }
+        ]
       },
       {
         "cost": { "coins": 400, "materials": { "wood": 48, "iron": 32, "aetherium": 30 } },
         "buildTime": 5,
         "effect": "Remover maldições e doenças comuns na Axis não consome componentes.",
+        "jobs": [
+          {
+            "activity": "cuidar",
+            "name": "Cuidar",
+            "skill": "medicine",
+            "slots": 1,
+            "effect": {
+              "type": "bonus",
+              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte."
+            }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 900, "materials": { "wood": 90, "iron": 60, "aetherium": 80 } },
         "buildTime": 10,
         "effect": "Uma vez por arco, uma ressurreição na Axis dispensa o componente material.",
+        "jobs": [
+          {
+            "activity": "cuidar",
+            "name": "Cuidar",
+            "skill": "medicine",
+            "slots": 1,
+            "effect": {
+              "type": "bonus",
+              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte."
+            }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -200,22 +333,44 @@
     "icon": "icon.barracks",
     "sprite": "building.barracks",
     "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "smoke", "x": 0.5, "y": 0.06, "color": "#8a8580" },
+      { "type": "glow", "x": 0.5, "y": 0.078, "color": "#ff7a1a", "radius": 0.05, "maxLevel": 1 },
+      { "type": "glow", "x": 0.5, "y": 0.078, "color": "#ff7a1a", "radius": 0.09, "minLevel": 2 },
+      { "type": "glow", "x": 0.44, "y": 0.865, "color": "#ffb347", "radius": 0.035, "maxLevel": 1 },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.131,
+        "y": 0.423,
+        "color": "#ffd27a",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.869, "y": 0.423, "color": "#ffd27a", "radius": 0.045, "minLevel": 2 }
+    ],
     "levels": [
       {
         "cost": { "coins": 100, "materials": { "wood": 42, "iron": 28 } },
         "buildTime": 2,
-        "effect": "Descanso curto na Axis leva apenas 30 minutos."
+        "effect": "Descanso curto na Axis leva apenas 30 minutos.",
+        "housing": { "capacity": 6 }
       },
       {
         "cost": { "coins": 250, "materials": { "wood": 90, "iron": 60 } },
         "buildTime": 4,
         "effect": "Abriga até 4 aliados que ajudam em atividades de tempo livre.",
+        "housing": { "capacity": 14 },
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 550, "materials": { "wood": 180, "iron": 120, "aetherium": 10 } },
         "buildTime": 7,
         "effect": "Quem começa a sessão descansado na Axis recebe inspiração.",
+        "housing": { "capacity": 14 },
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -226,24 +381,61 @@
     "description": "Alambiques, círculos de transmutação e o zumbido constante de magia contida.",
     "icon": "icon.arcane_lab",
     "sprite": "building.arcane_lab",
-    "allowedSlots": ["middle"],
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.5, "y": 0.372, "color": "#9b6bff", "radius": 0.093 },
+      { "type": "smoke", "x": 0.593, "y": 0.207, "color": "#7dffa0" },
+      { "type": "glow", "x": 0.798, "y": 0.744, "color": "#3cff78", "radius": 0.08 },
+      { "type": "sparks", "x": 0.855, "y": 0.239, "color": "#b48cff" },
+      { "type": "sparks", "x": 0.249, "y": 0.166, "color": "#b48cff", "minLevel": 2 },
+      { "type": "glow", "x": 0.5, "y": 0.372, "color": "#c9a6ff", "radius": 0.035, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.372, "color": "#e0ccff", "minLevel": 3 },
+      { "type": "glow", "x": 0.798, "y": 0.744, "color": "#e2b84a", "radius": 0.1, "minLevel": 3 }
+    ],
     "requires": [{ "building": "library", "minLevel": 1 }],
     "levels": [
       {
         "cost": { "coins": 200, "materials": { "wood": 36, "iron": 24, "aetherium": 20 } },
         "buildTime": 4,
-        "effect": "Identificar itens mágicos não exige descanso curto."
+        "effect": "Identificar itens mágicos não exige descanso curto.",
+        "jobs": [
+          {
+            "activity": "destilar",
+            "name": "Destilar",
+            "skill": "alchemy",
+            "slots": 1,
+            "effect": { "type": "produce", "material": "aetherium", "perDay": 1 }
+          }
+        ]
       },
       {
         "cost": { "coins": 450, "materials": { "wood": 72, "iron": 48, "aetherium": 50 } },
         "buildTime": 6,
         "effect": "Criar poções e pergaminhos comuns custa metade.",
+        "jobs": [
+          {
+            "activity": "destilar",
+            "name": "Destilar",
+            "skill": "alchemy",
+            "slots": 1,
+            "effect": { "type": "produce", "material": "aetherium", "perDay": 1 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 1000, "materials": { "wood": 120, "iron": 80, "aetherium": 120 } },
         "buildTime": 10,
         "effect": "Uma vez por arco, cria um item mágico incomum à escolha do grupo.",
+        "jobs": [
+          {
+            "activity": "destilar",
+            "name": "Destilar",
+            "skill": "alchemy",
+            "slots": 2,
+            "effect": { "type": "produce", "material": "aetherium", "perDay": 2 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -259,18 +451,45 @@
       {
         "cost": { "coins": 120, "materials": { "wood": 50, "iron": 10 } },
         "buildTime": 2,
-        "effect": "Libera o Arquivo de Pesquisas com a ficha completa de cada estudo."
+        "effect": "Libera o Arquivo de Pesquisas com a ficha completa de cada estudo.",
+        "jobs": [
+          {
+            "activity": "estudar",
+            "name": "Estudar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ]
       },
       {
         "cost": { "coins": 300, "materials": { "wood": 100, "iron": 30, "aetherium": 10 } },
         "buildTime": 4,
         "effect": "Pesquisas em andamento avançam 10% mais rápido.",
+        "jobs": [
+          {
+            "activity": "estudar",
+            "name": "Estudar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 2 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 700, "materials": { "wood": 180, "mithril": 5, "aetherium": 30 } },
         "buildTime": 7,
         "effect": "Uma vez por sessão, um personagem pode consultar o Arquivo para ter vantagem num teste de conhecimento.",
+        "jobs": [
+          {
+            "activity": "estudar",
+            "name": "Estudar",
+            "skill": "research",
+            "slots": 2,
+            "effect": { "type": "research", "perDay": 2 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -287,9 +506,18 @@
       { "type": "smoke", "x": 0.665, "y": 0.481 },
       { "type": "glow", "x": 0.429, "y": 0.472, "color": "#7fe0d6", "radius": 0.12 },
       { "type": "smoke", "x": 0.806, "y": 0.541 },
-      { "type": "glow", "x": 0.083, "y": 0.179, "color": "#ffb347", "radius": 0.05 },
-      { "type": "glow", "x": 0.917, "y": 0.179, "color": "#ffb347", "radius": 0.05 },
-      { "type": "glow", "x": 0.659, "y": 0.303, "color": "#ffb347", "radius": 0.05 }
+      { "type": "glow", "x": 0.083, "y": 0.179, "color": "#ffb347", "radius": 0.05, "minLevel": 2 },
+      { "type": "glow", "x": 0.917, "y": 0.179, "color": "#ffb347", "radius": 0.05, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.659,
+        "y": 0.303,
+        "color": "#ffb347",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "glow", "x": 0.833, "y": 0.296, "color": "#ffb347", "radius": 0.06, "minLevel": 3 }
     ],
     "levels": [
       {
@@ -307,6 +535,435 @@
         "cost": { "coins": 750, "materials": { "wood": 200, "iron": 60, "aetherium": 40 } },
         "buildTime": 8,
         "effect": "Uma vez por sessão, quem se banhar nas termas recupera um espaço de magia ou um uso de habilidade de nível 1 a 3.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "tavern",
+    "name": "Taverna",
+    "description": "Um barzinho encostado na muralha que cresce até virar o restaurante da Axis.",
+    "icon": "icon.tavern",
+    "sprite": "building.tavern",
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.253, "y": 0.568, "color": "#ffc56b", "radius": 0.04, "maxLevel": 1 },
+      { "type": "glow", "x": 0.5, "y": 0.437, "color": "#ffc56b", "radius": 0.04, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.438,
+        "y": 0.865,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "smoke", "x": 0.812, "y": 0.073, "color": "#8a8580", "minLevel": 2 },
+      { "type": "glow", "x": 0.81, "y": 0.1, "color": "#ff7a1a", "radius": 0.08, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.213,
+        "y": 0.597,
+        "color": "#ffc56b",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.624,
+        "y": 0.452,
+        "color": "#ffc56b",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      { "type": "glow", "x": 0.5, "y": 0.355, "color": "#ffd27a", "radius": 0.09, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 120, "materials": { "wood": 54, "iron": 18 } },
+        "buildTime": 2,
+        "effect": "Comida e bebida na Axis são de graça: o grupo não paga estilo de vida modesto entre sessões.",
+        "housing": { "capacity": 2 },
+        "jobs": [
+          {
+            "activity": "cozinhar",
+            "name": "Cozinhar",
+            "skill": "cooking",
+            "slots": 1,
+            "effect": {
+              "type": "bonus",
+              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto."
+            }
+          }
+        ]
+      },
+      {
+        "cost": { "coins": 280, "materials": { "wood": 108, "iron": 36, "aetherium": 10 } },
+        "buildTime": 4,
+        "effect": "Uma vez por sessão, o mestre conta ao grupo um boato útil ouvido entre os fregueses.",
+        "housing": { "capacity": 2 },
+        "jobs": [
+          {
+            "activity": "cozinhar",
+            "name": "Cozinhar",
+            "skill": "cooking",
+            "slots": 2,
+            "effect": {
+              "type": "bonus",
+              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto."
+            }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 650, "materials": { "wood": 200, "iron": 70, "aetherium": 30 } },
+        "buildTime": 7,
+        "effect": "Uma vez por arco, um banquete no restaurante dá ao grupo os efeitos de Banquete de Heróis.",
+        "housing": { "capacity": 3 },
+        "jobs": [
+          {
+            "activity": "cozinhar",
+            "name": "Cozinhar",
+            "skill": "cooking",
+            "slots": 2,
+            "effect": {
+              "type": "bonus",
+              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto."
+            }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "training_hall",
+    "name": "Campo de Treinamento",
+    "description": "Um pátio de terra para treino físico que evolui até uma arena de elite.",
+    "icon": "icon.training_hall",
+    "sprite": "building.training_hall",
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.44, "y": 0.865, "color": "#ffb347", "radius": 0.035, "maxLevel": 1 },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      { "type": "glow", "x": 0.087, "y": 0.279, "color": "#ff9a3a", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.913, "y": 0.279, "color": "#ff9a3a", "radius": 0.04, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 110, "materials": { "wood": 48, "iron": 24 } },
+        "buildTime": 2,
+        "effect": "Aprender uma proficiência em arma ou armadura no tempo livre leva metade do tempo."
+      },
+      {
+        "cost": { "coins": 260, "materials": { "wood": 96, "iron": 60 } },
+        "buildTime": 4,
+        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de Atletismo ou Acrobacia.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 600, "materials": { "wood": 180, "iron": 110, "aetherium": 20 } },
+        "buildTime": 7,
+        "effect": "Uma vez por arco, cada personagem pode trocar um talento ou seu estilo de luta.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "mage_tower",
+    "name": "Torre dos Magos",
+    "description": "Um círculo de aprendiz a céu aberto que cresce até virar a Torre Arcana da Axis.",
+    "icon": "icon.mage_tower",
+    "sprite": "building.mage_tower",
+    "allowedSlots": ["outer"],
+    "fx": [
+      {
+        "type": "glow",
+        "x": 0.565,
+        "y": 0.414,
+        "color": "#ffd27a",
+        "radius": 0.027,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.5, "y": 0.314, "color": "#ffd27a", "radius": 0.027, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.435,
+        "y": 0.414,
+        "color": "#ffd27a",
+        "radius": 0.027,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.5, "y": 0.512, "color": "#ffd27a", "radius": 0.027, "maxLevel": 1 },
+      { "type": "glow", "x": 0.838, "y": 0.16, "color": "#b48cff", "radius": 0.035, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.791,
+        "y": 0.615,
+        "color": "#b48cff",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.261,
+        "y": 0.608,
+        "color": "#b48cff",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.44, "y": 0.865, "color": "#ffd27a", "radius": 0.037, "maxLevel": 1 },
+      { "type": "smoke", "x": 0.825, "y": 0.585, "color": "#9cffc0", "minLevel": 2, "maxLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.471,
+        "y": 0.075,
+        "color": "#ffd27a",
+        "radius": 0.027,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.471,
+        "color": "#8a6bff",
+        "radius": 0.085,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.254,
+        "y": 0.323,
+        "color": "#ffd27a",
+        "radius": 0.035,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.796,
+        "y": 0.329,
+        "color": "#ffd27a",
+        "radius": 0.035,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.823,
+        "y": 0.614,
+        "color": "#7dffa0",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.294,
+        "y": 0.657,
+        "color": "#b48cff",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.706,
+        "y": 0.657,
+        "color": "#b48cff",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.432,
+        "y": 0.866,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.568,
+        "y": 0.866,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "smoke", "x": 0.813, "y": 0.525, "color": "#9cffc0", "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.413, "color": "#9b6bff", "radius": 0.12, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.413, "color": "#e0ccff", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.085, "color": "#7f8cff", "radius": 0.045, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.222,
+        "y": 0.526,
+        "color": "#ffd27a",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.811, "y": 0.554, "color": "#7dffa0", "radius": 0.04, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.331,
+        "y": 0.677,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.669,
+        "y": 0.677,
+        "color": "#ffd27a",
+        "radius": 0.041,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#9b6bff", "radius": 0.06, "minLevel": 3 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#9b6bff", "radius": 0.06, "minLevel": 3 },
+      { "type": "glow", "x": 0.236, "y": 0.883, "color": "#b48cff", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.764, "y": 0.883, "color": "#b48cff", "radius": 0.04, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.413, "color": "#c9a8ff", "minLevel": 3 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "color": "#b48cff", "minLevel": 3 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "color": "#b48cff", "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 180, "materials": { "wood": 30, "iron": 20, "aetherium": 15 } },
+        "buildTime": 3,
+        "effect": "Uma vez por sessão, um conjurador que descansar na Axis recupera um espaço de magia de 1º nível.",
+        "housing": { "capacity": 2 },
+        "jobs": [
+          {
+            "activity": "estudar",
+            "name": "Estudar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ]
+      },
+      {
+        "cost": { "coins": 420, "materials": { "wood": 60, "iron": 40, "aetherium": 45 } },
+        "buildTime": 5,
+        "effect": "Magias conjuradas como ritual na Axis não levam os 10 minutos extras.",
+        "housing": { "capacity": 3 },
+        "jobs": [
+          {
+            "activity": "estudar",
+            "name": "Estudar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 950, "materials": { "wood": 100, "iron": 70, "aetherium": 110 } },
+        "buildTime": 10,
+        "effect": "Uma vez por arco, o grupo pode voltar para a Axis de qualquer lugar por um Círculo de Teletransporte.",
+        "housing": { "capacity": 4 },
+        "jobs": [
+          {
+            "activity": "estudar",
+            "name": "Estudar",
+            "skill": "research",
+            "slots": 2,
+            "effect": { "type": "research", "perDay": 2 }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "archive",
+    "name": "Arquivo",
+    "description": "Depósito de registros da Axis: livros, pergaminhos, fichas e documentos guardados sob as claraboias douradas.",
+    "icon": "icon.archive",
+    "sprite": "building.archive",
+    "allowedSlots": ["middle"],
+    "fx": [
+      {
+        "type": "glow",
+        "x": 0.569,
+        "y": 0.603,
+        "color": "#ffcf7a",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.267, "y": 0.258, "color": "#ffc36b", "radius": 0.085 },
+      { "type": "glow", "x": 0.733, "y": 0.258, "color": "#ffc36b", "radius": 0.085 },
+      { "type": "glow", "x": 0.575, "y": 0.604, "color": "#ffb347", "radius": 0.04, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.871,
+        "y": 0.856,
+        "color": "#ffcf7a",
+        "radius": 0.045,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.5, "y": 0.218, "color": "#e2b84a", "radius": 0.05, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.218, "color": "#ffe08a", "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 130, "materials": { "wood": 40, "iron": 15 } },
+        "buildTime": 2,
+        "effect": "Uma vez por sessão, o grupo pode pedir ao mestre um detalhe de algo que já viu ou ouviu na campanha.",
+        "jobs": [
+          {
+            "activity": "catalogar",
+            "name": "Catalogar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ]
+      },
+      {
+        "cost": { "coins": 320, "materials": { "wood": 80, "iron": 30, "aetherium": 10 } },
+        "buildTime": 4,
+        "effect": "Vantagem em testes de Investigação feitos com documentos guardados no Arquivo.",
+        "jobs": [
+          {
+            "activity": "catalogar",
+            "name": "Catalogar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 700, "materials": { "wood": 160, "iron": 60, "aetherium": 35 } },
+        "buildTime": 7,
+        "effect": "Uma vez por arco, o grupo obtém um registro oficial (genealogia, contrato, mapa antigo) sobre um assunto à escolha.",
+        "jobs": [
+          {
+            "activity": "catalogar",
+            "name": "Catalogar",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]

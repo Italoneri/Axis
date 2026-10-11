@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { advanceDays, constructionProgress } from './TimeSystem';
-import { makeState } from './testFixtures';
+import { makeState, testCatalog } from './testFixtures';
 
 const building = (startedOnDay: number, completesOnDay: number, buildingId = 'forge') =>
   ({ buildingId, level: 1, status: 'building', startedOnDay, completesOnDay }) as const;
@@ -15,7 +15,7 @@ describe('advanceDays', () => {
         c: building(3, 9, 'armory'),
       },
     });
-    const { state: next, completedSlotIds } = advanceDays(state, 3);
+    const { state: next, completedSlotIds } = advanceDays(state, testCatalog, 3);
 
     expect(next.day).toBe(6);
     expect(completedSlotIds).toEqual(['b', 'a']);
@@ -29,8 +29,8 @@ describe('advanceDays', () => {
   });
 
   it('rejects non-positive or fractional day counts', () => {
-    expect(() => advanceDays(makeState(), 0)).toThrow();
-    expect(() => advanceDays(makeState(), 1.5)).toThrow();
+    expect(() => advanceDays(makeState(), testCatalog, 0)).toThrow();
+    expect(() => advanceDays(makeState(), testCatalog, 1.5)).toThrow();
   });
 });
 

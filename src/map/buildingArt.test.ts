@@ -8,6 +8,7 @@ import {
   withBuildingArt,
 } from './buildingArt';
 import { normalizeAngle, pointToPolar, polarToPoint } from './geometry';
+import { gameData } from '../data/gameData';
 import type { BuildingFx } from '../model/schema';
 import type { SlotDef } from './layout';
 
@@ -22,6 +23,11 @@ function outerSlot(startAngle: number, endAngle: number): SlotDef {
     arc: { innerRadius: 0.358, outerRadius: 0.44, startAngle, endAngle },
   };
 }
+
+/** The middle arcs shipped in layout.json, the source of truth for their geometry. */
+const middleArcs = gameData.layout.slots.flatMap((s) =>
+  s.type === 'middle' && s.shape === 'arc' ? [s] : [],
+);
 
 /** Compares angles across the 0°/360° seam. */
 function expectAngle(actual: number, expected: number): void {
@@ -87,6 +93,37 @@ describe('outer art placement', () => {
   });
 });
 
+describe('middle arc art placement', () => {
+  it('has middle arcs to place', () => {
+    expect(middleArcs).toHaveLength(8);
+  });
+
+  // docs/art-templates/middle_arc_*.png are 768×311, generated from the same layout.
+  it.each(middleArcs)('matches the 768×311 template proportions on $id', (slot) => {
+    const { width, height } = artPlacement(slot);
+    expect(768 * (height / width)).toBeCloseTo(311, -0.5);
+  });
+
+  it.each(middleArcs)('puts the outer edge on top and the front inwards on $id', (slot) => {
+    const { innerRadius, outerRadius, startAngle, endAngle } = slot.arc;
+    const span = normalizeAngle(endAngle - startAngle);
+    const middle = normalizeAngle(startAngle + span / 2);
+    const placement = artPlacement(slot);
+    const polarOf = (x: number, y: number) => pointToPolar(artPointToMap(placement, { x, y }));
+
+    const outerEdge = polarOf(0.5, 0);
+    expect(outerEdge.radius).toBeCloseTo(outerRadius);
+    expectAngle(outerEdge.angle, middle);
+
+    const half = ((span / 2) * Math.PI) / 180;
+    const inset = 0.5 - (innerRadius * Math.sin(half)) / placement.width;
+    const frontLeft = polarOf(inset, 1);
+    expect(frontLeft.radius).toBeCloseTo(innerRadius);
+    expectAngle(frontLeft.angle, startAngle);
+    expectAngle(placement.rotation, middle);
+  });
+});
+
 describe('middle art placement', () => {
   it.each([0, 45, 90, 180, 315])(
     'turns the front of the art towards the center at %i°',
@@ -143,11 +180,13 @@ describe('placeFx', () => {
     { type: 'smoke', x: 0.5, y: 0 },
     { type: 'glow', x: 0.5, y: 0.5, color: '#ff7a1a', radius: 0.08 },
     { type: 'sparks', x: 0.5, y: 1, minLevel: 2 },
+    { type: 'glow', x: 0.2, y: 0.2, color: '#ffb347', radius: 0.05, minLevel: 2, maxLevel: 2 },
   ];
 
   it.each([
     { level: 1, types: ['smoke', 'glow'] },
-    { level: 2, types: ['smoke', 'glow', 'sparks'] },
+    { level: 2, types: ['smoke', 'glow', 'sparks', 'glow'] },
+    { level: 3, types: ['smoke', 'glow', 'sparks'] },
   ])('keeps the effects allowed at level $level', ({ level, types }) => {
     const placed = placeFx(artPlacement(outerSlot(4.74, 21.78)), effects, level);
     expect(placed.map(({ fx }) => fx.type)).toEqual(types);

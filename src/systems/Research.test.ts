@@ -23,21 +23,28 @@ const draft: ResearchDraft = {
 };
 
 function withDraft(state: GameState = makeState({ day: 15 })): GameState {
-  const result = addResearch(state, draft);
+  const result = addResearch(state, 'res_1', draft);
   if (!result.ok) throw new Error(result.error);
   return result.state;
 }
 
 describe('addResearch', () => {
-  it('adds an entry with an id from its title and logs it', () => {
+  it('adds an entry with the given id and logs it', () => {
     const state = withDraft();
-    expect(state.research.entries).toEqual([{ ...draft, id: 'laminas_runicas' }]);
+    expect(state.research.entries).toEqual([{ ...draft, id: 'res_1' }]);
     expect(state.log).toEqual([{ day: 15, kind: 'research_added', title: 'Lâminas Rúnicas' }]);
   });
 
   it('refuses a repeated title or an unknown category', () => {
-    expect(addResearch(withDraft(), draft)).toEqual({ ok: false, error: 'duplicate_name' });
-    expect(addResearch(makeState(), { ...draft, category: 'x' })).toEqual({
+    expect(addResearch(withDraft(), 'res_2', draft)).toEqual({
+      ok: false,
+      error: 'duplicate_name',
+    });
+    expect(addResearch(withDraft(), 'res_1', { ...draft, title: 'Outra' })).toEqual({
+      ok: false,
+      error: 'duplicate_id',
+    });
+    expect(addResearch(makeState(), 'res_2', { ...draft, category: 'x' })).toEqual({
       ok: false,
       error: 'not_found',
     });
@@ -46,7 +53,7 @@ describe('addResearch', () => {
 
 describe('updateResearch', () => {
   it('logs progress changes', () => {
-    const result = updateResearch(withDraft(), 'laminas_runicas', { ...draft, progress: 60 });
+    const result = updateResearch(withDraft(), 'res_1', { ...draft, progress: 60 });
     expect(result.ok && result.state.log.at(-1)).toEqual({
       day: 15,
       kind: 'research_progressed',
@@ -57,10 +64,10 @@ describe('updateResearch', () => {
   });
 
   it('logs completion, also through the quick action, with the current day', () => {
-    const result = completeResearch(withDraft(), 'laminas_runicas');
+    const result = completeResearch(withDraft(), 'res_1');
     if (!result.ok) throw new Error(result.error);
     expect(result.state.research.entries[0]).toEqual({
-      id: 'laminas_runicas',
+      id: 'res_1',
       title: 'Lâminas Rúnicas',
       category: 'arcana',
       status: 'concluida',
@@ -78,7 +85,7 @@ describe('updateResearch', () => {
 
 describe('removeResearch', () => {
   it('removes and logs', () => {
-    const result = removeResearch(withDraft(), 'laminas_runicas');
+    const result = removeResearch(withDraft(), 'res_1');
     expect(result.ok && result.state.research.entries).toEqual([]);
     expect(result.ok && result.state.log.at(-1)).toMatchObject({ kind: 'research_removed' });
   });

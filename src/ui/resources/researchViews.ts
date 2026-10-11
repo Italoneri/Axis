@@ -32,6 +32,8 @@ export function researchSummary(book: ResearchBook, entry: Research): HTMLElemen
     el('span', { class: 'research__category' }, categoryName(book, entry.category)),
   );
   if (entry.status !== 'em_andamento') return [head];
+  const ready =
+    entry.progress >= 100 ? [el('p', { class: 'research-ready' }, t.research.readyToComplete)] : [];
   return [
     head,
     el(
@@ -40,6 +42,7 @@ export function researchSummary(book: ResearchBook, entry: Research): HTMLElemen
       progressBar(entry.progress / 100),
       el('span', {}, `${entry.progress}%`),
     ),
+    ...ready,
   ];
 }
 

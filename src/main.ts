@@ -7,11 +7,18 @@ import { LiveMap } from './map/liveMap';
 import { mapResolution } from './map/textures';
 import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
+import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore } from './store';
-import { InfoDrawer } from './ui/InfoDrawer';
+import { InfoDrawer, type DrawerExtras } from './ui/InfoDrawer';
+import { commandContext } from './ui/currentActor';
 import { askMasterPassword } from './ui/MasterLogin';
 import { parseCredits, showCredits } from './ui/Credits';
-import { MasterSession } from './ui/MasterSession';
+import { MasterSession, type MasterAccess } from './ui/MasterSession';
+import { hideGate } from './online/screens';
+import { onlineConfig } from './online/config';
+import type { CommandContext, GameCommand } from './commands/schema';
+import type { Catalog } from './model/catalog';
+import type { GameRepository } from './persistence/GameRepository';
 import { textContext } from './ui/format';
 import { SlotPanel } from './ui/SlotPanel';
 import { showToast } from './ui/Toasts';
@@ -19,6 +26,8 @@ import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
 import { UiMemory } from './ui/uiMemory';
 import type { Act } from './ui/widgets';
+
+type Notify = (message: string, tone?: 'error') => void;
 
 function requireElement(id: string): HTMLElement {
   const node = document.getElementById(id);
@@ -36,9 +45,46 @@ function safeLocalStorage(): Storage | undefined {
   }
 }
 
+interface Mode {
+  isOnline: boolean;
+  repository: GameRepository;
+  session: MasterAccess;
+  contextFor: (command: GameCommand) => CommandContext;
+  drawerExtras: (store: GameStore) => DrawerExtras;
+}
+
+/**
+ * Offline unless both Supabase variables are set. The online code (and
+ * supabase-js) is only downloaded when it is used. Null while a login or
+ * "create a game" screen waits for the user.
+ */
+async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> {
+  const config = onlineConfig(import.meta.env);
+  if (!config) {
+    const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
+    return {
+      isOnline: false,
+      repository: new LocalRepository(window.localStorage, catalog, window),
+      session,
+      contextFor: (command) => commandContext(session, command),
+      drawerExtras: () => ({}),
+    };
+  }
+  const { bootOnline } = await import('./online/onlineBoot');
+  const game = await bootOnline(config, catalog, notify);
+  if (!game) return null;
+  return {
+    isOnline: true,
+    repository: game.repository,
+    session: game.access,
+    contextFor: game.contextFor,
+    drawerExtras: (store) => game.drawerExtras(store, notify),
+  };
+}
+
 async function start(): Promise<void> {
   const toasts = requireElement('toasts');
-  const notify = (message: string, tone?: 'error') => showToast(toasts, message, tone);
+  const notify: Notify = (message, tone) => showToast(toasts, message, tone);
 
   // Loaded dynamically so a mistake in src/data/*.json shows up on screen instead of a blank page.
   const [{ gameData }, theme, credits] = await Promise.all([
@@ -46,28 +92,27 @@ async function start(): Promise<void> {
     import('./data/theme.json').then((m) => parseTheme(m.default)),
     import('./data/credits.json').then((m) => parseCredits(m.default)),
   ]);
-  const store = new GameStore(gameData, window.localStorage, (error) => {
-    console.error('[save] could not persist state', error);
-    notify(t.save.storageFailed, 'error');
+  const mode = await openMode(gameData, notify);
+  if (!mode) return;
+  const { repository, session, contextFor } = mode;
+  const store = await GameStore.open(gameData, repository, {
+    contextFor,
+    onRefused: (error) => notify(t.errors[error], 'error'),
+    onPersistError: (error) => {
+      console.error('[save] could not persist state', error);
+      notify(mode.isOnline ? t.online.syncFailed : t.save.storageFailed, 'error');
+    },
+  });
+  hideGate();
+
+  // Every entry a local command logs becomes a toast.
+  store.subscribe((state, _change, logged) => {
+    const ctx = textContext(gameData, state);
+    logged.forEach((entry) => notify(logEntryText(entry, ctx)));
   });
 
-  // Every new log entry becomes a toast; a replaced save just resets the cursor.
-  let shownLogEntries = store.current.log.length;
-  store.subscribe((state, change) => {
-    if (change.kind !== 'loaded') {
-      const ctx = textContext(gameData, state);
-      state.log.slice(shownLogEntries).forEach((entry) => notify(logEntryText(entry, ctx)));
-    }
-    shownLogEntries = state.log.length;
-  });
-
-  const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
   const liveMap = new LiveMap(gameData.layout, new ThemeStore(theme), mapResolution());
-  const act: Act = (action) => {
-    const error = store.apply(action);
-    if (error) notify(t.errors[error], 'error');
-    return error === null;
-  };
+  const act: Act = (command) => store.dispatch(command) === null;
   const memory = new UiMemory(safeLocalStorage());
   const preview = new BuildingPreview();
   const drawer = new InfoDrawer(
@@ -76,6 +121,7 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview },
     act,
+    mode.drawerExtras(store),
   );
   const panel = new SlotPanel(requireElement('panel'), store, session);
 
@@ -89,8 +135,9 @@ async function start(): Promise<void> {
       showCredits: () => showCredits(credits),
       openMaster: async () => {
         if (session.isActive) return drawer.open('master');
+        if (mode.isOnline) return notify(t.online.masterOnly, 'error');
         if (!session.isConfigured) return notify(t.master.notConfigured, 'error');
-        if (await askMasterPassword(session)) {
+        if (session instanceof MasterSession && (await askMasterPassword(session))) {
           notify(t.master.unlocked);
           drawer.open('master');
         }

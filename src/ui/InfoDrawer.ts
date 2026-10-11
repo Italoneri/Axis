@@ -1,16 +1,28 @@
-import { logEntryText, t } from '../i18n/pt-BR';
+import { jobEffectText, logEntryText, t } from '../i18n/pt-BR';
 import type { BuildingPreview } from '../map/buildingPreview';
 import type { LiveMap } from '../map/liveMap';
 import type { GameStore } from '../store';
-import { activeBonuses } from '../systems/BonusSystem';
+import { activeBonuses, activePostEffects } from '../systems/BonusSystem';
 import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import { renderMapVisual } from './MapVisualPanel';
 import { renderMasterTools } from './MasterTools';
 import type { Act } from './widgets';
 
 export type DrawerTab = 'bonuses' | 'log' | 'master' | 'map';
+
+/** A panel that loads its own data (online only); refreshed each time its tab opens. */
+export interface DrawerPanel {
+  readonly element: HTMLElement;
+  refresh(): Promise<void>;
+}
+
+/** Online additions: invites in the master tab, the full history in the log tab. */
+export interface DrawerExtras {
+  invites?: DrawerPanel | undefined;
+  history?: DrawerPanel | undefined;
+}
 
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
 
@@ -22,9 +34,10 @@ export class InfoDrawer {
   constructor(
     private readonly root: HTMLElement,
     private readonly store: GameStore,
-    private readonly session: MasterSession,
+    private readonly session: MasterAccess,
     private readonly map: { liveMap: LiveMap; preview: BuildingPreview },
     private readonly act: Act,
+    private readonly extras: DrawerExtras = {},
   ) {
     store.subscribe(() => this.render());
     session.subscribe((isActive) => {
@@ -36,6 +49,9 @@ export class InfoDrawer {
   open(tab: DrawerTab): void {
     this.tab = tab;
     this.render();
+    this.panelOf(tab)
+      ?.refresh()
+      .catch((error: unknown) => console.error(`[drawer] refresh ${tab}`, error));
   }
 
   toggle(): void {
@@ -107,20 +123,34 @@ export class InfoDrawer {
   }
 
   private renderTab(tab: DrawerTab): HTMLElement[] {
-    if (tab === 'master')
-      return renderMasterTools(this.store, { session: this.session, act: this.act });
+    if (tab === 'master') {
+      const tools = renderMasterTools(this.store, { session: this.session, act: this.act });
+      return this.extras.invites ? [...tools, this.extras.invites.element] : tools;
+    }
     if (tab === 'map')
       return renderMapVisual(this.map.liveMap, this.store.catalog, this.map.preview);
-    if (tab === 'log') return this.renderLog();
+    if (tab === 'log') {
+      const log = this.renderLog();
+      return this.extras.history ? [...log, this.extras.history.element] : log;
+    }
     return this.renderBonuses();
+  }
+
+  private panelOf(tab: DrawerTab): DrawerPanel | undefined {
+    if (tab === 'master') return this.extras.invites;
+    if (tab === 'log') return this.extras.history;
+    return undefined;
   }
 
   private renderBonuses(): HTMLElement[] {
     const { catalog } = this.store;
     const bonuses = activeBonuses(this.store.current, catalog);
-    if (bonuses.length === 0) return [el('p', { class: 'panel__hint' }, t.drawer.noBonuses)];
+    const posts = this.renderPostEffects();
+    if (bonuses.length === 0) {
+      return [el('p', { class: 'panel__hint' }, t.drawer.noBonuses), ...posts];
+    }
 
-    return bonuses.map((bonus) => {
+    const cards = bonuses.map((bonus) => {
       const icon = catalog.buildings.find((b) => b.id === bonus.buildingId)?.icon ?? '';
       return el(
         'article',
@@ -139,6 +169,43 @@ export class InfoDrawer {
         el('ul', { class: 'effects' }, ...bonus.effects.map((effect) => el('li', {}, effect))),
       );
     });
+    return [...cards, ...posts];
+  }
+
+  /** Occupied posts: their bonus text or what they yield each day. */
+  private renderPostEffects(): HTMLElement[] {
+    const { catalog, current } = this.store;
+    const posts = activePostEffects(current, catalog);
+    if (posts.length === 0) return [];
+    const ctx = textContext(catalog, current);
+    return [
+      el(
+        'article',
+        { class: 'card' },
+        el(
+          'div',
+          { class: 'card__head' },
+          el(
+            'div',
+            {},
+            el('h3', { class: 'card__name' }, t.drawer.postsTitle),
+            el('p', { class: 'card__sub' }, t.drawer.postsSub),
+          ),
+        ),
+        el(
+          'ul',
+          { class: 'effects' },
+          ...posts.map((post) =>
+            el(
+              'li',
+              {},
+              `${ctx.building(post.buildingId)} · ${post.activity} (${post.workers.join(', ')}): `,
+              jobEffectText(post.effect, post.tenthsPerDay, ctx),
+            ),
+          ),
+        ),
+      ),
+    ];
   }
 
   private renderLog(): HTMLElement[] {

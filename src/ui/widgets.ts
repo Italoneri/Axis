@@ -1,22 +1,22 @@
 import { t } from '../i18n/pt-BR';
 import { resolveImage, type Catalog } from '../model/catalog';
-import type { Category, GameState } from '../model/schema';
+import type { GameCommand } from '../commands/schema';
+import type { Category } from '../model/schema';
 import type { CoinBag } from '../systems/Coins';
-import type { Outcome } from '../systems/outcome';
 import type { GameStore } from '../store';
 import { el } from './dom';
-import type { MasterSession } from './MasterSession';
+import type { MasterAccess } from './MasterSession';
 import type { UiMemory } from './uiMemory';
 
 // Small building blocks shared by the resource panels, the slot panel and the master tools.
 
-/** Runs a store action and reports a refusal to the user; true when it went through. */
-export type Act = (action: (state: GameState) => Outcome) => boolean;
+/** Dispatches a command (the store reports refusals); true when it went through. */
+export type Act = (command: GameCommand) => boolean;
 
 /** What every resource panel needs; bundled to keep constructors short. */
 export interface PanelDeps {
   store: GameStore;
-  session: MasterSession;
+  session: MasterAccess;
   act: Act;
   memory: UiMemory;
 }
@@ -69,6 +69,7 @@ export function thumb(
 export interface SelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 export function selectInput({
@@ -83,7 +84,13 @@ export function selectInput({
   return el(
     'select',
     { class: 'input', 'aria-label': label },
-    ...options.map((o) => el('option', { value: o.value, selected: o.value === value }, o.label)),
+    ...options.map((o) =>
+      el(
+        'option',
+        { value: o.value, selected: o.value === value, disabled: o.disabled === true },
+        o.label,
+      ),
+    ),
   );
 }
 
@@ -166,7 +173,11 @@ export function numberInput({
 
 /** Whole, non-negative number typed in an input; blanks and garbage count as 0. */
 export function readCount(input: HTMLInputElement): number {
-  const value = Math.floor(Number(input.value));
+  return parseCount(input.value);
+}
+
+export function parseCount(text: string): number {
+  const value = Math.floor(Number(text));
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
@@ -216,14 +227,19 @@ export interface CoinInputs {
   read: () => CoinBag;
 }
 
-/** One number field per coin, optionally capped at what a wallet holds. */
+/** One number field per coin, optionally prefilled and capped at what a wallet holds. */
 export function coinInputs(
   catalog: Catalog,
-  { max, onInput }: { max?: CoinBag; onInput?: (coins: CoinBag) => void } = {},
+  {
+    initial,
+    max,
+    onInput,
+  }: { initial?: CoinBag; max?: CoinBag; onInput?: (coins: CoinBag) => void } = {},
 ): CoinInputs {
   const rows = catalog.currencies.map((currency) => {
     const cap = max ? (max[currency.id] ?? 0) : undefined;
-    const input = numberInput({ min: 0, max: cap, label: currency.name });
+    const value = initial?.[currency.id];
+    const input = numberInput({ min: 0, max: cap, value, label: currency.name });
     input.disabled = cap === 0;
     return { currency, input };
   });
@@ -253,9 +269,9 @@ export function coinInputs(
 }
 
 export interface CategoryOps {
-  add: (name: string) => (state: GameState) => Outcome;
-  rename: (id: string, name: string) => (state: GameState) => Outcome;
-  remove: (id: string) => (state: GameState) => Outcome;
+  add: (name: string) => GameCommand;
+  rename: (id: string, name: string) => GameCommand;
+  remove: (id: string) => GameCommand;
 }
 
 /** Master card to create categories and rename or remove the one being viewed. */

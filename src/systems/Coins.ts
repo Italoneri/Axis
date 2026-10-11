@@ -16,6 +16,11 @@ export function goldToBronze(gold: number, goldValue: number): number {
   return Math.round(gold * goldValue);
 }
 
+/** Inverse of `goldToBronze`, for values stored in gold but typed as coins. */
+export function bronzeToGold(bronze: number, goldValue: number): number {
+  return bronze / goldValue;
+}
+
 /** Fewest coins worth exactly `bronze`, biggest coins first. */
 export function fromBronze(bronze: number, currencies: readonly CurrencyDef[]): CoinBag {
   const descending = [...currencies].sort((a, b) => b.bronzeValue - a.bronzeValue);
