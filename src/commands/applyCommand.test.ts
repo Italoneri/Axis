@@ -285,7 +285,7 @@ describe('applyCommand log', () => {
       kind: 'days_advanced' as const,
       days: i + 1,
     }));
-    const result = run(validCommands.advance_days, master, { ...richState(), log: old });
+    const result = run(validCommands.advance_days, master, { ...richState(), npcs: [], log: old });
     if (!result.ok) throw new Error(result.error);
     expect(result.state.log).toHaveLength(LOG_LIMIT);
     expect(result.state.log[0]).toEqual(old[1]);

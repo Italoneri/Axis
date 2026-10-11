@@ -201,8 +201,8 @@ const handlers: Handlers = {
     if (!result.ok) return { ok: false, error: 'blocked', reasons: result.reasons };
     return { ok: true, state: result.state, change: { kind: 'construction_started', slotId } };
   },
-  advance_days: ({ days }, { state }) => {
-    const result = advanceDays(state, days);
+  advance_days: ({ days }, { state, catalog }) => {
+    const result = advanceDays(state, catalog, days);
     const change = { kind: 'days_advanced', completedSlotIds: result.completedSlotIds } as const;
     return { ok: true, state: result.state, change };
   },

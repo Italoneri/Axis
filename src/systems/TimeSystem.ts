@@ -1,4 +1,7 @@
+import type { Catalog } from '../model/catalog';
 import type { GameState, LogEntry, PlacedBuilding } from '../model/schema';
+import { settleNpcs } from './Npcs';
+import { EMPTY_TALLY, tallyLog, workOneDay, type WorkTally } from './NpcWork';
 
 export interface AdvanceResult {
   state: GameState;
@@ -6,16 +9,54 @@ export interface AdvanceResult {
   completedSlotIds: string[];
 }
 
-/** Moves the calendar forward and completes every construction due by the new day. */
-export function advanceDays(state: GameState, days: number): AdvanceResult {
-  if (!Number.isInteger(days) || days < 1) throw new Error(`invalid day count: ${days}`);
-  const day = state.day + days;
+interface Progress {
+  state: GameState;
+  tally: WorkTally;
+  completedSlotIds: string[];
+}
 
+/**
+ * Moves the calendar forward one day at a time. Each day runs, in order: NPC
+ * wages, the effects of the posts, finished constructions, then NPCs freed by
+ * them. NPC work is logged once, summed over the whole advance.
+ */
+export function advanceDays(state: GameState, catalog: Catalog, days: number): AdvanceResult {
+  if (!Number.isInteger(days) || days < 1) throw new Error(`invalid day count: ${days}`);
+  const start: Progress = { state, tally: EMPTY_TALLY, completedSlotIds: [] };
+  const end = Array.from({ length: days }, (_, i) => state.day + i + 1).reduce(
+    (progress, day) => passDay(progress, catalog, day),
+    start,
+  );
+  const day = end.state.day;
+  return {
+    state: {
+      ...end.state,
+      log: [...end.state.log, ...tallyLog(end.tally, day), { day, kind: 'days_advanced', days }],
+    },
+    completedSlotIds: end.completedSlotIds,
+  };
+}
+
+function passDay(progress: Progress, catalog: Catalog, day: number): Progress {
+  const worked = workOneDay({ ...progress.state, day }, catalog, progress.tally);
+  const completed = completeConstructions(worked.state);
+  return {
+    state: settleNpcs(completed.state, catalog),
+    tally: worked.tally,
+    completedSlotIds: [...progress.completedSlotIds, ...completed.slotIds],
+  };
+}
+
+/** Finishes every construction due by `state.day`. */
+function completeConstructions(state: GameState): { state: GameState; slotIds: string[] } {
   const due = Object.entries(state.slots)
     .flatMap(([slotId, placed]) =>
-      placed.status === 'building' && placed.completesOnDay <= day ? [{ slotId, ...placed }] : [],
+      placed.status === 'building' && placed.completesOnDay <= state.day
+        ? [{ slotId, ...placed }]
+        : [],
     )
     .sort((a, b) => a.completesOnDay - b.completesOnDay);
+  if (due.length === 0) return { state, slotIds: [] };
 
   const completedSlots = Object.fromEntries(
     due.map(({ slotId, buildingId, level }): [string, PlacedBuilding] => [
@@ -29,15 +70,13 @@ export function advanceDays(state: GameState, days: number): AdvanceResult {
     buildingId,
     level,
   }));
-
   return {
     state: {
       ...state,
-      day,
       slots: { ...state.slots, ...completedSlots },
-      log: [...state.log, ...completionLog, { day, kind: 'days_advanced', days }],
+      log: [...state.log, ...completionLog],
     },
-    completedSlotIds: due.map(({ slotId }) => slotId),
+    slotIds: due.map(({ slotId }) => slotId),
   };
 }
 
