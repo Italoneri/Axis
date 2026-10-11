@@ -81,7 +81,7 @@ function assignForm(store: GameStore, post: Post, ctx: TextContext): HTMLElement
     value: candidates[0]?.id ?? '',
     options: candidates.map((npc) => ({
       value: npc.id,
-      label: `${npc.name} (${skillOf(npc, post.job.skill)}) · ${preview(post, npc, ctx)}`,
+      label: candidateLabel(state, post, npc, ctx),
     })),
   });
   const research = researchSelect(state, post);
@@ -114,6 +114,20 @@ function researchSelect(state: GameState, post: Post): HTMLSelectElement | null 
     value: open[0]?.id ?? '',
     options: open.map((r) => ({ value: r.id, label: `${r.title} (${r.progress}%)` })),
   });
+}
+
+/** "Bia (10) · +3,0 … · posto atual: Biblioteca · Ferido", so moves and absences show up front. */
+function candidateLabel(state: GameState, post: Post, npc: Npc, ctx: TextContext): string {
+  const away = npc.status === 'ferido' || npc.status === 'em_missao';
+  const workplace = npc.job && state.slots[npc.job.slotId]?.buildingId;
+  return [
+    `${npc.name} (${skillOf(npc, post.job.skill)})`,
+    preview(post, npc, ctx),
+    workplace && t.npcs.currentPost(ctx.building(workplace)),
+    away && t.npcs.statuses[npc.status],
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function preview(post: Post, npc: Npc, ctx: TextContext): string {

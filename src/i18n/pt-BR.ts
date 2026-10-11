@@ -242,6 +242,7 @@ export const t = {
     job: 'Trabalho',
     noJob: 'Sem trabalho',
     jobAt: (activity: string, building: string) => `${activity} em ${building}`,
+    currentPost: (building: string) => `posto atual: ${building}`,
     unassign: 'Dispensar',
     newNpc: 'Novo NPC',
     titleField: 'Título (ex.: Maga)',
