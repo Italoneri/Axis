@@ -4,7 +4,7 @@ Projeto em `C:\Users\Perdido\.antigravity\clash`. Leia o código antes, me mostr
 
 ## Contexto
 
-Os espaços do anel intermediário (`middle`) eram quadrados pequenos, de cerca de 111 px no mapa de 2048. Eu os redesenhei como **arcos que acompanham a circunferência**, iguais em conceito aos da muralha, mas maiores. Vou colocar o novo `src/data/layout.json` no lugar do atual, gerado pelo planejador `axis_anel_intermediario.html`. Ele vem com `"version": 4`, e cada slot `middle` fica assim:
+Os espaços do anel intermediário (`middle`) eram quadrados pequenos, de cerca de 111 px no mapa de 2048. Eu os redesenhei como **arcos que acompanham a circunferência**, iguais em conceito aos da muralha, mas maiores. O novo layout já está em **`src/data/layout.v4.json`**, gerado pelo planejador `docs/art-pipeline/axis_anel_intermediario.html`: 8 arcos de 33°, raio central 0,247 e profundidade 0,054, ou seja, de r = 0,220 a 0,274. **Substitua o `src/data/layout.json` por ele** (renomeando) como parte desta tarefa. Até lá, o jogo continua usando a v3. Ele vem com `"version": 4`, e cada slot `middle` fica assim:
 
 ```json
 { "id": "mid_1", "type": "middle", "x": 0.5, "y": 0.214, "angle": 0,
