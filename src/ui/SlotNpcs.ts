@@ -74,7 +74,7 @@ function assignForm(store: GameStore, post: Post, ctx: TextContext): HTMLElement
   const candidates = state.npcs
     .filter((npc) => npc.home !== null && !isAt(npc, post))
     .sort((a, b) => skillOf(b, post.job.skill) - skillOf(a, post.job.skill));
-  if (candidates.length === 0) return el('p', { class: 'panel__hint' }, t.errors.no_home);
+  if (candidates.length === 0) return el('p', { class: 'panel__hint' }, t.npcs.noCandidates);
 
   const npcSelect = selectInput({
     label: t.npcs.chooseNpc,

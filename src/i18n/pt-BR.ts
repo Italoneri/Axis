@@ -263,6 +263,7 @@ export const t = {
     chooseNpc: 'Escolha um NPC',
     chooseResearch: 'Pesquisa',
     noResearch: 'Nenhuma pesquisa em andamento.',
+    noCandidates: 'Nenhum outro NPC com moradia para designar.',
     preview: (name: string, effect: string) => `${name}: ${effect}`,
     skillHint: (skill: string, level: number) => `${skill} ${level}`,
   },
@@ -532,7 +533,7 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
         ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
         : `${who}${entry.npc} deixou a moradia`;
     case 'npc_job_set':
-      return `${who}${entry.npc} foi designado para ${entry.activity} em ${ctx.building(entry.place)}`;
+      return `${who}${entry.npc} assumiu o posto ${entry.activity} em ${ctx.building(entry.place)}`;
     case 'npc_released': {
       const what = entry.from === 'home' ? 'perdeu a moradia' : 'perdeu o posto de trabalho';
       return `${entry.npc} ${what}: ${releaseReasons[entry.reason]}`;
