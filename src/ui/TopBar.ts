@@ -8,6 +8,7 @@ import { MaterialsPanel } from './resources/MaterialsPanel';
 import { NpcPanel } from './resources/NpcPanel';
 import { ResearchPanel } from './resources/ResearchPanel';
 import { createSaveControls } from './SaveControls';
+import type { ArchiveStore } from '../archiveStore';
 import type { PanelDeps } from './widgets';
 
 export interface TopBarActions {
@@ -27,7 +28,7 @@ const FIT_STEPS = ['is-compact', 'is-collapsed', 'is-tight', 'is-scrolling'] as 
 export function mountTopBar(
   root: HTMLElement,
   popover: HTMLElement,
-  deps: PanelDeps,
+  deps: PanelDeps & { archive: ArchiveStore },
   actions: TopBarActions,
 ): void {
   const { store, session } = deps;
@@ -47,7 +48,7 @@ export function mountTopBar(
       el('button', { class: 'btn', type: 'button', onclick: actions.openMaster }, t.master.enter),
       el('button', { class: 'btn', type: 'button', onclick: actions.showCredits }, t.credits.open),
     ),
-    createSaveControls(store, actions.notify),
+    createSaveControls(store, deps.archive, actions.notify),
   );
 
   root.append(

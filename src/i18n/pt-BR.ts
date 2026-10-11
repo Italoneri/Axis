@@ -7,6 +7,12 @@ import type {
   NpcStatus,
   ResearchStatus,
 } from '../model/schema';
+import {
+  BODY_LIMIT,
+  TITLE_LIMIT,
+  type ArchiveError,
+  type NoteVisibility,
+} from '../systems/Archive';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -367,6 +373,87 @@ export const t = {
     newCharacter: 'Novo personagem',
   },
 
+  archive: {
+    title: 'Arquivo de registros',
+    open: 'Abrir registros',
+    panelHint: 'Relatórios, formulários, personagens e cartas da campanha, organizados em tópicos.',
+    counts: (topics: number, notes: number) =>
+      `${topics} ${topics === 1 ? 'tópico' : 'tópicos'} · ${notes} ${notes === 1 ? 'nota' : 'notas'}`,
+    close: 'Fechar',
+    search: 'Buscar nas notas',
+    searchResults: (count: number) =>
+      count === 0
+        ? 'Nenhuma nota encontrada.'
+        : `${count} ${count === 1 ? 'nota encontrada' : 'notas encontradas'}`,
+    character: 'Você é',
+    topics: 'Tópicos',
+    backToTopics: '← Tópicos',
+    noTopics: 'Nenhum tópico ainda. Crie o primeiro (ex.: NPCs, Monstros, Relatórios).',
+    newTopic: '+ Tópico',
+    topicName: 'Nome do tópico',
+    topicIcon: 'Ícone (emoji)',
+    createTopic: 'Criar',
+    renameTopic: 'Editar tópico',
+    saveTopic: 'Salvar',
+    removeTopic: 'Remover tópico',
+    moveUp: 'Subir',
+    moveDown: 'Descer',
+    pickTopic: 'Escolha um tópico à esquerda.',
+    emptyTopic: 'Nenhuma nota neste tópico.',
+    newNote: '+ Nota',
+    paste: 'Colar registros',
+    noteTitle: 'Título',
+    noteDay: 'Dia de jogo',
+    notePinned: 'Fixar no topo',
+    noteBody: 'Texto (aceita a formatação do Discord)',
+    visibility: 'Quem vê',
+    visibilityOptions: { todos: 'Todos', mestre: 'Só o mestre' } satisfies Record<
+      NoteVisibility,
+      string
+    >,
+    masterOnlyBadge: '🔒 só o mestre',
+    pinnedBadge: '📌',
+    preview: 'Prévia',
+    rawText: 'Texto',
+    save: 'Salvar',
+    cancel: 'Cancelar',
+    edit: 'Editar',
+    remove: 'Remover',
+    moveTo: 'Mover para',
+    move: 'Mover',
+    day: (day: number) => `Dia ${day}`,
+    byline: (author: string, editor?: string) =>
+      editor && editor !== author ? `por ${author} · editado por ${editor}` : `por ${author}`,
+    pasteHint:
+      'Cole o texto do Discord. Cada linha só de traços (-----) separa um registro; a primeira linha vira o título.',
+    pastePreview: 'Pré-visualizar',
+    pasteBack: 'Voltar',
+    pasteSave: (count: number) => `Salvar ${count} ${count === 1 ? 'registro' : 'registros'}`,
+    pasteEmpty: 'Nenhum registro encontrado no texto colado.',
+    pasteTooLong: (limit: number) =>
+      `Texto acima de ${limit.toLocaleString('pt-BR')} caracteres: divida antes de salvar.`,
+    pasteChars: (count: number) => `${count.toLocaleString('pt-BR')} caracteres`,
+    trash: (count: number) => `🗑 Lixeira (${count})`,
+    trashTitle: 'Lixeira',
+    trashHint:
+      'O que foi removido fica aqui até o mestre esvaziar a lixeira. Qualquer um pode restaurar.',
+    trashEmpty: 'A lixeira está vazia.',
+    trashedTopic: (name: string) => `Tópico: ${name}`,
+    trashedNote: (title: string, topic: string) => `${title} (em ${topic})`,
+    restore: 'Restaurar',
+    emptyTrash: 'Esvaziar lixeira',
+    errors: {
+      empty_name: 'Informe um nome (ou título).',
+      duplicate_name: 'Já existe um tópico com esse nome.',
+      duplicate_id: 'Esse registro já foi criado.',
+      not_found: 'Registro não encontrado (talvez já tenha sido removido).',
+      category_not_empty: 'O tópico ainda tem notas. Mova-as ou remova-as antes.',
+      forbidden: 'Somente o Mestre pode fazer isso.',
+      too_long: `Título até ${TITLE_LIMIT} caracteres e texto até ${BODY_LIMIT.toLocaleString('pt-BR')}.`,
+      invalid_command: 'Ação inválida. Confira os valores informados.',
+      no_author: 'Escolha seu personagem antes de escrever no Arquivo.',
+    } satisfies Record<ArchiveError, string>,
+  },
   errors: {
     empty_name: 'Informe um nome.',
     duplicate_name: 'Já existe um item com esse nome.',

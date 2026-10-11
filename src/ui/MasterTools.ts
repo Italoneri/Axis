@@ -15,13 +15,30 @@ const DEFAULT_COLOR = '#c0703a';
  */
 export function renderMasterTools(
   store: GameStore,
-  { session, act }: { session: MasterAccess; act: Act },
+  {
+    session,
+    act,
+    openArchive,
+  }: { session: MasterAccess; act: Act; openArchive?: (() => void) | undefined },
 ): HTMLElement[] {
   return [
     timeSection(store),
     charactersSection(store, act),
+    ...(openArchive
+      ? [
+          section(
+            t.archive.title,
+            el('p', { class: 'panel__hint' }, t.archive.panelHint),
+            el('button', { class: 'btn', type: 'button', onclick: openArchive }, t.archive.open),
+          ),
+        ]
+      : []),
     el('p', { class: 'panel__hint' }, t.master.buildingsHint),
-    el('button', { class: 'btn', type: 'button', onclick: () => session.lock() }, session.leaveLabel),
+    el(
+      'button',
+      { class: 'btn', type: 'button', onclick: () => session.lock() },
+      session.leaveLabel,
+    ),
   ];
 }
 

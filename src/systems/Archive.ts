@@ -5,6 +5,8 @@ import type { ArchiveChange } from '../model/schema';
 // Arquivo de registros: topics and notes kept outside the GameState (see
 // docs/plans/ARQUIVO.md). Pure rules, run the same way offline and online.
 
+/** Building whose side panel opens the records once built. */
+export const ARCHIVE_BUILDING_ID = 'archive';
 export const TITLE_LIMIT = 200;
 export const BODY_LIMIT = 20_000;
 /** `authorId` / `editedBy` of what the game master writes. */

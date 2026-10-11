@@ -11,6 +11,8 @@ import {
 } from '../systems/BuildSystem';
 import { toBronze } from '../systems/Coins';
 import { findMaterial } from '../systems/Materials';
+import type { ArchiveStore } from '../archiveStore';
+import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
 import { STUDY_STATION_ID } from '../systems/Research';
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
@@ -20,7 +22,7 @@ import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
 import { ResearchArchive } from './resources/ResearchArchive';
-import { thumb } from './widgets';
+import { button, thumb } from './widgets';
 
 type SelectionListener = (slotId: string | null) => void;
 
@@ -35,8 +37,10 @@ export class SlotPanel {
     private readonly root: HTMLElement,
     private readonly store: GameStore,
     private readonly session: MasterAccess,
+    private readonly archive: { store: ArchiveStore; open: () => void },
   ) {
     store.subscribe(() => this.render());
+    archive.store.subscribe(() => this.render());
     session.subscribe(() => this.render());
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') this.close();
@@ -287,8 +291,24 @@ export class SlotPanel {
 
   /** The study station shows every research in full once it has been built. */
   private extraSections(placed: PlacedBuilding, state: GameState): HTMLElement[] {
-    const hasArchive = placed.buildingId === STUDY_STATION_ID && activeLevel(placed) >= 1;
-    return hasArchive ? [this.researchArchive.render(this.store.catalog, state)] : [];
+    if (activeLevel(placed) < 1) return [];
+    if (placed.buildingId === STUDY_STATION_ID) {
+      return [this.researchArchive.render(this.store.catalog, state)];
+    }
+    return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
+  }
+
+  /** The Arquivo, once built: the way into the records window. */
+  private recordsSection(): HTMLElement {
+    const { topics, notes } = archiveCounts(this.archive.store.current);
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.archive.title),
+      el('p', { class: 'panel__hint' }, t.archive.panelHint),
+      el('p', {}, t.archive.counts(topics, notes)),
+      button(t.archive.open, this.archive.open, { primary: true }),
+    );
   }
 }
 

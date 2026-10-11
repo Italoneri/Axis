@@ -18,10 +18,12 @@ export interface DrawerPanel {
   refresh(): Promise<void>;
 }
 
-/** Online additions: invites in the master tab, the full history in the log tab. */
+/** Online additions (invites in the master tab, the full history in the log tab) and the archive. */
 export interface DrawerExtras {
   invites?: DrawerPanel | undefined;
   history?: DrawerPanel | undefined;
+  /** The master opens the Arquivo de registros even before it is built. */
+  openArchive?: (() => void) | undefined;
 }
 
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
@@ -124,7 +126,11 @@ export class InfoDrawer {
 
   private renderTab(tab: DrawerTab): HTMLElement[] {
     if (tab === 'master') {
-      const tools = renderMasterTools(this.store, { session: this.session, act: this.act });
+      const tools = renderMasterTools(this.store, {
+        session: this.session,
+        act: this.act,
+        openArchive: this.extras.openArchive,
+      });
       return this.extras.invites ? [...tools, this.extras.invites.element] : tools;
     }
     if (tab === 'map')

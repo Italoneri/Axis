@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import type { CommandContext } from '../commands/schema';
+import type { Actor, CommandContext } from '../commands/schema';
 import { t } from '../i18n/pt-BR';
 import type { Catalog } from '../model/catalog';
 import { parseSave } from '../systems/SaveSystem';
@@ -11,7 +11,8 @@ import { HistoryPanel } from './HistoryPanel';
 import { InvitesPanel } from './InvitesPanel';
 import { showCreateGame, showLogin, showMessage } from './screens';
 import type { OnlineConfig } from './config';
-import { createSupabase, supabaseBackend } from './supabase';
+import { createSupabase, supabaseArchiveBackend, supabaseBackend } from './supabase';
+import { SupabaseArchiveRepository } from './SupabaseArchiveRepository';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
 
 export interface Membership {
@@ -23,6 +24,9 @@ export interface Membership {
 
 export interface OnlineGame {
   repository: SupabaseRepository;
+  archiveRepository: SupabaseArchiveRepository;
+  /** Who writes in the Arquivo de registros: fixed by the login. */
+  archiveActor: Actor;
   membership: Membership;
   access: MasterAccess;
   backend: GameBackend;
@@ -72,6 +76,11 @@ export async function bootOnline(
   const signOut = () => void client.auth.signOut().then(() => window.location.reload());
   return {
     repository: new SupabaseRepository(backend, membership.gameId, catalog),
+    archiveRepository: new SupabaseArchiveRepository(
+      supabaseArchiveBackend(client),
+      membership.gameId,
+    ),
+    archiveActor: onlineContext(membership).actor,
     membership,
     access: new OnlineAccess(membership.role, signOut),
     backend,

@@ -2,6 +2,7 @@ import type { Actor } from './commands/schema';
 import type { ArchiveChange } from './model/schema';
 import type { ArchiveRepository } from './persistence/ArchiveRepository';
 import {
+  EMPTY_ARCHIVE,
   visibleArchive,
   type Archive,
   type ArchiveCommand,
@@ -28,8 +29,14 @@ export class ArchiveStore {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly listeners = new Set<() => void>();
 
+  /** A failed first load is reported, not fatal: the game stays playable and the window reloads. */
   static async open(repository: ArchiveRepository, hooks: ArchiveHooks): Promise<ArchiveStore> {
-    return new ArchiveStore(repository, hooks, await repository.load());
+    try {
+      return new ArchiveStore(repository, hooks, await repository.load());
+    } catch (error) {
+      hooks.onPersistError(error);
+      return new ArchiveStore(repository, hooks, EMPTY_ARCHIVE);
+    }
   }
 
   private constructor(
