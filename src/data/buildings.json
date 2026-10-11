@@ -967,5 +967,85 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "meeting_hall",
+    "name": "Sala de Reuniões",
+    "description": "Salão fechado onde os aventureiros da Axis traçam planos, dividem informações e decidem os próximos passos.",
+    "icon": "icon.meeting_hall",
+    "sprite": "building.meeting_hall",
+    "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.5, "y": 0.437, "color": "#ffb347", "radius": 0.07, "maxLevel": 1 },
+      { "type": "glow", "x": 0.079, "y": 0.567, "color": "#ff9a3c", "radius": 0.04, "maxLevel": 2 },
+      { "type": "smoke", "x": 0.079, "y": 0.567, "maxLevel": 2 },
+      { "type": "glow", "x": 0.921, "y": 0.567, "color": "#ff9a3c", "radius": 0.04, "maxLevel": 2 },
+      { "type": "smoke", "x": 0.921, "y": 0.567, "maxLevel": 2 },
+      { "type": "glow", "x": 0.371, "y": 0.45, "color": "#ffb347", "radius": 0.05, "minLevel": 2 },
+      { "type": "glow", "x": 0.629, "y": 0.45, "color": "#ffb347", "radius": 0.05, "minLevel": 2 },
+      { "type": "glow", "x": 0.5, "y": 0.09, "color": "#ff7a1a", "radius": 0.1, "minLevel": 3 },
+      { "type": "smoke", "x": 0.5, "y": 0.071, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.087, "color": "#ffb347", "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.306,
+        "y": 0.107,
+        "color": "#ffc46b",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.084,
+        "y": 0.567,
+        "color": "#ffc46b",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.147,
+        "y": 0.747,
+        "color": "#ffb347",
+        "radius": 0.055,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.694,
+        "y": 0.107,
+        "color": "#ffc46b",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.916,
+        "y": 0.567,
+        "color": "#ffc46b",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.853, "y": 0.747, "color": "#ffb347", "radius": 0.055, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 150, "materials": { "wood": 80 } },
+        "buildTime": 2,
+        "effect": "Mesa redonda: um plano traçado na Axis dá ao grupo vantagem na primeira iniciativa da missão."
+      },
+      {
+        "cost": { "coins": 400, "materials": { "wood": 200, "iron": 80 } },
+        "buildTime": 4,
+        "effect": "Mesa do conselho: aliados e contatos convocados à Axis chegam na metade do tempo.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 900, "materials": { "wood": 300, "iron": 200, "aetherium": 20 } },
+        "buildTime": 7,
+        "effect": "Salão do conselho: uma vez por arco, cada personagem pode rolar novamente um teste durante uma missão planejada aqui.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]

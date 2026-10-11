@@ -41,6 +41,8 @@
     "icon.mage_tower": "assets/icons/mage_tower.png",
     "building.mage_tower": "assets/buildings/mage_tower.png",
     "icon.archive": "assets/icons/archive.png",
-    "building.archive": "assets/buildings/archive.png"
+    "building.archive": "assets/buildings/archive.png",
+    "icon.meeting_hall": "assets/icons/meeting_hall.png",
+    "building.meeting_hall": "assets/buildings/meeting_hall.png"
   }
 }
