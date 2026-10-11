@@ -62,7 +62,7 @@ Todas as ações do mestre vão para o registro de eventos.
 
 A barra superior mostra quatro recursos. Jogadores só **visualizam**. Criar, editar e remover itens e quantidades é exclusivo do Modo Mestre.
 
-Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre muda em jogo vive no estado salvo (`GameState`), que entra no export/import de save. Se o navegador tiver um save de formato antigo, ele é descartado e o jogo começa do seed.
+Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre muda em jogo vive no estado salvo (`GameState`), que entra no export/import de save. Saves de formatos anteriores à versão 4 são descartados e o jogo começa do seed; a partir dela, cada formato novo vem com uma migração.
 
 ### Ouro (moedas)
 
@@ -128,6 +128,7 @@ Como as mudanças viajam:
 
 - Toda ação é um **comando** em dados (`src/commands/schema.ts`), aplicado por `applyCommand`, que também confere as permissões (mestre ou jogador).
 - O `GameStore` mostra a mudança na hora e envia o comando ao **repositório** (`src/persistence/`). Offline, o `LocalRepository` aplica o comando no save guardado; online, a Edge Function aplica o mesmo `applyCommand` no servidor.
+- O save é um JSON versionado (`version`). Formatos novos (como os NPCs) entram com uma migração em `SAVE_MIGRATIONS` (`src/systems/SaveSystem.ts`), sem mudar as tabelas; saves antigos são migrados, não descartados.
 - Cada mudança aceita incrementa a `revision` do jogo. Se outra aba (ou outro jogador) gravou antes, o repositório responde **conflito**, a loja recarrega e reaplica os comandos pendentes.
 
 ## Estrutura

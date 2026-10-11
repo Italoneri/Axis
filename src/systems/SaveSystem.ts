@@ -49,12 +49,10 @@ export function parseSave(text: string, catalog: Catalog): ParseResult {
     return { ok: false, error: `invalid JSON: ${message}`, outdated: false };
   }
 
-  const version = z.object({ version: z.number() }).safeParse(json);
-  if (version.success && version.data.version < SAVE_VERSION) {
-    return { ok: false, error: `save version ${version.data.version}`, outdated: true };
-  }
+  const migrated = migrateSave(json);
+  if (!migrated.ok) return { ok: false, error: migrated.error, outdated: migrated.outdated };
 
-  const result = gameStateSchema.safeParse(json);
+  const result = gameStateSchema.safeParse(migrated.json);
   if (!result.success) {
     return { ok: false, error: z.prettifyError(result.error), outdated: false };
   }
@@ -65,6 +63,46 @@ export function parseSave(text: string, catalog: Catalog): ParseResult {
   if (problems.length > 0) return { ok: false, error: problems.join('; '), outdated: false };
 
   return { ok: true, state };
+}
+
+type SaveJson = Record<string, unknown>;
+/** Turns a save of version N into version N + 1. */
+export type SaveMigration = (save: SaveJson) => SaveJson;
+
+/**
+ * Upgrades by `version`, keyed by the version each step reads. The state is a
+ * versioned JSON document (a jsonb column online), so new fields such as NPCs
+ * arrive with a migration here instead of a table change.
+ */
+export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {};
+
+/** Saves older than this predate real games and are discarded instead of migrated. */
+export const OLDEST_SUPPORTED_VERSION = 4;
+
+const versionedSchema = z.looseObject({ version: z.number().int() });
+
+export function migrateSave(
+  json: unknown,
+  migrations: Readonly<Record<number, SaveMigration>> = SAVE_MIGRATIONS,
+  target: number = SAVE_VERSION,
+): { ok: true; json: unknown } | { ok: false; error: string; outdated: boolean } {
+  const versioned = versionedSchema.safeParse(json);
+  // Not even versioned: leave it to the schema to report what is wrong.
+  if (!versioned.success) return { ok: true, json };
+  const { version } = versioned.data;
+  if (version < OLDEST_SUPPORTED_VERSION)
+    return { ok: false, error: `save version ${version}`, outdated: true };
+
+  let save: SaveJson = versioned.data;
+  for (let from = version; from < target; from++) {
+    const migration = migrations[from];
+    // A missing step is a bug, not an old save: keep the data instead of discarding it.
+    if (!migration) {
+      return { ok: false, error: `no migration from save version ${from}`, outdated: false };
+    }
+    save = { ...migration(save), version: from + 1 };
+  }
+  return { ok: true, json: save };
 }
 
 /** Buildings on slots the layout no longer has (say, fewer mid_N) are removed and logged. */

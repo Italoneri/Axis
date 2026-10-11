@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createInitialState,
   loadState,
+  migrateSave,
   parseSave,
   serializeState,
   STORAGE_KEY,
@@ -182,5 +183,37 @@ describe('loadState', () => {
     expect(loadState(storage, testCatalog)).toEqual(createInitialState(testCatalog));
     expect(storage.getItem(`${STORAGE_KEY}:corrupted`)).toBe(broken);
     expect(logged).toHaveBeenCalled();
+  });
+});
+
+describe('migrateSave', () => {
+  const v4 = { version: 4, day: 2 };
+
+  it('runs every step up to the target version', () => {
+    const migrations = {
+      4: (save: Record<string, unknown>) => ({ ...save, npcs: [] }),
+      5: (save: Record<string, unknown>) => ({ ...save, day: 3 }),
+    };
+    expect(migrateSave(v4, migrations, 6)).toEqual({
+      ok: true,
+      json: { version: 6, day: 3, npcs: [] },
+    });
+  });
+
+  it('leaves a current save untouched', () => {
+    expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4 });
+  });
+
+  it('refuses a gap in the chain (kept) and saves older than the oldest supported (outdated)', () => {
+    expect(migrateSave(v4, {}, 5)).toEqual({
+      ok: false,
+      error: 'no migration from save version 4',
+      outdated: false,
+    });
+    expect(migrateSave({ version: 3 }, {}, 4)).toEqual({
+      ok: false,
+      error: 'save version 3',
+      outdated: true,
+    });
   });
 });
