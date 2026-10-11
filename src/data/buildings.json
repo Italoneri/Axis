@@ -35,7 +35,16 @@
       { "type": "smoke", "x": 0.239, "y": 0.191 },
       { "type": "glow", "x": 0.239, "y": 0.191, "color": "#ff7a1a", "radius": 0.08 },
       { "type": "glow", "x": 0.419, "y": 0.747, "color": "#ff7a1a", "radius": 0.07 },
-      { "type": "sparks", "x": 0.612, "y": 0.713 }
+      { "type": "sparks", "x": 0.612, "y": 0.713 },
+      { "type": "smoke", "x": 0.761, "y": 0.191, "minLevel": 2 },
+      { "type": "glow", "x": 0.761, "y": 0.191, "color": "#ff7a1a", "radius": 0.07, "minLevel": 2 },
+      { "type": "smoke", "x": 0.762, "y": 0.664, "color": "#dfe6ea", "minLevel": 2 },
+      { "type": "smoke", "x": 0.5, "y": 0.198, "color": "#9fe6ff", "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.198, "color": "#6ed8ff", "radius": 0.06, "minLevel": 3 },
+      { "type": "glow", "x": 0.612, "y": 0.713, "color": "#6ed8ff", "radius": 0.09, "minLevel": 3 },
+      { "type": "sparks", "x": 0.612, "y": 0.713, "color": "#9fe6ff", "minLevel": 3 },
+      { "type": "glow", "x": 0.205, "y": 0.856, "color": "#6ed8ff", "radius": 0.03, "minLevel": 3 },
+      { "type": "glow", "x": 0.865, "y": 0.704, "color": "#6ed8ff", "radius": 0.045, "minLevel": 3 }
     ],
     "levels": [
       {
