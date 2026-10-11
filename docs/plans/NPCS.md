@@ -15,47 +15,52 @@ Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **mor
   ]
   ```
 
-- `src/data/npcs.json`: o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`.
+- `src/data/npcs.json`: o divisor das habilidades negativas e o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "negativeDivisor": 5, "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`.
 
 ### Tipos de efeito
 
-| Tipo           | Campos               | O que faz por dia                                                      |
-| -------------- | -------------------- | ---------------------------------------------------------------------- |
-| `produce`      | `material`, `perDay` | soma unidades ao material (ignorado se o mestre apagou o material)     |
-| `research`     | `perDay`             | soma pontos percentuais à pesquisa escolhida na designação, até 100%   |
-| `construction` | `perDay`             | adianta a obra do posto (nunca termina antes do dia que está passando) |
-| `bonus`        | `text`               | aparece em Bônus ativos enquanto o posto estiver ocupado               |
+| Tipo           | Campos               | O que faz por dia                                                      | Com rendimento negativo                   |
+| -------------- | -------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| `produce`      | `material`, `perDay` | soma unidades ao material (ignorado se o mestre apagou o material)     | consome o estoque, sem passar de 0        |
+| `research`     | `perDay`             | soma pontos percentuais à pesquisa escolhida na designação, até 100%   | faz a pesquisa regredir, sem passar de 0% |
+| `construction` | `perDay`             | adianta a obra do posto (nunca termina antes do dia que está passando) | atrasa a obra (`completesOnDay` cresce)   |
+| `bonus`        | `text`, `penalty?`   | aparece em Bônus ativos enquanto o posto estiver ocupado               | mostra o `penalty`; sem ele, o bônus some |
 
 ### Rendimento
 
-`valor = base × (1 + habilidade / 10)`, habilidade de 0 a 10. Uma habilidade 0 ainda trabalha e rende só a base; uma habilidade diferente da do posto conta como 0.
+Habilidade de **-10 a 10**; ausente vale 0, e uma habilidade diferente da do posto também conta como 0.
 
-O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`), o que deixa a conta exata e determinística (sem soma de floats). A interface mostra uma casa decimal ("Bianca: +3,4 de progresso por dia").
+- **habilidade ≥ 0:** `valor = base × (1 + habilidade / 10)`. Uma habilidade 0 ainda trabalha e rende só a base.
+- **habilidade < 0:** `valor = base × habilidade / negativeDivisor` (divisor 5 em `npcs.json`). O NPC **atrapalha**: com -10 rende `-2 × base`, com -5 `-1 × base`, com -1 `-0,2 × base`. Ex.: um ferreiro -10 na Forja nv. 1 gasta 2 de Ferro por dia.
 
-**Fração acumulada:** cada vaga ocupada (o `job` do NPC) guarda os décimos ainda não entregues (`carry`, 0–9). A cada dia, `décimos = rendimento + carry`; entregam-se `floor(décimos / 10)` unidades inteiras (material, ponto de pesquisa ou dia de obra) e o resto fica para o dia seguinte. Trocar de posto zera a fração.
+O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`, ou `round(base × habilidade × 10 / divisor)`), o que deixa a conta exata e determinística (sem soma de floats). A interface mostra uma casa decimal ("Bianca: +3,4 de progresso por dia", "-2,0 Ferro por dia" em vermelho).
+
+**Fração acumulada:** cada vaga ocupada (o `job` do NPC) guarda os décimos ainda não entregues (`carry`, -9 a 9, com o sinal do rendimento). A cada dia, `décimos = rendimento + carry`; entregam-se `trunc(décimos / 10)` unidades inteiras (material, ponto de pesquisa ou dia de obra) e o resto, com sinal, fica para o dia seguinte. Se o alvo bloquear a entrega (estoque zerado, pesquisa em 0% ou 100%, obra que termina hoje), a fração é descartada. Trocar de posto ou editar as habilidades do NPC zera a fração.
+
+**Vários NPCs no mesmo posto** contam separados: um bom e um ruim se compensam.
 
 ### Valores iniciais (nível 1 / 2 / 3)
 
-| Construção         | Moradia | Posto (habilidade)     | Vagas | Efeito (base)           |
-| ------------------ | ------- | ---------------------- | ----- | ----------------------- |
-| Alojamento         | 6/14/14 | —                      | —     | —                       |
-| Torre dos Magos    | 2/3/4   | Estudar (Pesquisa)     | 1/1/2 | research 1/1/2          |
-| Taverna            | 2/2/3   | Cozinhar (Gastronomia) | 1/2/2 | bonus (texto)           |
-| Forja              | —       | Forjar (Ferraria)      | 1/2/3 | produce Ferro 1/2/3     |
-| Biblioteca         | —       | Pesquisar (Pesquisa)   | 1/2/3 | research 1/1/2          |
-| Estação de Estudo  | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/2/2          |
-| Arquivo            | —       | Catalogar (Pesquisa)   | 1     | research 1              |
-| Enfermaria         | —       | Tratar (Medicina)      | 1/2/2 | bonus (texto)           |
-| Santuário          | —       | Cuidar (Medicina)      | 1     | bonus (texto)           |
-| Laboratório Arcano | —       | Destilar (Alquimia)    | 1/1/2 | produce Aetherium 1/1/2 |
-| Obra em andamento  | —       | Construir (Construção) | 2     | construction 1          |
+| Construção         | Moradia | Posto (habilidade)     | Vagas | Efeito (base)              |
+| ------------------ | ------- | ---------------------- | ----- | -------------------------- |
+| Alojamento         | 6/14/14 | —                      | —     | —                          |
+| Torre dos Magos    | 2/3/4   | Estudar (Pesquisa)     | 1/1/2 | research 1/1/2             |
+| Taverna            | 2/2/3   | Cozinhar (Gastronomia) | 1/2/2 | bonus (texto e penalidade) |
+| Forja              | —       | Forjar (Ferraria)      | 1/2/3 | produce Ferro 1/2/3        |
+| Biblioteca         | —       | Pesquisar (Pesquisa)   | 1/2/3 | research 1/1/2             |
+| Estação de Estudo  | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/2/2             |
+| Arquivo            | —       | Catalogar (Pesquisa)   | 1     | research 1                 |
+| Enfermaria         | —       | Tratar (Medicina)      | 1/2/2 | bonus (texto e penalidade) |
+| Santuário          | —       | Cuidar (Medicina)      | 1     | bonus (texto e penalidade) |
+| Laboratório Arcano | —       | Destilar (Alquimia)    | 1/1/2 | produce Aetherium 1/1/2    |
+| Obra em andamento  | —       | Construir (Construção) | 2     | construction 1             |
 
 ## Modelo (`GameState.npcs`, save versão 5)
 
 ```ts
 npc = {
   id, name, title, portrait?, description,
-  skills: { [skillId]: 0..10 },        // ausente = 0
+  skills: { [skillId]: -10..10 },      // ausente = 0; negativo atrapalha
   home: slotId | null,
   job: { slotId, activityId, researchId?, carry } | null,
   status: 'disponivel' | 'trabalhando' | 'ferido' | 'em_missao',
@@ -64,7 +69,7 @@ npc = {
 ```
 
 - `status`: `ferido` e `em_missao` são definidos pelo mestre; nesses casos o NPC mantém casa e posto, mas não trabalha nem recebe. `disponivel` e `trabalhando` são derivados do `job` automaticamente.
-- Migração 4 → 5 acrescenta `npcs: []`. Online o estado continua sendo o mesmo jsonb da tabela `games`, sem mudança de tabela.
+- Migração 4 → 5 acrescenta `npcs: []`. As habilidades negativas não mudaram a versão: os campos só ficaram mais permissivos (habilidade, `carry` e `amount` do log com sinal), então saves v5 antigos continuam válidos. Online o estado continua sendo o mesmo jsonb da tabela `games`, sem mudança de tabela.
 
 ## Regras
 
@@ -80,7 +85,7 @@ npc = {
 - **Pesquisa chega a 100% e para**: registra `research_ready` no log e a pesquisa ganha o destaque "pronta para concluir"; quem conclui é o mestre.
 - **`advanceDays` processa dia a dia, nesta ordem:** salários → efeitos dos postos → conclusão de obras → liberações. Sem `Math.random`, então servidor e cliente chegam ao mesmo resultado.
   - **Salários**: cobrados do Acampamento na ordem da lista, só de quem trabalharia naquele dia. Sem saldo, o NPC fica sem pagamento e não trabalha naquele dia.
-  - O log recebe **resumos por avanço** (não por dia): `npc_worked` por NPC, `npc_wages_paid` com o total e `npc_unpaid` com os dias sem pagamento.
+  - O log recebe **resumos por avanço** (não por dia): `npc_worked` por NPC (`amount` negativo quando atrapalhou: "Gus estragou 2 Ferro", "fez a pesquisa 'Runas' regredir 2%", "atrasou a obra de Forja em 2 dias"), `npc_wages_paid` com o total e `npc_unpaid` com os dias sem pagamento.
 
 ## Comandos
 
@@ -97,10 +102,10 @@ Todo comando registra o `actor` no log.
 
 ## Interface
 
-- Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel. No seletor de moradia, as construções lotadas ficam desabilitadas (exceto a casa atual).
+- Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel. No seletor de moradia, as construções lotadas ficam desabilitadas (exceto a casa atual). As barras de habilidade partem do centro: positivas crescem para a direita em dourado, negativas para a esquerda em vermelho.
 - Salário: digitado em moedas (prata, bronze…) e salvo em PO; o card mostra "Salário: 1 Prata e 2 Bronze/dia", ou "Sem salário".
-- Painel da construção: moradores (x de y) e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento. O rótulo de cada candidato mostra o posto atual e se está ferido ou em missão.
-- Bônus ativos: incluem os efeitos dos postos ocupados.
+- Painel da construção: moradores (x de y) e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento. O rótulo de cada candidato mostra o posto atual e se está ferido ou em missão. Quem atrapalha aparece com "⚠ atrapalha" (ex.: "Gus (-6) · -1,2 Ferro por dia ⚠ atrapalha") e no fim da lista.
+- Bônus ativos: incluem os efeitos dos postos ocupados; rendimentos negativos e penalidades aparecem em vermelho.
 
 ## Detalhes conhecidos
 

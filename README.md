@@ -122,7 +122,7 @@ Toda alteração de recurso, seja do mestre, de um depósito ou de uma construç
 
 Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.md`.
 
-- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de 0 a 10 em cada uma.
+- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de -10 a 10 em cada uma; negativo atrapalha o posto.
 - **Moradia e postos** ficam por nível no `buildings.json`:
 
   ```json
@@ -135,9 +135,10 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
 
   Moradia por nível: Alojamento 6/14/14, Torre dos Magos 2/3/4 e Taverna 2/2/3.
 
-  Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos). O posto **Construir**, que aparece em toda obra em andamento, fica em `src/data/npcs.json`.
+  Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos, com um `penalty` opcional para quando alguém atrapalha). O posto **Construir**, que aparece em toda obra em andamento, e o divisor das habilidades negativas (`negativeDivisor`) ficam em `src/data/npcs.json`.
 
 - **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
+- **Habilidade negativa:** rende `base × habilidade / 5` e atrapalha: consome material (sem passar de 0), faz a pesquisa regredir (sem passar de 0%), atrasa a obra ou troca o bônus pela penalidade. Aparece em vermelho, com "⚠ atrapalha" no seletor do posto. Vários NPCs no mesmo posto contam separados, então um bom e um ruim se compensam.
 - **Quem faz o quê:** só o mestre cria, edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
 - **Regras:**
   - Trabalho exige moradia.
