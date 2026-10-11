@@ -177,6 +177,35 @@ export const worldSchema = z.object({
   description: z.string().optional(),
 });
 
+export const npcStatusSchema = z.enum(['disponivel', 'trabalhando', 'ferido', 'em_missao']);
+
+/** One filled post. `carry` holds the tenths of yield not delivered yet (0–9). */
+export const npcJobSchema = z.object({
+  slotId: z.string().min(1),
+  activityId: z.string().min(1),
+  /** Target of a research post. */
+  researchId: z.string().min(1).optional(),
+  carry: z.number().int().min(0).max(9),
+});
+
+export const npcSchema = z.object({
+  id: z.string().min(1),
+  name: displayName,
+  /** Role shown under the name, such as "Maga". */
+  title: z.string(),
+  portrait: imageRef,
+  description: z.string(),
+  /** Score per skill id; a missing skill counts as 0. */
+  skills: z.record(z.string(), skillLevelSchema),
+  /** Slot of the building the NPC lives in. */
+  home: z.string().nullable(),
+  job: npcJobSchema.nullable(),
+  /** `disponivel`/`trabalhando` follow the job; `ferido`/`em_missao` are set by the master. */
+  status: npcStatusSchema,
+  /** Gold (PO) paid by the Acampamento for each day of work. */
+  wage: z.number().nonnegative().optional(),
+});
+
 export const materialsSchema = z.object({
   categories: z.array(categorySchema),
   items: z.array(materialSchema),
@@ -241,6 +270,14 @@ const buildingEventSchema = z.object({
 });
 
 const signedBag = z.record(z.string(), z.number().int());
+/** Why an NPC lost a home or a post without a command asking for it. */
+export const npcReleaseReasonSchema = z.enum([
+  'building_removed',
+  'capacity',
+  'construction_done',
+  'research_closed',
+  'no_home',
+]);
 /** Character name; absent means the Acampamento. */
 const walletLabel = z.string().optional();
 
@@ -310,9 +347,54 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     kind: z.enum(['character_added', 'character_removed']),
     name: z.string(),
   }),
+  z.object({ ...entryBase, kind: z.literal('research_ready'), title: z.string() }),
+  // NPCs: `place` is a building id (fixed catalog data), `npc` the name at the time.
+  z.object({
+    ...entryBase,
+    kind: z.enum(['npc_added', 'npc_updated', 'npc_removed', 'npc_unassigned']),
+    npc: z.string(),
+  }),
+  /** No `place`: the NPC moved out. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_home_set'),
+    npc: z.string(),
+    place: z.string().optional(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_job_set'),
+    npc: z.string(),
+    place: z.string(),
+    activity: z.string(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_released'),
+    npc: z.string(),
+    from: z.enum(['home', 'job']),
+    reason: npcReleaseReasonSchema,
+  }),
+  /** Summary of one advance: what the NPC delivered, in whole units. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_worked'),
+    npc: z.string(),
+    effect: z.enum(['produce', 'research', 'construction']),
+    amount: positiveInt,
+    /** Material name, research title or building id. */
+    target: z.string(),
+  }),
+  z.object({ ...entryBase, kind: z.literal('npc_wages_paid'), bronze: positiveInt }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_unpaid'),
+    npc: z.string(),
+    days: z.number().int().positive(),
+  }),
 ]);
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
@@ -331,6 +413,7 @@ export const gameStateSchema = z.object({
   materials: materialsSchema,
   research: researchBookSchema,
   influence: influenceSchema,
+  npcs: z.array(npcSchema),
   slots: z.record(z.string(), placedBuildingSchema),
   log: z.array(logEntrySchema),
 });
@@ -356,6 +439,10 @@ export type World = z.infer<typeof worldSchema>;
 export type Materials = z.infer<typeof materialsSchema>;
 export type ResearchBook = z.infer<typeof researchBookSchema>;
 export type Influence = z.infer<typeof influenceSchema>;
+export type NpcStatus = z.infer<typeof npcStatusSchema>;
+export type NpcJob = z.infer<typeof npcJobSchema>;
+export type Npc = z.infer<typeof npcSchema>;
+export type NpcReleaseReason = z.infer<typeof npcReleaseReasonSchema>;
 export type WalletsSeed = z.infer<typeof walletsSeedSchema>;
 export type PlacedBuilding = z.infer<typeof placedBuildingSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;

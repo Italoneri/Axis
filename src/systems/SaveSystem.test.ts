@@ -200,6 +200,13 @@ describe('migrateSave', () => {
     });
   });
 
+  it('gives a version 4 save an empty npc list, keeping everything else', () => {
+    const { npcs, ...rest } = makeState({ day: 9 });
+    expect(npcs).toEqual([]);
+    const parsed = parseSave(JSON.stringify({ ...rest, version: 4 }), testCatalog);
+    expect(parsed).toEqual({ ok: true, state: makeState({ day: 9 }) });
+  });
+
   it('leaves a current save untouched', () => {
     expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4 });
   });

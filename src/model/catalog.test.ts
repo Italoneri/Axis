@@ -114,7 +114,6 @@ describe('parseCatalog', () => {
   });
 
   it('rejects posts with unknown skills, repeated activities or the construction activity', () => {
-    const [first] = rawGameData.buildings;
     const post = (activity: string, skill: string) => ({
       activity,
       name: activity,
@@ -122,16 +121,19 @@ describe('parseCatalog', () => {
       slots: 1,
       effect: { type: 'bonus', text: 'x' },
     });
-    const levels = first.levels.map((level) => ({
-      ...level,
-      jobs: [
-        post('a', 'juggling'),
-        post('b', 'research'),
-        post('b', 'research'),
-        post('construir', 'research'),
-      ],
+    const buildings = rawGameData.buildings.slice(0, 1).map((building) => ({
+      ...building,
+      levels: building.levels.map((level) => ({
+        ...level,
+        jobs: [
+          post('a', 'juggling'),
+          post('b', 'research'),
+          post('b', 'research'),
+          post('construir', 'research'),
+        ],
+      })),
     }));
-    expect(() => parseCatalog({ ...rawGameData, buildings: [{ ...first, levels }] })).toThrow(
+    expect(() => parseCatalog({ ...rawGameData, buildings })).toThrow(
       /unknown skill "juggling"[\s\S]*duplicate .* post id "b"[\s\S]*"construir" is reserved/,
     );
   });

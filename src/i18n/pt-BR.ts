@@ -1,5 +1,5 @@
 import type { SlotType } from '../map/layout';
-import type { LogEntry, ResearchStatus } from '../model/schema';
+import type { LogEntry, NpcReleaseReason, ResearchStatus } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -410,8 +410,76 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return `${entry.name} entrou no grupo`;
     case 'character_removed':
       return `${entry.name} saiu do grupo`;
+    case 'research_ready':
+      return `Pesquisa '${entry.title}' chegou a 100% e está pronta para concluir`;
+    case 'npc_added':
+    case 'npc_updated':
+    case 'npc_removed':
+    case 'npc_unassigned':
+    case 'npc_home_set':
+    case 'npc_job_set':
+    case 'npc_released':
+    case 'npc_worked':
+    case 'npc_wages_paid':
+    case 'npc_unpaid':
+      return npcAction(entry, ctx);
     default:
       return assertNever(entry);
+  }
+}
+
+type NpcEntry = Extract<LogEntry, { kind: `npc_${string}` }>;
+
+const releaseReasons: Record<NpcReleaseReason, string> = {
+  building_removed: 'a construção foi removida',
+  capacity: 'a construção perdeu vagas',
+  construction_done: 'a obra terminou',
+  research_closed: 'a pesquisa foi encerrada',
+  no_home: 'ficou sem moradia',
+};
+
+function npcAction(entry: NpcEntry, ctx: TextContext): string {
+  const who = entry.actor ? `${entry.actor}: ` : '';
+  switch (entry.kind) {
+    case 'npc_added':
+      return `${masterActor(entry)} criou o NPC ${entry.npc}`;
+    case 'npc_updated':
+      return `${masterActor(entry)} editou o NPC ${entry.npc}`;
+    case 'npc_removed':
+      return `${masterActor(entry)} removeu o NPC ${entry.npc}`;
+    case 'npc_unassigned':
+      return `${who}${entry.npc} deixou o posto de trabalho`;
+    case 'npc_home_set':
+      return entry.place
+        ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
+        : `${who}${entry.npc} deixou a moradia`;
+    case 'npc_job_set':
+      return `${who}${entry.npc} foi designado para ${entry.activity} em ${ctx.building(entry.place)}`;
+    case 'npc_released': {
+      const what = entry.from === 'home' ? 'perdeu a moradia' : 'perdeu o posto de trabalho';
+      return `${entry.npc} ${what}: ${releaseReasons[entry.reason]}`;
+    }
+    case 'npc_worked':
+      return npcWorkText(entry, ctx);
+    case 'npc_wages_paid':
+      return `Salários de NPCs pagos pelo Acampamento: ${ctx.gold(entry.bronze)}`;
+    case 'npc_unpaid':
+      return `${entry.npc} ficou sem pagamento e não trabalhou por ${t.days(entry.days)}`;
+    default:
+      return assertNever(entry);
+  }
+}
+
+function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: TextContext): string {
+  switch (entry.effect) {
+    case 'produce':
+      return `${entry.npc} produziu ${entry.amount} ${entry.target}`;
+    case 'research':
+      return `${entry.npc} avançou a pesquisa '${entry.target}' em ${entry.amount}%`;
+    case 'construction':
+      return `${entry.npc} adiantou a obra de ${ctx.building(entry.target)} em ${t.days(entry.amount)}`;
+    default:
+      return assertNever(entry.effect);
   }
 }
 

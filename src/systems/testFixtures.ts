@@ -169,6 +169,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     materials: seed.materials,
     research: seed.research,
     influence: { human: 0, draconic: 0 },
+    npcs: [],
     slots: {},
     log: [],
     ...overrides,

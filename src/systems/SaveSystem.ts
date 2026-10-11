@@ -30,6 +30,7 @@ export function createInitialState(catalog: Catalog): GameState {
     materials,
     research,
     influence: initialInfluence(catalog.worlds),
+    npcs: [],
     slots: {},
     log: [],
   };
@@ -78,7 +79,9 @@ export type SaveMigration = (save: SaveJson) => SaveJson;
  * versioned JSON document (a jsonb column online), so new fields such as NPCs
  * arrive with a migration here instead of a table change.
  */
-export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {};
+export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
+  4: (save) => ({ ...save, npcs: [] }),
+};
 
 /** Saves older than this predate real games and are discarded instead of migrated. */
 export const OLDEST_SUPPORTED_VERSION = 4;
