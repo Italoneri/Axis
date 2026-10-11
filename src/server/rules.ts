@@ -28,6 +28,16 @@ const SAMPLE: readonly GameCommand[] = [
   },
   { type: 'npc_set_home', npcId: 'npc_parity', slotId: 'outer_1' },
   { type: 'npc_assign_job', npcId: 'npc_parity', slotId: 'outer_2', activityId: 'forjar' },
+  {
+    type: 'npc_create',
+    id: 'npc_parity_clumsy',
+    name: 'Tobias',
+    title: 'Aprendiz',
+    description: '',
+    skills: { smithing: -7 },
+  },
+  { type: 'npc_set_home', npcId: 'npc_parity_clumsy', slotId: 'outer_1' },
+  { type: 'npc_assign_job', npcId: 'npc_parity_clumsy', slotId: 'outer_2', activityId: 'forjar' },
   { type: 'advance_days', days: 5 },
 ];
 

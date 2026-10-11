@@ -55,8 +55,16 @@ describe('yieldTenths', () => {
     { base: 2, skill: 7, tenths: 34 },
     { base: 3, skill: 10, tenths: 60 },
     { base: 0.5, skill: 3, tenths: 7 },
+    { base: 1, skill: -1, tenths: -2 },
+    { base: 1, skill: -5, tenths: -10 },
+    { base: 1, skill: -10, tenths: -20 },
+    { base: 1.5, skill: -1, tenths: -3 },
+    { base: 1.5, skill: -5, tenths: -15 },
+    { base: 1.5, skill: -10, tenths: -30 },
+    { base: 1.5, skill: 0, tenths: 15 },
+    { base: 1.5, skill: 10, tenths: 30 },
   ])('turns base $base at skill $skill into $tenths tenths', ({ base, skill, tenths }) => {
-    expect(yieldTenths(base, skill)).toBe(tenths);
+    expect(yieldTenths(base, skill, 5)).toBe(tenths);
   });
 });
 
@@ -203,7 +211,12 @@ describe('assignNpcJob', () => {
   });
 
   it('keeps one job at a time, moving the NPC to the new post', () => {
-    const forging = expectOk(assignNpcJob(base(), testCatalog, 'bianca', forjar));
+    const assigned = expectOk(assignNpcJob(base(), testCatalog, 'bianca', forjar));
+    // Leftover tenths of the old post do not follow the NPC.
+    const forging = {
+      ...assigned,
+      npcs: assigned.npcs.map((n) => (n.job ? { ...n, job: { ...n.job, carry: -5 } } : n)),
+    };
     const order = { slotId: 'core', activityId: 'estudar', researchId: 'runes' };
     const studying = expectOk(assignNpcJob(forging, testCatalog, 'bianca', order));
     expect(studying.npcs.find((n) => n.id === 'bianca')?.job).toEqual({ ...order, carry: 0 });
@@ -244,6 +257,27 @@ describe('addNpc and updateNpc', () => {
       updateNpc(working, testCatalog, 'gus', { ...fields, name: 'Gus', status: 'disponivel' }),
     );
     expect(edited.npcs.find((n) => n.id === 'gus')?.status).toBe('trabalhando');
+  });
+
+  it('keeps negative skills and drops only the zeros', () => {
+    const skills = { smithing: -4, research: 0, construction: 2 };
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', skills }));
+    expect(added.npcs.find((n) => n.id === 'lia')?.skills).toEqual({
+      smithing: -4,
+      construction: 2,
+    });
+  });
+
+  it.each([
+    { name: 'new skills', skills: { smithing: -2 }, carry: 0 },
+    { name: 'the same skills', skills: { smithing: 10 }, carry: -4 },
+  ])('drops the leftover tenths only for $name', ({ skills, carry }) => {
+    const gus = base().npcs.find((n) => n.id === 'gus');
+    const job = { ...forjar, carry: -4 };
+    const working = base({ npcs: gus ? [{ ...gus, job, status: 'trabalhando' }] : [] });
+    const edit = { ...fields, name: 'Gus', skills, wage: 1, status: 'disponivel' as const };
+    const edited = expectOk(updateNpc(working, testCatalog, 'gus', edit));
+    expect(edited.npcs[0]?.job?.carry).toBe(carry);
   });
 });
 

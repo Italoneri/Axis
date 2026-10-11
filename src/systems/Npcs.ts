@@ -41,9 +41,20 @@ export interface JobOrder {
   researchId?: string | undefined;
 }
 
-/** Yield in tenths: `base × (1 + skill / 10)`, kept integer so daily sums stay exact. */
-export function yieldTenths(base: number, skill: number): number {
+/**
+ * Yield in tenths, kept integer so daily sums stay exact: `base × (1 + skill / 10)`,
+ * or `base × skill / negativeDivisor` for a negative skill, which works against the post.
+ */
+export function yieldTenths(base: number, skill: number, negativeDivisor: number): number {
+  if (skill < 0) return Math.round((base * skill * 10) / negativeDivisor);
   return Math.round(base * (10 + skill));
+}
+
+/** What this NPC adds to the post each day, in tenths; bonus posts have no amount. */
+export function postYieldTenths(catalog: Catalog, post: Post, npc: Npc): number {
+  const { effect, skill } = post.job;
+  if (effect.type === 'bonus') return 0;
+  return yieldTenths(effect.perDay, skillOf(npc, skill), catalog.npcs.negativeDivisor);
 }
 
 export function skillOf(npc: Npc, skillId: string): number {
@@ -125,14 +136,11 @@ export function updateNpc(state: GameState, catalog: Catalog, id: string, edit: 
   if (!npc) return fail('not_found');
   const error = fieldsError(state, catalog, edit, id);
   if (error) return fail(error);
-  const { home, job } = npc;
-  const next: Npc = {
-    ...cleanFields(edit),
-    id,
-    home,
-    job,
-    status: settledStatus(edit.status, job),
-  };
+  const fields = cleanFields(edit);
+  // New skills mean a new yield: the leftover tenths of the old one are dropped.
+  const job =
+    npc.job && !sameSkills(npc.skills, fields.skills) ? { ...npc.job, carry: 0 } : npc.job;
+  const next: Npc = { ...fields, id, home: npc.home, job, status: settledStatus(edit.status, job) };
   return ok(withLog(replaceNpc(state, next), entry(state, 'npc_updated', next.name)));
 }
 
@@ -353,9 +361,14 @@ function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'stat
     title: fields.title.trim(),
     ...(portrait ? { portrait } : {}),
     description: fields.description,
-    skills: Object.fromEntries(Object.entries(fields.skills).filter(([, level]) => level > 0)),
+    skills: Object.fromEntries(Object.entries(fields.skills).filter(([, level]) => level !== 0)),
     ...(wage ? { wage } : {}),
   };
+}
+
+function sameSkills(a: Npc['skills'], b: Npc['skills']): boolean {
+  const ids = new Set([...Object.keys(a), ...Object.keys(b)]);
+  return [...ids].every((id) => (a[id] ?? 0) === (b[id] ?? 0));
 }
 
 function replaceNpc(state: GameState, next: Npc): GameState {

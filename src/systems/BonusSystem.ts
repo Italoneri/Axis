@@ -1,7 +1,7 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState, JobEffect } from '../model/schema';
 import { builtLevel } from './BuildSystem';
-import { findPost, isOnDuty, skillOf, yieldTenths } from './Npcs';
+import { findPost, isOnDuty, postYieldTenths } from './Npcs';
 
 export interface ActiveBonus {
   buildingId: string;
@@ -39,8 +39,7 @@ export function activePostEffects(state: GameState, catalog: Catalog): PostEffec
     if (!post) return posts;
     const key = `${post.slotId}/${post.job.activity}`;
     const { effect } = post.job;
-    const tenths =
-      effect.type === 'bonus' ? 0 : yieldTenths(effect.perDay, skillOf(npc, post.job.skill));
+    const tenths = postYieldTenths(catalog, post, npc);
     const previous = posts.get(key);
     return new Map(posts).set(key, {
       slotId: post.slotId,

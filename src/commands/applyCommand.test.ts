@@ -167,6 +167,26 @@ describe('applyCommand', () => {
     { name: 'bad color', input: { type: 'add_character', id: 'c', name: 'X', color: 'red' } },
     { name: 'missing id', input: { type: 'add_character', name: 'X', color: '#123456' } },
     { name: 'unsafe id', input: { type: 'add_material_category', id: 'Ferro Bom!', name: 'X' } },
+    {
+      name: 'skill below -10',
+      input: {
+        type: 'npc_create',
+        id: 'npc_x',
+        ...npcFields,
+        name: 'X',
+        skills: { smithing: -11 },
+      },
+    },
+    {
+      name: 'skill above 10',
+      input: {
+        type: 'npc_update',
+        npcId: 'bianca',
+        ...npcFields,
+        status: 'disponivel',
+        skills: { smithing: 11 },
+      },
+    },
   ])('refuses a malformed command: $name', ({ input }) => {
     expect(run(input)).toEqual({ ok: false, error: 'invalid_command' });
   });

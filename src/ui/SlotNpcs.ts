@@ -1,12 +1,13 @@
 import { jobEffectText, t, type TextContext } from '../i18n/pt-BR';
+import type { Catalog } from '../model/catalog';
 import type { GameState, Npc } from '../model/schema';
 import {
   housingCapacity,
   postsAt,
   residentsOf,
   skillOf,
+  postYieldTenths,
   workersAt,
-  yieldTenths,
   type Post,
 } from '../systems/Npcs';
 import type { GameStore } from '../store';
@@ -59,7 +60,7 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
           el(
             'li',
             { class: 'row row--wrap' },
-            el('span', {}, t.npcs.preview(npc.name, preview(post, npc, ctx))),
+            el('span', {}, t.npcs.preview(npc.name, preview(catalog, post, npc, ctx))),
             button(t.npcs.unassign, () => store.dispatch({ type: 'npc_unassign', npcId: npc.id })),
           ),
         ),
@@ -81,7 +82,7 @@ function assignForm(store: GameStore, post: Post, ctx: TextContext): HTMLElement
     value: candidates[0]?.id ?? '',
     options: candidates.map((npc) => ({
       value: npc.id,
-      label: candidateLabel(state, post, npc, ctx),
+      label: candidateLabel(store, post, npc, ctx),
     })),
   });
   const research = researchSelect(state, post);
@@ -117,12 +118,13 @@ function researchSelect(state: GameState, post: Post): HTMLSelectElement | null 
 }
 
 /** "Bia (10) · +3,0 … · posto atual: Biblioteca · Ferido", so moves and absences show up front. */
-function candidateLabel(state: GameState, post: Post, npc: Npc, ctx: TextContext): string {
+function candidateLabel(store: GameStore, post: Post, npc: Npc, ctx: TextContext): string {
+  const { catalog, current: state } = store;
   const away = npc.status === 'ferido' || npc.status === 'em_missao';
   const workplace = npc.job && state.slots[npc.job.slotId]?.buildingId;
   return [
     `${npc.name} (${skillOf(npc, post.job.skill)})`,
-    preview(post, npc, ctx),
+    preview(catalog, post, npc, ctx),
     workplace && t.npcs.currentPost(ctx.building(workplace)),
     away && t.npcs.statuses[npc.status],
   ]
@@ -130,11 +132,8 @@ function candidateLabel(state: GameState, post: Post, npc: Npc, ctx: TextContext
     .join(' · ');
 }
 
-function preview(post: Post, npc: Npc, ctx: TextContext): string {
-  const { effect } = post.job;
-  const tenths =
-    effect.type === 'bonus' ? 0 : yieldTenths(effect.perDay, skillOf(npc, post.job.skill));
-  return jobEffectText(effect, tenths, ctx);
+function preview(catalog: Catalog, post: Post, npc: Npc, ctx: TextContext): string {
+  return jobEffectText(post.job.effect, postYieldTenths(catalog, post, npc), ctx);
 }
 
 function isAt(npc: Npc, post: Post): boolean {
