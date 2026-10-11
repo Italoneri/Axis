@@ -71,6 +71,23 @@ export function findPost(
   return postsAt(state, catalog, slotId).find((post) => post.job.activity === activityId);
 }
 
+export interface Housing {
+  slotId: string;
+  buildingId: string;
+  capacity: number;
+  residents: number;
+}
+
+/** Buildings with housing at their level in force, in slot order. */
+export function housingList(state: GameState, catalog: Catalog): Housing[] {
+  return Object.entries(state.slots).flatMap(([slotId, placed]) => {
+    const capacity = housingCapacity(state, catalog, slotId);
+    if (capacity === 0) return [];
+    const residents = residentsOf(state, slotId).length;
+    return [{ slotId, buildingId: placed.buildingId, capacity, residents }];
+  });
+}
+
 export function residentsOf(state: GameState, slotId: string): Npc[] {
   return state.npcs.filter((npc) => npc.home === slotId);
 }

@@ -5,6 +5,7 @@ import { ResourceMenu } from './ResourceMenu';
 import { GoldPanel } from './resources/GoldPanel';
 import { InfluencePanel } from './resources/InfluencePanel';
 import { MaterialsPanel } from './resources/MaterialsPanel';
+import { NpcPanel } from './resources/NpcPanel';
 import { ResearchPanel } from './resources/ResearchPanel';
 import { createSaveControls } from './SaveControls';
 import type { PanelDeps } from './widgets';
@@ -35,6 +36,7 @@ export function mountTopBar(
     new MaterialsPanel(deps).menuItem,
     new ResearchPanel(deps).menuItem,
     new InfluencePanel(deps).menuItem,
+    new NpcPanel(deps).menuItem,
   ]);
   const day = el('span', { class: 'topbar__day' });
   const overflow = createOverflowMenu(

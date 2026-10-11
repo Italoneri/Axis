@@ -1109,3 +1109,53 @@ details > summary {
   margin: 0;
   color: var(--muted);
 }
+
+/* ---------- NPCs ---------- */
+
+.npc-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.npc-skills {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.npc-skill {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) 1fr 2ch;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.npc-skill__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.npc-skill-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+
+.npc-post {
+  display: grid;
+  gap: 6px;
+}
+
+.npc-post__preview {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.research-ready {
+  color: var(--gold);
+  font-weight: 600;
+}

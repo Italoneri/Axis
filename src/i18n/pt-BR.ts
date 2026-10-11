@@ -1,5 +1,11 @@
 import type { SlotType } from '../map/layout';
-import type { JobEffect, LogEntry, NpcReleaseReason, ResearchStatus } from '../model/schema';
+import type {
+  JobEffect,
+  LogEntry,
+  NpcReleaseReason,
+  NpcStatus,
+  ResearchStatus,
+} from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -218,6 +224,46 @@ export const t = {
     category: 'Categoria',
     increase: 'Aumentar',
     decrease: 'Diminuir',
+  },
+
+  npcs: {
+    title: 'NPCs',
+    summary: (total: number, working: number) => `${total} · ${working} trabalhando`,
+    compact: (total: number) => String(total),
+    empty: 'Nenhum NPC na Axis ainda.',
+    noMatch: 'Nenhum NPC com esse filtro.',
+    filterSkill: 'Habilidade',
+    allSkills: 'Todas as habilidades',
+    onlyIdle: 'Só sem trabalho',
+    home: 'Moradia',
+    noHome: 'Sem moradia',
+    homeOption: (building: string, used: number, capacity: number) =>
+      `${building} (${used}/${capacity})`,
+    job: 'Trabalho',
+    noJob: 'Sem trabalho',
+    jobAt: (activity: string, building: string) => `${activity} em ${building}`,
+    unassign: 'Dispensar',
+    newNpc: 'Novo NPC',
+    titleField: 'Título (ex.: Maga)',
+    portrait: 'Retrato (chave do assets.json ou URL)',
+    wage: 'Salário diário (PO)',
+    wageText: (gold: string) => `Salário: ${gold} PO/dia`,
+    status: 'Situação',
+    statuses: {
+      disponivel: 'Disponível',
+      trabalhando: 'Trabalhando',
+      ferido: 'Ferido',
+      em_missao: 'Em missão',
+    } satisfies Record<NpcStatus, string>,
+    residents: (used: number, capacity: number) => `Moradores: ${used} de ${capacity}`,
+    posts: 'Postos de trabalho',
+    slotsUsed: (used: number, slots: number) => `${used}/${slots} vagas`,
+    assign: 'Designar NPC',
+    chooseNpc: 'Escolha um NPC',
+    chooseResearch: 'Pesquisa',
+    noResearch: 'Nenhuma pesquisa em andamento.',
+    preview: (name: string, effect: string) => `${name}: ${effect}`,
+    skillHint: (skill: string, level: number) => `${skill} ${level}`,
   },
 
   resources: {
