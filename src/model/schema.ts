@@ -25,11 +25,53 @@ export const costSchema = z.object({
   materials: amountBagSchema.optional(),
 });
 
+/** Skill score of an NPC: 0 still works, at the base rate. */
+export const skillLevelSchema = z.number().int().min(0).max(10);
+
+export const skillDefSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  /** Shown as text (an emoji), next to the name. */
+  icon: z.string(),
+  description: z.string(),
+});
+
+/** Base amount per day; the worker's skill scales it (see `yieldTenths`). */
+const perDay = z.number().positive();
+
+export const jobEffectSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('produce'), material: z.string().min(1), perDay }),
+  /** Percent points added to the research the NPC was assigned to. */
+  z.object({ type: z.literal('research'), perDay }),
+  /** Days taken off the construction the NPC works on. */
+  z.object({ type: z.literal('construction'), perDay }),
+  /** Shown among the active bonuses while the post is filled. */
+  z.object({ type: z.literal('bonus'), text: z.string().min(1) }),
+]);
+
+/** A work post: `slots` NPCs can fill it at once. */
+export const jobDefSchema = z.object({
+  activity: z.string().min(1),
+  name: z.string().min(1),
+  skill: z.string().min(1),
+  slots: z.number().int().positive(),
+  effect: jobEffectSchema,
+});
+
 export const buildingLevelSchema = z.object({
   cost: costSchema,
   buildTime: positiveInt,
   effect: z.string().min(1),
   requires: z.array(requirementSchema).optional(),
+  housing: z.object({ capacity: z.number().int().positive() }).optional(),
+  jobs: z.array(jobDefSchema).optional(),
+});
+
+/** npcs.json: the post every construction in progress offers. */
+export const npcsConfigSchema = z.object({
+  construction: jobDefSchema.extend({
+    effect: jobEffectSchema.options[2],
+  }),
 });
 
 /** Art coordinates: 0–1 across the building image, origin at its top-left corner. */
@@ -297,6 +339,10 @@ export type AmountBag = Readonly<z.infer<typeof amountBagSchema>>;
 export type Cost = z.infer<typeof costSchema>;
 export type Requirement = z.infer<typeof requirementSchema>;
 export type BuildingLevel = z.infer<typeof buildingLevelSchema>;
+export type SkillDef = z.infer<typeof skillDefSchema>;
+export type JobEffect = z.infer<typeof jobEffectSchema>;
+export type JobDef = z.infer<typeof jobDefSchema>;
+export type NpcsConfig = z.infer<typeof npcsConfigSchema>;
 export type BuildingFx = z.infer<typeof buildingFxSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;

@@ -6,14 +6,19 @@ import {
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
+  npcsConfigSchema,
   researchBookSchema,
+  skillDefSchema,
   walletsSeedSchema,
   worldsFileSchema,
   type AssetManifest,
   type BuildingDef,
   type CurrencyDef,
+  type JobDef,
   type Materials,
+  type NpcsConfig,
   type ResearchBook,
+  type SkillDef,
   type WalletsSeed,
   type World,
 } from './schema';
@@ -38,6 +43,9 @@ export interface Catalog {
   readonly worlds: readonly World[];
   readonly assets: AssetManifest;
   readonly seed: Seed;
+  /** NPC skills, in display order. */
+  readonly skills: readonly SkillDef[];
+  readonly npcs: NpcsConfig;
 }
 
 export interface RawCatalog {
@@ -49,6 +57,8 @@ export interface RawCatalog {
   materials: unknown;
   research: unknown;
   influence: unknown;
+  skills: unknown;
+  npcs: unknown;
 }
 
 /**
@@ -68,6 +78,9 @@ export function parseCatalog(raw: RawCatalog): Catalog {
       materials: parseFile('materials.json', materialsSchema, raw.materials),
       research: parseFile('research.json', researchBookSchema, raw.research),
     },
+    skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
+      .skills,
+    npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
   };
   const problems = findReferenceProblems(catalog);
   if (problems.length > 0) {
@@ -133,12 +146,39 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('currency', catalog.currencies),
     ...duplicates('slot', catalog.layout.slots),
     ...duplicates('world', catalog.worlds),
+    ...duplicates('skill', catalog.skills),
+    ...jobProblems(catalog),
     ...layoutProblems(catalog),
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
     ...seedProblems(catalog),
     ...buildingProblems,
   ];
+}
+
+/** Posts must use known skills, and activity ids identify a post within a level. */
+function jobProblems({ buildings, skills, npcs }: Catalog): string[] {
+  const skillIds = new Set(skills.map((s) => s.id));
+  const constructionActivity = npcs.construction.activity;
+  const unknownSkill = (owner: string, job: JobDef) =>
+    skillIds.has(job.skill)
+      ? []
+      : [`${owner}: post "${job.activity}" uses unknown skill "${job.skill}"`];
+  const levelProblems = buildings.flatMap((b) =>
+    b.levels.flatMap((level, index) => {
+      const owner = `${b.id} level ${index + 1}`;
+      const jobs = level.jobs ?? [];
+      const ids = jobs.map((job) => ({ id: job.activity }));
+      return [
+        ...jobs.flatMap((job) => unknownSkill(owner, job)),
+        ...duplicates(`${owner} post`, ids),
+        ...(ids.some(({ id }) => id === constructionActivity)
+          ? [`${owner}: post "${constructionActivity}" is reserved for constructions`]
+          : []),
+      ];
+    }),
+  );
+  return [...unknownSkill('npcs.json', npcs.construction), ...levelProblems];
 }
 
 /** Every slot type a building accepts must exist, and no slot may sit on a reserved stretch. */

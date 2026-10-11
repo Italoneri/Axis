@@ -33,6 +33,11 @@ const influence = {
   ],
 };
 
+function forging(slots: number, perDay: number) {
+  const effect = { type: 'produce', material: 'iron', perDay };
+  return { activity: 'forjar', name: 'Forjar', skill: 'smithing', slots, effect };
+}
+
 /** Small catalog independent of the shipped balance numbers, so data tweaks never break tests. */
 export const testCatalog = parseCatalog({
   currencies,
@@ -45,8 +50,34 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['core'],
       levels: [
-        { cost: { coins: 10 }, buildTime: 2, effect: 'h1' },
-        { cost: { coins: 10 }, buildTime: 2, effect: 'h2' },
+        {
+          cost: { coins: 10 },
+          buildTime: 2,
+          effect: 'h1',
+          jobs: [
+            {
+              activity: 'estudar',
+              name: 'Estudar',
+              skill: 'research',
+              slots: 1,
+              effect: { type: 'research', perDay: 2 },
+            },
+          ],
+        },
+        {
+          cost: { coins: 10 },
+          buildTime: 2,
+          effect: 'h2',
+          jobs: [
+            {
+              activity: 'rezar',
+              name: 'Rezar',
+              skill: 'research',
+              slots: 1,
+              effect: { type: 'bonus', text: 'bênção' },
+            },
+          ],
+        },
       ],
     },
     {
@@ -57,12 +88,13 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 20 }, buildTime: 3, effect: 'f1' },
+        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1, 1)] },
         {
           cost: { coins: 30 },
           buildTime: 0,
           effect: 'f2',
           requires: [{ building: 'heart', minLevel: 1 }],
+          jobs: [forging(2, 2)],
         },
       ],
     },
@@ -75,6 +107,18 @@ export const testCatalog = parseCatalog({
       allowedSlots: ['outer'],
       requires: [{ building: 'forge', minLevel: 1 }],
       levels: [{ cost: { coins: 10, materials: { iron: 5 } }, buildTime: 1, effect: 'a1' }],
+    },
+    {
+      id: 'barracks',
+      name: 'Alojamento',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [
+        { cost: { coins: 10 }, buildTime: 2, effect: 'b1', housing: { capacity: 2 } },
+        { cost: { coins: 10 }, buildTime: 2, effect: 'b2', housing: { capacity: 3 } },
+      ],
     },
   ],
   layout: {
@@ -95,6 +139,22 @@ export const testCatalog = parseCatalog({
   },
   assets: { images: { i: 'icon.png', s: 'sprite.png' } },
   influence,
+  skills: {
+    skills: [
+      { id: 'construction', name: 'Construção', icon: 'c', description: '' },
+      { id: 'smithing', name: 'Ferraria', icon: 's', description: '' },
+      { id: 'research', name: 'Pesquisa', icon: 'r', description: '' },
+    ],
+  },
+  npcs: {
+    construction: {
+      activity: 'construir',
+      name: 'Construir',
+      skill: 'construction',
+      slots: 2,
+      effect: { type: 'construction', perDay: 1 },
+    },
+  },
   ...seed,
 });
 

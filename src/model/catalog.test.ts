@@ -112,4 +112,27 @@ describe('parseCatalog', () => {
     };
     expect(() => parseCatalog({ ...rawGameData, materials })).toThrow(/unknown category "nowhere"/);
   });
+
+  it('rejects posts with unknown skills, repeated activities or the construction activity', () => {
+    const [first] = rawGameData.buildings;
+    const post = (activity: string, skill: string) => ({
+      activity,
+      name: activity,
+      skill,
+      slots: 1,
+      effect: { type: 'bonus', text: 'x' },
+    });
+    const levels = first.levels.map((level) => ({
+      ...level,
+      jobs: [
+        post('a', 'juggling'),
+        post('b', 'research'),
+        post('b', 'research'),
+        post('construir', 'research'),
+      ],
+    }));
+    expect(() => parseCatalog({ ...rawGameData, buildings: [{ ...first, levels }] })).toThrow(
+      /unknown skill "juggling"[\s\S]*duplicate .* post id "b"[\s\S]*"construir" is reserved/,
+    );
+  });
 });

@@ -1,0 +1,40 @@
+{
+  "skills": [
+    {
+      "id": "construction",
+      "name": "Construção",
+      "icon": "🔨",
+      "description": "Erguer e reformar estruturas; acelera as obras em andamento."
+    },
+    {
+      "id": "smithing",
+      "name": "Ferraria",
+      "icon": "⚒️",
+      "description": "Trabalhar metais na forja."
+    },
+    {
+      "id": "cooking",
+      "name": "Gastronomia",
+      "icon": "🍲",
+      "description": "Cozinhar e servir na taverna."
+    },
+    {
+      "id": "research",
+      "name": "Pesquisa",
+      "icon": "📜",
+      "description": "Estudar e avançar as pesquisas do grupo."
+    },
+    {
+      "id": "medicine",
+      "name": "Medicina",
+      "icon": "⚕️",
+      "description": "Tratar feridos e doentes."
+    },
+    {
+      "id": "alchemy",
+      "name": "Alquimia",
+      "icon": "⚗️",
+      "description": "Destilar reagentes e cristais arcanos."
+    }
+  ]
+}
