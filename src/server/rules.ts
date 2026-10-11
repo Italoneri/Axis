@@ -9,6 +9,7 @@ import { serverCatalog } from './catalog';
 export { applyCommand } from '../commands/applyCommand';
 export { parseSave, createInitialState } from '../systems/SaveSystem';
 export { serverCatalog } from './catalog';
+export { serveGame } from './http';
 
 const SAMPLE: readonly GameCommand[] = [
   { type: 'advance_days', days: 3 },

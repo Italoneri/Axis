@@ -1,7 +1,7 @@
 -- Run with `npx supabase test db` (needs `npx supabase start`, which needs Docker).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(21);
 
 -- ---------------------------------------------------------------- fixtures (as superuser)
 
@@ -29,10 +29,10 @@ select game_id, 'thorin', 'hash-expired', '00000000-0000-0000-0000-00000000000a'
 -- ---------------------------------------------------------------- invites (service role)
 
 set local role service_role;
-select is(public.accept_invite('hash-ok', '00000000-0000-0000-0000-00000000000b'), 'ok', 'player accepts an invite');
-select is(public.accept_invite('hash-ok', '00000000-0000-0000-0000-00000000000c'), 'used', 'an invite works once');
-select is(public.accept_invite('hash-expired', '00000000-0000-0000-0000-00000000000c'), 'expired', 'expired invites are refused');
-select is(public.accept_invite('nope', '00000000-0000-0000-0000-00000000000c'), 'invalid', 'unknown tokens are refused');
+select is(public.accept_invite('hash-ok', '00000000-0000-0000-0000-00000000000b') ->> 'status', 'ok', 'player accepts an invite');
+select is(public.accept_invite('hash-ok', '00000000-0000-0000-0000-00000000000c') ->> 'status', 'used', 'an invite works once');
+select is(public.accept_invite('hash-expired', '00000000-0000-0000-0000-00000000000c') ->> 'status', 'expired', 'expired invites are refused');
+select is(public.accept_invite('nope', '00000000-0000-0000-0000-00000000000c') ->> 'status', 'invalid', 'unknown tokens are refused');
 reset role;
 
 -- ---------------------------------------------------------------- member reads
@@ -93,6 +93,16 @@ select is(
   (select count(*)::int from public.game_log),
   1,
   'only the accepted write is in the history'
+);
+select is(
+  public.load_game_for((select game_id from fixture), '00000000-0000-0000-0000-00000000000b') ->> 'character_id',
+  'thorin',
+  'load_game_for returns the member role and character'
+);
+select is(
+  public.load_game_for((select game_id from fixture), '00000000-0000-0000-0000-00000000000c'),
+  null,
+  'load_game_for returns nothing to a stranger'
 );
 reset role;
 

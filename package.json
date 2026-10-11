@@ -14,9 +14,12 @@
     "typecheck": "tsc --noEmit",
     "gen:placeholders": "tsx scripts/gen-placeholders.ts",
     "build:functions": "tsx scripts/build-functions.ts",
-    "parity": "tsx scripts/check-parity.ts"
+    "parity": "tsx scripts/check-parity.ts",
+    "check:functions": "npm run build:functions && deno check supabase/functions/game/index.ts",
+    "deploy:functions": "npm run build:functions && supabase functions deploy game"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
     "phaser": "^3.90.0",
     "zod": "^4.6.5"
   },

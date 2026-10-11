@@ -105,7 +105,7 @@ export function applyCommand(
 }
 
 /** Undefined for an anonymous player (offline, before logins exist). */
-function actorName(state: GameState, { actor }: CommandContext): string | undefined {
+export function actorName(state: GameState, { actor }: CommandContext): string | undefined {
   if (actor.role === 'master') return MASTER_ACTOR;
   return state.characters.find((c) => c.id === actor.characterId)?.name;
 }

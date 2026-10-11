@@ -142,6 +142,17 @@ O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota 
 
 O Deno vem como devDependency (`npx deno`), não precisa instalar à parte.
 
+A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `supabase-js`. A lógica está em `src/server/`:
+
+- **JWT:** sem token ou com token inválido → **401**. O papel e o personagem vêm da tabela `players`, nunca do corpo da requisição.
+- **`command`:** `{ gameId, command, expectedRevision }` → aplica o `applyCommand` e grava com `commit_game_update`. Respostas: **200** `{ state }`, **403** (não membro ou sem permissão), **409** (revisão desatualizada), **422** (requisição ou comando inválidos).
+- Testes em `src/server/http.test.ts`, com o banco simulado em memória.
+
+| Comando                    | O que faz                                                   |
+| -------------------------- | ----------------------------------------------------------- |
+| `npm run check:functions`  | Gera o bundle e confere os tipos da função com o Deno        |
+| `npm run deploy:functions` | Gera o bundle e publica a função (precisa do CLI logado)      |
+
 ### Banco (Supabase)
 
 `supabase/migrations/` cria as tabelas `games` (estado em jsonb + `revision`), `players` (papel e personagem), `game_log` (histórico completo) e `invites` (convites de uso único, só o hash do token é gravado).

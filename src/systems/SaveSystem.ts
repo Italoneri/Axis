@@ -48,7 +48,11 @@ export function parseSave(text: string, catalog: Catalog): ParseResult {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: `invalid JSON: ${message}`, outdated: false };
   }
+  return parseState(json, catalog);
+}
 
+/** Same checks as `parseSave`, for a save already parsed from JSON (a jsonb column, a request body). */
+export function parseState(json: unknown, catalog: Catalog): ParseResult {
   const migrated = migrateSave(json);
   if (!migrated.ok) return { ok: false, error: migrated.error, outdated: migrated.outdated };
 

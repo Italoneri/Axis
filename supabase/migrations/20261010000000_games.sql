@@ -178,27 +178,79 @@ begin
 end;
 $$;
 
+-- The game as a member sees it, with their role; null when not a member.
+create function public.load_game_for(target_game uuid, member uuid)
+returns jsonb
+language sql
+stable
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'state', g.state,
+    'revision', g.revision,
+    'role', p.role,
+    'character_id', p.character_id
+  )
+  from public.games g
+  join public.players p on p.game_id = g.id and p.user_id = member
+  where g.id = target_game;
+$$;
+
+create function public.create_invite(
+  target_game uuid,
+  invited_character text,
+  invite_token_hash text,
+  creator uuid,
+  expires timestamptz
+)
+returns uuid
+language sql
+set search_path = ''
+as $$
+  insert into public.invites (game_id, character_id, token_hash, created_by, expires_at)
+  values (target_game, invited_character, invite_token_hash, creator, expires)
+  returning id;
+$$;
+
+-- Only invites still pending can be revoked.
+create function public.revoke_invite(target_game uuid, invite uuid)
+returns boolean
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.invites set revoked_at = now()
+   where id = invite and game_id = target_game and used_at is null and revoked_at is null;
+  return found;
+end;
+$$;
+
 -- Consumes an invite and links the user to its character. A character has one
 -- player at a time: accepting a new invite moves it away from the previous one.
--- Returns 'ok', 'invalid', 'expired', 'used', 'revoked' or 'is_master'.
+-- status: 'ok', 'invalid', 'expired', 'used', 'revoked' or 'is_master'.
 create function public.accept_invite(invite_token_hash text, accepting_user uuid)
-returns text
+returns jsonb
 language plpgsql
 set search_path = ''
 as $$
 declare
   invite public.invites%rowtype;
+  status text;
 begin
   select * into invite from public.invites where token_hash = invite_token_hash for update;
-  if not found then return 'invalid'; end if;
-  if invite.revoked_at is not null then return 'revoked'; end if;
-  if invite.used_at is not null then return 'used'; end if;
-  if invite.expires_at <= now() then return 'expired'; end if;
-  if exists (
-    select 1 from public.players
-    where game_id = invite.game_id and user_id = accepting_user and role = 'master'
-  ) then
-    return 'is_master';
+  status := case
+    when not found then 'invalid'
+    when invite.revoked_at is not null then 'revoked'
+    when invite.used_at is not null then 'used'
+    when invite.expires_at <= now() then 'expired'
+    when exists (
+      select 1 from public.players
+      where game_id = invite.game_id and user_id = accepting_user and role = 'master'
+    ) then 'is_master'
+    else 'ok'
+  end;
+  if status <> 'ok' then
+    return jsonb_build_object('status', status, 'game_id', invite.game_id);
   end if;
 
   delete from public.players
@@ -208,18 +260,24 @@ begin
   on conflict (game_id, user_id) do update set character_id = excluded.character_id;
 
   update public.invites set used_by = accepting_user, used_at = now() where id = invite.id;
-  return 'ok';
+  return jsonb_build_object('status', 'ok', 'game_id', invite.game_id);
 end;
 $$;
 
 revoke execute on function
   public.commit_game_update(uuid, integer, jsonb, uuid, text, jsonb, jsonb),
   public.create_game(text, jsonb, uuid),
+  public.load_game_for(uuid, uuid),
+  public.create_invite(uuid, text, text, uuid, timestamptz),
+  public.revoke_invite(uuid, uuid),
   public.accept_invite(text, uuid)
   from public, anon, authenticated;
 grant execute on function
   public.commit_game_update(uuid, integer, jsonb, uuid, text, jsonb, jsonb),
   public.create_game(text, jsonb, uuid),
+  public.load_game_for(uuid, uuid),
+  public.create_invite(uuid, text, text, uuid, timestamptz),
+  public.revoke_invite(uuid, uuid),
   public.accept_invite(text, uuid)
   to service_role;
 
