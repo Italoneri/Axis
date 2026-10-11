@@ -15,6 +15,20 @@ const SAMPLE: readonly GameCommand[] = [
   { type: 'advance_days', days: 3 },
   { type: 'add_material_category', id: 'matcat_parity', name: 'Paridade' },
   { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { gold: 7 } },
+  { type: 'force_building', slotId: 'outer_1', buildingId: 'barracks', level: 1 },
+  { type: 'force_building', slotId: 'outer_2', buildingId: 'forge', level: 2 },
+  {
+    type: 'npc_create',
+    id: 'npc_parity',
+    name: 'Bianca',
+    title: 'Maga',
+    description: '',
+    skills: { smithing: 3 },
+    wage: 0.35,
+  },
+  { type: 'npc_set_home', npcId: 'npc_parity', slotId: 'outer_1' },
+  { type: 'npc_assign_job', npcId: 'npc_parity', slotId: 'outer_2', activityId: 'forjar' },
+  { type: 'advance_days', days: 5 },
 ];
 
 /**
