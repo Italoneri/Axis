@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { toPixels } from '../map/geometry';
 import type { SlotDef } from '../map/layout';
 import type { GameState } from '../model/schema';
+import { isOnDuty } from '../systems/Npcs';
 
 /** Above the building art and its effects. */
 const BADGE_DEPTH = 40;
@@ -9,7 +10,7 @@ const FONT_SHARE = 0.013;
 /** More workers than this read as "+N" so the badge stays small. */
 const MAX_INITIALS = 3;
 
-/** Initials of the NPCs working at each slot, drawn over the building. */
+/** Initials of the NPCs on duty at each slot, drawn over the building. */
 export class WorkerBadges {
   private readonly badges = new Map<string, Phaser.GameObjects.Text>();
 
@@ -50,9 +51,8 @@ export class WorkerBadges {
   }
 }
 
-function workerNamesBySlot(state: GameState): Map<string, string[]> {
-  return state.npcs.reduce((bySlot, npc) => {
-    if (!npc.job) return bySlot;
+export function workerNamesBySlot(state: GameState): Map<string, string[]> {
+  return state.npcs.filter(isOnDuty).reduce((bySlot, npc) => {
     const names = [...(bySlot.get(npc.job.slotId) ?? []), npc.name];
     return new Map(bySlot).set(npc.job.slotId, names);
   }, new Map<string, string[]>());
