@@ -118,6 +118,39 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 
 Toda alteração de recurso, seja do mestre, de um depósito ou de uma construção, gera uma entrada no registro. Exemplos: "Dia 14 — Thorin depositou 3 Platina e 12 Ouro no Acampamento" e "Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)".
 
+## NPCs
+
+Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.md`.
+
+- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de 0 a 10 em cada uma.
+- **Moradia e postos** ficam por nível no `buildings.json`:
+
+  ```json
+  "housing": { "capacity": 4 },
+  "jobs": [
+    { "activity": "forjar", "name": "Forjar", "skill": "smithing", "slots": 2,
+      "effect": { "type": "produce", "material": "iron", "perDay": 2 } }
+  ]
+  ```
+
+  Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos). O posto **Construir**, que aparece em toda obra em andamento, fica em `src/data/npcs.json`.
+
+- **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
+- **Quem faz o quê:** só o mestre cria, edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
+- **Regras:**
+  - Trabalho exige moradia.
+  - Um trabalho por vez.
+  - Capacidade e postos vêm do nível em vigor: durante uma melhoria a construção continua funcionando no nível atual.
+  - Remover uma construção, reduzir a capacidade, terminar uma obra ou encerrar a pesquisa alvo libera os NPCs, com registro no log.
+- **Ao avançar dias**, cada dia processa, nesta ordem:
+  1. Salários: o Acampamento paga; sem saldo, o NPC não trabalha naquele dia.
+  2. Efeitos dos postos.
+  3. Conclusão das obras.
+
+  Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
+
+- **Save:** versão 5. Saves da versão 4 ganham `npcs: []` ao carregar; online o estado continua no mesmo jsonb.
+
 ## Online / Supabase
 
 > Em andamento (Fase 3). Plano completo em [`docs/plans/FASE3_SUPABASE.md`](docs/plans/FASE3_SUPABASE.md).
