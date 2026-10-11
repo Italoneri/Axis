@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { consolidate, fromBronze, goldToBronze, pay, toBronze, type CoinBag } from './Coins';
+import {
+  bronzeToGold,
+  consolidate,
+  fromBronze,
+  goldToBronze,
+  pay,
+  toBronze,
+  type CoinBag,
+} from './Coins';
 import { testCatalog } from './testFixtures';
 
 const { currencies } = testCatalog;
@@ -22,6 +30,24 @@ describe('goldToBronze', () => {
     { gold: 1234.56, bronze: 123456 },
   ])('converts $gold PO to $bronze bronze without float noise', ({ gold, bronze }) => {
     expect(goldToBronze(gold, 100)).toBe(bronze);
+  });
+});
+
+describe('bronzeToGold', () => {
+  it.each([
+    { bronze: 4, gold: 0.04 },
+    { bronze: 12, gold: 0.12 },
+    { bronze: 15000, gold: 150 },
+  ])('converts $bronze bronze to $gold PO', ({ bronze, gold }) => {
+    expect(bronzeToGold(bronze, 100)).toBeCloseTo(gold, 10);
+  });
+
+  it('round-trips every bronze amount up to 100 PO without losing value', () => {
+    const amounts = Array.from({ length: 10_001 }, (_, bronze) => bronze);
+    const lost = amounts.filter((b) => goldToBronze(bronzeToGold(b, 100), 100) !== b);
+    expect(lost).toEqual([]);
+    const wages = amounts.map((b) => b / 100);
+    expect(wages.filter((w) => bronzeToGold(goldToBronze(w, 100), 100) !== w)).toEqual([]);
   });
 });
 

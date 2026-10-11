@@ -10,7 +10,6 @@ import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
-const goldFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const decimalFormat = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -247,8 +246,9 @@ export const t = {
     newNpc: 'Novo NPC',
     titleField: 'Título (ex.: Maga)',
     portrait: 'Retrato (chave do assets.json ou URL)',
-    wage: 'Salário diário (PO)',
-    wageText: (gold: number) => `Salário: ${goldFormat.format(gold)} PO/dia`,
+    wage: 'Salário diário',
+    wageText: (coins: string) => `Salário: ${coins}/dia`,
+    noWage: 'Sem salário',
     status: 'Situação',
     statuses: {
       disponivel: 'Disponível',

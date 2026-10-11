@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { testCatalog } from '../systems/testFixtures';
-import { formatGold } from './format';
+import { formatGold, formatWage } from './format';
 
 describe('formatGold', () => {
   it.each([
@@ -11,5 +11,17 @@ describe('formatGold', () => {
     { bronze: 1_111_102_450, text: '11.111.024,5 PO' },
   ])('shows $bronze bronze as "$text"', ({ bronze, text }) => {
     expect(formatGold(testCatalog, bronze)).toBe(text);
+  });
+});
+
+describe('formatWage', () => {
+  it.each([
+    { wage: undefined, text: 'Sem salário' },
+    { wage: 0, text: 'Sem salário' },
+    { wage: 0.04, text: 'Salário: 4 Bronze/dia' },
+    { wage: 0.12, text: 'Salário: 1 Prata e 2 Bronze/dia' },
+    { wage: 1.5, text: 'Salário: 1 Ouro e 5 Prata/dia' },
+  ])('shows a wage of $wage PO as "$text"', ({ wage, text }) => {
+    expect(formatWage(testCatalog, wage)).toBe(text);
   });
 });

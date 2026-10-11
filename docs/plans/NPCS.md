@@ -59,7 +59,7 @@ npc = {
   home: slotId | null,
   job: { slotId, activityId, researchId?, carry } | null,
   status: 'disponivel' | 'trabalhando' | 'ferido' | 'em_missao',
-  wage?: number,                       // PO por dia
+  wage?: number,                       // PO por dia; a interface usa moedas
 }
 ```
 
@@ -98,6 +98,7 @@ Todo comando registra o `actor` no log.
 ## Interface
 
 - Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel.
+- Salário: digitado em moedas (prata, bronze…) e salvo em PO; o card mostra "Salário: 1 Prata e 2 Bronze/dia", ou "Sem salário".
 - Painel da construção: moradores (x de y) e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento.
 - Mapa: iniciais dos trabalhadores sobre as construções.
 - Bônus ativos: incluem os efeitos dos postos ocupados.

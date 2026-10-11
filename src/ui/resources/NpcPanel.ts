@@ -1,13 +1,21 @@
 import { newId } from '../../commands/newId';
 import { t } from '../../i18n/pt-BR';
-import type { Catalog } from '../../model/catalog';
+import { goldInBronze, type Catalog } from '../../model/catalog';
 import type { GameState, Npc, NpcStatus } from '../../model/schema';
+import {
+  bronzeToGold,
+  fromBronze,
+  goldToBronze,
+  toBronze,
+  type CoinBag,
+} from '../../systems/Coins';
 import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
-import { formatCount } from '../format';
+import { formatCount, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
   button,
+  coinInputs,
   confirmButton,
   field,
   numberInput,
@@ -120,7 +128,7 @@ export class NpcPanel {
       ),
       npc.description && el('p', { class: 'item__desc' }, npc.description),
       this.skillBars(npc),
-      npc.wage !== undefined && el('p', { class: 'card__sub' }, t.npcs.wageText(npc.wage)),
+      el('p', { class: 'card__sub' }, formatWage(catalog, npc.wage)),
       this.homeRow(npc),
       this.jobRow(npc),
       session.isActive && this.masterControls(npc),
@@ -219,21 +227,15 @@ export class NpcPanel {
     npc: Npc | undefined,
     onSubmit: (fields: NpcFields, status: NpcStatus) => void,
   ): HTMLElement {
-    const { skills } = this.deps.store.catalog;
+    const { catalog } = this.deps.store;
+    const { skills } = catalog;
     const input = (value: string | undefined) =>
       el('input', { class: 'input input--wide', value: value ?? '' });
     const name = input(npc?.name);
     const title = input(npc?.title);
     const portrait = input(npc?.portrait);
     const description = input(npc?.description);
-    const wage = el('input', {
-      class: 'input',
-      type: 'number',
-      min: '0',
-      step: '0.01',
-      value: npc?.wage === undefined ? '' : String(npc.wage),
-      'aria-label': t.npcs.wage,
-    });
+    const wage = wageInputs(catalog, npc?.wage);
     const status = selectInput({
       label: t.npcs.status,
       value: npc && STATUSES.includes(npc.status) ? npc.status : 'disponivel',
@@ -249,7 +251,7 @@ export class NpcPanel {
       }),
     }));
     const read = (): NpcFields => {
-      const wageValue = Number(wage.value);
+      const wageValue = wage.read();
       return {
         name: name.value,
         title: title.value,
@@ -258,7 +260,7 @@ export class NpcPanel {
         skills: Object.fromEntries(
           levels.map(({ skill, input }) => [skill.id, clampSkill(Number(input.value))]),
         ),
-        wage: Number.isFinite(wageValue) && wageValue > 0 ? wageValue : undefined,
+        wage: wageValue > 0 ? wageValue : undefined,
       };
     };
     return el(
@@ -274,7 +276,7 @@ export class NpcPanel {
       field(t.npcs.titleField, title),
       field(t.npcs.portrait, portrait),
       field(t.common.description, description),
-      field(t.npcs.wage, wage),
+      el('div', { class: 'field' }, el('span', {}, t.npcs.wage), wage.element, wage.preview),
       npc && field(t.npcs.status, status),
       el(
         'div',
@@ -297,6 +299,18 @@ export class NpcPanel {
     change();
     this.redraw();
   }
+}
+
+/** Coin fields for the daily wage, stored in gold, with a live "Salário: …/dia" line. */
+function wageInputs(catalog: Catalog, wage: number | undefined) {
+  const goldValue = goldInBronze(catalog);
+  const toGold = (bag: CoinBag) => bronzeToGold(toBronze(bag, catalog.currencies), goldValue);
+  const preview = el('p', { class: 'card__sub' }, formatWage(catalog, wage));
+  const inputs = coinInputs(catalog, {
+    initial: fromBronze(goldToBronze(wage ?? 0, goldValue), catalog.currencies),
+    onInput: (bag) => (preview.textContent = formatWage(catalog, toGold(bag))),
+  });
+  return { element: inputs.element, preview, read: () => toGold(inputs.read()) };
 }
 
 function clampSkill(value: number): number {

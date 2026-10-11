@@ -145,7 +145,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   - Capacidade e postos vêm do nível em vigor: durante uma melhoria a construção continua funcionando no nível atual.
   - Remover uma construção, reduzir a capacidade, terminar uma obra ou encerrar a pesquisa alvo libera os NPCs, com registro no log.
 - **Ao avançar dias**, cada dia processa, nesta ordem:
-  1. Salários: o Acampamento paga; sem saldo, o NPC não trabalha naquele dia.
+  1. Salários: o Acampamento paga (o salário é digitado em moedas e salvo em PO); sem saldo, o NPC não trabalha naquele dia.
   2. Efeitos dos postos.
   3. Conclusão das obras.
 

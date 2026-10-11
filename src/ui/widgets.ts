@@ -220,14 +220,19 @@ export interface CoinInputs {
   read: () => CoinBag;
 }
 
-/** One number field per coin, optionally capped at what a wallet holds. */
+/** One number field per coin, optionally prefilled and capped at what a wallet holds. */
 export function coinInputs(
   catalog: Catalog,
-  { max, onInput }: { max?: CoinBag; onInput?: (coins: CoinBag) => void } = {},
+  {
+    initial,
+    max,
+    onInput,
+  }: { initial?: CoinBag; max?: CoinBag; onInput?: (coins: CoinBag) => void } = {},
 ): CoinInputs {
   const rows = catalog.currencies.map((currency) => {
     const cap = max ? (max[currency.id] ?? 0) : undefined;
-    const input = numberInput({ min: 0, max: cap, label: currency.name });
+    const value = initial?.[currency.id];
+    const input = numberInput({ min: 0, max: cap, value, label: currency.name });
     input.disabled = cap === 0;
     return { currency, input };
   });
