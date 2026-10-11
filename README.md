@@ -154,6 +154,20 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
 
 - **Save:** versão 5. Saves da versão 4 ganham `npcs: []` ao carregar; online o estado continua no mesmo jsonb.
 
+## Arquivo de registros
+
+Os registros da campanha (relatórios, formulários, anotações sobre personagens, cartas) ficam no **Arquivo**, organizados em **tópicos** com **notas**. O design completo está em `docs/plans/ARQUIVO.md`.
+
+- **Onde abrir:** no painel do Arquivo construído (nível ≥ 1), o botão **Abrir registros** mostra a contagem de tópicos e notas. O mestre também abre pelas ferramentas do mestre, mesmo sem o Arquivo construído.
+- **Janela:** tópicos à esquerda (ícone, nome e quantidade de notas), notas do tópico à direita (fixadas primeiro, cada uma recolhe e expande) e uma busca no título e no texto, que ignora maiúsculas e acentos. No celular vira duas etapas (tópicos → notas). A janela lembra o último tópico aberto.
+- **Quem faz o quê:** jogadores e mestre criam, editam, reordenam, movem e removem qualquer tópico ou nota `todos`. Só o mestre cria, vê e edita notas `mestre`; os jogadores nunca as recebem (nem na lista, nem na busca, nem na contagem, nem no log). Offline o jogador escolhe o personagem no topo da janela.
+- **Lixeira:** remover manda para a lixeira, onde qualquer um restaura. Só o mestre esvazia. Um tópico só sai quando está vazio (mova as notas antes).
+- **Colar registros:** cole o texto do Discord. Cada linha só de traços (`-----`, 5 ou mais) separa um registro, e a primeira linha vira o título. Há uma prévia antes de salvar.
+- **Formatação do Discord:** `**negrito**`, `*itálico*`/`_itálico_`, `__sublinhado__`, `~~riscado~~`, `>`/`>>>` citação, listas `-`/`*`/`1.`, títulos `#`/`##`/`###` e linha de traços. O editor tem o botão **Prévia**. O texto é montado sem `innerHTML`: o que não é marcação aparece literal.
+- **Limites:** título até 200 caracteres e nota até 20.000.
+- **Log:** toda ação vira uma entrada com quem fez ("Thorin criou o tópico Pets", "Mestre moveu 'Zolt-Raak' de NPCs para Jogadores"), menos as que envolvem notas `mestre`.
+- **Onde fica:** fora do `GameState`. Offline, em `localStorage` (`axis-base-builder:archive`); online, nas tabelas `archive_topics` e `archive_notes`. **Exportar/Importar save** levam o arquivo junto, na chave `archive`.
+
 ## Online / Supabase
 
 > Em andamento (Fase 3). Plano completo em [`docs/plans/FASE3_SUPABASE.md`](docs/plans/FASE3_SUPABASE.md).
@@ -217,7 +231,8 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 
 - **RLS:** clientes só **leem**, e só os jogos de que participam. Ninguém grava direto: as escritas passam pela Edge Function, que usa a service role e as funções `commit_game_update` (grava só se a `revision` bater), `create_game` e `accept_invite`.
 - `games` está na publicação do Realtime, que também respeita a RLS.
-- **Verificação:** `supabase/tests/games_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
+- **Arquivo de registros:** `archive_topics` e `archive_notes` são a exceção: membros escrevem direto, e a RLS só deixa o mestre ler e escrever as notas `mestre` (jogador não cria nem transforma uma nota em `mestre`). Um trigger recusa mandar à lixeira um tópico com notas, contando as `mestre` sem revelá-las, e `replace_archive` (só o mestre) restaura o arquivo de um save importado. As duas tabelas estão no Realtime.
+- **Verificação:** `supabase/tests/games_rls.test.sql` e `supabase/tests/archive_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
 
 O Supabase CLI vem como devDependency: use `npx supabase …`.
 
@@ -228,16 +243,20 @@ src/
   main.ts            monta UI + jogo
   store.ts           estado atual, envio de comandos e eventos (camada imperativa)
   commands/          comandos serializáveis e applyCommand (regras + permissões)
-  persistence/       GameRepository e LocalRepository (localStorage)
+  archiveStore.ts    Arquivo de registros: envio de comandos e avisos de mudança
+  persistence/       GameRepository e LocalRepository (localStorage); ArchiveRepository e
+                     LocalArchiveRepository
   server/            Edge Function: handler, acesso ao banco, catálogo e entrada do bundle
-  online/            SupabaseRepository, cliente Supabase e configuração online/offline
+  online/            SupabaseRepository, SupabaseArchiveRepository, cliente Supabase e
+                     configuração online/offline
   model/             schemas (zod) e tipos, carregamento/validação do catálogo
   map/               mapa gerado por código: layout, geometria, veios, gerador, portões, tema
   systems/           regras puras: Build, Coins, Wallets, Materials, Research, Influence,
-                     Characters, Time, Save, Master, Bonus (+ testes)
+                     Characters, Time, Save, Master, Bonus, Archive (+ testes)
   scenes/            Boot, Preload, Base, SlotView, CameraController
   ui/                barra superior e painéis de recursos (ui/resources), painel do espaço,
-                     gaveta (bônus/registro/mestre), login, save, CSS
+                     gaveta (bônus/registro/mestre), login, save, janela do Arquivo
+                     (ui/archive, com o markdown do Discord), CSS
   i18n/pt-BR.ts      todos os textos da interface
   data/              buildings.json, layout.json, theme.json, credits.json, assets.json,
                      currencies.json e os seeds

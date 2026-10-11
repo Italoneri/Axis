@@ -6,10 +6,10 @@ Objetivo: tirar os registros da campanha (relatórios, formulários, anotações
 
 O `GameState` inteiro vai e volta a cada comando e no realtime; centenas de KB de notas pesariam em cada clique. E, dentro do `GameState`, esconder as notas `mestre` exigiria um estado por papel (cortar no servidor antes de responder, no realtime, no `game_log`…). Tabelas com RLS resolvem isso no banco.
 
-| Modo    | Onde                                                     | Quem decide                                                    |
-| ------- | -------------------------------------------------------- | -------------------------------------------------------------- |
+| Modo    | Onde                                                        | Quem decide                                                      |
+| ------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
 | Online  | `archive_topics`, `archive_notes` (Supabase, RLS, realtime) | as regras puras rodam no cliente; RLS e trigger são a autoridade |
-| Offline | `localStorage['axis-base-builder:archive']`              | as mesmas regras puras                                         |
+| Offline | `localStorage['axis-base-builder:archive']`                 | as mesmas regras puras                                           |
 
 Offline, as notas `mestre` ficam só escondidas pela interface: é o mesmo navegador, como já acontece com a senha do mestre.
 
@@ -25,18 +25,18 @@ Offline, as notas `mestre` ficam só escondidas pela interface: é o mesmo naveg
 
 `applyArchiveCommand(archive, command, { viewer, now })` devolve o arquivo novo e um rascunho de log (ou `null`), ou um erro.
 
-| Comando                            | Regra                                                                                       |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `topic_create` / `topic_update`    | nome não vazio, sem repetir (como as categorias)                                            |
-| `topic_shift` (`up`/`down`)        | troca a ordem com o vizinho visível                                                         |
-| `topic_remove`                     | vai para a lixeira; precisa estar vazio, contando notas `mestre` → `category_not_empty`     |
-| `topic_restore`                    | sai da lixeira                                                                              |
-| `note_create` / `note_update`      | título não vazio; limites; jogador nunca cria nem transforma em `mestre` → `forbidden`      |
-| `note_move`                        | para outro tópico fora da lixeira                                                           |
-| `note_shift`                       | troca a ordem com a vizinha visível                                                         |
-| `note_remove` / `note_restore`     | lixeira; restaurar uma nota cujo tópico está na lixeira restaura o tópico junto             |
-| `notes_paste`                      | várias notas de uma vez, num tópico                                                         |
-| `trash_empty`                      | só o mestre; apaga de vez o que está na lixeira                                             |
+| Comando                         | Regra                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| `topic_create` / `topic_update` | nome não vazio, sem repetir (como as categorias)                                        |
+| `topic_shift` (`up`/`down`)     | troca a ordem com o vizinho visível                                                     |
+| `topic_remove`                  | vai para a lixeira; precisa estar vazio, contando notas `mestre` → `category_not_empty` |
+| `topic_restore`                 | sai da lixeira                                                                          |
+| `note_create` / `note_update`   | título não vazio; limites; jogador nunca cria nem transforma em `mestre` → `forbidden`  |
+| `note_move`                     | para outro tópico fora da lixeira                                                       |
+| `note_shift`                    | troca a ordem com a vizinha visível                                                     |
+| `note_remove` / `note_restore`  | lixeira; restaurar uma nota cujo tópico está na lixeira restaura o tópico junto         |
+| `notes_paste`                   | várias notas de uma vez, num tópico                                                     |
+| `trash_empty`                   | só o mestre; apaga de vez o que está na lixeira                                         |
 
 - Para um jogador, nota `mestre` não existe: comandos sobre ela respondem `not_found`. Um tópico só com notas `mestre` aparece vazio e a remoção é recusada como `category_not_empty`, sem dizer o porquê.
 - Ordem de exibição: tópicos por `order`; notas fixadas primeiro, depois `order`, depois `createdAt`.
@@ -97,6 +97,6 @@ O save exportado ganha uma chave `archive` opcional (`{ topics, notes }`). Saves
 2. `Archive.ts`, markdown e colar registros, com testes.
 3. Repositório offline e exportar/importar.
 4. Comando `archive_log` e textos do log.
-5. Janela e entradas na interface.
-6. Migração, pgTAP e repositório online.
+5. Migração, pgTAP e repositório online (antes da janela, que liga os dois modos).
+6. Janela e entradas na interface.
 7. README.
