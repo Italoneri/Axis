@@ -1,4 +1,5 @@
 {
+  "negativeDivisor": 5,
   "construction": {
     "activity": "construir",
     "name": "Construir",

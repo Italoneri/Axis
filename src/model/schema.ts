@@ -26,7 +26,8 @@ export const costSchema = z.object({
 });
 
 /** Skill score of an NPC: 0 still works, at the base rate. */
-export const skillLevelSchema = z.number().int().min(0).max(10);
+/** Negative levels hinder the post: the NPC works against it. */
+export const skillLevelSchema = z.number().int().min(-10).max(10);
 
 export const skillDefSchema = z.object({
   id: z.string().min(1),
@@ -45,8 +46,12 @@ export const jobEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('research'), perDay }),
   /** Days taken off the construction the NPC works on. */
   z.object({ type: z.literal('construction'), perDay }),
-  /** Shown among the active bonuses while the post is filled. */
-  z.object({ type: z.literal('bonus'), text: z.string().min(1) }),
+  /** Shown among the active bonuses while the post is filled; `penalty` replaces it when a worker hinders. */
+  z.object({
+    type: z.literal('bonus'),
+    text: z.string().min(1),
+    penalty: z.string().min(1).optional(),
+  }),
 ]);
 
 /** A work post: `slots` NPCs can fill it at once. */
@@ -67,8 +72,10 @@ export const buildingLevelSchema = z.object({
   jobs: z.array(jobDefSchema).optional(),
 });
 
-/** npcs.json: the post every construction in progress offers. */
+/** npcs.json: the negative skill divisor and the post every construction in progress offers. */
 export const npcsConfigSchema = z.object({
+  /** A negative skill yields `base × skill / negativeDivisor`. */
+  negativeDivisor: z.number().positive(),
   construction: jobDefSchema.extend({
     effect: jobEffectSchema.options[2],
   }),
@@ -185,7 +192,8 @@ export const npcJobSchema = z.object({
   activityId: z.string().min(1),
   /** Target of a research post. */
   researchId: z.string().min(1).optional(),
-  carry: z.number().int().min(0).max(9),
+  /** Leftover tenths, signed like the yield. */
+  carry: z.number().int().min(-9).max(9),
 });
 
 export const npcSchema = z.object({
@@ -381,7 +389,11 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     kind: z.literal('npc_worked'),
     npc: z.string(),
     effect: z.enum(['produce', 'research', 'construction']),
-    amount: positiveInt,
+    /** Negative when the NPC hindered: material spoiled, research lost, days of delay. */
+    amount: z
+      .number()
+      .int()
+      .refine((n) => n !== 0),
     /** Material name, research title or building id. */
     target: z.string(),
   }),

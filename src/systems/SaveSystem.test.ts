@@ -8,7 +8,7 @@ import {
   STORAGE_KEY,
 } from './SaveSystem';
 import { LOG_LIMIT } from './outcome';
-import { makeState, memoryStorage, testCatalog } from './testFixtures';
+import { makeState, memoryStorage, npc, testCatalog } from './testFixtures';
 
 describe('createInitialState', () => {
   it('starts on day 1 with the seeded wallets, materials, research and influence', () => {
@@ -122,6 +122,35 @@ describe('parseSave', () => {
       },
     });
     vi.restoreAllMocks();
+  });
+
+  // Negative skills only widened the fields: v5 saves from before them stay valid as they are.
+  it.each([
+    { name: 'a v5 save with only positive skills', skill: 7, carry: 4, amount: 3 },
+    { name: 'a save with negative skills', skill: -6, carry: -2, amount: -3 },
+  ])('reads $name without a version bump', ({ skill, carry, amount }) => {
+    const state = makeState({
+      slots: {
+        outer_n: { buildingId: 'forge', level: 1, status: 'done' },
+        outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+      },
+      npcs: [
+        npc({
+          id: 'bianca',
+          name: 'Bianca',
+          skills: { smithing: skill },
+          home: 'outer_e',
+          job: { slotId: 'outer_n', activityId: 'forjar', carry },
+          status: 'trabalhando',
+        }),
+      ],
+      log: [
+        { day: 1, kind: 'npc_worked', npc: 'Bianca', effect: 'produce', amount, target: 'Ferro' },
+      ],
+    });
+    const parsed = parseSave(serializeState(state), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed).toEqual({ ok: true, state });
   });
 
   // Hand-edited or imported saves: a bad number must never reach the top bar.

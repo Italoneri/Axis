@@ -111,7 +111,8 @@
             "slots": 1,
             "effect": {
               "type": "bonus",
-              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado."
+              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado.",
+              "penalty": "Equipe desastrada: quem gasta dados de vida na Axis recupera 1 PV a menos por dado."
             }
           }
         ]
@@ -128,7 +129,8 @@
             "slots": 2,
             "effect": {
               "type": "bonus",
-              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado."
+              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado.",
+              "penalty": "Equipe desastrada: quem gasta dados de vida na Axis recupera 1 PV a menos por dado."
             }
           }
         ],
@@ -146,7 +148,8 @@
             "slots": 2,
             "effect": {
               "type": "bonus",
-              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado."
+              "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado.",
+              "penalty": "Equipe desastrada: quem gasta dados de vida na Axis recupera 1 PV a menos por dado."
             }
           }
         ],
@@ -256,7 +259,8 @@
             "slots": 1,
             "effect": {
               "type": "bonus",
-              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte."
+              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte.",
+              "penalty": "Cuidadores descuidados: personagens caídos na Axis têm desvantagem nos testes contra a morte."
             }
           }
         ]
@@ -273,7 +277,8 @@
             "slots": 1,
             "effect": {
               "type": "bonus",
-              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte."
+              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte.",
+              "penalty": "Cuidadores descuidados: personagens caídos na Axis têm desvantagem nos testes contra a morte."
             }
           }
         ],
@@ -291,7 +296,8 @@
             "slots": 1,
             "effect": {
               "type": "bonus",
-              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte."
+              "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte.",
+              "penalty": "Cuidadores descuidados: personagens caídos na Axis têm desvantagem nos testes contra a morte."
             }
           }
         ],
@@ -597,7 +603,8 @@
             "slots": 1,
             "effect": {
               "type": "bonus",
-              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto."
+              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto.",
+              "penalty": "Cozinha desastrosa: quem faz uma refeição na taverna recupera 1 PV a menos no descanso curto."
             }
           }
         ]
@@ -615,7 +622,8 @@
             "slots": 2,
             "effect": {
               "type": "bonus",
-              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto."
+              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto.",
+              "penalty": "Cozinha desastrosa: quem faz uma refeição na taverna recupera 1 PV a menos no descanso curto."
             }
           }
         ],
@@ -634,7 +642,8 @@
             "slots": 2,
             "effect": {
               "type": "bonus",
-              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto."
+              "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto.",
+              "penalty": "Cozinha desastrosa: quem faz uma refeição na taverna recupera 1 PV a menos no descanso curto."
             }
           }
         ],

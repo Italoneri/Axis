@@ -149,6 +149,7 @@ export const testCatalog = parseCatalog({
     ],
   },
   npcs: {
+    negativeDivisor: 5,
     construction: {
       activity: 'construir',
       name: 'Construir',
