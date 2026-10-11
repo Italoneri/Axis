@@ -19,12 +19,12 @@ Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **mor
 
 ### Tipos de efeito
 
-| Tipo           | Campos               | O que faz por dia                                                       |
-| -------------- | -------------------- | ----------------------------------------------------------------------- |
-| `produce`      | `material`, `perDay` | soma unidades ao material (ignorado se o mestre apagou o material)       |
-| `research`     | `perDay`             | soma pontos percentuais à pesquisa escolhida na designação, até 100%     |
-| `construction` | `perDay`             | adianta a obra do posto (nunca termina antes do dia que está passando)  |
-| `bonus`        | `text`               | aparece em Bônus ativos enquanto o posto estiver ocupado                |
+| Tipo           | Campos               | O que faz por dia                                                      |
+| -------------- | -------------------- | ---------------------------------------------------------------------- |
+| `produce`      | `material`, `perDay` | soma unidades ao material (ignorado se o mestre apagou o material)     |
+| `research`     | `perDay`             | soma pontos percentuais à pesquisa escolhida na designação, até 100%   |
+| `construction` | `perDay`             | adianta a obra do posto (nunca termina antes do dia que está passando) |
+| `bonus`        | `text`               | aparece em Bônus ativos enquanto o posto estiver ocupado               |
 
 ### Rendimento
 
@@ -36,19 +36,19 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 
 ### Valores iniciais (nível 1 / 2 / 3)
 
-| Construção         | Moradia | Posto (habilidade)            | Vagas | Efeito (base)                         |
-| ------------------ | ------- | ----------------------------- | ----- | ------------------------------------- |
-| Alojamento         | 4/6/8   | —                             | —     | —                                     |
-| Torre dos Magos    | 2/3/4   | Estudar (Pesquisa)            | 1/1/2 | research 1/1/2                        |
-| Taverna            | 2/2/3   | Cozinhar (Gastronomia)        | 1/2/2 | bonus (texto)                         |
-| Forja              | —       | Forjar (Ferraria)             | 1/2/3 | produce Ferro 1/2/3                   |
-| Biblioteca         | —       | Pesquisar (Pesquisa)          | 1/2/3 | research 1/1/2                        |
-| Estação de Estudo  | —       | Estudar (Pesquisa)            | 1/1/2 | research 1/2/2                        |
-| Arquivo            | —       | Catalogar (Pesquisa)          | 1     | research 1                            |
-| Enfermaria         | —       | Tratar (Medicina)             | 1/2/2 | bonus (texto)                         |
-| Santuário          | —       | Cuidar (Medicina)             | 1     | bonus (texto)                         |
-| Laboratório Arcano | —       | Destilar (Alquimia)           | 1/1/2 | produce Aetherium 1/1/2               |
-| Obra em andamento  | —       | Construir (Construção)        | 2     | construction 1                        |
+| Construção         | Moradia | Posto (habilidade)     | Vagas | Efeito (base)           |
+| ------------------ | ------- | ---------------------- | ----- | ----------------------- |
+| Alojamento         | 6/14/14 | —                      | —     | —                       |
+| Torre dos Magos    | 2/3/4   | Estudar (Pesquisa)     | 1/1/2 | research 1/1/2          |
+| Taverna            | 2/2/3   | Cozinhar (Gastronomia) | 1/2/2 | bonus (texto)           |
+| Forja              | —       | Forjar (Ferraria)      | 1/2/3 | produce Ferro 1/2/3     |
+| Biblioteca         | —       | Pesquisar (Pesquisa)   | 1/2/3 | research 1/1/2          |
+| Estação de Estudo  | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/2/2          |
+| Arquivo            | —       | Catalogar (Pesquisa)   | 1     | research 1              |
+| Enfermaria         | —       | Tratar (Medicina)      | 1/2/2 | bonus (texto)           |
+| Santuário          | —       | Cuidar (Medicina)      | 1     | bonus (texto)           |
+| Laboratório Arcano | —       | Destilar (Alquimia)    | 1/1/2 | produce Aetherium 1/1/2 |
+| Obra em andamento  | —       | Construir (Construção) | 2     | construction 1          |
 
 ## Modelo (`GameState.npcs`, save versão 5)
 
@@ -84,14 +84,14 @@ npc = {
 
 ## Comandos
 
-| Comando          | Quem              | Recusas                                                               |
-| ---------------- | ----------------- | --------------------------------------------------------------------- |
-| `npc_create`     | mestre            | `empty_name`, `duplicate_name`, `duplicate_id`, `not_found` (habilidade) |
-| `npc_update`     | mestre            | idem; inclui habilidades, salário e status                            |
-| `npc_remove`     | mestre            | `not_found`                                                           |
-| `npc_set_home`   | jogador e mestre  | `not_found`, `home_full` (lotada ou sem moradia)                      |
-| `npc_assign_job` | jogador e mestre  | `no_home`, `invalid_post`, `post_full`, `invalid_target` (pesquisa)   |
-| `npc_unassign`   | jogador e mestre  | `not_found`                                                           |
+| Comando          | Quem             | Recusas                                                                  |
+| ---------------- | ---------------- | ------------------------------------------------------------------------ |
+| `npc_create`     | mestre           | `empty_name`, `duplicate_name`, `duplicate_id`, `not_found` (habilidade) |
+| `npc_update`     | mestre           | idem; inclui habilidades, salário e status                               |
+| `npc_remove`     | mestre           | `not_found`                                                              |
+| `npc_set_home`   | jogador e mestre | `not_found`, `home_full` (lotada ou sem moradia)                         |
+| `npc_assign_job` | jogador e mestre | `no_home`, `invalid_post`, `post_full`, `invalid_target` (pesquisa)      |
+| `npc_unassign`   | jogador e mestre | `not_found`                                                              |
 
 Todo comando registra o `actor` no log.
 

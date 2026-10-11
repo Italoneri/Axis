@@ -357,20 +357,20 @@
         "cost": { "coins": 100, "materials": { "wood": 42, "iron": 28 } },
         "buildTime": 2,
         "effect": "Descanso curto na Axis leva apenas 30 minutos.",
-        "housing": { "capacity": 4 }
+        "housing": { "capacity": 6 }
       },
       {
         "cost": { "coins": 250, "materials": { "wood": 90, "iron": 60 } },
         "buildTime": 4,
         "effect": "Abriga até 4 aliados que ajudam em atividades de tempo livre.",
-        "housing": { "capacity": 6 },
+        "housing": { "capacity": 14 },
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 550, "materials": { "wood": 180, "iron": 120, "aetherium": 10 } },
         "buildTime": 7,
         "effect": "Quem começa a sessão descansado na Axis recebe inspiração.",
-        "housing": { "capacity": 8 },
+        "housing": { "capacity": 14 },
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]

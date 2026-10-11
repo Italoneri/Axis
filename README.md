@@ -133,6 +133,8 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   ]
   ```
 
+  Moradia por nível: Alojamento 6/14/14, Torre dos Magos 2/3/4 e Taverna 2/2/3.
+
   Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos). O posto **Construir**, que aparece em toda obra em andamento, fica em `src/data/npcs.json`.
 
 - **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
