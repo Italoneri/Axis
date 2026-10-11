@@ -133,6 +133,10 @@ const validCommands: Record<CommandType, GameCommand> = {
     researchId: 'runes',
   },
   npc_unassign: { type: 'npc_unassign', npcId: 'bianca' },
+  archive_log: {
+    type: 'archive_log',
+    change: { target: 'topic', action: 'created', title: 'Pets' },
+  },
 };
 
 function run(command: unknown, ctx: CommandContext = master, state = richState()) {
@@ -251,6 +255,7 @@ describe('applyCommand permissions', () => {
     'npc_set_home',
     'npc_assign_job',
     'npc_unassign',
+    'archive_log',
   ]);
   const masterOnly = Object.values(validCommands).filter((c) => !playerCommands.has(c.type));
 
@@ -295,6 +300,19 @@ describe('applyCommand log', () => {
       { day: 3, kind: 'coins_deposited', actor, character: 'Thorin', coins: { gold: 2 } },
     ]);
     expect(result.state.log.at(-1)).toEqual(result.logged[0]);
+  });
+
+  it('logs an archive change with its actor', () => {
+    const result = run(validCommands.archive_log, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.logged).toEqual([
+      {
+        day: 3,
+        kind: 'archive_changed',
+        actor: 'Thorin',
+        change: { target: 'topic', action: 'created', title: 'Pets' },
+      },
+    ]);
   });
 
   it('leaves an anonymous player out of the entry', () => {

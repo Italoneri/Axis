@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   amountBagSchema,
+  archiveChangeSchema,
   npcStatusSchema,
   researchSchema,
   skillLevelSchema,
@@ -102,6 +103,8 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
     researchId: ref.optional(),
   }),
   command('npc_unassign', { npcId: ref }),
+  // Arquivo de registros: the records live apart; this only writes what changed to the log.
+  command('archive_log', { change: archiveChangeSchema }),
 ]);
 
 export type GameCommand = z.infer<typeof gameCommandSchema>;

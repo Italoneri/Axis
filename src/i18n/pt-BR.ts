@@ -1,5 +1,6 @@
 import type { SlotType } from '../map/layout';
 import type {
+  ArchiveChange,
   JobEffect,
   LogEntry,
   NpcReleaseReason,
@@ -489,10 +490,41 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'npc_wages_paid':
     case 'npc_unpaid':
       return npcAction(entry, ctx);
+    case 'archive_changed':
+      return archiveAction(masterActor(entry), entry.change);
     default:
       return assertNever(entry);
   }
 }
+
+/** "Thorin criou o tópico Pets", "Gus removeu 'Mapa do Portão Oito' (está na lixeira)". */
+export function archiveAction(actor: string, change: ArchiveChange): string {
+  switch (change.target) {
+    case 'topic':
+    case 'note': {
+      if (change.action === 'moved') {
+        return `${actor} moveu '${change.title}' de ${change.from} para ${change.to}`;
+      }
+      const what = change.target === 'topic' ? `o tópico ${change.title}` : `'${change.title}'`;
+      const trash = change.action === 'removed' ? ' (está na lixeira)' : '';
+      return `${actor} ${ARCHIVE_VERBS[change.action]} ${what}${trash}`;
+    }
+    case 'notes':
+      return `${actor} colou ${change.count} ${change.count === 1 ? 'registro' : 'registros'} em ${change.title}`;
+    case 'trash':
+      return `${actor} esvaziou a lixeira do Arquivo`;
+    default:
+      return assertNever(change);
+  }
+}
+
+const ARCHIVE_VERBS = {
+  created: 'criou',
+  edited: 'editou',
+  reordered: 'reordenou',
+  removed: 'removeu',
+  restored: 'restaurou',
+} as const;
 
 /** "+3,4 Ferro por dia"; a bonus reads as its own text. */
 /** "+3,4 Ferro por dia"; a negative yield reads "-2,0 Ferro por dia" or "obra atrasada…". */

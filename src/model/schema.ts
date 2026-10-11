@@ -289,6 +289,33 @@ export const npcReleaseReasonSchema = z.enum([
 /** Character name; absent means the Acampamento. */
 const walletLabel = z.string().optional();
 
+/**
+ * What changed in the Arquivo de registros (kept outside the state, see
+ * docs/plans/ARQUIVO.md). Names at the time, like every other entry.
+ */
+export const archiveChangeSchema = z.union([
+  z.object({
+    target: z.enum(['topic', 'note']),
+    action: z.enum(['created', 'edited', 'reordered', 'removed', 'restored']),
+    title: z.string(),
+  }),
+  z.object({
+    target: z.literal('note'),
+    action: z.literal('moved'),
+    title: z.string(),
+    from: z.string(),
+    to: z.string(),
+  }),
+  /** `title` is the topic the records were pasted into. */
+  z.object({
+    target: z.literal('notes'),
+    action: z.literal('pasted'),
+    title: z.string(),
+    count: z.number().int().positive(),
+  }),
+  z.object({ target: z.literal('trash'), action: z.literal('emptied') }),
+]);
+
 // Log entries keep display names (not ids) for things the master can rename or delete,
 // so old entries stay readable after the record is gone.
 export const logEntrySchema = z.discriminatedUnion('kind', [
@@ -404,33 +431,7 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     npc: z.string(),
     days: z.number().int().positive(),
   }),
-]);
-
-/**
- * What changed in the Arquivo de registros (kept outside the state, see
- * docs/plans/ARQUIVO.md). Names at the time, like every other entry.
- */
-export const archiveChangeSchema = z.discriminatedUnion('target', [
-  z.object({
-    target: z.enum(['topic', 'note']),
-    action: z.enum(['created', 'edited', 'reordered', 'removed', 'restored']),
-    title: z.string(),
-  }),
-  z.object({
-    target: z.literal('note'),
-    action: z.literal('moved'),
-    title: z.string(),
-    from: z.string(),
-    to: z.string(),
-  }),
-  /** `title` is the topic the records were pasted into. */
-  z.object({
-    target: z.literal('notes'),
-    action: z.literal('pasted'),
-    title: z.string(),
-    count: z.number().int().positive(),
-  }),
-  z.object({ target: z.literal('trash'), action: z.literal('emptied') }),
+  z.object({ ...entryBase, kind: z.literal('archive_changed'), change: archiveChangeSchema }),
 ]);
 
 export const SAVE_VERSION = 5;

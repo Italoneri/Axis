@@ -19,7 +19,7 @@ import {
   updateMaterial,
   type MaterialFields,
 } from '../systems/Materials';
-import { trimLog, type ActionError, type Outcome } from '../systems/outcome';
+import { ok, trimLog, withLog, type ActionError, type Outcome } from '../systems/outcome';
 import {
   addResearch,
   addResearchCategory,
@@ -118,6 +118,7 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'npc_set_home',
   'npc_assign_job',
   'npc_unassign',
+  'archive_log',
 ]);
 
 /**
@@ -284,6 +285,9 @@ const handlers: Handlers = {
   npc_assign_job: ({ npcId, slotId, activityId, researchId }, { state, catalog }) =>
     npcs(assignNpcJob(state, catalog, npcId, { slotId, activityId, researchId })),
   npc_unassign: ({ npcId }, { state }) => npcs(unassignNpc(state, npcId)),
+
+  archive_log: ({ change }, { state }) =>
+    resources(ok(withLog(state, { day: state.day, kind: 'archive_changed', change }))),
 };
 
 function materialFields({ name, category, icon, description }: MaterialFields): MaterialFields {

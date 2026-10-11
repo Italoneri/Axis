@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jobEffectText, logEntryText, t, type TextContext } from './pt-BR';
+import { archiveAction, jobEffectText, logEntryText, t, type TextContext } from './pt-BR';
 
 const ctx: TextContext = {
   building: (id) => id,
@@ -86,5 +86,53 @@ describe('jobEffectText', () => {
     },
   ] as const)('shows $tenths tenths as "$text"', ({ effect, tenths, text }) => {
     expect(jobEffectText(effect, tenths, ctx)).toBe(text);
+  });
+});
+
+describe('archive log', () => {
+  it.each([
+    {
+      change: { target: 'topic', action: 'created', title: 'Pets' },
+      text: 'Thorin criou o tópico Pets',
+    },
+    {
+      change: { target: 'note', action: 'edited', title: 'Requisição de Selos' },
+      text: "Thorin editou 'Requisição de Selos'",
+    },
+    {
+      change: {
+        target: 'note',
+        action: 'moved',
+        title: 'Zolt-Raak',
+        from: 'NPCs',
+        to: 'Jogadores',
+      },
+      text: "Thorin moveu 'Zolt-Raak' de NPCs para Jogadores",
+    },
+    {
+      change: { target: 'note', action: 'removed', title: 'Mapa do Portão Oito' },
+      text: "Thorin removeu 'Mapa do Portão Oito' (está na lixeira)",
+    },
+    {
+      change: { target: 'note', action: 'restored', title: 'Mapa' },
+      text: "Thorin restaurou 'Mapa'",
+    },
+    {
+      change: { target: 'notes', action: 'pasted', title: 'NPCs', count: 12 },
+      text: 'Thorin colou 12 registros em NPCs',
+    },
+    {
+      change: { target: 'trash', action: 'emptied' },
+      text: 'Thorin esvaziou a lixeira do Arquivo',
+    },
+  ] as const)('reads $text', ({ change, text }) => {
+    expect(archiveAction('Thorin', change)).toBe(text);
+  });
+
+  it('names the actor in the entry', () => {
+    const change = { target: 'topic', action: 'removed', title: 'Pets' } as const;
+    expect(logEntryText({ day: 2, kind: 'archive_changed', actor: 'Bia', change }, ctx)).toBe(
+      'Dia 2 — Bia removeu o tópico Pets (está na lixeira)',
+    );
   });
 });
