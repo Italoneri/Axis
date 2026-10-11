@@ -434,7 +434,7 @@ export function logEntryText(entry: LogEntry, ctx: TextContext): string {
 function logAction(entry: LogEntry, ctx: TextContext): string {
   switch (entry.kind) {
     case 'days_advanced':
-      return `${t.days(entry.days)} se passaram`;
+      return `${t.days(entry.days)} ${entry.days === 1 ? 'se passou' : 'se passaram'}`;
     case 'build_started':
     case 'upgrade_started':
     case 'build_completed':
