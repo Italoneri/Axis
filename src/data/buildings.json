@@ -1056,5 +1056,103 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "research_lab",
+    "name": "Laboratório de Pesquisa",
+    "description": "Salão de estudo encostado na muralha: estantes de pergaminhos, mesas de leitura e uma grande mesa onde mapas, cartas e documentos são comparados e decifrados.",
+    "icon": "icon.research_lab",
+    "sprite": "building.research_lab",
+    "allowedSlots": ["outer"],
+    "requires": [{ "building": "archive", "minLevel": 1 }],
+    "fx": [
+      { "type": "glow", "x": 0.422, "y": 0.383, "color": "#ffcf7a", "radius": 0.03, "maxLevel": 2 },
+      { "type": "glow", "x": 0.167, "y": 0.475, "color": "#ffcf7a", "radius": 0.03, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.438,
+        "y": 0.865,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.169,
+        "y": 0.557,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.152,
+        "y": 0.267,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.432, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.432, "y": 0.866, "minLevel": 2 },
+      { "type": "glow", "x": 0.568, "y": 0.866, "color": "#ff7a1a", "radius": 0.06, "minLevel": 2 },
+      { "type": "sparks", "x": 0.568, "y": 0.866, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.477,
+        "y": 0.413,
+        "color": "#ffe6a8",
+        "radius": 0.075,
+        "minLevel": 3
+      },
+      { "type": "sparks", "x": 0.477, "y": 0.413, "color": "#ffe08a", "minLevel": 3 },
+      { "type": "glow", "x": 0.226, "y": 0.677, "color": "#ffcf7a", "radius": 0.05, "minLevel": 3 },
+      { "type": "glow", "x": 0.687, "y": 0.667, "color": "#ffcf7a", "radius": 0.05, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 180, "materials": { "wood": 50, "iron": 20 } },
+        "buildTime": 3,
+        "effect": "Uma vez por sessão, o grupo analisa um documento, mapa ou pergaminho encontrado e o mestre revela um detalhe escondido nele (autor, origem, data ou marca d'água).",
+        "jobs": [
+          {
+            "activity": "analisar",
+            "name": "Analisar documentos",
+            "skill": "research",
+            "slots": 1,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ]
+      },
+      {
+        "cost": { "coins": 420, "materials": { "wood": 100, "iron": 40, "aetherium": 15 } },
+        "buildTime": 5,
+        "effect": "Vantagem em testes para decifrar cifras e idiomas desconhecidos e para identificar falsificações em documentos trazidos ao laboratório.",
+        "jobs": [
+          {
+            "activity": "analisar",
+            "name": "Analisar documentos",
+            "skill": "research",
+            "slots": 2,
+            "effect": { "type": "research", "perDay": 1 }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 900, "materials": { "wood": 180, "iron": 70, "aetherium": 45 } },
+        "buildTime": 8,
+        "effect": "Uma vez por arco, a Lente de Análise revela por completo um texto apagado, cifrado ou protegido por magia, inclusive o que foi escrito por baixo dele.",
+        "jobs": [
+          {
+            "activity": "analisar",
+            "name": "Analisar documentos",
+            "skill": "research",
+            "slots": 2,
+            "effect": { "type": "research", "perDay": 2 }
+          }
+        ],
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]

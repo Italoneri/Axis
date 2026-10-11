@@ -43,6 +43,8 @@
     "icon.archive": "assets/icons/archive.png",
     "building.archive": "assets/buildings/archive.png",
     "icon.meeting_hall": "assets/icons/meeting_hall.png",
-    "building.meeting_hall": "assets/buildings/meeting_hall.png"
+    "building.meeting_hall": "assets/buildings/meeting_hall.png",
+    "icon.research_lab": "assets/icons/research_lab.png",
+    "building.research_lab": "assets/buildings/research_lab.png"
   }
 }
