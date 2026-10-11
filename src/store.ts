@@ -1,12 +1,13 @@
 import { applyCommand, type CommandError, type StateChange } from './commands/applyCommand';
 import type { CommandContext, GameCommand } from './commands/schema';
 import type { Catalog } from './model/catalog';
-import type { GameState } from './model/schema';
+import type { GameState, LogEntry } from './model/schema';
 import type { GameRepository } from './persistence/GameRepository';
 
 export type { StateChange } from './commands/applyCommand';
 
-type Listener = (state: GameState, change: StateChange) => void;
+/** `logged`: entries a local command just added (empty for loads and remote changes). */
+type Listener = (state: GameState, change: StateChange, logged: readonly LogEntry[]) => void;
 
 export interface StoreHooks {
   /** Who is acting for this command; the store never decides permissions itself. */
@@ -76,7 +77,7 @@ export class GameStore {
       return outcome.error;
     }
     if (outcome.state === this.state) return null;
-    this.enqueue({ kind: 'command', command, ctx }, outcome.state, outcome.change);
+    this.enqueue({ kind: 'command', command, ctx }, outcome.state, outcome.change, outcome.logged);
     return null;
   }
 
@@ -91,9 +92,14 @@ export class GameStore {
     return this.syncing;
   }
 
-  private enqueue(change: Pending, next: GameState, stateChange: StateChange): void {
+  private enqueue(
+    change: Pending,
+    next: GameState,
+    stateChange: StateChange,
+    logged: readonly LogEntry[] = [],
+  ): void {
     this.pending.push(change);
-    this.show(next, stateChange);
+    this.show(next, stateChange, logged);
     this.syncing = this.syncing.then(() => this.sync());
   }
 
@@ -141,9 +147,9 @@ export class GameStore {
     this.show(replay(this.confirmed, this.pending, this.catalog).state, { kind: 'loaded' });
   }
 
-  private show(state: GameState, change: StateChange): void {
+  private show(state: GameState, change: StateChange, logged: readonly LogEntry[] = []): void {
     this.state = state;
-    this.listeners.forEach((listener) => listener(state, change));
+    this.listeners.forEach((listener) => listener(state, change, logged));
   }
 }
 

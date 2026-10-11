@@ -155,7 +155,6 @@ describe('startBuild', () => {
     const result = startBuild(makeState({ day: 5 }), testCatalog, {
       slotId: 'outer_n',
       buildingId: 'forge',
-      actor: 'Thorin',
     });
     expect(result.ok && result.state).toMatchObject({
       wallets: { camp: { gold: 80 }, characters: { thorin: { gold: 5 } } },
@@ -174,7 +173,6 @@ describe('startBuild', () => {
           kind: 'build_started',
           buildingId: 'forge',
           level: 1,
-          actor: 'Thorin',
           paid: { bronze: 2000, materials: {} },
         },
       ],

@@ -31,7 +31,6 @@ export type BuildResult = { ok: true; state: GameState } | { ok: false; reasons:
 export interface BuildOrder {
   slotId: string;
   buildingId: string;
-  actor?: string | undefined;
 }
 
 /** Level whose effect currently applies: an upgrade in progress keeps the previous level active. */
@@ -77,16 +76,11 @@ export function startBuild(state: GameState, catalog: Catalog, order: BuildOrder
   return { ok: true, state: beginConstruction(state, catalog, order, check, 'build_started') };
 }
 
-export function startUpgrade(
-  state: GameState,
-  catalog: Catalog,
-  slotId: string,
-  actor?: string,
-): BuildResult {
+export function startUpgrade(state: GameState, catalog: Catalog, slotId: string): BuildResult {
   const check = checkUpgrade(state, catalog, slotId);
   if (!check.ok) return check;
   const buildingId = state.slots[slotId]?.buildingId ?? '';
-  const order = { slotId, buildingId, actor };
+  const order = { slotId, buildingId };
   return {
     ok: true,
     state: beginConstruction(state, catalog, order, check, 'upgrade_started'),
@@ -140,7 +134,7 @@ function beginConstruction(
   { level, levelDef }: { level: number; levelDef: BuildingLevel },
   kind: 'build_started' | 'upgrade_started',
 ): GameState {
-  const { slotId, buildingId, actor } = order;
+  const { slotId, buildingId } = order;
   const isInstant = levelDef.buildTime === 0;
   const placed: PlacedBuilding = isInstant
     ? { buildingId, level, status: 'done' }
@@ -153,7 +147,7 @@ function beginConstruction(
       };
   const paid = charge(state, catalog, levelDef.cost);
   const entries = [
-    { day: state.day, kind, buildingId, level, actor, paid: paid.receipt },
+    { day: state.day, kind, buildingId, level, paid: paid.receipt },
     ...(isInstant ? [{ day: state.day, kind: 'build_completed' as const, buildingId, level }] : []),
   ];
   return {

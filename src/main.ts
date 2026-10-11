@@ -59,14 +59,10 @@ async function start(): Promise<void> {
     },
   });
 
-  // Every new log entry becomes a toast; a replaced save just resets the cursor.
-  let shownLogEntries = store.current.log.length;
-  store.subscribe((state, change) => {
-    if (change.kind !== 'loaded') {
-      const ctx = textContext(gameData, state);
-      state.log.slice(shownLogEntries).forEach((entry) => notify(logEntryText(entry, ctx)));
-    }
-    shownLogEntries = state.log.length;
+  // Every entry a local command logs becomes a toast.
+  store.subscribe((state, _change, logged) => {
+    const ctx = textContext(gameData, state);
+    logged.forEach((entry) => notify(logEntryText(entry, ctx)));
   });
 
   const liveMap = new LiveMap(gameData.layout, new ThemeStore(theme), mapResolution());

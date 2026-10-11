@@ -16,6 +16,16 @@ export type Outcome = { ok: true; state: GameState } | { ok: false; error: Actio
 export const ok = (state: GameState): Outcome => ({ ok: true, state });
 export const fail = (error: ActionError): Outcome => ({ ok: false, error });
 
+/**
+ * The save keeps only the latest entries so it does not grow forever. In phase 3
+ * the full history moves to its own table and this stays a recent window.
+ */
+export const LOG_LIMIT = 200;
+
+export function trimLog(log: readonly LogEntry[]): LogEntry[] {
+  return log.slice(-LOG_LIMIT);
+}
+
 export function withLog(state: GameState, ...entries: LogEntry[]): GameState {
   return { ...state, log: [...state.log, ...entries] };
 }

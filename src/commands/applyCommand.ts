@@ -1,5 +1,5 @@
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
-import type { GameState } from '../model/schema';
+import type { GameState, LogEntry } from '../model/schema';
 import { startBuild, startUpgrade, type BlockReason } from '../systems/BuildSystem';
 import {
   addCharacter,
@@ -19,7 +19,7 @@ import {
   updateMaterial,
   type MaterialFields,
 } from '../systems/Materials';
-import type { ActionError, Outcome } from '../systems/outcome';
+import { trimLog, type ActionError, type Outcome } from '../systems/outcome';
 import {
   addResearch,
   addResearchCategory,
@@ -55,10 +55,22 @@ export type CommandError =
   /** Raised by the store when the stored game kept changing under a local change. */
   | 'conflict';
 
+type Refusal = { ok: false; error: CommandError; reasons?: BlockReason[] };
+type HandlerOutcome = { ok: true; state: GameState; change: StateChange } | Refusal;
+
 export type CommandOutcome =
-  | { ok: true; state: GameState; change: StateChange }
+  | {
+      ok: true;
+      state: GameState;
+      change: StateChange;
+      /** Entries this command added, already stamped with its actor. */
+      logged: LogEntry[];
+    }
   /** `reasons` explains a `blocked` construction. */
-  | { ok: false; error: CommandError; reasons?: BlockReason[] };
+  | Refusal;
+
+/** How the log names the game master. */
+export const MASTER_ACTOR = 'Mestre';
 
 /** Everything else is a game master action. */
 const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set(['build', 'upgrade', 'deposit']);
@@ -79,9 +91,23 @@ export function applyCommand(
   const command = parsed.data;
   if (!isAllowed(command, ctx)) return { ok: false, error: 'forbidden' };
   const outcome = run(command.type, command, { state, catalog });
+  if (!outcome.ok) return outcome;
   // A no-op keeps the very same state (and revision), so nothing needs saving.
-  if (!outcome.ok || outcome.state === state) return outcome;
-  return { ...outcome, state: { ...outcome.state, revision: state.revision + 1 } };
+  if (outcome.state === state) return { ...outcome, logged: [] };
+
+  const actor = actorName(state, ctx);
+  const logged = outcome.state.log
+    .slice(state.log.length)
+    .map((entry) => (actor ? { ...entry, actor } : entry));
+  const log = trimLog([...state.log, ...logged]);
+  const next = { ...outcome.state, log, revision: state.revision + 1 };
+  return { ok: true, state: next, change: outcome.change, logged };
+}
+
+/** Undefined for an anonymous player (offline, before logins exist). */
+function actorName(state: GameState, { actor }: CommandContext): string | undefined {
+  if (actor.role === 'master') return MASTER_ACTOR;
+  return state.characters.find((c) => c.id === actor.characterId)?.name;
 }
 
 function isAllowed(command: GameCommand, { actor }: CommandContext): boolean {
@@ -95,9 +121,9 @@ interface World {
   state: GameState;
   catalog: Catalog;
 }
-type Handlers = { [K in CommandType]: (command: CommandOf[K], world: World) => CommandOutcome };
+type Handlers = { [K in CommandType]: (command: CommandOf[K], world: World) => HandlerOutcome };
 
-function run<K extends CommandType>(type: K, command: CommandOf[K], world: World): CommandOutcome {
+function run<K extends CommandType>(type: K, command: CommandOf[K], world: World): HandlerOutcome {
   const handler: Handlers[K] = handlers[type];
   return handler(command, world);
 }
@@ -105,7 +131,7 @@ function run<K extends CommandType>(type: K, command: CommandOf[K], world: World
 const NOT_FOUND = { ok: false, error: 'not_found' } as const;
 
 /** Resource edits: a no-op keeps the very same state, so the store can skip the save. */
-function resources(outcome: Outcome): CommandOutcome {
+function resources(outcome: Outcome): HandlerOutcome {
   if (!outcome.ok) return outcome;
   return { ok: true, state: outcome.state, change: { kind: 'resources_changed' } };
 }

@@ -1,7 +1,7 @@
 import type { SlotType } from '../map/layout';
 import type { LogEntry, ResearchStatus } from '../model/schema';
 import type { BlockReason } from '../systems/BuildSystem';
-import type { CommandError } from '../commands/applyCommand';
+import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
@@ -302,6 +302,11 @@ export function blockReasonText(reason: BlockReason, ctx: TextContext): string {
   }
 }
 
+/** Master-only entries from before actors were logged read as the master's. */
+function masterActor(entry: LogEntry): string {
+  return entry.actor ?? MASTER_ACTOR;
+}
+
 export function logEntryText(entry: LogEntry, ctx: TextContext): string {
   return `Dia ${entry.day} — ${logAction(entry, ctx)}`;
 }
@@ -318,21 +323,21 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'building_dropped':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
-      return `Mestre ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
+      return `${masterActor(entry)} ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
     case 'coins_deposited':
       return `${entry.character} depositou ${ctx.coins(entry.coins)} no Acampamento`;
     case 'coins_transferred':
-      return `Mestre transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
+      return `${masterActor(entry)} transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
     case 'coins_consolidated':
-      return `Mestre consolidou as moedas ${walletOf(entry.wallet)}`;
+      return `${masterActor(entry)} consolidou as moedas ${walletOf(entry.wallet)}`;
     case 'material_adjusted':
       return entry.delta > 0
-        ? `Mestre adicionou ${entry.delta} ${entry.material}`
-        : `Mestre removeu ${-entry.delta} ${entry.material}`;
+        ? `${masterActor(entry)} adicionou ${entry.delta} ${entry.material}`
+        : `${masterActor(entry)} removeu ${-entry.delta} ${entry.material}`;
     case 'material_added':
-      return `Mestre cadastrou o material ${entry.material}`;
+      return `${masterActor(entry)} cadastrou o material ${entry.material}`;
     case 'material_removed':
-      return `Mestre removeu o material ${entry.material}`;
+      return `${masterActor(entry)} removeu o material ${entry.material}`;
     case 'research_added':
       return `Pesquisa '${entry.title}' registrada`;
     case 'research_completed':
@@ -362,8 +367,8 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_started: who ? `${who}iniciou ${what}` : `Iniciada: ${what}`,
     upgrade_started: who ? `${who}começou a melhorar ${what}` : `Melhoria iniciada: ${what}`,
     build_completed: `Concluída: ${what}`,
-    building_forced: `Mestre definiu ${what}`,
-    building_removed: `Mestre removeu ${what}`,
+    building_forced: `${masterActor(entry)} definiu ${what}`,
+    building_removed: `${masterActor(entry)} removeu ${what}`,
     building_dropped: `${what} removida: o espaço não existe mais no mapa`,
   };
   return actions[entry.kind] + paid;

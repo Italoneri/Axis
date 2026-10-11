@@ -41,7 +41,9 @@ describe('GameStore', () => {
 
     expect(store.dispatch(deposit)).toBeNull();
     expect(store.current.wallets.camp).toEqual({ gold: 102 });
-    expect(listener).toHaveBeenCalledWith(store.current, { kind: 'resources_changed' });
+    expect(listener).toHaveBeenCalledWith(store.current, { kind: 'resources_changed' }, [
+      { day: 1, kind: 'coins_deposited', actor: 'Mestre', character: 'Thorin', coins: { gold: 2 } },
+    ]);
 
     await store.whenSynced();
     expect(stored(storage)).toMatchObject({ revision: 1, wallets: { camp: { gold: 102 } } });
@@ -150,6 +152,6 @@ describe('GameStore', () => {
     events.dispatchEvent(event);
 
     expect(store.current).toEqual(remote);
-    expect(listener).toHaveBeenCalledWith(remote, { kind: 'loaded' });
+    expect(listener).toHaveBeenCalledWith(remote, { kind: 'loaded' }, []);
   });
 });

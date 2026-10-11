@@ -6,6 +6,7 @@ import {
   serializeState,
   STORAGE_KEY,
 } from './SaveSystem';
+import { LOG_LIMIT } from './outcome';
 import { makeState, memoryStorage, testCatalog } from './testFixtures';
 
 describe('createInitialState', () => {
@@ -34,6 +35,16 @@ describe('parseSave', () => {
       ],
     });
     expect(parseSave(serializeState(state), testCatalog)).toEqual({ ok: true, state });
+  });
+
+  it('keeps only the latest LOG_LIMIT log entries of a long save', () => {
+    const log = Array.from({ length: LOG_LIMIT + 5 }, (_, i) => ({
+      day: 1,
+      kind: 'days_advanced' as const,
+      days: i + 1,
+    }));
+    const parsed = parseSave(serializeState(makeState({ log })), testCatalog);
+    expect(parsed.ok && parsed.state.log).toEqual(log.slice(5));
   });
 
   it('reads a save from before revisions as revision 0', () => {

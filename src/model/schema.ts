@@ -176,8 +176,14 @@ const placedBuildingSchema = z.discriminatedUnion('status', [
 /** What a construction charged: coins in bronze, materials by display name at the time. */
 const paidSchema = z.object({ bronze: positiveInt, materials: amountBagSchema });
 
+/**
+ * Fields every log entry shares. `actor` is who ran the command: a character
+ * name or "Mestre"; absent for entries from before it was recorded.
+ */
+const entryBase = { day: positiveInt, actor: z.string().optional() };
+
 const buildingEventSchema = z.object({
-  day: positiveInt,
+  ...entryBase,
   kind: z.enum([
     'build_started',
     'upgrade_started',
@@ -189,7 +195,6 @@ const buildingEventSchema = z.object({
   ]),
   buildingId: z.string(),
   level: z.number().int().positive(),
-  actor: z.string().optional(),
   paid: paidSchema.optional(),
 });
 
@@ -202,55 +207,55 @@ const walletLabel = z.string().optional();
 export const logEntrySchema = z.discriminatedUnion('kind', [
   buildingEventSchema,
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('days_advanced'),
     days: z.number().int().positive(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('coins_adjusted'),
     wallet: walletLabel,
     delta: signedBag,
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('coins_deposited'),
     character: z.string(),
     coins: amountBagSchema,
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('coins_transferred'),
     from: walletLabel,
     to: walletLabel,
     coins: amountBagSchema,
   }),
-  z.object({ day: positiveInt, kind: z.literal('coins_consolidated'), wallet: walletLabel }),
+  z.object({ ...entryBase, kind: z.literal('coins_consolidated'), wallet: walletLabel }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('material_adjusted'),
     material: z.string(),
     delta: z.number().int(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.enum(['material_added', 'material_removed']),
     material: z.string(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.enum(['research_added', 'research_completed', 'research_removed']),
     title: z.string(),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('research_progressed'),
     title: z.string(),
     from: percent,
     to: percent,
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.literal('influence_changed'),
     world: z.string(),
     from: percent,
@@ -259,7 +264,7 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     total: z.number().min(0).max(100),
   }),
   z.object({
-    day: positiveInt,
+    ...entryBase,
     kind: z.enum(['character_added', 'character_removed']),
     name: z.string(),
   }),

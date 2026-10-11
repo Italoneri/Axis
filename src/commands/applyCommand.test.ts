@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameStateSchema, type GameState } from '../model/schema';
+import { LOG_LIMIT } from '../systems/outcome';
 import { makeState, testCatalog, withIron } from '../systems/testFixtures';
 import { applyCommand } from './applyCommand';
 import type { CommandContext, CommandType, GameCommand } from './schema';
@@ -213,5 +214,56 @@ describe('applyCommand permissions', () => {
     const state = makeState();
     const result = applyCommand(state, testCatalog, validCommands.advance_days, thorinPlayer);
     expect(result).toEqual({ ok: false, error: 'forbidden' });
+  });
+});
+
+describe('applyCommand log', () => {
+  it.each([
+    { name: 'the master', ctx: master, actor: 'Mestre' },
+    { name: 'a player', ctx: thorinPlayer, actor: 'Thorin' },
+  ])('records $name as the actor of every new entry', ({ ctx, actor }) => {
+    const result = run(validCommands.deposit, ctx);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.logged).toEqual([
+      { day: 3, kind: 'coins_deposited', actor, character: 'Thorin', coins: { gold: 2 } },
+    ]);
+    expect(result.state.log.at(-1)).toEqual(result.logged[0]);
+  });
+
+  it('leaves an anonymous player out of the entry', () => {
+    const anonymous: CommandContext = { actor: { role: 'player' } };
+    const result = run(validCommands.build, anonymous);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.logged[0]).not.toHaveProperty('actor');
+  });
+
+  it('keeps only the latest LOG_LIMIT entries', () => {
+    const old = Array.from({ length: LOG_LIMIT }, (_, i) => ({
+      day: 1,
+      kind: 'days_advanced' as const,
+      days: i + 1,
+    }));
+    const result = run(validCommands.advance_days, master, { ...richState(), log: old });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.log).toHaveLength(LOG_LIMIT);
+    expect(result.state.log[0]).toEqual(old[1]);
+    expect(result.state.log.at(-1)).toMatchObject({
+      kind: 'days_advanced',
+      days: 2,
+      actor: 'Mestre',
+    });
+  });
+
+  it('bumps the revision only when something changed', () => {
+    const state = { ...richState(), revision: 7 };
+    const changed = applyCommand(state, testCatalog, validCommands.advance_days, master);
+    const noop = applyCommand(
+      state,
+      testCatalog,
+      { type: 'set_influence', worldId: 'human', value: 0 },
+      master,
+    );
+    expect(changed).toMatchObject({ ok: true, state: { revision: 8 } });
+    expect(noop).toMatchObject({ ok: true, state: { revision: 7 }, logged: [] });
   });
 });
