@@ -29,6 +29,16 @@ import {
   renameResearchCategory,
   updateResearch,
 } from '../systems/Research';
+import {
+  addNpc,
+  assignNpcJob,
+  removeNpc,
+  setNpcHome,
+  settleNpcs,
+  unassignNpc,
+  updateNpc,
+  type NpcFields,
+} from '../systems/Npcs';
 import { advanceDays } from '../systems/TimeSystem';
 import { adjustCoins, consolidateWallet, depositToCamp, transferCoins } from '../systems/Wallets';
 import {
@@ -45,7 +55,8 @@ export type StateChange =
   | { kind: 'days_advanced'; completedSlotIds: string[] }
   | { kind: 'building_forced'; slotId: string }
   | { kind: 'building_removed'; slotId: string }
-  | { kind: 'resources_changed' };
+  | { kind: 'resources_changed' }
+  | { kind: 'npcs_changed' };
 
 export type CommandError =
   | ActionError
@@ -66,6 +77,11 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   nothing_to_move: true,
   same_wallet: true,
   character_has_coins: true,
+  no_home: true,
+  home_full: true,
+  post_full: true,
+  invalid_post: true,
+  invalid_target: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -94,7 +110,14 @@ export type CommandOutcome =
 export const MASTER_ACTOR = 'Mestre';
 
 /** Everything else is a game master action. */
-const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set(['build', 'upgrade', 'deposit']);
+const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
+  'build',
+  'upgrade',
+  'deposit',
+  'npc_set_home',
+  'npc_assign_job',
+  'npc_unassign',
+]);
 
 /**
  * The single entry point for changing the game: validates the untrusted
@@ -116,12 +139,14 @@ export function applyCommand(
   // A no-op keeps the very same state (and revision), so nothing needs saving.
   if (outcome.state === state) return { ...outcome, logged: [] };
 
+  // Any change may leave NPCs in a home or post that no longer exists.
+  const settled = settleNpcs(outcome.state, catalog);
   const actor = actorName(state, ctx);
-  const logged = outcome.state.log
+  const logged = settled.log
     .slice(state.log.length)
     .map((entry) => (actor ? { ...entry, actor } : entry));
   const log = trimLog([...state.log, ...logged]);
-  const next = { ...outcome.state, log, revision: state.revision + 1 };
+  const next = { ...settled, log, revision: state.revision + 1 };
   return { ok: true, state: next, change: outcome.change, logged };
 }
 
@@ -150,6 +175,12 @@ function run<K extends CommandType>(type: K, command: CommandOf[K], world: World
 }
 
 const NOT_FOUND = { ok: false, error: 'not_found' } as const;
+
+/** NPC edits: a no-op keeps the very same state as well. */
+function npcs(outcome: Outcome): HandlerOutcome {
+  if (!outcome.ok) return outcome;
+  return { ok: true, state: outcome.state, change: { kind: 'npcs_changed' } };
+}
 
 /** Resource edits: a no-op keeps the very same state, so the store can skip the save. */
 function resources(outcome: Outcome): HandlerOutcome {
@@ -239,10 +270,27 @@ const handlers: Handlers = {
   update_character: (command, { state }) =>
     resources(updateCharacter(state, command.characterId, characterFields(command))),
   remove_character: ({ characterId }, { state }) => resources(removeCharacter(state, characterId)),
+
+  npc_create: (command, { state, catalog }) =>
+    npcs(addNpc(state, catalog, { ...npcFields(command), id: command.id })),
+  npc_update: (command, { state, catalog }) =>
+    npcs(
+      updateNpc(state, catalog, command.npcId, { ...npcFields(command), status: command.status }),
+    ),
+  npc_remove: ({ npcId }, { state }) => npcs(removeNpc(state, npcId)),
+  npc_set_home: ({ npcId, slotId }, { state, catalog }) =>
+    npcs(setNpcHome(state, catalog, { npcId, slotId })),
+  npc_assign_job: ({ npcId, slotId, activityId, researchId }, { state, catalog }) =>
+    npcs(assignNpcJob(state, catalog, npcId, { slotId, activityId, researchId })),
+  npc_unassign: ({ npcId }, { state }) => npcs(unassignNpc(state, npcId)),
 };
 
 function materialFields({ name, category, icon, description }: MaterialFields): MaterialFields {
   return { name, category, icon, description };
+}
+
+function npcFields({ name, title, portrait, description, skills, wage }: NpcFields): NpcFields {
+  return { name, title, portrait, description, skills, wage };
 }
 
 function characterFields({ name, color, portrait }: CharacterFields): CharacterFields {

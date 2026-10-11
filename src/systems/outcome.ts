@@ -10,7 +10,16 @@ export type ActionError =
   | 'insufficient_coins'
   | 'nothing_to_move'
   | 'same_wallet'
-  | 'character_has_coins';
+  | 'character_has_coins'
+  /** NPCs: work needs a home. */
+  | 'no_home'
+  /** The building has no housing left (or none at all). */
+  | 'home_full'
+  | 'post_full'
+  /** The building offers no such post at its level in force. */
+  | 'invalid_post'
+  /** A research post needs a research in progress. */
+  | 'invalid_target';
 
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 

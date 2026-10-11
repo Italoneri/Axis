@@ -1,5 +1,5 @@
 import { parseCatalog } from '../model/catalog';
-import { SAVE_VERSION, type GameState } from '../model/schema';
+import { SAVE_VERSION, type GameState, type Npc } from '../model/schema';
 
 const currencies = [
   { id: 'emerald', name: 'Esmeralda', icon: 'i', bronzeValue: 10000, order: 1 },
@@ -135,6 +135,8 @@ export const testCatalog = parseCatalog({
       { id: 'core', type: 'core', shape: 'round', x: 0.5, y: 0.5, angle: 0, size: 0.184 },
       outerSlot('outer_n', 340),
       outerSlot('outer_s', 170),
+      outerSlot('outer_e', 80),
+      outerSlot('outer_w', 260),
     ],
   },
   assets: { images: { i: 'icon.png', s: 'sprite.png' } },
@@ -172,6 +174,19 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     npcs: [],
     slots: {},
     log: [],
+    ...overrides,
+  };
+}
+
+/** An NPC with every optional part empty, for tests to override. */
+export function npc(overrides: Partial<Npc> & Pick<Npc, 'id' | 'name'>): Npc {
+  return {
+    title: '',
+    description: '',
+    skills: {},
+    home: null,
+    job: null,
+    status: 'disponivel',
     ...overrides,
   };
 }

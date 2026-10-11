@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { amountBagSchema, researchSchema } from '../model/schema';
+import {
+  amountBagSchema,
+  npcStatusSchema,
+  researchSchema,
+  skillLevelSchema,
+} from '../model/schema';
 
 // Every action in the game as plain data: it can be logged, sent to a server
 // and validated there. Names are checked by the systems (not here) so an empty
@@ -27,6 +32,15 @@ const characterFields = {
   name: z.string(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   portrait: optionalText,
+};
+
+const npcFields = {
+  name: z.string(),
+  title: z.string(),
+  portrait: optionalText,
+  description: z.string(),
+  skills: z.record(z.string(), skillLevelSchema),
+  wage: z.number().nonnegative().optional(),
 };
 
 const [inProgress, completed] = researchSchema.options;
@@ -76,6 +90,18 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   command('add_character', { id: newRecordId, ...characterFields }),
   command('update_character', { characterId: ref, ...characterFields }),
   command('remove_character', { characterId: ref }),
+  // NPCs
+  command('npc_create', { id: newRecordId, ...npcFields }),
+  command('npc_update', { npcId: ref, ...npcFields, status: npcStatusSchema }),
+  command('npc_remove', { npcId: ref }),
+  command('npc_set_home', { npcId: ref, slotId: ref.nullable() }),
+  command('npc_assign_job', {
+    npcId: ref,
+    slotId: ref,
+    activityId: ref,
+    researchId: ref.optional(),
+  }),
+  command('npc_unassign', { npcId: ref }),
 ]);
 
 export type GameCommand = z.infer<typeof gameCommandSchema>;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { gameStateSchema, type GameState } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
-import { makeState, testCatalog, withIron } from '../systems/testFixtures';
+import { makeState, npc, testCatalog, withIron } from '../systems/testFixtures';
 import { applyCommand } from './applyCommand';
 import { newId } from './newId';
 import type { CommandContext, CommandType, GameCommand } from './schema';
@@ -17,7 +17,19 @@ function richState(): GameState {
     slots: {
       core: { buildingId: 'heart', level: 1, status: 'done' },
       outer_n: { buildingId: 'forge', level: 1, status: 'done' },
+      outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
     },
+    npcs: [
+      npc({
+        id: 'bianca',
+        name: 'Bianca',
+        skills: { research: 4 },
+        home: 'outer_e',
+        job: { slotId: 'outer_n', activityId: 'forjar', carry: 0 },
+        status: 'trabalhando',
+      }),
+      npc({ id: 'tomas', name: 'Tomás' }),
+    ],
     research: {
       ...base.research,
       categories: [...base.research.categories, { id: 'empty', name: 'Vazia' }],
@@ -49,6 +61,14 @@ const draft = {
   status: 'em_andamento',
   progress: 0,
 } as const;
+
+const npcFields = {
+  name: 'Bianca',
+  title: 'Maga',
+  description: '',
+  skills: { research: 7 },
+  wage: 0.5,
+};
 
 /** One valid command per type: the record forces a new command type to get a case here. */
 const validCommands: Record<CommandType, GameCommand> = {
@@ -101,6 +121,18 @@ const validCommands: Record<CommandType, GameCommand> = {
     color: '#112233',
   },
   remove_character: { type: 'remove_character', characterId: 'thorin' },
+  npc_create: { type: 'npc_create', id: 'npc_1', ...npcFields, name: 'Lia' },
+  npc_update: { type: 'npc_update', npcId: 'bianca', ...npcFields, status: 'ferido' },
+  npc_remove: { type: 'npc_remove', npcId: 'bianca' },
+  npc_set_home: { type: 'npc_set_home', npcId: 'tomas', slotId: 'outer_e' },
+  npc_assign_job: {
+    type: 'npc_assign_job',
+    npcId: 'bianca',
+    slotId: 'core',
+    activityId: 'estudar',
+    researchId: 'runes',
+  },
+  npc_unassign: { type: 'npc_unassign', npcId: 'bianca' },
 };
 
 function run(command: unknown, ctx: CommandContext = master, state = richState()) {
@@ -192,14 +224,21 @@ describe('applyCommand', () => {
 });
 
 describe('applyCommand permissions', () => {
-  const playerCommands = new Set<CommandType>(['build', 'upgrade', 'deposit']);
+  const playerCommands = new Set<CommandType>([
+    'build',
+    'upgrade',
+    'deposit',
+    'npc_set_home',
+    'npc_assign_job',
+    'npc_unassign',
+  ]);
   const masterOnly = Object.values(validCommands).filter((c) => !playerCommands.has(c.type));
 
   it.each(masterOnly)('refuses $type from a player', (command) => {
     expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
   });
 
-  it.each([validCommands.build, validCommands.upgrade, validCommands.deposit])(
+  it.each([...playerCommands].map((type) => validCommands[type]))(
     'lets a player run $type',
     (command) => {
       expect(run(command, thorinPlayer).ok).toBe(true);

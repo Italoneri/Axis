@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import { gameStateSchema, SAVE_VERSION, type GameState } from '../model/schema';
 import { initialInfluence } from './Influence';
+import { settleNpcs } from './Npcs';
 import { trimLog } from './outcome';
 
 export const STORAGE_KEY = 'axis-base-builder:save';
@@ -62,7 +63,7 @@ export function parseState(json: unknown, catalog: Catalog): ParseResult {
     return { ok: false, error: z.prettifyError(result.error), outdated: false };
   }
 
-  const dropped = dropMissingSlots(result.data, catalog);
+  const dropped = settleNpcs(dropMissingSlots(result.data, catalog), catalog);
   const state = { ...dropped, log: trimLog(dropped.log) };
   const problems = referenceProblems(state, catalog);
   if (problems.length > 0) return { ok: false, error: problems.join('; '), outdated: false };
