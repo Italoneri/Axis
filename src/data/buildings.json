@@ -638,5 +638,55 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "archive",
+    "name": "Arquivo",
+    "description": "Depósito de registros da Axis: livros, pergaminhos, fichas e documentos guardados sob as claraboias douradas.",
+    "icon": "icon.archive",
+    "sprite": "building.archive",
+    "allowedSlots": ["middle"],
+    "fx": [
+      {
+        "type": "glow",
+        "x": 0.569,
+        "y": 0.603,
+        "color": "#ffcf7a",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.267, "y": 0.258, "color": "#ffc36b", "radius": 0.085 },
+      { "type": "glow", "x": 0.733, "y": 0.258, "color": "#ffc36b", "radius": 0.085 },
+      { "type": "glow", "x": 0.575, "y": 0.604, "color": "#ffb347", "radius": 0.04, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.871,
+        "y": 0.856,
+        "color": "#ffcf7a",
+        "radius": 0.045,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.5, "y": 0.218, "color": "#e2b84a", "radius": 0.05, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.218, "color": "#ffe08a", "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 130, "materials": { "wood": 40, "iron": 15 } },
+        "buildTime": 2,
+        "effect": "Uma vez por sessão, o grupo pode pedir ao mestre um detalhe de algo que já viu ou ouviu na campanha."
+      },
+      {
+        "cost": { "coins": 320, "materials": { "wood": 80, "iron": 30, "aetherium": 10 } },
+        "buildTime": 4,
+        "effect": "Vantagem em testes de Investigação feitos com documentos guardados no Arquivo.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 700, "materials": { "wood": 160, "iron": 60, "aetherium": 35 } },
+        "buildTime": 7,
+        "effect": "Uma vez por arco, o grupo obtém um registro oficial (genealogia, contrato, mapa antigo) sobre um assunto à escolha.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]
