@@ -2,6 +2,7 @@ import { t } from '../i18n/pt-BR';
 import type { Character } from '../model/schema';
 import type { GameStore } from '../store';
 import { type CharacterFields } from '../systems/Characters';
+import { newId } from '../commands/newId';
 import { el } from './dom';
 import type { MasterSession } from './MasterSession';
 import { confirmButton, field, section, thumb, type Act } from './widgets';
@@ -88,7 +89,9 @@ function charactersSection(store: GameStore, act: Act): HTMLElement {
       'details',
       {},
       el('summary', { class: 'section-title' }, t.characters.newCharacter),
-      characterForm(undefined, (fields) => act({ type: 'add_character', ...fields })),
+      characterForm(undefined, (fields) =>
+        act({ type: 'add_character', id: newId('char'), ...fields }),
+      ),
     ),
   );
 }

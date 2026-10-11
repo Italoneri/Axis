@@ -2,6 +2,7 @@ import { t } from '../../i18n/pt-BR';
 import type { Research, ResearchStatus } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { hasResearchArchive, researchCounts } from '../../systems/Research';
+import { newId } from '../../commands/newId';
 import { el } from '../dom';
 import type { MasterSession } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
@@ -130,7 +131,7 @@ export class ResearchPanel {
         this.act,
         { categories: research.categories, currentId: null, isCurrentEmpty: false },
         {
-          add: (name) => ({ type: 'add_research_category', name }),
+          add: (name) => ({ type: 'add_research_category', id: newId('rescat'), name }),
           rename: (categoryId, name) => ({ type: 'rename_research_category', categoryId, name }),
           remove: (categoryId) => ({ type: 'remove_research_category', categoryId }),
         },
@@ -181,7 +182,7 @@ export class ResearchPanel {
         const done = this.act(
           entry
             ? { type: 'update_research', researchId: entry.id, draft }
-            : { type: 'add_research', draft },
+            : { type: 'add_research', id: newId('res'), draft },
         );
         if (done) close();
       },

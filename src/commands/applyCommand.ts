@@ -179,24 +179,32 @@ const handlers: Handlers = {
     resources(consolidateWallet(state, catalog, wallet)),
 
   add_material: (command, { state }) =>
-    resources(addMaterial(state, { ...materialFields(command), quantity: command.quantity })),
+    resources(
+      addMaterial(state, {
+        ...materialFields(command),
+        id: command.id,
+        quantity: command.quantity,
+      }),
+    ),
   update_material: (command, { state }) =>
     resources(updateMaterial(state, command.materialId, materialFields(command))),
   remove_material: ({ materialId }, { state }) => resources(removeMaterial(state, materialId)),
   adjust_material: ({ materialId, delta }, { state }) =>
     resources(adjustMaterial(state, materialId, delta)),
-  add_material_category: ({ name }, { state }) => resources(addMaterialCategory(state, name)),
+  add_material_category: ({ id, name }, { state }) =>
+    resources(addMaterialCategory(state, { id, name })),
   rename_material_category: ({ categoryId, name }, { state }) =>
     resources(renameMaterialCategory(state, categoryId, name)),
   remove_material_category: ({ categoryId }, { state }) =>
     resources(removeMaterialCategory(state, categoryId)),
 
-  add_research: ({ draft }, { state }) => resources(addResearch(state, draft)),
+  add_research: ({ id, draft }, { state }) => resources(addResearch(state, id, draft)),
   update_research: ({ researchId, draft }, { state }) =>
     resources(updateResearch(state, researchId, draft)),
   complete_research: ({ researchId }, { state }) => resources(completeResearch(state, researchId)),
   remove_research: ({ researchId }, { state }) => resources(removeResearch(state, researchId)),
-  add_research_category: ({ name }, { state }) => resources(addResearchCategory(state, name)),
+  add_research_category: ({ id, name }, { state }) =>
+    resources(addResearchCategory(state, { id, name })),
   rename_research_category: ({ categoryId, name }, { state }) =>
     resources(renameResearchCategory(state, categoryId, name)),
   remove_research_category: ({ categoryId }, { state }) =>
@@ -205,7 +213,8 @@ const handlers: Handlers = {
   set_influence: ({ worldId, value }, { state, catalog }) =>
     resources(setWorldInfluence(state, catalog.worlds, { worldId, value })),
 
-  add_character: (command, { state }) => resources(addCharacter(state, characterFields(command))),
+  add_character: (command, { state }) =>
+    resources(addCharacter(state, { ...characterFields(command), id: command.id })),
   update_character: (command, { state }) =>
     resources(updateCharacter(state, command.characterId, characterFields(command))),
   remove_character: ({ characterId }, { state }) => resources(removeCharacter(state, characterId)),

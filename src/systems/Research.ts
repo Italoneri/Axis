@@ -1,11 +1,18 @@
-import type { GameState, LogEntry, Research, ResearchBook, ResearchStatus } from '../model/schema';
+import type {
+  Category,
+  GameState,
+  LogEntry,
+  Research,
+  ResearchBook,
+  ResearchStatus,
+} from '../model/schema';
 import { builtLevel } from './BuildSystem';
 import {
   addCategory,
+  idError,
   nameError,
   removeCategory,
   renameCategory,
-  uniqueId,
   type CategoriesResult,
 } from './Categories';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
@@ -41,14 +48,10 @@ export function filterResearch(entries: readonly Research[], filter: ResearchFil
   );
 }
 
-export function addResearch(state: GameState, draft: ResearchDraft): Outcome {
+export function addResearch(state: GameState, id: string, draft: ResearchDraft): Outcome {
   const { research } = state;
-  const error = draftError(research, draft);
+  const error = idError(id, research.entries) ?? draftError(research, draft);
   if (error) return fail(error);
-  const id = uniqueId(
-    draft.title,
-    research.entries.map((r) => r.id),
-  );
   const entry: Research = { id, ...draft, title: draft.title.trim() };
   return ok(
     withLog(setResearch(state, { ...research, entries: [...research.entries, entry] }), {
@@ -102,8 +105,8 @@ export function removeResearch(state: GameState, id: string): Outcome {
   );
 }
 
-export function addResearchCategory(state: GameState, name: string): Outcome {
-  return withCategories(state, addCategory(state.research.categories, name));
+export function addResearchCategory(state: GameState, category: Category): Outcome {
+  return withCategories(state, addCategory(state.research.categories, category));
 }
 
 export function renameResearchCategory(state: GameState, id: string, name: string): Outcome {

@@ -252,6 +252,7 @@ export const t = {
   errors: {
     empty_name: 'Informe um nome.',
     duplicate_name: 'Já existe um item com esse nome.',
+    duplicate_id: 'Esse item já foi criado.',
     not_found: 'Item não encontrado (talvez já tenha sido removido).',
     category_not_empty: 'A categoria ainda tem itens. Mova-os ou remova-os antes.',
     insufficient_coins: 'Não há moedas suficientes nessa carteira.',

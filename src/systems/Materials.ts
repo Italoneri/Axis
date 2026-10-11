@@ -1,10 +1,10 @@
-import type { AmountBag, GameState, Material, Materials } from '../model/schema';
+import type { AmountBag, Category, GameState, Material, Materials } from '../model/schema';
 import {
   addCategory,
+  idError,
   nameError,
   removeCategory,
   renameCategory,
-  uniqueId,
   type CategoriesResult,
 } from './Categories';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
@@ -57,17 +57,14 @@ export function consumeMaterials(materials: Materials, need: AmountBag): Materia
 
 export function addMaterial(
   state: GameState,
-  fields: MaterialFields & { quantity: number },
+  fields: MaterialFields & { id: string; quantity: number },
 ): Outcome {
   const { materials } = state;
-  const error = fieldsError(materials, fields);
+  const error = idError(fields.id, materials.items) ?? fieldsError(materials, fields);
   if (error) return fail(error);
   const material: Material = {
     ...cleanFields(fields),
-    id: uniqueId(
-      fields.name,
-      materials.items.map((m) => m.id),
-    ),
+    id: fields.id,
     quantity: Math.max(0, Math.floor(fields.quantity)),
   };
   return ok(
@@ -122,8 +119,8 @@ export function adjustMaterial(state: GameState, id: string, delta: number): Out
   );
 }
 
-export function addMaterialCategory(state: GameState, name: string): Outcome {
-  return withCategories(state, addCategory(state.materials.categories, name));
+export function addMaterialCategory(state: GameState, category: Category): Outcome {
+  return withCategories(state, addCategory(state.materials.categories, category));
 }
 
 export function renameMaterialCategory(state: GameState, id: string, name: string): Outcome {

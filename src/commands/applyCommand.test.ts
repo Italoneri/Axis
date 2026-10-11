@@ -3,6 +3,7 @@ import { gameStateSchema, type GameState } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
 import { makeState, testCatalog, withIron } from '../systems/testFixtures';
 import { applyCommand } from './applyCommand';
+import { newId } from './newId';
 import type { CommandContext, CommandType, GameCommand } from './schema';
 
 const master: CommandContext = { actor: { role: 'master' } };
@@ -65,18 +66,18 @@ const validCommands: Record<CommandType, GameCommand> = {
     coins: { gold: 7 },
   },
   consolidate_wallet: { type: 'consolidate_wallet', wallet: { kind: 'camp' } },
-  add_material: { type: 'add_material', name: 'Prata', category: 'ores', quantity: 4 },
+  add_material: { type: 'add_material', id: 'mat_1', name: 'Prata', category: 'ores', quantity: 4 },
   update_material: { type: 'update_material', materialId: 'iron', name: 'Aço', category: 'gems' },
   remove_material: { type: 'remove_material', materialId: 'iron' },
   adjust_material: { type: 'adjust_material', materialId: 'iron', delta: -3 },
-  add_material_category: { type: 'add_material_category', name: 'Madeiras' },
+  add_material_category: { type: 'add_material_category', id: 'matcat_1', name: 'Madeiras' },
   rename_material_category: {
     type: 'rename_material_category',
     categoryId: 'ores',
     name: 'Metais',
   },
   remove_material_category: { type: 'remove_material_category', categoryId: 'gems' },
-  add_research: { type: 'add_research', draft },
+  add_research: { type: 'add_research', id: 'res_1', draft },
   update_research: {
     type: 'update_research',
     researchId: 'runes',
@@ -84,7 +85,7 @@ const validCommands: Record<CommandType, GameCommand> = {
   },
   complete_research: { type: 'complete_research', researchId: 'runes' },
   remove_research: { type: 'remove_research', researchId: 'runes' },
-  add_research_category: { type: 'add_research_category', name: 'Forja' },
+  add_research_category: { type: 'add_research_category', id: 'rescat_1', name: 'Forja' },
   rename_research_category: {
     type: 'rename_research_category',
     categoryId: 'arcana',
@@ -92,7 +93,7 @@ const validCommands: Record<CommandType, GameCommand> = {
   },
   remove_research_category: { type: 'remove_research_category', categoryId: 'empty' },
   set_influence: { type: 'set_influence', worldId: 'human', value: 40 },
-  add_character: { type: 'add_character', name: 'Lyra', color: '#3366cc' },
+  add_character: { type: 'add_character', id: 'char_1', name: 'Lyra', color: '#3366cc' },
   update_character: {
     type: 'update_character',
     characterId: 'thorin',
@@ -131,7 +132,9 @@ describe('applyCommand', () => {
       name: 'negative deposit',
       input: { type: 'deposit', characterId: 'thorin', coins: { gold: -1 } },
     },
-    { name: 'bad color', input: { type: 'add_character', name: 'X', color: 'red' } },
+    { name: 'bad color', input: { type: 'add_character', id: 'c', name: 'X', color: 'red' } },
+    { name: 'missing id', input: { type: 'add_character', name: 'X', color: '#123456' } },
+    { name: 'unsafe id', input: { type: 'add_material_category', id: 'Ferro Bom!', name: 'X' } },
   ])('refuses a malformed command: $name', ({ input }) => {
     expect(run(input)).toEqual({ ok: false, error: 'invalid_command' });
   });
@@ -265,5 +268,20 @@ describe('applyCommand log', () => {
     );
     expect(changed).toMatchObject({ ok: true, state: { revision: 8 } });
     expect(noop).toMatchObject({ ok: true, state: { revision: 7 }, logged: [] });
+  });
+});
+
+describe('newId', () => {
+  it('makes distinct ids that the commands accept', () => {
+    const ids = Array.from({ length: 50 }, () => newId('mat'));
+    expect(new Set(ids).size).toBe(ids.length);
+    ids.forEach((id) => expect(id).toMatch(/^mat_[0-9a-f]{16}$/));
+    const command = { type: 'add_material_category', id: ids[0], name: 'Cristais' };
+    expect(run(command).ok).toBe(true);
+  });
+
+  it('refuses to create a record twice with the same id', () => {
+    const command = { type: 'add_material_category', id: 'ores', name: 'Outra' };
+    expect(run(command)).toEqual({ ok: false, error: 'duplicate_id' });
   });
 });

@@ -2,6 +2,7 @@ import { t } from '../../i18n/pt-BR';
 import type { Category, Material } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { totalMaterialUnits, type MaterialFields } from '../../systems/Materials';
+import { newId } from '../../commands/newId';
 import { el } from '../dom';
 import { formatCount } from '../format';
 import type { MasterSession } from '../MasterSession';
@@ -175,6 +176,7 @@ export class MaterialsPanel {
       (fields) => {
         this.act({
           type: 'add_material',
+          id: newId('mat'),
           ...fields,
           category: categoryId,
           quantity: readCount(quantity),
@@ -247,9 +249,8 @@ export class MaterialsPanel {
     // A new category opens in its own tab; removing the current one falls back to the first.
     const act: Act = (command) => {
       const done = this.act(command);
-      if (done && command.type === 'add_material_category') {
-        this.update(() => (this.tab = this.store.current.materials.categories.at(-1)?.id ?? null));
-      }
+      if (done && command.type === 'add_material_category')
+        this.update(() => (this.tab = command.id));
       if (done && command.type === 'remove_material_category') this.update(() => (this.tab = null));
       return done;
     };
@@ -257,7 +258,7 @@ export class MaterialsPanel {
       act,
       { categories: this.store.current.materials.categories, currentId, isCurrentEmpty },
       {
-        add: (name) => ({ type: 'add_material_category', name }),
+        add: (name) => ({ type: 'add_material_category', id: newId('matcat'), name }),
         rename: (categoryId, name) => ({ type: 'rename_material_category', categoryId, name }),
         remove: (categoryId) => ({ type: 'remove_material_category', categoryId }),
       },

@@ -4,6 +4,7 @@ import type { GameState, LogEntry } from '../model/schema';
 export type ActionError =
   | 'empty_name'
   | 'duplicate_name'
+  | 'duplicate_id'
   | 'not_found'
   | 'category_not_empty'
   | 'insufficient_coins'

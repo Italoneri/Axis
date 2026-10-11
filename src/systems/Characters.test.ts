@@ -4,10 +4,19 @@ import { makeState } from './testFixtures';
 
 describe('characters', () => {
   it('adds a character with an empty wallet', () => {
-    const result = addCharacter(makeState(), { name: 'Lyra', color: '#6a8fd4', portrait: '' });
+    const result = addCharacter(makeState(), {
+      id: 'char_1',
+      name: 'Lyra',
+      color: '#6a8fd4',
+      portrait: '',
+    });
     if (!result.ok) throw new Error(result.error);
-    expect(result.state.characters.at(-1)).toEqual({ id: 'lyra', name: 'Lyra', color: '#6a8fd4' });
-    expect(result.state.wallets.characters['lyra']).toEqual({});
+    expect(result.state.characters.at(-1)).toEqual({
+      id: 'char_1',
+      name: 'Lyra',
+      color: '#6a8fd4',
+    });
+    expect(result.state.wallets.characters['char_1']).toEqual({});
     expect(result.state.log.at(-1)).toMatchObject({ kind: 'character_added', name: 'Lyra' });
   });
 

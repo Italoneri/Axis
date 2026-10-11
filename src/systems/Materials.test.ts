@@ -12,8 +12,9 @@ import {
 import { makeState, withIron } from './testFixtures';
 
 describe('addMaterial', () => {
-  it('adds a material with an id made from its name and logs it', () => {
+  it('adds a material with the given id and logs it', () => {
     const result = addMaterial(makeState({ day: 14 }), {
+      id: 'mat_1',
       name: 'Pedra da Lua',
       category: 'ores',
       description: '  ',
@@ -21,7 +22,7 @@ describe('addMaterial', () => {
     });
     if (!result.ok) throw new Error(result.error);
     expect(result.state.materials.items.at(-1)).toEqual({
-      id: 'pedra_da_lua',
+      id: 'mat_1',
       name: 'Pedra da Lua',
       category: 'ores',
       quantity: 3,
@@ -38,8 +39,14 @@ describe('addMaterial', () => {
       error: 'duplicate_name',
     },
     { name: 'an unknown category', fields: { name: 'Gema', category: 'x' }, error: 'not_found' },
+    {
+      name: 'a taken id',
+      fields: { id: 'iron', name: 'Gema', category: 'ores' },
+      error: 'duplicate_id',
+    },
   ])('refuses $name', ({ fields, error }) => {
-    expect(addMaterial(makeState(), { ...fields, quantity: 0 })).toEqual({ ok: false, error });
+    const material = { id: 'mat_1', ...fields, quantity: 0 };
+    expect(addMaterial(makeState(), material)).toEqual({ ok: false, error });
   });
 });
 
@@ -83,9 +90,9 @@ describe('material categories', () => {
       ok: false,
       error: 'category_not_empty',
     });
-    const added = addMaterialCategory(makeState(), 'Gemas');
+    const added = addMaterialCategory(makeState(), { id: 'gems', name: 'Gemas' });
     if (!added.ok) throw new Error(added.error);
-    const removed = removeMaterialCategory(added.state, 'gemas');
+    const removed = removeMaterialCategory(added.state, 'gems');
     expect(removed.ok && removed.state.materials.categories).toEqual([
       { id: 'ores', name: 'Minérios' },
     ]);
