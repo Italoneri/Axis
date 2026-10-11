@@ -10,6 +10,7 @@ import type { GameStore, StateChange } from '../store';
 import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
 import { SlotView } from './SlotView';
+import { WorkerBadges } from './WorkerBadges';
 
 const BACKGROUND = '#2b2a2c';
 /** Served by the Vite dev server from the project root; not part of the build. */
@@ -27,6 +28,7 @@ export interface SlotSelection {
 export class BaseScene extends Phaser.Scene {
   private readonly slotViews = new Map<string, SlotView>();
   private gates: Gates | undefined;
+  private workerBadges: WorkerBadges | undefined;
 
   constructor(
     private readonly store: GameStore,
@@ -72,6 +74,8 @@ export class BaseScene extends Phaser.Scene {
       });
       this.slotViews.set(slot.id, view);
     }
+
+    this.workerBadges = new WorkerBadges(this, layout.slots, size);
 
     // A click on bare map (not a pan) dismisses the panel.
     this.input.on(
@@ -133,6 +137,7 @@ export class BaseScene extends Phaser.Scene {
       const def = placed && findBuilding(this.store.catalog, placed.buildingId);
       view.update({ placed, def, day: state.day });
     });
+    this.workerBadges?.update(state);
   }
 
   private animate(state: GameState, change: StateChange): void {
