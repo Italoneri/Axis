@@ -165,12 +165,16 @@ export class NpcPanel {
         ...homes.map((h) => ({
           value: h.slotId,
           label: t.npcs.homeOption(ctxName(h.buildingId), h.residents, h.capacity),
+          disabled: h.residents >= h.capacity && h.slotId !== npc.home,
         })),
       ],
     });
-    select.addEventListener('change', () =>
-      act({ type: 'npc_set_home', npcId: npc.id, slotId: select.value || null }),
-    );
+    // A refused move would leave the select on the wrong home, so redraw from the state.
+    select.addEventListener('change', () => {
+      if (!act({ type: 'npc_set_home', npcId: npc.id, slotId: select.value || null })) {
+        this.redraw();
+      }
+    });
     return el('div', { class: 'row row--wrap' }, field(t.npcs.home, select));
   }
 

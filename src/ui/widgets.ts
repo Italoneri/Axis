@@ -69,6 +69,7 @@ export function thumb(
 export interface SelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 export function selectInput({
@@ -83,7 +84,13 @@ export function selectInput({
   return el(
     'select',
     { class: 'input', 'aria-label': label },
-    ...options.map((o) => el('option', { value: o.value, selected: o.value === value }, o.label)),
+    ...options.map((o) =>
+      el(
+        'option',
+        { value: o.value, selected: o.value === value, disabled: o.disabled === true },
+        o.label,
+      ),
+    ),
   );
 }
 
