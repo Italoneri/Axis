@@ -14,6 +14,7 @@ export function createInitialState(catalog: Catalog): GameState {
   const { wallets, materials, research } = catalog.seed;
   return {
     version: SAVE_VERSION,
+    revision: 0,
     day: 1,
     characters: wallets.characters.map(({ id, name, color, portrait }) => ({
       id,

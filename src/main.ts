@@ -7,6 +7,7 @@ import { LiveMap } from './map/liveMap';
 import { mapResolution } from './map/textures';
 import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
+import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore } from './store';
 import { InfoDrawer } from './ui/InfoDrawer';
 import { commandContext } from './ui/currentActor';
@@ -48,7 +49,8 @@ async function start(): Promise<void> {
     import('./data/credits.json').then((m) => parseCredits(m.default)),
   ]);
   const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
-  const store = new GameStore(gameData, window.localStorage, {
+  const repository = new LocalRepository(window.localStorage, gameData, window);
+  const store = await GameStore.open(gameData, repository, {
     contextFor: (command) => commandContext(session, command),
     onRefused: (error) => notify(t.errors[error], 'error'),
     onPersistError: (error) => {

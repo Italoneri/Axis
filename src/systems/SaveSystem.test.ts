@@ -6,7 +6,7 @@ import {
   serializeState,
   STORAGE_KEY,
 } from './SaveSystem';
-import { makeState, testCatalog } from './testFixtures';
+import { makeState, memoryStorage, testCatalog } from './testFixtures';
 
 describe('createInitialState', () => {
   it('starts on day 1 with the seeded wallets, materials, research and influence', () => {
@@ -34,6 +34,16 @@ describe('parseSave', () => {
       ],
     });
     expect(parseSave(serializeState(state), testCatalog)).toEqual({ ok: true, state });
+  });
+
+  it('reads a save from before revisions as revision 0', () => {
+    const legacy = Object.fromEntries(
+      Object.entries(makeState({ day: 4 })).filter(([key]) => key !== 'revision'),
+    );
+    expect(parseSave(JSON.stringify(legacy), testCatalog)).toEqual({
+      ok: true,
+      state: makeState({ day: 4 }),
+    });
   });
 
   it('flags a save with the old influence format (version 3) as outdated', () => {
@@ -163,17 +173,3 @@ describe('loadState', () => {
     expect(logged).toHaveBeenCalled();
   });
 });
-
-function memoryStorage(initial: Record<string, string> = {}): Storage {
-  const items = new Map(Object.entries(initial));
-  return {
-    get length() {
-      return items.size;
-    },
-    clear: () => items.clear(),
-    getItem: (key) => items.get(key) ?? null,
-    key: (index) => [...items.keys()][index] ?? null,
-    removeItem: (key) => void items.delete(key),
-    setItem: (key, value) => void items.set(key, value),
-  };
-}

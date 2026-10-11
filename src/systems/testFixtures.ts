@@ -102,6 +102,7 @@ export const testCatalog = parseCatalog({
 export function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
     version: SAVE_VERSION,
+    revision: 0,
     day: 1,
     characters: [{ id: 'thorin', name: 'Thorin', color: '#aa5500' }],
     wallets: { camp: { gold: 100 }, characters: { thorin: { gold: 5 } } },
@@ -128,5 +129,20 @@ export function withIron(quantity: number, overrides: Partial<GameState> = {}): 
       ...base.materials,
       items: base.materials.items.map((m) => (m.id === 'iron' ? { ...m, quantity } : m)),
     },
+  };
+}
+
+/** localStorage stand-in for tests of the persistence layer. */
+export function memoryStorage(initial: Record<string, string> = {}): Storage {
+  const items = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return items.size;
+    },
+    clear: () => items.clear(),
+    getItem: (key) => items.get(key) ?? null,
+    key: (index) => [...items.keys()][index] ?? null,
+    removeItem: (key) => void items.delete(key),
+    setItem: (key, value) => void items.set(key, value),
   };
 }

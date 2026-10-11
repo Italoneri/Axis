@@ -269,6 +269,11 @@ export const SAVE_VERSION = 4;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
+  /**
+   * Bumped by every accepted change; a save only goes through when the stored
+   * revision is the one it started from. Saves from before it start at 0.
+   */
+  revision: positiveInt.default(0),
   day: positiveInt,
   characters: z.array(characterSchema),
   wallets: z.object({

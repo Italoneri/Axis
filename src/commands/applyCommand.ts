@@ -47,7 +47,13 @@ export type StateChange =
   | { kind: 'building_removed'; slotId: string }
   | { kind: 'resources_changed' };
 
-export type CommandError = ActionError | 'forbidden' | 'invalid_command' | 'blocked';
+export type CommandError =
+  | ActionError
+  | 'forbidden'
+  | 'invalid_command'
+  | 'blocked'
+  /** Raised by the store when the stored game kept changing under a local change. */
+  | 'conflict';
 
 export type CommandOutcome =
   | { ok: true; state: GameState; change: StateChange }
@@ -72,7 +78,10 @@ export function applyCommand(
   if (!parsed.success) return { ok: false, error: 'invalid_command' };
   const command = parsed.data;
   if (!isAllowed(command, ctx)) return { ok: false, error: 'forbidden' };
-  return run(command.type, command, { state, catalog });
+  const outcome = run(command.type, command, { state, catalog });
+  // A no-op keeps the very same state (and revision), so nothing needs saving.
+  if (!outcome.ok || outcome.state === state) return outcome;
+  return { ...outcome, state: { ...outcome.state, revision: state.revision + 1 } };
 }
 
 function isAllowed(command: GameCommand, { actor }: CommandContext): boolean {

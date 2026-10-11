@@ -261,6 +261,7 @@ export const t = {
     forbidden: 'Somente o Mestre pode fazer isso.',
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
+    conflict: 'O jogo mudou em outro lugar; sua última ação foi desfeita.',
   } satisfies Record<CommandError, string>,
 } as const;
 
