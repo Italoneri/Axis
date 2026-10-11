@@ -78,6 +78,8 @@ Rotas por `action` no corpo (POST):
 
 ## Etapas
 
+Status (2026-10-10): etapas 1–11 concluídas e commitadas. Os testes pgTAP (etapa 5) estão escritos, mas ainda não rodaram, porque precisam do Docker. Próxima: etapa 12, que precisa do mestre.
+
 Cada etapa é testável sozinha e vira um commit. Ao fim de cada uma: typecheck, lint, testes, build e README ("Online / Supabase").
 
 | #   | Etapa                                                                                   | Teste                                                       | Precisa de você? |
