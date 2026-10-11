@@ -120,7 +120,7 @@ export class NpcPanel {
       ),
       npc.description && el('p', { class: 'item__desc' }, npc.description),
       this.skillBars(npc),
-      npc.wage !== undefined && el('p', { class: 'card__sub' }, t.npcs.wageText(String(npc.wage))),
+      npc.wage !== undefined && el('p', { class: 'card__sub' }, t.npcs.wageText(npc.wage)),
       this.homeRow(npc),
       this.jobRow(npc),
       session.isActive && this.masterControls(npc),

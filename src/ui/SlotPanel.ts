@@ -18,6 +18,7 @@ import { el, replaceKeepingScroll } from './dom';
 import { formatGold, textContext } from './format';
 import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
+import { renderSlotNpcs } from './SlotNpcs';
 import { ResearchArchive } from './resources/ResearchArchive';
 import { thumb } from './widgets';
 
@@ -74,6 +75,7 @@ export class SlotPanel {
       placed && placedDef
         ? [
             ...this.renderOccupied(slot.id, placed, placedDef, state),
+            ...renderSlotNpcs(this.store, slot.id),
             ...this.extraSections(placed, state),
           ]
         : this.renderEmpty(slot.id, slot.type, state);

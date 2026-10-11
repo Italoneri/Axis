@@ -10,6 +10,7 @@ import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+const goldFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const decimalFormat = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -247,7 +248,7 @@ export const t = {
     titleField: 'Título (ex.: Maga)',
     portrait: 'Retrato (chave do assets.json ou URL)',
     wage: 'Salário diário (PO)',
-    wageText: (gold: string) => `Salário: ${gold} PO/dia`,
+    wageText: (gold: number) => `Salário: ${goldFormat.format(gold)} PO/dia`,
     status: 'Situação',
     statuses: {
       disponivel: 'Disponível',
@@ -335,6 +336,7 @@ export const t = {
     search: 'Buscar por título',
     title: 'Título',
     progress: 'Progresso (%)',
+    readyToComplete: 'Pronta para concluir',
     startedOnDay: 'Dia de início',
     completedOnDay: 'Dia de conclusão',
     owner: 'Responsável',
