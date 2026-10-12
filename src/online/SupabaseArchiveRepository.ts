@@ -71,6 +71,8 @@ const noteRowSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   deleted_at: z.string().nullable(),
+  /** Checked as the note's images by parseArchive. */
+  images: z.array(z.unknown()).default([]),
 });
 
 type TopicRow = z.infer<typeof topicRowSchema>;
@@ -102,6 +104,7 @@ export function noteToRow(note: ArchiveNote): NoteRow {
     created_at: note.createdAt,
     updated_at: note.updatedAt,
     deleted_at: note.deletedAt,
+    images: note.images,
   };
 }
 
@@ -131,6 +134,7 @@ function noteFromRow(row: NoteRow): unknown {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    images: row.images,
   };
 }
 

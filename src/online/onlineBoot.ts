@@ -11,10 +11,15 @@ import { HistoryPanel } from './HistoryPanel';
 import { InvitesPanel } from './InvitesPanel';
 import { showCreateGame, showLogin, showMessage } from './screens';
 import type { OnlineConfig } from './config';
-import { createSupabase, supabaseArchiveBackend, supabaseBackend } from './supabase';
+import {
+  createSupabase,
+  supabaseArchiveBackend,
+  supabaseBackend,
+  supabaseImageBucket,
+} from './supabase';
 import { SupabaseArchiveRepository } from './SupabaseArchiveRepository';
+import { SupabaseImageStore } from './SupabaseImageStore';
 import type { ArchiveImageStore } from '../persistence/ArchiveImageStore';
-import { indexedDbBlobTable, LocalImageStore } from '../persistence/LocalImageStore';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
 
 export interface Membership {
@@ -83,7 +88,7 @@ export async function bootOnline(
       supabaseArchiveBackend(client),
       membership.gameId,
     ),
-    archiveImages: new LocalImageStore(indexedDbBlobTable()),
+    archiveImages: new SupabaseImageStore(supabaseImageBucket(client), membership.gameId),
     archiveActor: onlineContext(membership).actor,
     membership,
     access: new OnlineAccess(membership.role, signOut),
