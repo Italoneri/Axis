@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameData, rawGameData } from '../data/gameData';
-import { parseCatalog } from './catalog';
+import { parseCatalog, type RawCatalog } from './catalog';
 
 describe('shipped game data', () => {
   // Guards hand edits to src/data/*.json: `npm test` points at the broken entry.
@@ -136,5 +136,35 @@ describe('parseCatalog', () => {
     expect(() => parseCatalog({ ...rawGameData, buildings })).toThrow(
       /unknown skill "juggling"[\s\S]*duplicate .* post id "b"[\s\S]*"construir" is reserved/,
     );
+  });
+});
+
+describe('tavern menu data', () => {
+  const items = rawGameData.tavernMenu.items;
+  const withItems = (next: unknown[]) => () =>
+    parseCatalog({ ...rawGameData, tavernMenu: { items: next } });
+
+  it('ships dishes for every meal', () => {
+    const meals = new Set(gameData.tavernMenu.items.map((item) => item.meal));
+    expect([...meals].sort()).toEqual(['breakfast', 'dinner', 'lunch']);
+  });
+
+  it.each([
+    { name: 'an unknown meal', item: { meal: 'supper' }, error: /tavern_menu\.json/ },
+    { name: 'a photo missing from assets.json', item: { image: 'menu.nope' }, error: /menu\.nope/ },
+    { name: 'an unknown coin', item: { price: { copper: 2 } }, error: /unknown coin "copper"/ },
+    { name: 'a level the tavern lacks', item: { minLevel: 9 }, error: /minLevel 9/ },
+  ])('rejects a dish with $name', ({ item, error }) => {
+    expect(withItems([...items, { ...items[0], id: 'extra', ...item }])).toThrow(error);
+  });
+
+  it('rejects a repeated dish id', () => {
+    expect(withItems([...items, items[0]])).toThrow(/duplicate menu item id/);
+  });
+
+  it('defaults to an empty menu when the file is left out, as on the server', () => {
+    const withoutMenu: RawCatalog = { ...rawGameData };
+    delete withoutMenu.tavernMenu;
+    expect(parseCatalog(withoutMenu).tavernMenu.items).toEqual([]);
   });
 });

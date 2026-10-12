@@ -133,6 +133,26 @@ export const assetManifestSchema = z.object({
   images: z.record(z.string(), z.string()),
 });
 
+export const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
+export const mealSchema = z.enum(MEALS);
+
+/** One dish of the tavern menu (tavern_menu.json); read only, it changes with a deploy. */
+export const menuItemSchema = z.object({
+  id: z.string().min(1),
+  meal: mealSchema,
+  name: z.string().min(1),
+  description: z.string().min(1),
+  /** Key in assets.json. */
+  image: z.string().min(1),
+  /** Coins, e.g. { "bronze": 3 }. */
+  price: amountBagSchema.optional(),
+  effect: z.string().min(1).optional(),
+  /** Tavern level the dish needs; 1 when unset. */
+  minLevel: z.number().int().min(1).optional(),
+});
+
+export const tavernMenuSchema = z.object({ items: z.array(menuItemSchema) });
+
 // ---------- Dynamic records: seeded from src/data, then edited by the master in game ----------
 
 export const categorySchema = z.object({ id: z.string().min(1), name: displayName });
@@ -470,6 +490,9 @@ export type BuildingFx = z.infer<typeof buildingFxSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;
 export type AssetManifest = z.infer<typeof assetManifestSchema>;
+export type Meal = z.infer<typeof mealSchema>;
+export type MenuItem = z.infer<typeof menuItemSchema>;
+export type TavernMenu = z.infer<typeof tavernMenuSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type Character = z.infer<typeof characterSchema>;
 export type Material = z.infer<typeof materialSchema>;

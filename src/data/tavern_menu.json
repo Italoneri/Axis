@@ -1,0 +1,132 @@
+{
+  "items": [
+    {
+      "id": "pao_mel",
+      "meal": "breakfast",
+      "name": "Pão com mel",
+      "description": "Pão quente do forno da muralha, com mel escuro das colmeias do vale.",
+      "image": "menu.pao_mel",
+      "price": { "bronze": 2 }
+    },
+    {
+      "id": "mingau_aveia",
+      "meal": "breakfast",
+      "name": "Mingau de aveia com frutas silvestres",
+      "description": "Aveia cozida no leite, coberta de amoras e framboesas colhidas na encosta.",
+      "image": "menu.mingau_aveia",
+      "price": { "bronze": 3 }
+    },
+    {
+      "id": "queijo_maca",
+      "meal": "breakfast",
+      "name": "Queijo de cabra e maçã assada",
+      "description": "Fatias de queijo curado servidas com maçã assada na brasa e canela.",
+      "image": "menu.queijo_maca",
+      "price": { "bronze": 4 }
+    },
+    {
+      "id": "ovos_toucinho",
+      "meal": "breakfast",
+      "name": "Ovos com toucinho defumado",
+      "description": "Dois ovos na frigideira de ferro e tiras de toucinho defumado no fumeiro da casa.",
+      "image": "menu.ovos_toucinho",
+      "price": { "bronze": 5 }
+    },
+    {
+      "id": "panquecas_amora",
+      "meal": "breakfast",
+      "name": "Panquecas de trigo-sarraceno com geleia de amora",
+      "description": "Uma pilha de panquecas grossas e uma tigela de geleia feita na véspera.",
+      "image": "menu.panquecas_amora",
+      "price": { "bronze": 7 },
+      "effect": "+1 PV temporário até o próximo descanso.",
+      "minLevel": 2
+    },
+    {
+      "id": "ensopado_lentilha",
+      "meal": "lunch",
+      "name": "Ensopado de lentilha",
+      "description": "Lentilhas, cenoura e linguiça num caldo grosso que sustenta até a noite.",
+      "image": "menu.ensopado_lentilha",
+      "price": { "bronze": 3 }
+    },
+    {
+      "id": "sopa_cebola",
+      "meal": "lunch",
+      "name": "Sopa de cebola gratinada com pão",
+      "description": "Cebola caramelizada no caldo de carne, com pão e queijo derretido por cima.",
+      "image": "menu.sopa_cebola",
+      "price": { "bronze": 4 }
+    },
+    {
+      "id": "torta_carne",
+      "meal": "lunch",
+      "name": "Torta de carne e cebola",
+      "description": "Massa amanteigada recheada de carne moída, cebola e ervas do campo.",
+      "image": "menu.torta_carne",
+      "price": { "bronze": 5 }
+    },
+    {
+      "id": "peixe_brasa",
+      "meal": "lunch",
+      "name": "Peixe de rio na brasa com ervas",
+      "description": "Truta pescada de manhã, assada inteira na brasa com tomilho e limão.",
+      "image": "menu.peixe_brasa",
+      "price": { "bronze": 5 },
+      "minLevel": 2
+    },
+    {
+      "id": "javali_assado",
+      "meal": "lunch",
+      "name": "Javali assado com raízes",
+      "description": "Pernil de javali assado devagar, com nabos, cenouras e molho de cerveja preta.",
+      "image": "menu.javali_assado",
+      "price": { "bronze": 9 },
+      "effect": "+2 PV temporários até o próximo descanso.",
+      "minLevel": 3
+    },
+    {
+      "id": "caldo_ossos",
+      "meal": "dinner",
+      "name": "Caldo de ossos com pão preto",
+      "description": "Caldo fervido o dia inteiro, servido com uma fatia grossa de pão de centeio.",
+      "image": "menu.caldo_ossos",
+      "price": { "bronze": 2 }
+    },
+    {
+      "id": "cogumelos_caverna",
+      "meal": "dinner",
+      "name": "Cogumelos da caverna salteados",
+      "description": "Cogumelos colhidos sob a Axis, salteados na manteiga com alho.",
+      "image": "menu.cogumelos_caverna",
+      "price": { "bronze": 4 }
+    },
+    {
+      "id": "frango_batatas",
+      "meal": "dinner",
+      "name": "Frango assado com batatas",
+      "description": "Meio frango dourado no forno, com batatas que cozinham na gordura dele.",
+      "image": "menu.frango_batatas",
+      "price": { "bronze": 5 }
+    },
+    {
+      "id": "cozido_cordeiro",
+      "meal": "dinner",
+      "name": "Cozido de cordeiro com cevada",
+      "description": "Cordeiro desmanchando num cozido de cevada, alho-poró e alecrim.",
+      "image": "menu.cozido_cordeiro",
+      "price": { "bronze": 5 },
+      "minLevel": 2
+    },
+    {
+      "id": "banquete_taverneiro",
+      "meal": "dinner",
+      "name": "Banquete do Taverneiro",
+      "description": "Costela na brasa, torta da casa e uma jarra de vinho para dividir.",
+      "image": "menu.banquete_taverneiro",
+      "price": { "bronze": 10 },
+      "effect": "+5 PV temporários até o próximo descanso.",
+      "minLevel": 3
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { listText, t, type TextContext } from '../i18n/pt-BR';
 import { findBuilding, goldInBronze, type Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
-import { fromBronze, goldToBronze, type CoinBag } from '../systems/Coins';
+import { consolidate, fromBronze, goldToBronze, type CoinBag } from '../systems/Coins';
 import { findMaterial } from '../systems/Materials';
 
 const goldFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
@@ -44,4 +44,9 @@ export function formatWage(catalog: Catalog, wage: number | undefined): string {
   const bronze = goldToBronze(wage ?? 0, goldInBronze(catalog));
   if (bronze === 0) return t.npcs.noWage;
   return t.npcs.wageText(formatCoins(catalog, fromBronze(bronze, catalog.currencies)));
+}
+
+/** A dish price in the biggest coins, like wages: { bronze: 12 } reads "1 Prata e 2 Bronze". */
+export function formatPrice(catalog: Catalog, price: CoinBag): string {
+  return formatCoins(catalog, consolidate(price, catalog.currencies));
 }

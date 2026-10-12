@@ -9,6 +9,7 @@ import {
   npcsConfigSchema,
   researchBookSchema,
   skillDefSchema,
+  tavernMenuSchema,
   walletsSeedSchema,
   worldsFileSchema,
   type AssetManifest,
@@ -19,6 +20,7 @@ import {
   type NpcsConfig,
   type ResearchBook,
   type SkillDef,
+  type TavernMenu,
   type WalletsSeed,
   type World,
 } from './schema';
@@ -46,7 +48,12 @@ export interface Catalog {
   /** NPC skills, in display order. */
   readonly skills: readonly SkillDef[];
   readonly npcs: NpcsConfig;
+  /** Dishes the tavern serves; empty where the menu is not shipped (the Edge Function). */
+  readonly tavernMenu: TavernMenu;
 }
+
+/** The building whose panel opens the menu, and whose level unlocks dishes. */
+export const TAVERN_BUILDING_ID = 'tavern';
 
 export interface RawCatalog {
   currencies: unknown;
@@ -59,6 +66,8 @@ export interface RawCatalog {
   influence: unknown;
   skills: unknown;
   npcs: unknown;
+  /** Display only, so the server catalog leaves it out. */
+  tavernMenu?: unknown;
 }
 
 /**
@@ -81,6 +90,7 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
       .skills,
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
+    tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
   };
   const problems = findReferenceProblems(catalog);
   if (problems.length > 0) {
@@ -153,6 +163,32 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
     ...seedProblems(catalog),
     ...buildingProblems,
+    ...menuProblems(catalog, missingAsset),
+  ];
+}
+
+/** Dishes need a known photo, known coins and a level the tavern can reach. */
+function menuProblems(
+  { tavernMenu, buildings, currencies }: Catalog,
+  missingAsset: (owner: string, key: string) => string[],
+): string[] {
+  const { items } = tavernMenu;
+  if (items.length === 0) return [];
+  const tavern = buildings.find((b) => b.id === TAVERN_BUILDING_ID);
+  const maxLevel = tavern?.levels.length ?? 0;
+  const currencyIds = new Set(currencies.map((c) => c.id));
+  return [
+    ...(tavern ? [] : [`tavern_menu.json: building "${TAVERN_BUILDING_ID}" is missing`]),
+    ...duplicates('menu item', items),
+    ...items.flatMap((item) => [
+      ...missingAsset(`menu ${item.id}`, item.image),
+      ...Object.keys(item.price ?? {})
+        .filter((id) => !currencyIds.has(id))
+        .map((id) => `menu ${item.id}: unknown coin "${id}"`),
+      ...((item.minLevel ?? 1) > maxLevel
+        ? [`menu ${item.id}: minLevel ${item.minLevel} is above the tavern's ${maxLevel} levels`]
+        : []),
+    ]),
   ];
 }
 

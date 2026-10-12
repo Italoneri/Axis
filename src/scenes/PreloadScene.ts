@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { t } from '../i18n/pt-BR';
 import type { LiveMap } from '../map/liveMap';
 import type { AssetManifest } from '../model/schema';
+import { MENU_IMAGE_PREFIX } from '../systems/TavernMenu';
 
 const GOLD = 0xd4af37;
 const RING_RADIUS = 46;
@@ -27,7 +28,11 @@ export class PreloadScene extends Phaser.Scene {
     this.load.on('loaderror', (file: Phaser.Loader.File) =>
       console.error('[preload] failed to load', file.key, file.src),
     );
-    for (const [key, path] of Object.entries(this.manifest.images)) {
+    // Menu photos are only shown in HTML (the tavern menu), which loads them on demand.
+    const mapImages = Object.entries(this.manifest.images).filter(
+      ([key]) => !key.startsWith(MENU_IMAGE_PREFIX),
+    );
+    for (const [key, path] of mapImages) {
       this.load.image(key, path);
     }
   }

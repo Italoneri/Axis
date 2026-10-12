@@ -10,6 +10,7 @@ import materials from './materials.json';
 import npcs from './npcs.json';
 import research from './research.json';
 import skills from './skills.json';
+import tavernMenu from './tavern_menu.json';
 import wallets from './wallets.json';
 
 export const rawGameData = {
@@ -23,6 +24,7 @@ export const rawGameData = {
   influence,
   skills,
   npcs,
+  tavernMenu,
 };
 
 export const gameData = parseCatalog(rawGameData);
