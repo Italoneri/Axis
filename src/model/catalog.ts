@@ -6,6 +6,7 @@ import {
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
+  missionsConfigSchema,
   npcsConfigSchema,
   researchBookSchema,
   skillDefSchema,
@@ -17,6 +18,7 @@ import {
   type CurrencyDef,
   type JobDef,
   type Materials,
+  type MissionsConfig,
   type NpcsConfig,
   type ResearchBook,
   type SkillDef,
@@ -48,6 +50,8 @@ export interface Catalog {
   /** NPC skills, in display order. */
   readonly skills: readonly SkillDef[];
   readonly npcs: NpcsConfig;
+  /** How mission rewards are shared out. */
+  readonly missions: MissionsConfig;
   /** Dishes the tavern serves; empty where the menu is not shipped (the Edge Function). */
   readonly tavernMenu: TavernMenu;
 }
@@ -66,6 +70,7 @@ export interface RawCatalog {
   influence: unknown;
   skills: unknown;
   npcs: unknown;
+  missions: unknown;
   /** Display only, so the server catalog leaves it out. */
   tavernMenu?: unknown;
 }
@@ -90,6 +95,7 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
       .skills,
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
+    missions: parseFile('missions.json', missionsConfigSchema, raw.missions),
     tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
   };
   const problems = findReferenceProblems(catalog);
@@ -166,6 +172,11 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...seedProblems(catalog),
     ...buildingProblems,
     ...menuProblems(catalog, missingAsset),
+    ...(buildingIds.has(catalog.missions.guildBonus.building)
+      ? []
+      : [
+          `missions.json: guildBonus uses unknown building "${catalog.missions.guildBonus.building}"`,
+        ]),
   ];
 }
 

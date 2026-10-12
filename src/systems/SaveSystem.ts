@@ -33,6 +33,7 @@ export function createInitialState(catalog: Catalog): GameState {
     research,
     influence: initialInfluence(catalog.worlds),
     npcs: [],
+    missions: [],
     slots: {},
     log: [],
   };
@@ -115,6 +116,7 @@ export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   4: (save) => ({ ...save, npcs: [] }),
   // Housing moved to the Alojamento alone; the move itself needs the catalog (below).
   5: (save) => save,
+  6: (save) => ({ ...save, missions: [] }),
 };
 
 /** Turns a parsed save that came from version N into the rules of N + 1, with the catalog at hand. */

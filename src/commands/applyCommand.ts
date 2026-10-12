@@ -39,6 +39,16 @@ import {
   updateNpc,
   type NpcFields,
 } from '../systems/Npcs';
+import {
+  addMission,
+  removeMission,
+  resolveMission,
+  sendNpcsOnMission,
+  settleMissions,
+  takeMissionAsParty,
+  updateMission,
+  type MissionFields,
+} from '../systems/Missions';
 import { advanceDays } from '../systems/TimeSystem';
 import { adjustCoins, consolidateWallet, depositToCamp, transferCoins } from '../systems/Wallets';
 import {
@@ -56,7 +66,8 @@ export type StateChange =
   | { kind: 'building_forced'; slotId: string }
   | { kind: 'building_removed'; slotId: string }
   | { kind: 'resources_changed' }
-  | { kind: 'npcs_changed' };
+  | { kind: 'npcs_changed' }
+  | { kind: 'missions_changed' };
 
 export type CommandError =
   | ActionError
@@ -83,6 +94,9 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   post_full: true,
   invalid_post: true,
   invalid_target: true,
+  mission_closed: true,
+  npc_unavailable: true,
+  empty_reward: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -119,6 +133,11 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'npc_assign_job',
   'npc_unassign',
   'archive_log',
+  'mission_create',
+  'mission_update',
+  'mission_remove',
+  'mission_take_party',
+  'mission_send_npcs',
 ]);
 
 /**
@@ -136,14 +155,14 @@ export function applyCommand(
   if (!parsed.success) return { ok: false, error: 'invalid_command' };
   const command = parsed.data;
   if (!isAllowed(command, ctx)) return { ok: false, error: 'forbidden' };
-  const outcome = run(command.type, command, { state, catalog });
+  const actor = actorName(state, ctx);
+  const outcome = run(command.type, command, { state, catalog, actor });
   if (!outcome.ok) return outcome;
   // A no-op keeps the very same state (and revision), so nothing needs saving.
   if (outcome.state === state) return { ...outcome, logged: [] };
 
-  // Any change may leave NPCs in a home or post that no longer exists.
-  const settled = settleNpcs(outcome.state, catalog);
-  const actor = actorName(state, ctx);
+  // Any change may leave NPCs in a home or post that no longer exists, or a mission without them.
+  const settled = settleMissions(settleNpcs(outcome.state, catalog));
   const logged = settled.log
     .slice(state.log.length)
     .map((entry) => (actor ? { ...entry, actor } : entry));
@@ -168,6 +187,8 @@ type CommandOf = { [C in GameCommand as C['type']]: C };
 interface World {
   state: GameState;
   catalog: Catalog;
+  /** Who runs the command, as the log names them. */
+  actor: string | undefined;
 }
 type Handlers = { [K in CommandType]: (command: CommandOf[K], world: World) => HandlerOutcome };
 
@@ -182,6 +203,11 @@ const NOT_FOUND = { ok: false, error: 'not_found' } as const;
 function npcs(outcome: Outcome): HandlerOutcome {
   if (!outcome.ok) return outcome;
   return { ok: true, state: outcome.state, change: { kind: 'npcs_changed' } };
+}
+
+function missions(outcome: Outcome): HandlerOutcome {
+  if (!outcome.ok) return outcome;
+  return { ok: true, state: outcome.state, change: { kind: 'missions_changed' } };
 }
 
 /** Resource edits: a no-op keeps the very same state, so the store can skip the save. */
@@ -286,6 +312,19 @@ const handlers: Handlers = {
     npcs(assignNpcJob(state, catalog, npcId, { slotId, activityId, researchId })),
   npc_unassign: ({ npcId }, { state }) => npcs(unassignNpc(state, npcId)),
 
+  mission_create: (command, { state, catalog, actor }) =>
+    missions(
+      addMission(state, catalog, { ...missionFields(command), id: command.id, createdBy: actor }),
+    ),
+  mission_update: (command, { state, catalog }) =>
+    missions(updateMission(state, catalog, command.missionId, missionFields(command))),
+  mission_remove: ({ missionId }, { state }) => missions(removeMission(state, missionId)),
+  mission_take_party: ({ missionId }, { state }) => missions(takeMissionAsParty(state, missionId)),
+  mission_send_npcs: ({ missionId, npcIds }, { state }) =>
+    missions(sendNpcsOnMission(state, missionId, npcIds)),
+  mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
+    missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
+
   archive_log: ({ change }, { state }) =>
     resources(ok(withLog(state, { day: state.day, kind: 'archive_changed', change }))),
 };
@@ -296,6 +335,18 @@ function materialFields({ name, category, icon, description }: MaterialFields): 
 
 function npcFields({ name, title, portrait, description, skills, wage }: NpcFields): NpcFields {
   return { name, title, portrait, description, skills, wage };
+}
+
+function missionFields({
+  title,
+  requester,
+  location,
+  description,
+  reward,
+  days,
+  difficulty,
+}: MissionFields): MissionFields {
+  return { title, requester, location, description, reward, days, difficulty };
 }
 
 function characterFields({ name, color, portrait }: CharacterFields): CharacterFields {

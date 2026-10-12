@@ -159,7 +159,14 @@ export function updateNpc(state: GameState, catalog: Catalog, id: string, edit: 
   // New skills mean a new yield: the leftover tenths of the old one are dropped.
   const job =
     npc.job && !sameSkills(npc.skills, fields.skills) ? { ...npc.job, carry: 0 } : npc.job;
-  const next: Npc = { ...fields, id, home: npc.home, job, status: settledStatus(edit.status, job) };
+  const next: Npc = {
+    ...fields,
+    id,
+    home: npc.home,
+    job,
+    status: settledStatus(edit.status, job),
+    ...(npc.earnings ? { earnings: npc.earnings } : {}),
+  };
   return ok(withLog(replaceNpc(state, next), entry(state, 'npc_updated', next.name)));
 }
 
@@ -399,7 +406,7 @@ function fieldsError(
   return nameError(fields.name, state.npcs, ownId) ?? (hasUnknownSkill ? 'not_found' : null);
 }
 
-function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'status'> {
+function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'status' | 'earnings'> {
   const portrait = fields.portrait?.trim();
   const wage = fields.wage && fields.wage > 0 ? fields.wage : undefined;
   return {

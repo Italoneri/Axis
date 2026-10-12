@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { gameStateSchema, type GameState } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
-import { makeState, npc, testCatalog, withIron } from '../systems/testFixtures';
+import { makeState, mission, npc, testCatalog, withIron } from '../systems/testFixtures';
 import { applyCommand } from './applyCommand';
 import { newId } from './newId';
 import type { CommandContext, CommandType, GameCommand } from './schema';
@@ -49,6 +49,10 @@ function richState(): GameState {
       ...base.materials,
       categories: [...base.materials.categories, { id: 'gems', name: 'Gemas' }],
     },
+    missions: [
+      mission({ id: 'contrato', title: 'Contrato' }),
+      mission({ id: 'escolta', title: 'Escolta', progress: { status: 'grupo', startedOnDay: 2 } }),
+    ],
   };
 }
 
@@ -60,6 +64,16 @@ const draft = {
   notes: '',
   status: 'em_andamento',
   progress: 0,
+} as const;
+
+const missionFields = {
+  title: 'Caçada',
+  requester: 'Rizzelena',
+  location: 'Forja',
+  description: 'Uma *guivra* no rio.',
+  reward: { gold: 2 },
+  days: 3,
+  difficulty: 'media',
 } as const;
 
 const npcFields = {
@@ -136,6 +150,17 @@ const validCommands: Record<CommandType, GameCommand> = {
   archive_log: {
     type: 'archive_log',
     change: { target: 'topic', action: 'created', title: 'Pets' },
+  },
+  mission_create: { type: 'mission_create', id: 'mission_1', ...missionFields },
+  mission_update: { type: 'mission_update', missionId: 'contrato', ...missionFields },
+  mission_remove: { type: 'mission_remove', missionId: 'contrato' },
+  mission_take_party: { type: 'mission_take_party', missionId: 'contrato' },
+  mission_send_npcs: { type: 'mission_send_npcs', missionId: 'contrato', npcIds: ['tomas'] },
+  mission_resolve: {
+    type: 'mission_resolve',
+    missionId: 'escolta',
+    result: 'sucesso',
+    injuredNpcIds: [],
   },
 };
 
@@ -256,6 +281,11 @@ describe('applyCommand permissions', () => {
     'npc_assign_job',
     'npc_unassign',
     'archive_log',
+    'mission_create',
+    'mission_update',
+    'mission_remove',
+    'mission_take_party',
+    'mission_send_npcs',
   ]);
   const masterOnly = Object.values(validCommands).filter((c) => !playerCommands.has(c.type));
 

@@ -164,6 +164,18 @@ export const menuItemSchema = z.object({
 
 export const tavernMenuSchema = z.object({ items: z.array(menuItemSchema) });
 
+/** missions.json: how a mission reward is shared out. */
+export const missionsConfigSchema = z.object({
+  /** Share of a reward the Acampamento keeps when NPCs do the mission; the rest goes to them. */
+  campCommissionPercent: percent,
+  /** Rewards pay `percent` more while `building` is in force at `minLevel` or above. */
+  guildBonus: z.object({
+    building: z.string().min(1),
+    minLevel: z.number().int().positive(),
+    percent: z.number().int().min(0).max(1000),
+  }),
+});
+
 // ---------- Dynamic records: seeded from src/data, then edited by the master in game ----------
 
 export const categorySchema = z.object({ id: z.string().min(1), name: displayName });
@@ -243,6 +255,61 @@ export const npcSchema = z.object({
   status: npcStatusSchema,
   /** Gold (PO) paid by the Acampamento for each day of work. */
   wage: z.number().nonnegative().optional(),
+  /** Bronze earned in missions so far; NPCs have no wallet. */
+  earnings: positiveInt.optional(),
+});
+
+export const MISSION_TITLE_LIMIT = 120;
+export const MISSION_DESCRIPTION_LIMIT = 4000;
+export const MISSION_MAX_DAYS = 365;
+
+export const missionDifficultySchema = z.enum(['facil', 'media', 'dificil']);
+export const missionResultSchema = z.enum(['sucesso', 'falha']);
+
+const npcTeam = {
+  npcIds: z.array(z.string().min(1)).min(1),
+  startedOnDay: positiveInt,
+  returnsOnDay: positiveInt,
+};
+
+/** Where a mission stands: open, out with the group or the NPCs, back, or resolved. */
+export const missionProgressSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('aberta') }),
+  z.object({ status: z.literal('grupo'), startedOnDay: positiveInt }),
+  z.object({ status: z.literal('npcs'), ...npcTeam }),
+  /** The NPCs came back: the master decides how it went. */
+  z.object({ status: z.literal('aguardando'), ...npcTeam }),
+  z.object({
+    status: z.literal('concluida'),
+    by: z.enum(['grupo', 'npcs']),
+    result: missionResultSchema,
+    resolvedOnDay: positiveInt,
+    /** What each side was paid, in bronze. */
+    campBronze: positiveInt,
+    npcBronze: positiveInt,
+    /** Names at the time, so the record stays readable after an NPC is gone. */
+    npcs: z.array(z.string()),
+    injured: z.array(z.string()),
+  }),
+]);
+
+/** A contract pinned to the Guilda board (see docs/plans/MISSOES.md). */
+export const missionSchema = z.object({
+  id: z.string().min(1),
+  title: displayName.max(MISSION_TITLE_LIMIT),
+  requester: z.string(),
+  location: z.string(),
+  /** Same markdown as the Arquivo de registros. */
+  description: z.string().max(MISSION_DESCRIPTION_LIMIT),
+  /** Coins as typed; paid out in bronze math. */
+  reward: amountBagSchema,
+  /** Expected length in game days. */
+  days: z.number().int().min(1).max(MISSION_MAX_DAYS),
+  difficulty: missionDifficultySchema,
+  /** Character name or "Mestre"; absent for an anonymous player. */
+  createdBy: z.string().optional(),
+  createdOnDay: positiveInt,
+  progress: missionProgressSchema,
 });
 
 export const materialsSchema = z.object({
@@ -479,9 +546,39 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     days: z.number().int().positive(),
   }),
   z.object({ ...entryBase, kind: z.literal('archive_changed'), change: archiveChangeSchema }),
+  // Missions: titles and names at the time.
+  z.object({
+    ...entryBase,
+    kind: z.enum([
+      'mission_created',
+      'mission_updated',
+      'mission_removed',
+      'mission_taken',
+      'mission_returned',
+      /** Every NPC sent was removed: the mission is open again. */
+      'mission_reopened',
+    ]),
+    title: z.string(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('mission_npcs_sent'),
+    title: z.string(),
+    npcs: z.array(z.string()),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('mission_resolved'),
+    title: z.string(),
+    by: z.enum(['grupo', 'npcs']),
+    result: missionResultSchema,
+    campBronze: positiveInt,
+    npcBronze: positiveInt,
+    injured: z.array(z.string()),
+  }),
 ]);
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
@@ -501,6 +598,7 @@ export const gameStateSchema = z.object({
   research: researchBookSchema,
   influence: influenceSchema,
   npcs: z.array(npcSchema),
+  missions: z.array(missionSchema),
   slots: z.record(z.string(), placedBuildingSchema),
   log: z.array(logEntrySchema),
 });
@@ -520,6 +618,12 @@ export type AssetManifest = z.infer<typeof assetManifestSchema>;
 export type Meal = z.infer<typeof mealSchema>;
 export type MenuItem = z.infer<typeof menuItemSchema>;
 export type TavernMenu = z.infer<typeof tavernMenuSchema>;
+export type MissionsConfig = z.infer<typeof missionsConfigSchema>;
+export type MissionDifficulty = z.infer<typeof missionDifficultySchema>;
+export type MissionResult = z.infer<typeof missionResultSchema>;
+export type MissionProgress = z.infer<typeof missionProgressSchema>;
+export type MissionStatus = MissionProgress['status'];
+export type Mission = z.infer<typeof missionSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type Character = z.infer<typeof characterSchema>;
 export type Material = z.infer<typeof materialSchema>;

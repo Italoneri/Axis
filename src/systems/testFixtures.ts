@@ -1,5 +1,5 @@
 import { parseCatalog } from '../model/catalog';
-import { SAVE_VERSION, type GameState, type Npc } from '../model/schema';
+import { SAVE_VERSION, type GameState, type Mission, type Npc } from '../model/schema';
 
 const currencies = [
   { id: 'emerald', name: 'Esmeralda', icon: 'i', bronzeValue: 10000, order: 1 },
@@ -118,6 +118,18 @@ export const testCatalog = parseCatalog({
         { cost: { coins: 10 }, buildTime: 2, effect: 'b2', housing: { capacity: 3 } },
       ],
     },
+    {
+      id: 'guild',
+      name: 'Guilda',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [
+        { cost: { coins: 10 }, buildTime: 1, effect: 'g1' },
+        { cost: { coins: 10 }, buildTime: 1, effect: 'g2' },
+      ],
+    },
   ],
   layout: {
     version: 3,
@@ -158,6 +170,10 @@ export const testCatalog = parseCatalog({
       effect: { type: 'construction', perDay: 1 },
     },
   },
+  missions: {
+    campCommissionPercent: 20,
+    guildBonus: { building: 'guild', minLevel: 2, percent: 10 },
+  },
   ...seed,
 });
 
@@ -173,6 +189,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     research: seed.research,
     influence: { human: 0, draconic: 0 },
     npcs: [],
+    missions: [],
     slots: {},
     log: [],
     ...overrides,
@@ -188,6 +205,22 @@ export function npc(overrides: Partial<Npc> & Pick<Npc, 'id' | 'name'>): Npc {
     home: null,
     job: null,
     status: 'disponivel',
+    ...overrides,
+  };
+}
+
+/** An open mission worth 2 gold, for tests to override. */
+export function mission(overrides: Partial<Mission> & Pick<Mission, 'id'>): Mission {
+  return {
+    title: 'Contrato',
+    requester: '',
+    location: '',
+    description: '',
+    reward: { gold: 2 },
+    days: 3,
+    difficulty: 'facil',
+    createdOnDay: 1,
+    progress: { status: 'aberta' },
     ...overrides,
   };
 }

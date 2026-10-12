@@ -11,6 +11,16 @@ export { parseSave, createInitialState } from '../systems/SaveSystem';
 export { serverCatalog } from './catalog';
 export { serveGame } from './http';
 
+const PARITY_MISSION = {
+  title: 'Caçada exótica',
+  requester: 'Rizzelena',
+  location: 'Taverna Pombo de Ouro',
+  description: 'Uma **guivra** no rio.',
+  reward: { gold: 2, silver: 3 },
+  days: 2,
+  difficulty: 'media',
+} as const;
+
 const SAMPLE: readonly GameCommand[] = [
   { type: 'advance_days', days: 3 },
   { type: 'add_material_category', id: 'matcat_parity', name: 'Paridade' },
@@ -38,7 +48,19 @@ const SAMPLE: readonly GameCommand[] = [
   },
   { type: 'npc_set_home', npcId: 'npc_parity_clumsy', slotId: 'outer_1' },
   { type: 'npc_assign_job', npcId: 'npc_parity_clumsy', slotId: 'outer_2', activityId: 'forjar' },
+  { type: 'force_building', slotId: 'outer_3', buildingId: 'guild', level: 2 },
+  { type: 'mission_create', id: 'mission_parity', ...PARITY_MISSION },
+  { type: 'mission_create', id: 'mission_parity_party', ...PARITY_MISSION, title: 'Escolta' },
+  { type: 'mission_send_npcs', missionId: 'mission_parity', npcIds: ['npc_parity_clumsy'] },
+  { type: 'mission_take_party', missionId: 'mission_parity_party' },
   { type: 'advance_days', days: 5 },
+  { type: 'mission_resolve', missionId: 'mission_parity', result: 'sucesso', injuredNpcIds: [] },
+  {
+    type: 'mission_resolve',
+    missionId: 'mission_parity_party',
+    result: 'sucesso',
+    injuredNpcIds: [],
+  },
 ];
 
 /**

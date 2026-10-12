@@ -10,6 +10,7 @@ import {
   STORAGE_KEY,
 } from './SaveSystem';
 import type { Archive } from './Archive';
+import { SAVE_VERSION } from '../model/schema';
 import { LOG_LIMIT } from './outcome';
 import { makeState, memoryStorage, npc, testCatalog } from './testFixtures';
 
@@ -240,6 +241,16 @@ describe('migrateSave', () => {
     expect(parsed).toEqual({ ok: true, state: makeState({ day: 9 }) });
   });
 
+  it('gives a version 6 save an empty mission board, keeping everything else', () => {
+    const { missions, ...rest } = makeState({ day: 9, npcs: [npc({ id: 'bia', name: 'Bia' })] });
+    expect(missions).toEqual([]);
+    const parsed = parseSave(JSON.stringify({ ...rest, version: 6 }), testCatalog);
+    expect(parsed).toEqual({
+      ok: true,
+      state: makeState({ day: 9, npcs: [npc({ id: 'bia', name: 'Bia' })] }),
+    });
+  });
+
   it('leaves a current save untouched', () => {
     expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4, from: 4 });
   });
@@ -285,7 +296,7 @@ describe('version 5 saves: housing only in the Alojamento', () => {
 
   it('moves residents to the Alojamento when there is room, keeping their post', () => {
     const state = load(5, [pele]);
-    expect(state.version).toBe(6);
+    expect(state.version).toBe(SAVE_VERSION);
     expect(state.npcs[0]).toMatchObject({ home: 'outer_e', job: forjar, status: 'trabalhando' });
     expect(state.log).toEqual([
       { day: 1, kind: 'npc_moved', npc: 'Pelé', from: 'forge', place: 'barracks' },

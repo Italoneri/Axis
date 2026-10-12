@@ -21,7 +21,12 @@ export type ActionError =
   /** The building offers no such post at its level in force. */
   | 'invalid_post'
   /** A research post needs a research in progress. */
-  | 'invalid_target';
+  | 'invalid_target'
+  /** The mission is not at the stage the action needs (open, out with the group, back…). */
+  | 'mission_closed'
+  /** Only NPCs available or working can leave on a mission. */
+  | 'npc_unavailable'
+  | 'empty_reward';
 
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 

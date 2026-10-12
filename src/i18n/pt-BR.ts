@@ -526,6 +526,9 @@ export const t = {
     post_full: 'Todas as vagas deste posto estão ocupadas.',
     invalid_post: 'Esta construção não oferece esse posto agora.',
     invalid_target: 'Escolha uma pesquisa em andamento para este posto.',
+    mission_closed: 'Esta missão não está mais nessa etapa (talvez alguém já tenha agido).',
+    npc_unavailable: 'Só NPCs disponíveis ou trabalhando podem sair em missão.',
+    empty_reward: 'Informe uma recompensa maior que zero.',
     forbidden: 'Somente o Mestre pode fazer isso.',
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
@@ -636,6 +639,15 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return npcAction(entry, ctx);
     case 'archive_changed':
       return archiveAction(masterActor(entry), entry.change);
+    case 'mission_created':
+    case 'mission_updated':
+    case 'mission_removed':
+    case 'mission_taken':
+    case 'mission_returned':
+    case 'mission_reopened':
+    case 'mission_npcs_sent':
+    case 'mission_resolved':
+      return missionAction(entry, ctx);
     default:
       return assertNever(entry);
   }
@@ -664,6 +676,49 @@ export function archiveAction(actor: string, change: ArchiveChange): string {
     default:
       return assertNever(change);
   }
+}
+
+type MissionEntry = Extract<LogEntry, { kind: `mission_${string}` }>;
+
+function missionAction(entry: MissionEntry, ctx: TextContext): string {
+  const who = entry.actor ? `${entry.actor} ` : '';
+  const title = `'${entry.title}'`;
+  switch (entry.kind) {
+    case 'mission_created':
+      return who ? `${who}pendurou a missão ${title}` : `Nova missão no quadro: ${title}`;
+    case 'mission_updated':
+      return who ? `${who}editou a missão ${title}` : `Missão ${title} editada`;
+    case 'mission_removed':
+      return who ? `${who}tirou a missão ${title} do quadro` : `Missão ${title} tirada do quadro`;
+    case 'mission_taken':
+      return `O grupo partiu na missão ${title}`;
+    case 'mission_returned':
+      return `Os NPCs voltaram da missão ${title}: o mestre decide o resultado`;
+    case 'mission_reopened':
+      return `A missão ${title} ficou sem NPCs e voltou para Abertas`;
+    case 'mission_npcs_sent':
+      return `${listText(entry.npcs)} ${entry.npcs.length === 1 ? 'partiu' : 'partiram'} na missão ${title}`;
+    case 'mission_resolved':
+      return missionResolvedText(entry, ctx);
+    default:
+      return assertNever(entry);
+  }
+}
+
+function missionResolvedText(
+  entry: Extract<LogEntry, { kind: 'mission_resolved' }>,
+  ctx: TextContext,
+): string {
+  const title = `'${entry.title}'`;
+  if (entry.result === 'falha') {
+    const hurt = entry.injured.length > 1 ? 'voltaram feridos' : 'voltou ferido';
+    const injured = entry.injured.length > 0 ? ` ${listText(entry.injured)} ${hurt}.` : '';
+    return `A missão ${title} falhou: ninguém recebe.${injured}`;
+  }
+  if (entry.by === 'grupo') {
+    return `Missão ${title} concluída pelo grupo: ${ctx.gold(entry.campBronze)} para o Acampamento`;
+  }
+  return `Missão ${title} concluída pelos NPCs: ${ctx.gold(entry.npcBronze)} para eles e ${ctx.gold(entry.campBronze)} para o Acampamento`;
 }
 
 const ARCHIVE_VERBS = {
