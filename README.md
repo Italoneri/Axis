@@ -139,7 +139,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
 
 - **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
 - **Habilidade negativa:** rende `base × habilidade / 5` e atrapalha: consome material (sem passar de 0), faz a pesquisa regredir (sem passar de 0%), atrasa a obra ou troca o bônus pela penalidade. Aparece em vermelho, com "⚠ atrapalha" no seletor do posto. Vários NPCs no mesmo posto contam separados, então um bom e um ruim se compensam.
-- **Quem faz o quê:** só o mestre cria, edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
+- **Quem faz o quê:** só o mestre cria (bloco **Novo NPC**, no topo do painel, sempre fechado), edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
 - **Regras:**
   - Trabalho exige moradia. Para tirar alguém de casa, use **Retirar** no card "Moradores" da construção ou **Retirar da moradia** no card do NPC; se ele trabalha, um segundo clique confirma que também deixa o posto.
   - Um trabalho por vez.

@@ -36,7 +36,10 @@ const STATUSES: readonly NpcStatus[] = ['disponivel', 'ferido', 'em_missao'];
 /** NPCs: cards with skills, home and job; players move them, the master edits them. */
 export class NpcPanel {
   private editing: string | null = null;
-  private isNewOpen = false;
+  /** The "Novo NPC" block being filled in, kept across redraws only while it has focus. */
+  private draft: HTMLDetailsElement | null = null;
+  /** The NPC just created: its card is scrolled into view and highlighted once. */
+  private createdId: string | null = null;
   private redraw: () => void = () => undefined;
 
   constructor(private readonly deps: PanelDeps) {}
@@ -62,9 +65,9 @@ export class NpcPanel {
     const list =
       state.npcs.length === 0 ? el('p', { class: 'panel__hint' }, t.npcs.empty) : this.list(state);
     return [
+      ...(session.isActive ? [this.newNpcForm()] : []),
       ...(state.npcs.length > 0 ? [this.filters(store.catalog)] : []),
       list,
-      ...(session.isActive ? [this.newNpcForm()] : []),
     ];
   }
 
@@ -109,9 +112,10 @@ export class NpcPanel {
   private card(npc: Npc): HTMLElement {
     const { store, session } = this.deps;
     const { catalog } = store;
-    return el(
+    const isCreated = npc.id === this.createdId;
+    const node = el(
       'li',
-      { class: 'item npc-card' },
+      { class: `item npc-card${isCreated ? ' npc-card--created' : ''}` },
       el(
         'div',
         { class: 'card__head' },
@@ -134,6 +138,12 @@ export class NpcPanel {
       this.jobRow(npc),
       session.isActive && this.masterControls(npc),
     );
+    if (isCreated) {
+      this.createdId = null;
+      // After the menu puts its scroll position back.
+      queueMicrotask(() => node.scrollIntoView({ block: 'nearest' }));
+    }
+    return node;
   }
 
   private skillBars(npc: Npc): HTMLElement {
@@ -223,17 +233,27 @@ export class NpcPanel {
     );
   }
 
+  /**
+   * Always starts closed (on opening the panel, after creating, on redraws),
+   * except while the master is typing in it.
+   */
   private newNpcForm(): HTMLElement {
+    if (this.draft?.contains(document.activeElement)) return this.draft;
     const form = this.npcForm(undefined, (fields) => {
-      this.deps.act({ type: 'npc_create', id: newId('npc'), ...fields });
+      const id = newId('npc');
+      this.draft = null;
+      this.createdId = id;
+      if (this.deps.act({ type: 'npc_create', id, ...fields })) return;
+      this.draft = details;
+      this.createdId = null;
     });
     const details = el(
       'details',
-      { class: 'card card--master', open: this.isNewOpen },
+      { class: 'card card--master' },
       el('summary', { class: 'section-title' }, t.npcs.newNpc),
       form,
     );
-    details.addEventListener('toggle', () => (this.isNewOpen = details.open));
+    this.draft = details;
     return details;
   }
 

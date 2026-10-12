@@ -1126,6 +1126,26 @@ details > summary {
   padding: 10px 0;
 }
 
+.npc-card--created {
+  animation: npc-created 2.4s ease-out;
+}
+
+@keyframes npc-created {
+  from {
+    background: rgba(212, 175, 55, 0.18);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .npc-card--created {
+    animation: none;
+    background: rgba(212, 175, 55, 0.12);
+  }
+}
+
 .npc-skills {
   display: grid;
   gap: 4px;
