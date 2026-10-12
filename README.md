@@ -128,10 +128,12 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   ```json
   "housing": { "capacity": 4 },
   "jobs": [
-    { "activity": "forjar", "name": "Forjar", "skill": "smithing", "slots": 2,
+    { "activity": "forjar", "name": "Forjar", "skill": "smithing",
       "effect": { "type": "produce", "material": "iron", "perDay": 2 } }
   ]
   ```
+
+  Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. A Estação de Estudo, que vai nos dois anéis, segue o espaço onde está. Reduzir o nível libera quem sobra.
 
   Moradia só no Alojamento (6/14/14 por nível): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras.
 

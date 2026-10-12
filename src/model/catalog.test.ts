@@ -118,7 +118,6 @@ describe('parseCatalog', () => {
       activity,
       name: activity,
       skill,
-      slots: 1,
       effect: { type: 'bonus', text: 'x' },
     });
     const buildings = rawGameData.buildings.slice(0, 1).map((building) => ({
@@ -151,6 +150,24 @@ describe('parseCatalog', () => {
     expect(() => parseCatalog({ ...rawGameData, buildings, npcs })).toThrow(
       /unknown building "nowhere"[\s\S]*tavern: housing is only allowed/,
     );
+  });
+
+  it('needs post openings for every ring a building with posts accepts, at each level', () => {
+    const npcs = { ...rawGameData.npcs, postSlots: { outer: [3, 6] } };
+    expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(
+      /postSlots "outer" needs 3 levels[\s\S]*postSlots "middle" needs 3 levels/,
+    );
+  });
+
+  it('refuses openings written on a post', () => {
+    const buildings = rawGameData.buildings.map((building) => ({
+      ...building,
+      levels: building.levels.map((level) => ({
+        ...level,
+        jobs: 'jobs' in level ? level.jobs.map((job) => ({ ...job, slots: 1 })) : [],
+      })),
+    }));
+    expect(() => parseCatalog({ ...rawGameData, buildings })).toThrow(/slots/);
   });
 
   it('ships housing only in the Alojamento', () => {

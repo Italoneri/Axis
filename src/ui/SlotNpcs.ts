@@ -76,7 +76,7 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
   const { catalog, current: state } = store;
   const workers = workersAt(state, post);
   const skill = catalog.skills.find((s) => s.id === post.job.skill);
-  const isFull = workers.length >= post.job.slots;
+  const isFull = workers.length >= post.slots;
   return el(
     'section',
     { class: 'card npc-post' },
@@ -85,7 +85,7 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
       { class: 'section-title' },
       `${post.job.name} · ${skill?.icon ?? ''} ${skill?.name ?? ''}`,
     ),
-    el('p', { class: 'card__sub' }, t.npcs.slotsUsed(workers.length, post.job.slots)),
+    el('p', { class: 'card__sub' }, t.npcs.slotsUsed(workers.length, post.slots)),
     workers.length > 0 &&
       el(
         'ul',

@@ -10,12 +10,15 @@ Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **mor
   ```json
   "housing": { "capacity": 4 },
   "jobs": [
-    { "activity": "forjar", "name": "Forjar", "skill": "smithing", "slots": 2,
+    { "activity": "forjar", "name": "Forjar", "skill": "smithing",
       "effect": { "type": "produce", "material": "iron", "perDay": 2 } }
   ]
   ```
 
-- `src/data/npcs.json`: o divisor das habilidades negativas, as construções que podem ter moradia e o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "negativeDivisor": 5, "housingBuildings": ["barracks"], "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`. O `parseCatalog` recusa `housing` em construção fora de `housingBuildings`, para a moradia não voltar sem querer a outras construções.
+  O posto não diz quantas vagas tem (o `parseCatalog` recusa `slots` nele): isso vem do espaço onde a construção está.
+
+- `src/data/npcs.json`: o divisor das habilidades negativas, as construções que podem ter moradia e o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "negativeDivisor": 5, "housingBuildings": ["barracks"], "postSlots": { "outer": [3, 6, 8], "middle": [2, 4, 6] }, "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`. O `parseCatalog` recusa `housing` em construção fora de `housingBuildings`, para a moradia não voltar sem querer a outras construções.
+- **Vagas por anel (`postSlots`):** todo posto de construção tem as vagas do tipo do espaço (`layout.json`) no nível em vigor: anel externo (`outer`) 3/6/8, anel interno (`middle`) 2/4/6. A Estação de Estudo, que vai nos dois anéis, segue o espaço onde está. O posto de obra mantém as próprias vagas (2) em qualquer anel. O `parseCatalog` exige `postSlots` para cada tipo de espaço aceito por uma construção com postos, cobrindo todos os níveis dela.
 
 ### Tipos de efeito
 
@@ -41,19 +44,21 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 
 ### Valores iniciais (nível 1 / 2 / 3)
 
-| Construção         | Moradia | Posto (habilidade)     | Vagas | Efeito (base)              |
-| ------------------ | ------- | ---------------------- | ----- | -------------------------- |
-| Alojamento         | 6/14/14 | —                      | —     | —                          |
-| Torre dos Magos    | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/1/2             |
-| Taverna            | —       | Cozinhar (Gastronomia) | 1/2/2 | bonus (texto e penalidade) |
-| Forja              | —       | Forjar (Ferraria)      | 1/2/3 | produce Ferro 1/2/3        |
-| Biblioteca         | —       | Pesquisar (Pesquisa)   | 1/2/3 | research 1/1/2             |
-| Estação de Estudo  | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/2/2             |
-| Arquivo            | —       | Catalogar (Pesquisa)   | 1     | research 1                 |
-| Enfermaria         | —       | Tratar (Medicina)      | 1/2/2 | bonus (texto e penalidade) |
-| Santuário          | —       | Cuidar (Medicina)      | 1     | bonus (texto e penalidade) |
-| Laboratório Arcano | —       | Destilar (Alquimia)    | 1/1/2 | produce Aetherium 1/1/2    |
-| Obra em andamento  | —       | Construir (Construção) | 2     | construction 1             |
+"Por anel": 3/6/8 vagas no anel externo, 2/4/6 no interno (`postSlots`).
+
+| Construção         | Moradia | Posto (habilidade)     | Vagas    | Efeito (base)              |
+| ------------------ | ------- | ---------------------- | -------- | -------------------------- |
+| Alojamento         | 6/14/14 | —                      | —        | —                          |
+| Torre dos Magos    | —       | Estudar (Pesquisa)     | por anel | research 1/1/2             |
+| Taverna            | —       | Cozinhar (Gastronomia) | por anel | bonus (texto e penalidade) |
+| Forja              | —       | Forjar (Ferraria)      | por anel | produce Ferro 1/2/3        |
+| Biblioteca         | —       | Pesquisar (Pesquisa)   | por anel | research 1/1/2             |
+| Estação de Estudo  | —       | Estudar (Pesquisa)     | por anel | research 1/2/2             |
+| Arquivo            | —       | Catalogar (Pesquisa)   | por anel | research 1                 |
+| Enfermaria         | —       | Tratar (Medicina)      | por anel | bonus (texto e penalidade) |
+| Santuário          | —       | Cuidar (Medicina)      | por anel | bonus (texto e penalidade) |
+| Laboratório Arcano | —       | Destilar (Alquimia)    | por anel | produce Aetherium 1/1/2    |
+| Obra em andamento  | —       | Construir (Construção) | 2        | construction 1             |
 
 ## Modelo (`GameState.npcs`, save versão 6)
 
@@ -75,7 +80,7 @@ npc = {
 ## Regras
 
 - **Trabalho exige moradia.** Ficar sem moradia (por comando ou desalojado) também libera o posto.
-- **Capacidade e postos vêm do nível em vigor (`activeLevel`).** Durante uma **melhoria** a construção continua funcionando no nível atual: ninguém é desalojado nem dispensado, nem no Alojamento. Na **primeira obra** a construção ainda não existe, então não tem moradia nem postos (só o posto de obra).
+- **Capacidade, postos e vagas vêm do nível em vigor (`activeLevel`).** As vagas também dependem do anel do espaço (`postSlots`). Durante uma **melhoria** a construção continua funcionando no nível atual: ninguém é desalojado nem dispensado, nem no Alojamento. Na **primeira obra** a construção ainda não existe, então não tem moradia nem postos (só o posto de obra).
 - **Liberação automática** (`settleNpcs`, roda depois de todo comando, a cada dia avançado e ao carregar um save), na ordem da lista de NPCs, com entrada `npc_released` no log:
   - construção removida (`building_removed`);
   - capacidade ou postos menores, ex.: o mestre força um nível mais baixo (`capacity`);

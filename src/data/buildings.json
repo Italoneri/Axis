@@ -56,7 +56,6 @@
             "activity": "forjar",
             "name": "Forjar",
             "skill": "smithing",
-            "slots": 1,
             "effect": { "type": "produce", "material": "iron", "perDay": 1 }
           }
         ]
@@ -70,7 +69,6 @@
             "activity": "forjar",
             "name": "Forjar",
             "skill": "smithing",
-            "slots": 2,
             "effect": { "type": "produce", "material": "iron", "perDay": 2 }
           }
         ],
@@ -85,7 +83,6 @@
             "activity": "forjar",
             "name": "Forjar",
             "skill": "smithing",
-            "slots": 3,
             "effect": { "type": "produce", "material": "iron", "perDay": 3 }
           }
         ],
@@ -117,7 +114,6 @@
             "activity": "tratar",
             "name": "Tratar",
             "skill": "medicine",
-            "slots": 1,
             "effect": {
               "type": "bonus",
               "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado.",
@@ -135,7 +131,6 @@
             "activity": "tratar",
             "name": "Tratar",
             "skill": "medicine",
-            "slots": 2,
             "effect": {
               "type": "bonus",
               "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado.",
@@ -154,7 +149,6 @@
             "activity": "tratar",
             "name": "Tratar",
             "skill": "medicine",
-            "slots": 2,
             "effect": {
               "type": "bonus",
               "text": "Equipe médica: quem gasta dados de vida na Axis recupera +1 PV por dado.",
@@ -183,7 +177,6 @@
             "activity": "pesquisar",
             "name": "Pesquisar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ]
@@ -197,7 +190,6 @@
             "activity": "pesquisar",
             "name": "Pesquisar",
             "skill": "research",
-            "slots": 2,
             "effect": { "type": "research", "perDay": 1 }
           }
         ],
@@ -212,7 +204,6 @@
             "activity": "pesquisar",
             "name": "Pesquisar",
             "skill": "research",
-            "slots": 3,
             "effect": { "type": "research", "perDay": 2 }
           }
         ],
@@ -265,7 +256,6 @@
             "activity": "cuidar",
             "name": "Cuidar",
             "skill": "medicine",
-            "slots": 1,
             "effect": {
               "type": "bonus",
               "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte.",
@@ -283,7 +273,6 @@
             "activity": "cuidar",
             "name": "Cuidar",
             "skill": "medicine",
-            "slots": 1,
             "effect": {
               "type": "bonus",
               "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte.",
@@ -302,7 +291,6 @@
             "activity": "cuidar",
             "name": "Cuidar",
             "skill": "medicine",
-            "slots": 1,
             "effect": {
               "type": "bonus",
               "text": "Cuidadores do santuário: personagens caídos na Axis têm vantagem nos testes contra a morte.",
@@ -418,7 +406,6 @@
             "activity": "destilar",
             "name": "Destilar",
             "skill": "alchemy",
-            "slots": 1,
             "effect": { "type": "produce", "material": "aetherium", "perDay": 1 }
           }
         ]
@@ -432,7 +419,6 @@
             "activity": "destilar",
             "name": "Destilar",
             "skill": "alchemy",
-            "slots": 1,
             "effect": { "type": "produce", "material": "aetherium", "perDay": 1 }
           }
         ],
@@ -447,7 +433,6 @@
             "activity": "destilar",
             "name": "Destilar",
             "skill": "alchemy",
-            "slots": 2,
             "effect": { "type": "produce", "material": "aetherium", "perDay": 2 }
           }
         ],
@@ -472,7 +457,6 @@
             "activity": "estudar",
             "name": "Estudar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ]
@@ -486,7 +470,6 @@
             "activity": "estudar",
             "name": "Estudar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 2 }
           }
         ],
@@ -501,7 +484,6 @@
             "activity": "estudar",
             "name": "Estudar",
             "skill": "research",
-            "slots": 2,
             "effect": { "type": "research", "perDay": 2 }
           }
         ],
@@ -608,7 +590,6 @@
             "activity": "cozinhar",
             "name": "Cozinhar",
             "skill": "cooking",
-            "slots": 1,
             "effect": {
               "type": "bonus",
               "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto.",
@@ -626,7 +607,6 @@
             "activity": "cozinhar",
             "name": "Cozinhar",
             "skill": "cooking",
-            "slots": 2,
             "effect": {
               "type": "bonus",
               "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto.",
@@ -645,7 +625,6 @@
             "activity": "cozinhar",
             "name": "Cozinhar",
             "skill": "cooking",
-            "slots": 2,
             "effect": {
               "type": "bonus",
               "text": "Cozinha ativa: quem faz uma refeição na taverna recupera 1 PV extra no descanso curto.",
@@ -866,7 +845,6 @@
             "activity": "estudar",
             "name": "Estudar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ]
@@ -880,7 +858,6 @@
             "activity": "estudar",
             "name": "Estudar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ],
@@ -895,7 +872,6 @@
             "activity": "estudar",
             "name": "Estudar",
             "skill": "research",
-            "slots": 2,
             "effect": { "type": "research", "perDay": 2 }
           }
         ],
@@ -943,7 +919,6 @@
             "activity": "catalogar",
             "name": "Catalogar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ]
@@ -957,7 +932,6 @@
             "activity": "catalogar",
             "name": "Catalogar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ],
@@ -972,7 +946,6 @@
             "activity": "catalogar",
             "name": "Catalogar",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ],
@@ -1121,7 +1094,6 @@
             "activity": "analisar",
             "name": "Analisar documentos",
             "skill": "research",
-            "slots": 1,
             "effect": { "type": "research", "perDay": 1 }
           }
         ]
@@ -1135,7 +1107,6 @@
             "activity": "analisar",
             "name": "Analisar documentos",
             "skill": "research",
-            "slots": 2,
             "effect": { "type": "research", "perDay": 1 }
           }
         ],
@@ -1150,7 +1121,6 @@
             "activity": "analisar",
             "name": "Analisar documentos",
             "skill": "research",
-            "slots": 2,
             "effect": { "type": "research", "perDay": 2 }
           }
         ],

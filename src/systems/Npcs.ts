@@ -1,4 +1,4 @@
-import { findBuilding, type Catalog } from '../model/catalog';
+import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import type {
   BuildingLevel,
   GameState,
@@ -22,6 +22,8 @@ export interface Post {
   slotId: string;
   buildingId: string;
   job: JobDef;
+  /** How many NPCs can work it at once. */
+  slots: number;
 }
 
 export interface NpcFields {
@@ -65,13 +67,30 @@ export function housingCapacity(state: GameState, catalog: Catalog, slotId: stri
   return levelInForce(state, catalog, slotId)?.housing?.capacity ?? 0;
 }
 
+/**
+ * Building posts take their openings from the slot type and the level in force
+ * (`postSlots`); the construction post keeps its own.
+ */
 export function postsAt(state: GameState, catalog: Catalog, slotId: string): Post[] {
   const placed = state.slots[slotId];
   if (!placed) return [];
   const { buildingId } = placed;
-  const jobs = levelInForce(state, catalog, slotId)?.jobs ?? [];
-  const construction = placed.status === 'building' ? [catalog.npcs.construction] : [];
-  return [...jobs, ...construction].map((job) => ({ slotId, buildingId, job }));
+  const slotType = findSlot(catalog, slotId)?.type;
+  const openings = slotType
+    ? (catalog.npcs.postSlots[slotType]?.[activeLevel(placed) - 1] ?? 0)
+    : 0;
+  const jobs = (levelInForce(state, catalog, slotId)?.jobs ?? []).map((job) => ({
+    slotId,
+    buildingId,
+    job,
+    slots: openings,
+  }));
+  const { construction } = catalog.npcs;
+  const constructionPost =
+    placed.status === 'building'
+      ? [{ slotId, buildingId, job: construction, slots: construction.slots }]
+      : [];
+  return [...jobs, ...constructionPost];
 }
 
 export function findPost(
@@ -304,7 +323,7 @@ function jobError(state: GameState, catalog: Catalog, npc: Npc, order: JobOrder)
   const post = findPost(state, catalog, order);
   if (!post) return { ok: false, error: 'invalid_post' };
   const others = workersAt(state, post).filter((worker) => worker.id !== npc.id);
-  if (others.length >= post.job.slots) return { ok: false, error: 'post_full' };
+  if (others.length >= post.slots) return { ok: false, error: 'post_full' };
   if (post.job.effect.type !== 'research') return { ok: true, post };
 
   const target = state.research.entries.find((r) => r.id === order.researchId);
@@ -345,7 +364,7 @@ function jobProblem(
     const wasConstruction = job.activityId === catalog.npcs.construction.activity;
     return wasConstruction ? 'construction_done' : 'capacity';
   }
-  if ((used.get(postKey(job)) ?? 0) >= post.job.slots) return 'capacity';
+  if ((used.get(postKey(job)) ?? 0) >= post.slots) return 'capacity';
   if (post.job.effect.type === 'research' && !isOpenResearch(state, job.researchId)) {
     return 'research_closed';
   }

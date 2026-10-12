@@ -54,12 +54,14 @@ export const jobEffectSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-/** A work post: `slots` NPCs can fill it at once. */
-export const jobDefSchema = z.object({
+/**
+ * A work post. How many NPCs fill it at once comes from the slot it stands on
+ * (`postSlots` in npcs.json), so `slots` is refused here.
+ */
+export const jobDefSchema = z.strictObject({
   activity: z.string().min(1),
   name: z.string().min(1),
   skill: z.string().min(1),
-  slots: z.number().int().positive(),
   effect: jobEffectSchema,
 });
 
@@ -78,7 +80,14 @@ export const npcsConfigSchema = z.object({
   negativeDivisor: z.number().positive(),
   /** The only buildings whose levels may offer `housing`. */
   housingBuildings: z.array(z.string().min(1)).min(1),
+  /** Openings of every building post by slot type, per level in force (index 0 = level 1). */
+  postSlots: z.partialRecord(
+    z.enum(['core', 'middle', 'outer']),
+    z.array(z.number().int().positive()).min(1),
+  ),
+  /** Its openings stay the same on any slot. */
   construction: jobDefSchema.extend({
+    slots: z.number().int().positive(),
     effect: jobEffectSchema.options[2],
   }),
 });

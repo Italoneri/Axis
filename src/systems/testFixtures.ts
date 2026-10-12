@@ -33,9 +33,9 @@ const influence = {
   ],
 };
 
-function forging(slots: number, perDay: number) {
+function forging(perDay: number) {
   const effect = { type: 'produce', material: 'iron', perDay };
-  return { activity: 'forjar', name: 'Forjar', skill: 'smithing', slots, effect };
+  return { activity: 'forjar', name: 'Forjar', skill: 'smithing', effect };
 }
 
 /** Small catalog independent of the shipped balance numbers, so data tweaks never break tests. */
@@ -59,7 +59,6 @@ export const testCatalog = parseCatalog({
               activity: 'estudar',
               name: 'Estudar',
               skill: 'research',
-              slots: 1,
               effect: { type: 'research', perDay: 2 },
             },
           ],
@@ -73,7 +72,6 @@ export const testCatalog = parseCatalog({
               activity: 'rezar',
               name: 'Rezar',
               skill: 'research',
-              slots: 1,
               effect: { type: 'bonus', text: 'bênção' },
             },
           ],
@@ -88,13 +86,13 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1, 1)] },
+        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1)] },
         {
           cost: { coins: 30 },
           buildTime: 0,
           effect: 'f2',
           requires: [{ building: 'heart', minLevel: 1 }],
-          jobs: [forging(2, 2)],
+          jobs: [forging(2)],
         },
       ],
     },
@@ -151,6 +149,7 @@ export const testCatalog = parseCatalog({
   npcs: {
     negativeDivisor: 5,
     housingBuildings: ['barracks'],
+    postSlots: { core: [1, 1], outer: [1, 2] },
     construction: {
       activity: 'construir',
       name: 'Construir',

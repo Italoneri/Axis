@@ -159,6 +159,7 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('skill', catalog.skills),
     ...jobProblems(catalog),
     ...housingProblems(catalog),
+    ...postSlotProblems(catalog),
     ...layoutProblems(catalog),
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
@@ -229,6 +230,19 @@ function housingProblems({ buildings, npcs }: Catalog): string[] {
       .filter((b) => !housingIds.has(b.id) && b.levels.some((level) => level.housing))
       .map((b) => `${b.id}: housing is only allowed in npcs.json housingBuildings`),
   ];
+}
+
+/** A building with posts needs openings for every slot type it accepts, at each of its levels. */
+function postSlotProblems({ buildings, npcs }: Catalog): string[] {
+  return buildings
+    .filter((b) => b.levels.some((level) => (level.jobs ?? []).length > 0))
+    .flatMap((b) =>
+      b.allowedSlots
+        .filter((type) => (npcs.postSlots[type]?.length ?? 0) < b.levels.length)
+        .map(
+          (type) => `npcs.json: postSlots "${type}" needs ${b.levels.length} levels for ${b.id}`,
+        ),
+    );
 }
 
 /** Every slot type a building accepts must exist, and no slot may sit on a reserved stretch. */

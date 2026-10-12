@@ -12,6 +12,7 @@ import {
   updateNpc,
   yieldTenths,
 } from './Npcs';
+import { gameData } from '../data/gameData';
 import { makeState, npc, testCatalog } from './testFixtures';
 
 const research = {
@@ -357,5 +358,82 @@ describe('settleNpcs', () => {
   it('keeps the very same state when everything still fits', () => {
     const state = working();
     expect(settleNpcs(state, testCatalog)).toBe(state);
+  });
+});
+
+describe('post openings by ring (shipped data)', () => {
+  const at = (slotId: string, buildingId: string, level: number) =>
+    makeState({ slots: { [slotId]: { buildingId, level, status: 'done' } } });
+  const openings = (slotId: string, buildingId: string, level: number) =>
+    postsAt(at(slotId, buildingId, level), gameData, slotId).map((post) => post.slots);
+
+  it.each([
+    { ring: 'outer', slotId: 'outer_1', buildingId: 'forge', perLevel: [3, 6, 8] },
+    { ring: 'middle', slotId: 'mid_1', buildingId: 'library', perLevel: [2, 4, 6] },
+    { ring: 'outer', slotId: 'outer_1', buildingId: 'study_station', perLevel: [3, 6, 8] },
+    { ring: 'middle', slotId: 'mid_1', buildingId: 'study_station', perLevel: [2, 4, 6] },
+  ])('gives $buildingId on the $ring ring $perLevel', ({ slotId, buildingId, perLevel }) => {
+    expect([1, 2, 3].map((level) => openings(slotId, buildingId, level))).toEqual(
+      perLevel.map((slots) => [slots]),
+    );
+  });
+
+  it.each([
+    { slotId: 'outer_1', buildingId: 'forge', inForce: 6 },
+    { slotId: 'mid_1', buildingId: 'library', inForce: 4 },
+  ])(
+    'keeps the construction post at its own openings on $slotId',
+    ({ slotId, buildingId, inForce }) => {
+      const upgrading = makeState({
+        slots: {
+          [slotId]: {
+            buildingId,
+            level: 3,
+            status: 'building',
+            startedOnDay: 1,
+            completesOnDay: 9,
+          },
+        },
+      });
+      const posts = postsAt(upgrading, gameData, slotId);
+      expect(posts.map((post) => [post.job.activity, post.slots])).toEqual([
+        // Upgrading to level 3: the building posts keep level 2's openings.
+        [posts[0]?.job.activity, inForce],
+        ['construir', 2],
+      ]);
+    },
+  );
+
+  it('releases the workers beyond the openings of a lower level, in list order', () => {
+    const workers = Array.from({ length: 6 }, (_, index) =>
+      npc({
+        id: `w${index}`,
+        name: `W${index}`,
+        home: 'outer_2',
+        job: { slotId: 'outer_1', activityId: 'forjar', carry: 0 },
+        status: 'trabalhando',
+      }),
+    );
+    const state = makeState({
+      slots: {
+        outer_1: { buildingId: 'forge', level: 1, status: 'done' },
+        outer_2: { buildingId: 'barracks', level: 3, status: 'done' },
+      },
+      npcs: workers,
+    });
+    const settled = settleNpcs(state, gameData);
+    expect(settled.npcs.map((n) => n.job !== null)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+    ]);
+    expect(settled.log.map((entry) => entry.kind === 'npc_released' && entry.reason)).toEqual([
+      'capacity',
+      'capacity',
+      'capacity',
+    ]);
   });
 });
