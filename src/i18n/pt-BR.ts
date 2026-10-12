@@ -16,6 +16,7 @@ import {
   type NoteVisibility,
 } from '../systems/Archive';
 import { IMAGE_LIMITS, type ImagePrepareError } from '../systems/ArchiveImages';
+import { PHOTO_LIMITS, type PhotoError } from '../systems/GameImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -232,7 +233,7 @@ export const t = {
     create: 'Criar',
     name: 'Nome',
     color: 'Cor',
-    icon: 'Ícone (chave do assets.json ou URL)',
+    icon: 'Ícone',
     description: 'Descrição',
     category: 'Categoria',
     increase: 'Aumentar',
@@ -264,7 +265,7 @@ export const t = {
       `${npc} também vai deixar o posto ${activity} em ${building}. Clique de novo para confirmar`,
     newNpc: 'Novo NPC',
     titleField: 'Título (ex.: Maga)',
-    portrait: 'Retrato (chave do assets.json ou URL)',
+    portrait: 'Retrato',
     wage: 'Salário diário',
     wageText: (coins: string) => `Salário: ${coins}/dia`,
     noWage: 'Sem salário',
@@ -378,8 +379,35 @@ export const t = {
   },
 
   characters: {
-    portrait: 'Retrato (chave do assets.json ou URL)',
+    portrait: 'Retrato',
     newCharacter: 'Novo personagem',
+  },
+
+  photos: {
+    send: 'Enviar foto',
+    remove: 'Remover foto',
+    change: 'Trocar foto',
+    worldIcon: (world: string) => `Foto de ${world}`,
+    hint: 'Ou arraste ou cole (Ctrl+V) uma imagem aqui. JPG, PNG, WebP ou GIF.',
+    useText: 'usar URL ou chave do jogo',
+    useUpload: 'voltar a enviar foto',
+    textLabel: 'URL ou chave do assets.json',
+    preparing: 'Preparando a foto…',
+    sending: 'Enviando a foto…',
+    chosen: 'Foto escolhida: salve para enviar.',
+    crop: {
+      title: 'Recortar foto',
+      hint: 'Arraste para enquadrar e use o zoom para aproximar. Setas também movem.',
+      zoom: 'Zoom',
+      confirm: 'Usar foto',
+    },
+    errors: {
+      unsupported_format: 'formato não aceito (use JPG, PNG, WebP ou GIF).',
+      file_too_large: `arquivo acima de ${IMAGE_LIMITS.originalBytes / 1024 / 1024} MB.`,
+      unreadable: 'não foi possível ler a imagem.',
+      compressed_too_large: `mesmo comprimida, a foto passou de ${PHOTO_LIMITS.storedBytes / 1024} KB.`,
+    } satisfies Record<PhotoError, string>,
+    refused: (fileName: string, reason: string) => `${fileName}: ${reason}`,
   },
 
   menu: {

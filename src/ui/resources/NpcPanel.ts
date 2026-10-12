@@ -11,6 +11,7 @@ import {
 } from '../../systems/Coins';
 import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
+import { photoField, saveWithPhoto } from '../photos/photoField';
 import { moveOutButton } from '../SlotNpcs';
 import { formatCount, formatGold, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
@@ -119,7 +120,7 @@ export class NpcPanel {
       el(
         'div',
         { class: 'card__head' },
-        thumb(catalog, { image: npc.portrait, name: npc.name }, 'md'),
+        thumb(store, { image: npc.portrait, name: npc.name }, 'md'),
         el(
           'div',
           {},
@@ -234,7 +235,9 @@ export class NpcPanel {
       isEditing &&
         this.npcForm(npc, (fields, status) => {
           const command = { type: 'npc_update', npcId: npc.id, ...fields, status } as const;
-          if (this.deps.act(command)) this.update(() => (this.editing = null));
+          const done = this.deps.act(command);
+          if (done) this.update(() => (this.editing = null));
+          return done;
         }),
     );
   }
@@ -245,13 +248,13 @@ export class NpcPanel {
    */
   private newNpcForm(): HTMLElement {
     if (this.draft?.contains(document.activeElement)) return this.draft;
-    const form = this.npcForm(undefined, (fields) => {
-      const id = newId('npc');
+    const form = this.npcForm(undefined, (fields, _status, id) => {
       this.draft = null;
       this.createdId = id;
-      if (this.deps.act({ type: 'npc_create', id, ...fields })) return;
+      if (this.deps.act({ type: 'npc_create', id, ...fields })) return true;
       this.draft = details;
       this.createdId = null;
+      return false;
     });
     const details = el(
       'details',
@@ -263,18 +266,23 @@ export class NpcPanel {
     return details;
   }
 
-  /** Shared create/edit form; the status select only appears when editing. */
+  /**
+   * Shared create/edit form; the status select only appears when editing.
+   * `onSubmit` gets the id the portrait was stored under: the NPC's, or a new one.
+   */
   private npcForm(
     npc: Npc | undefined,
-    onSubmit: (fields: NpcFields, status: NpcStatus) => void,
+    onSubmit: (fields: NpcFields, status: NpcStatus, id: string) => boolean,
   ): HTMLElement {
-    const { catalog } = this.deps.store;
+    const { store } = this.deps;
+    const { catalog } = store;
+    const id = npc?.id ?? newId('npc');
     const { skills } = catalog;
     const input = (value: string | undefined) =>
       el('input', { class: 'input input--wide', value: value ?? '' });
     const name = input(npc?.name);
     const title = input(npc?.title);
-    const portrait = input(npc?.portrait);
+    const portrait = photoField({ source: store, current: npc?.portrait, name: npc?.name ?? '' });
     const description = input(npc?.description);
     const wage = wageInputs(catalog, npc?.wage);
     const status = selectInput({
@@ -291,12 +299,12 @@ export class NpcPanel {
         label: skill.name,
       }),
     }));
-    const read = (): NpcFields => {
+    const read = (image: string): NpcFields => {
       const wageValue = wage.read();
       return {
         name: name.value,
         title: title.value,
-        portrait: portrait.value,
+        portrait: image,
         description: description.value,
         skills: Object.fromEntries(
           levels.map(({ skill, input }) => [skill.id, clampSkill(Number(input.value))]),
@@ -304,18 +312,20 @@ export class NpcPanel {
         wage: wageValue > 0 ? wageValue : undefined,
       };
     };
-    return el(
+    const form = el(
       'form',
       {
         class: 'subform',
         onsubmit: (event: Event) => {
           event.preventDefault();
-          onSubmit(read(), parseStatus(status.value));
+          void saveWithPhoto(portrait, { kind: 'npc', id }, (image) =>
+            onSubmit(read(image), parseStatus(status.value), id),
+          );
         },
       },
       field(t.common.name, name),
       field(t.npcs.titleField, title),
-      field(t.npcs.portrait, portrait),
+      el('div', { class: 'field' }, el('span', {}, t.npcs.portrait), portrait.element),
       field(t.common.description, description),
       el('div', { class: 'field' }, el('span', {}, t.npcs.wage), wage.element, wage.preview),
       npc && field(t.npcs.status, status),
@@ -334,6 +344,8 @@ export class NpcPanel {
         ),
       ),
     );
+    portrait.listenOn(form);
+    return form;
   }
 
   private update(change: () => void): void {

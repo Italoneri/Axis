@@ -742,6 +742,108 @@ input[type='color'].input {
   height: 36px;
 }
 
+.thumb--lg {
+  width: 72px;
+  height: 72px;
+  font-size: 28px;
+}
+
+/* Photos sent in game are square crops: fill the circle instead of letterboxing. */
+img.thumb--lg,
+.photo-field__preview img {
+  object-fit: cover;
+}
+
+/* ---------- Photo picker (NPC, material, character and world forms) ---------- */
+
+.photo-field {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.photo-field__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.photo-field__controls .panel__hint {
+  margin: 4px 0 0;
+}
+
+.photo-field .reasons {
+  padding-left: 0;
+}
+
+.subform.is-dropping {
+  outline: 2px dashed var(--gold);
+  outline-offset: 2px;
+}
+
+.link-button {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover,
+.link-button:focus-visible {
+  color: var(--gold-soft);
+}
+
+.dialog--crop {
+  width: fit-content;
+}
+
+.photo-crop__stage {
+  position: relative;
+  width: 256px;
+  height: 256px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* The circle shows what the round thumbnails will keep. */
+.photo-crop__stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.45);
+  outline: 1px solid var(--gold);
+  pointer-events: none;
+}
+
+.photo-crop__canvas {
+  display: block;
+  width: 256px;
+  height: 256px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.photo-crop__canvas:active {
+  cursor: grabbing;
+}
+
+.photo-crop__canvas:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+
+.photo-crop__zoom {
+  width: 100%;
+}
+
 .thumb--placeholder {
   display: inline-grid;
   place-items: center;

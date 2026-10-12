@@ -3,6 +3,8 @@ import { resolveImage, type Catalog } from '../model/catalog';
 import type { GameCommand } from '../commands/schema';
 import type { Category } from '../model/schema';
 import type { CoinBag } from '../systems/Coins';
+import { looksLikeUpload } from '../systems/GameImages';
+import type { GameImages } from '../gameImages';
 import type { GameStore } from '../store';
 import { el } from './dom';
 import type { MasterAccess } from './MasterSession';
@@ -47,23 +49,80 @@ export function button(
   );
 }
 
-/** Image from an asset key or URL, or a colored circle with the initial as placeholder. */
+/**
+ * Where thumbnails find their pictures: asset keys and URLs in the catalog,
+ * photos sent in game in `images` (a GameStore has both).
+ */
+export interface ImageSource {
+  catalog: Catalog;
+  images?: GameImages;
+}
+
+export type ThumbSize = 'sm' | 'md' | 'lg';
+
+/**
+ * Image from an asset key, a URL or a photo sent in game, or a colored circle
+ * with the initial as placeholder (also while a photo loads, or if it is gone).
+ */
 export function thumb(
-  catalog: Catalog,
+  { catalog, images }: ImageSource,
   { image, name, color }: { image?: string | undefined; name: string; color?: string | undefined },
-  size: 'sm' | 'md' = 'sm',
+  size: ThumbSize = 'sm',
 ): HTMLElement {
+  const className = `thumb thumb--${size}`;
+  const placeholder = () =>
+    el(
+      'span',
+      {
+        class: `${className} thumb--placeholder`,
+        style: color ? `--thumb-color: ${color}` : undefined,
+        'aria-hidden': 'true',
+      },
+      name.trim().charAt(0).toUpperCase() || '?',
+    );
+  if (looksLikeUpload(image)) {
+    return images ? uploadedThumb(images, image, className, placeholder()) : placeholder();
+  }
   const src = resolveImage(catalog, image);
-  if (src) return el('img', { class: `thumb thumb--${size}`, src, alt: '' });
-  return el(
-    'span',
-    {
-      class: `thumb thumb--${size} thumb--placeholder`,
-      style: color ? `--thumb-color: ${color}` : undefined,
-      'aria-hidden': 'true',
-    },
-    name.trim().charAt(0).toUpperCase() || '?',
-  );
+  if (src) return el('img', { class: className, src, alt: '' });
+  return placeholder();
+}
+
+/**
+ * Shows the placeholder until the photo loads, unless its URL is already
+ * known (a redraw). A failed load asks for a fresh URL once: a signed one may
+ * have expired.
+ */
+function uploadedThumb(
+  images: GameImages,
+  ref: string,
+  className: string,
+  placeholder: HTMLElement,
+): HTMLElement {
+  const picture = el('img', { class: className, alt: '', decoding: 'async' });
+  const known = images.peek(ref, 'thumb');
+  let shown: HTMLElement = known ? picture : placeholder;
+  let retried = false;
+  const swap = (next: HTMLElement) => {
+    if (shown === next) return;
+    shown.replaceWith(next);
+    shown = next;
+  };
+  const fetchUrl = () =>
+    images.url(ref, 'thumb').then(
+      (url) => (picture.src = url),
+      (error: unknown) => console.warn('[photos] photo unavailable', ref, error),
+    );
+  picture.addEventListener('load', () => swap(picture));
+  picture.addEventListener('error', () => {
+    swap(placeholder);
+    if (retried) return;
+    retried = true;
+    void fetchUrl();
+  });
+  if (known) picture.src = known;
+  else void fetchUrl();
+  return shown;
 }
 
 export interface SelectOption {
@@ -263,7 +322,7 @@ export function coinInputs(
       el(
         'label',
         { class: 'row' },
-        thumb(catalog, { image: currency.icon, name: currency.name }),
+        thumb({ catalog }, { image: currency.icon, name: currency.name }),
         el('span', { class: 'row__name' }, currency.name),
         input,
       ),

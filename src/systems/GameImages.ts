@@ -1,6 +1,7 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
 import type { ImageFormat } from './Archive';
+import { ACCEPTED_IMAGE_TYPES, IMAGE_LIMITS } from './ArchiveImages';
 import { fail, ok, type Outcome } from './outcome';
 
 // Photos sent in game for characters, NPCs, materials and worlds. The state
@@ -34,6 +35,22 @@ export const PHOTO_LIMITS = {
   /** How far the crop can zoom in on the picked image. */
   maxZoom: 4,
 } as const;
+
+/** Why a picked, dropped or pasted file did not become a photo. */
+export type PhotoError =
+  'unsupported_format' | 'file_too_large' | 'unreadable' | 'compressed_too_large';
+
+/** JPG, PNG, WebP or GIF (kept as its first frame), up to 10 MB, before anything is decoded. */
+export function checkPhotoFile(file: { type: string; size: number }): PhotoError | null {
+  if (!ACCEPTED_IMAGE_TYPES.some((type) => type === file.type)) return 'unsupported_format';
+  if (file.size > IMAGE_LIMITS.originalBytes) return 'file_too_large';
+  return null;
+}
+
+/** The compressed photo, before it is stored. */
+export function checkStoredPhoto(bytes: number): PhotoError | null {
+  return bytes > PHOTO_LIMITS.storedBytes ? 'compressed_too_large' : null;
+}
 
 const UPLOAD_PREFIX = 'upload:';
 const UPLOAD_PATTERN =
@@ -69,7 +86,11 @@ export function isUploadFor(ref: string, target: ImageTarget): boolean {
 }
 
 /** The photo field of a record: portrait, icon, or the world icon kept in the save. */
-export function imageOf(state: GameState, catalog: Catalog, target: ImageTarget): string | undefined {
+export function imageOf(
+  state: GameState,
+  catalog: Catalog,
+  target: ImageTarget,
+): string | undefined {
   switch (target.kind) {
     case 'character':
       return state.characters.find((c) => c.id === target.id)?.portrait;

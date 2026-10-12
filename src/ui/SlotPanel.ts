@@ -267,7 +267,7 @@ export class SlotPanel {
       el(
         'span',
         { class: costItemClass(isCampShort), title: t.resources.gold },
-        thumb(catalog, { image: 'icon.gold', name: t.resources.gold }),
+        thumb(this.store, { image: 'icon.gold', name: t.resources.gold }),
         formatGold(catalog, bronze),
       );
     const materials = Object.entries(cost.materials ?? {}).map(([id, amount]) => {
@@ -276,7 +276,7 @@ export class SlotPanel {
       return el(
         'span',
         { class: costItemClass(!material || material.quantity < amount), title: name },
-        thumb(catalog, { image: material?.icon, name: material?.name ?? '?' }),
+        thumb(this.store, { image: material?.icon, name: material?.name ?? '?' }),
         String(amount),
       );
     });

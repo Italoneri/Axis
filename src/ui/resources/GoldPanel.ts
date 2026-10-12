@@ -6,6 +6,7 @@ import { CAMP, groupBronze, walletOf, type WalletRef } from '../../systems/Walle
 import { el } from '../dom';
 import { formatCount, formatGold, formatGoldAmount } from '../format';
 import type { MasterAccess } from '../MasterSession';
+import { photoForm } from '../photos/photoField';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
 import { button, coinInputs, rememberedSelect, thumb, type Act, type PanelDeps } from '../widgets';
@@ -26,6 +27,8 @@ export class GoldPanel {
   private showDetails = false;
   private depositingFor: string | null = null;
   private adjusting: WalletKey | null = null;
+  /** Character whose photo form is open. */
+  private editingPhoto: string | null = null;
   /** Redraws the dropdown after purely visual changes (toggles, opened forms). */
   private redraw: () => void = () => undefined;
 
@@ -120,13 +123,17 @@ export class GoldPanel {
         'div',
         { class: 'card__head' },
         character &&
-          thumb(catalog, {
+          thumb(this.store, {
             image: character.portrait,
             name: character.name,
             color: character.color,
           }),
         el('h3', { class: 'card__name' }, title),
+        character &&
+          this.canChangePhoto(character) &&
+          button(t.photos.change, () => this.togglePhoto(character.id)),
       ),
+      character && this.editingPhoto === character.id && this.photoForm(character),
       this.coinList(wallet),
       character &&
         (this.depositingFor === character.id
@@ -148,6 +155,31 @@ export class GoldPanel {
     );
   }
 
+  /** The player's own character (any of them offline, where nobody logs in), or the master. */
+  private canChangePhoto(character: Character): boolean {
+    return this.store.allows({
+      type: 'set_image',
+      target: { kind: 'character', id: character.id },
+    });
+  }
+
+  private togglePhoto(characterId: string): void {
+    this.editingPhoto = this.editingPhoto === characterId ? null : characterId;
+    this.redraw();
+  }
+
+  private photoForm(character: Character): HTMLElement {
+    return photoForm({
+      source: this.store,
+      target: { kind: 'character', id: character.id },
+      current: character.portrait,
+      name: character.name,
+      color: character.color,
+      act: this.act,
+      close: () => this.togglePhoto(character.id),
+    });
+  }
+
   /** Coins from the most to the least valuable, with their worth in gold and the total. */
   private coinList(wallet: CoinBag): HTMLElement {
     const { catalog } = this.store;
@@ -162,7 +194,7 @@ export class GoldPanel {
           return el(
             'li',
             { class: count === 0 ? 'coin coin--empty' : 'coin' },
-            thumb(catalog, { image: currency.icon, name: currency.name }),
+            thumb(this.store, { image: currency.icon, name: currency.name }),
             el('span', { class: 'coin__name' }, currency.name),
             el('span', { class: 'coin__count' }, formatCount(count)),
             el('span', { class: 'coin__value' }, formatGold(catalog, count * currency.bronzeValue)),

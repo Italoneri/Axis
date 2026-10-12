@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { resolveImage } from '../model/catalog';
 import {
   centerView,
+  checkPhotoFile,
+  checkStoredPhoto,
   clampView,
   cropRect,
   droppedUploads,
@@ -13,6 +15,29 @@ import {
   uploadsOf,
 } from './GameImages';
 import { makeState, npc, testCatalog } from './testFixtures';
+
+const MB = 1024 * 1024;
+
+describe('photo files', () => {
+  it.each([
+    { type: 'image/jpeg', size: MB, error: null },
+    { type: 'image/png', size: 10 * MB, error: null },
+    { type: 'image/webp', size: 1, error: null },
+    { type: 'image/gif', size: MB, error: null },
+    { type: 'image/svg+xml', size: MB, error: 'unsupported_format' },
+    { type: 'image/heic', size: MB, error: 'unsupported_format' },
+    { type: 'image/png', size: 10 * MB + 1, error: 'file_too_large' },
+  ])('answers $error for $type of $size bytes', ({ type, size, error }) => {
+    expect(checkPhotoFile({ type, size })).toBe(error);
+  });
+
+  it.each([
+    { bytes: 300 * 1024, error: null },
+    { bytes: 300 * 1024 + 1, error: 'compressed_too_large' },
+  ])('answers $error for a stored photo of $bytes bytes', ({ bytes, error }) => {
+    expect(checkStoredPhoto(bytes)).toBe(error);
+  });
+});
 
 describe('upload references', () => {
   it('round-trips a reference', () => {
@@ -108,7 +133,12 @@ describe('square crop', () => {
   it.each([
     { name: 'past the left edge', view: { zoom: 1, centerX: 0, centerY: 400 }, x: 0, y: 0 },
     { name: 'past the right edge', view: { zoom: 1, centerX: 9999, centerY: 400 }, x: 400, y: 0 },
-    { name: 'zoomed past the corner', view: { zoom: 4, centerX: -50, centerY: 9999 }, x: 0, y: 600 },
+    {
+      name: 'zoomed past the corner',
+      view: { zoom: 4, centerX: -50, centerY: 9999 },
+      x: 0,
+      y: 600,
+    },
   ])('keeps the square inside the image $name', ({ view, x, y }) => {
     const rect = cropRect(landscape, view);
     expect([rect.x, rect.y]).toEqual([x, y]);
@@ -130,9 +160,11 @@ describe('square crop', () => {
   });
 
   it('handles portrait images and tiny ones alike', () => {
-    expect(cropRect({ width: 300, height: 900 }, centerView({ width: 300, height: 900 }))).toEqual(
-      { x: 0, y: 300, side: 300 },
-    );
+    expect(cropRect({ width: 300, height: 900 }, centerView({ width: 300, height: 900 }))).toEqual({
+      x: 0,
+      y: 300,
+      side: 300,
+    });
     expect(cropRect({ width: 1, height: 1 }, centerView({ width: 1, height: 1 }))).toEqual({
       x: 0,
       y: 0,
