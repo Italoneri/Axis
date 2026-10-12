@@ -102,10 +102,12 @@ Todo comando registra o `actor` no log.
 
 ## Interface
 
-- Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel. No seletor de moradia, as construções lotadas ficam desabilitadas (exceto a casa atual). As barras de habilidade partem do centro: positivas crescem para a direita em dourado, negativas para a esquerda em vermelho.
+- Botão **"NPCs"** na barra: cards com retrato, título, barras de habilidade, moradia, trabalho e status; filtros por habilidade e "sem trabalho". O mestre cria, edita e remove pelo mesmo painel. No seletor de moradia, as construções lotadas ficam desabilitadas (exceto a casa atual). Ao lado dele, **Retirar da moradia** (só para quem mora em algum lugar) envia `npc_set_home` com `slotId: null`. As barras de habilidade partem do centro: positivas crescem para a direita em dourado, negativas para a esquerda em vermelho.
 - Salário: digitado em moedas (prata, bronze…) e salvo em PO; o card mostra "Salário: 1 Prata e 2 Bronze/dia", ou "Sem salário".
-- Painel da construção: moradores (x de y) e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento. O rótulo de cada candidato mostra o posto atual e se está ferido ou em missão. Quem atrapalha aparece com "⚠ atrapalha" (ex.: "Gus (-6) · -1,2 Ferro por dia ⚠ atrapalha") e no fim da lista.
+- Painel da construção: moradores (x de y), cada um com **Retirar**, e postos, com seletor de NPC ordenado pela habilidade do posto e prévia do rendimento. O rótulo de cada candidato mostra o posto atual e se está ferido ou em missão. Quem atrapalha aparece com "⚠ atrapalha" (ex.: "Gus (-6) · -1,2 Ferro por dia ⚠ atrapalha") e no fim da lista.
 - Bônus ativos: incluem os efeitos dos postos ocupados; rendimentos negativos e penalidades aparecem em vermelho.
+
+- Retirar quem trabalha também tira do posto (trabalho exige moradia), então o botão pede um segundo clique, como o `confirmButton`, avisando "Bia também vai deixar o posto Cozinhar em Taverna".
 
 ## Detalhes conhecidos
 

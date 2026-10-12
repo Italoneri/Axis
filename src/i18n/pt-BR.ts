@@ -257,6 +257,10 @@ export const t = {
     currentPost: (building: string) => `posto atual: ${building}`,
     hinders: '⚠ atrapalha',
     unassign: 'Dispensar',
+    moveOut: 'Retirar',
+    moveOutOfHome: 'Retirar da moradia',
+    moveOutLeavesPost: (npc: string, activity: string, building: string) =>
+      `${npc} também vai deixar o posto ${activity} em ${building}. Clique de novo para confirmar`,
     newNpc: 'Novo NPC',
     titleField: 'Título (ex.: Maga)',
     portrait: 'Retrato (chave do assets.json ou URL)',

@@ -11,6 +11,7 @@ import {
 } from '../../systems/Coins';
 import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
+import { moveOutButton } from '../SlotNpcs';
 import { formatCount, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
@@ -179,7 +180,13 @@ export class NpcPanel {
         this.redraw();
       }
     });
-    return el('div', { class: 'row row--wrap' }, field(t.npcs.home, select));
+    const moveOut = () => act({ type: 'npc_set_home', npcId: npc.id, slotId: null });
+    return el(
+      'div',
+      { class: 'row row--wrap' },
+      field(t.npcs.home, select),
+      npc.home && moveOutButton(store, npc, t.npcs.moveOutOfHome, moveOut),
+    );
   }
 
   private jobRow(npc: Npc): HTMLElement {

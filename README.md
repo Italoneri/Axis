@@ -141,7 +141,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
 - **Habilidade negativa:** rende `base × habilidade / 5` e atrapalha: consome material (sem passar de 0), faz a pesquisa regredir (sem passar de 0%), atrasa a obra ou troca o bônus pela penalidade. Aparece em vermelho, com "⚠ atrapalha" no seletor do posto. Vários NPCs no mesmo posto contam separados, então um bom e um ruim se compensam.
 - **Quem faz o quê:** só o mestre cria, edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
 - **Regras:**
-  - Trabalho exige moradia.
+  - Trabalho exige moradia. Para tirar alguém de casa, use **Retirar** no card "Moradores" da construção ou **Retirar da moradia** no card do NPC; se ele trabalha, um segundo clique confirma que também deixa o posto.
   - Um trabalho por vez.
   - Capacidade e postos vêm do nível em vigor: durante uma melhoria a construção continua funcionando no nível atual.
   - Remover uma construção, reduzir a capacidade, terminar uma obra ou encerrar a pesquisa alvo libera os NPCs, com registro no log.
@@ -250,9 +250,9 @@ O código online (e o `supabase-js`) só é baixado quando as variáveis do Supa
 
 O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota (esbuild) as regras, o zod e os JSONs de `src/data` num único módulo, `supabase/functions/_shared/game.js` (gerado, fora do git). Assim a Edge Function valida com exatamente os dados do commit publicado.
 
-| Comando                   | O que faz                                                                   |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `npm run build:functions` | Gera o bundle das regras para as Edge Functions                             |
+| Comando                   | O que faz                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `npm run build:functions` | Gera o bundle das regras para as Edge Functions                              |
 | `npm run parity`          | Gera o bundle e roda os mesmos comandos em Node e em Deno; falha se divergir |
 
 O Deno vem como devDependency (`npx deno`), não precisa instalar à parte.
@@ -266,10 +266,10 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 - **Convites:** `create_invite` (mestre) gera um token de uso único para um personagem, válido por 7 dias (até 30); o banco guarda só o hash. `accept_invite` liga quem aceitou ao personagem; `revoke_invite` cancela um convite pendente.
 - Testes em `src/server/http.test.ts` e `src/server/handler.test.ts`, com o banco simulado em memória.
 
-| Comando                    | O que faz                                                   |
-| -------------------------- | ----------------------------------------------------------- |
-| `npm run check:functions`  | Gera o bundle e confere os tipos da função com o Deno        |
-| `npm run deploy:functions` | Gera o bundle e publica a função (precisa do CLI logado)      |
+| Comando                    | O que faz                                                |
+| -------------------------- | -------------------------------------------------------- |
+| `npm run check:functions`  | Gera o bundle e confere os tipos da função com o Deno    |
+| `npm run deploy:functions` | Gera o bundle e publica a função (precisa do CLI logado) |
 
 ### Banco (Supabase)
 

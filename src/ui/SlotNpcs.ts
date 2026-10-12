@@ -2,6 +2,7 @@ import { jobEffectText, t, type TextContext } from '../i18n/pt-BR';
 import type { Catalog } from '../model/catalog';
 import type { GameState, Npc } from '../model/schema';
 import {
+  findPost,
   housingCapacity,
   postsAt,
   residentsOf,
@@ -13,7 +14,7 @@ import {
 import type { GameStore } from '../store';
 import { el } from './dom';
 import { textContext } from './format';
-import { button, field, selectInput } from './widgets';
+import { button, confirmButton, field, selectInput } from './widgets';
 
 /** Residents and work posts of a slot, for the building side panel. */
 export function renderSlotNpcs(store: GameStore, slotId: string): HTMLElement[] {
@@ -22,19 +23,52 @@ export function renderSlotNpcs(store: GameStore, slotId: string): HTMLElement[] 
   const capacity = housingCapacity(state, catalog, slotId);
   const posts = postsAt(state, catalog, slotId);
   return [
-    ...(capacity > 0 ? [residentsCard(state, slotId, capacity)] : []),
+    ...(capacity > 0 ? [residentsCard(store, slotId, capacity)] : []),
     ...posts.map((post) => postCard(store, post, ctx)),
   ];
 }
 
-function residentsCard(state: GameState, slotId: string, capacity: number): HTMLElement {
-  const residents = residentsOf(state, slotId);
+function residentsCard(store: GameStore, slotId: string, capacity: number): HTMLElement {
+  const residents = residentsOf(store.current, slotId);
   return el(
     'section',
     { class: 'card' },
     el('h3', { class: 'section-title' }, t.npcs.residents(residents.length, capacity)),
     residents.length > 0 &&
-      el('ul', { class: 'effects' }, ...residents.map((npc) => el('li', {}, npc.name))),
+      el(
+        'ul',
+        { class: 'effects' },
+        ...residents.map((npc) =>
+          el(
+            'li',
+            { class: 'row row--wrap' },
+            el('span', {}, npc.name),
+            moveOutButton(store, npc, t.npcs.moveOut, () =>
+              store.dispatch({ type: 'npc_set_home', npcId: npc.id, slotId: null }),
+            ),
+          ),
+        ),
+      ),
+  );
+}
+
+/**
+ * Moves the NPC out of its home. Work needs a home, so for an NPC with a post
+ * it asks a second click naming the post it will leave.
+ */
+export function moveOutButton(
+  { catalog, current: state }: Pick<GameStore, 'catalog' | 'current'>,
+  npc: Npc,
+  label: string,
+  onMoveOut: () => void,
+): HTMLButtonElement {
+  const post = npc.job && findPost(state, catalog, npc.job);
+  if (!post) return button(label, onMoveOut);
+  const building = textContext(catalog, state).building(post.buildingId);
+  return confirmButton(
+    label,
+    onMoveOut,
+    t.npcs.moveOutLeavesPost(npc.name, post.job.name, building),
   );
 }
 

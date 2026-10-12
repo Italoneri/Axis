@@ -135,13 +135,18 @@ export function progressBar(fraction: number, color?: string): HTMLElement {
 }
 
 /** Two-step button: the first click arms it, a second click within a few seconds confirms. */
-export function confirmButton(label: string, onConfirm: () => void): HTMLButtonElement {
+/** Two clicks to act; `prompt` replaces "Clique de novo para confirmar" between them. */
+export function confirmButton(
+  label: string,
+  onConfirm: () => void,
+  prompt: string = t.master.confirmRemove,
+): HTMLButtonElement {
   let armedUntil = 0;
   const node = el('button', { class: 'btn btn--danger', type: 'button' }, label);
   node.addEventListener('click', () => {
     if (Date.now() < armedUntil) return onConfirm();
     armedUntil = Date.now() + CONFIRM_WINDOW_MS;
-    node.textContent = t.master.confirmRemove;
+    node.textContent = prompt;
     setTimeout(() => (node.textContent = label), CONFIRM_WINDOW_MS);
   });
   return node;
