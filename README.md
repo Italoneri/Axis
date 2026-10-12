@@ -88,7 +88,7 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 - O painel tem uma aba por categoria. Clique num material para ver a descrição.
 - **Mestre:** **+/−** com a quantidade informada, **Editar** (nome, categoria, ícone e descrição), **Remover** (clique duas vezes para confirmar), **Novo material nesta categoria** e o cartão **Categorias**, para criar, renomear e remover categorias (só as vazias).
 - O `id` de um material novo é gerado a partir do nome (`Pedra da Lua` → `pedra_da_lua`). É esse id que os custos das estruturas usam.
-- O `icon` aceita uma chave do `assets.json` ou uma URL de imagem. Sem ícone, aparece um círculo com a inicial.
+- O ícone pode ser uma foto enviada no jogo (veja [Fotos no jogo](#fotos-no-jogo)), uma chave do `assets.json` ou uma URL de imagem. Sem ícone, aparece um círculo com a inicial.
 
 ### Pesquisa
 
@@ -100,7 +100,7 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 ### Influência
 
 - Os mundos são **fixos** e ficam em `src/data/influence.json` (`worlds`: `id`, `name`, `color`, `icon?`, `description?`), na ordem em que aparecem no jogo: Mundo Humano, Floresta dos Elfos, Bosque das Fadas, Montanhas Anãs, Reino dos Meio-Humanos, Terras Dracônicas e Terras Ínferas. Todos começam em 0%.
-- O save guarda só a % de cada mundo. Nome, cor e descrição vêm sempre do JSON.
+- O save guarda só a % de cada mundo e, se o mestre enviou, a foto dele (`worldIcons`). Nome, cor e descrição vêm sempre do JSON.
 - A **influência total** não é editável: é a **média** das % dos mundos, mostrada com até 1 casa decimal (ex.: "42%", "37,1%").
 - **Mestre:** **−/+** ou o campo numérico ajustam a % de cada mundo (sempre um inteiro entre 0 e 100). Não é possível criar nem remover mundos no jogo.
 - Cada mudança entra no registro com o mundo e o novo total: "Dia 20 — Influência em Terras Dracônicas: 35% → 42% (total: 18,6%)".
@@ -156,6 +156,20 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
 
 - **Save:** versão 7. Saves da versão 4 ganham `npcs: []` ao carregar; os da versão 6 ganham `missions: []`. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
+
+## Fotos no jogo
+
+Retratos de **NPCs** e **personagens** e ícones de **materiais** e **mundos de influência** são enviados direto pelo jogo.
+
+- **Onde:** nos formulários de NPC, material e personagem, o campo **Retrato**/**Ícone** virou um seletor com prévia redonda, **Enviar foto**, arrastar e soltar, colar com Ctrl+V e **Remover foto** (volta para a inicial com a cor). Mundos ganham **Trocar foto** no painel de Influência. O link discreto **usar URL ou chave do jogo** volta ao campo de texto antigo.
+- **Quem troca:** o mestre troca tudo. O jogador troca só a foto do **próprio personagem**, pelo botão **Trocar foto** no cartão dele em **Ouro → Ver detalhes** (offline, como no depósito, qualquer personagem). A regra vale no `applyCommand` (comando `set_image`) e nas regras do Storage.
+- **Recorte:** ao escolher a imagem abre um recorte **quadrado**: arraste (ou use as setas) para enquadrar e o zoom (barra ou roda do mouse, até 4×) para aproximar. O círculo mostra o que as miniaturas vão exibir. A matemática do recorte é pura (`cropRect`/`panView` em `src/systems/GameImages.ts`).
+- **Tamanho:** a foto é salva em **512×512** (WebP, qualidade 0,85; JPEG se o navegador não gera WebP) mais uma miniatura **128×128**. Aceita JPG, PNG, WebP e GIF (fica o primeiro quadro), original até 10 MB; comprimida, até 300 KB (`PHOTO_LIMITS`). Erros aparecem embaixo do campo.
+- **No estado:** o campo guarda `upload:<tipo>/<id>/<imagem>.webp` (ex.: `upload:npc/npc_ab12/img_9f.webp`). Chaves do `assets.json` e URLs continuam funcionando; o schema só ficou mais permissivo, sem migração de save. O envio só acontece ao **salvar** o formulário, então um formulário abandonado não deixa arquivo.
+- **Onde ficam:** offline, no IndexedDB `axis-base-builder:game-images`; online, no bucket **privado** `game-images`, em `game_id/<tipo>/<id>/<imagem>.webp` (e `.thumb.webp`), com links assinados de 10 minutos. Membros do jogo leem; o mestre escreve em tudo; o jogador só em `character/<seu personagem>/`.
+- **Arquivos antigos:** quando o jogo salvo deixa de citar uma foto (trocada, removida ou o NPC/material/personagem saiu), o arquivo é apagado. Isso acontece só depois de o servidor aceitar a mudança, para uma troca recusada não perder a foto antiga.
+- **Exportar/Importar save:** as fotos entram no `.zip`, na pasta `game-images/`, junto com as imagens do Arquivo.
+- **Publicar a mudança online:** `npx supabase db push` (bucket e regras de acesso, migração `20261013000000_game_images.sql`) e `npm run deploy:functions` (o servidor passa a aceitar o comando `set_image`). Testes pgTAP em `supabase/tests/game_images.test.sql` (`npx supabase test db`, precisa de Docker).
 
 ## Arquivo de registros
 
