@@ -28,6 +28,7 @@ import { SlotPanel } from './ui/SlotPanel';
 import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
+import { MenuWindow } from './ui/menu/MenuWindow';
 import { UiMemory } from './ui/uiMemory';
 import type { Act } from './ui/widgets';
 
@@ -141,6 +142,8 @@ async function start(): Promise<void> {
     canPickCharacter: () => !mode.isOnline && !session.isActive,
   });
   const openArchive = () => archiveWindow.open();
+  const menuWindow = new MenuWindow({ game: store, memory });
+  const openMenu = () => menuWindow.open();
   hideGate();
 
   // Every entry a local command logs becomes a toast.
@@ -158,12 +161,15 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview },
     act,
-    { ...mode.drawerExtras(store), openArchive },
+    { ...mode.drawerExtras(store), openArchive, openMenu },
   );
-  const panel = new SlotPanel(requireElement('panel'), store, session, {
-    store: archive,
-    open: openArchive,
-  });
+  const panel = new SlotPanel(
+    requireElement('panel'),
+    store,
+    session,
+    { store: archive, open: openArchive },
+    openMenu,
+  );
 
   mountTopBar(
     requireElement('topbar'),

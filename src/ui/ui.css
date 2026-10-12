@@ -1541,3 +1541,177 @@ details > summary {
   padding: 10px 16px;
   border-bottom: 1px solid rgba(212, 175, 55, 0.18);
 }
+
+/* ---------- Cardápio da Taverna ---------- */
+
+.dialog--menu {
+  box-sizing: border-box;
+  width: min(1100px, calc(100vw - 32px));
+  height: calc(100dvh - 32px);
+  max-height: none;
+  max-width: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The [open] guard keeps the closed dialog hidden despite display: flex above. */
+.dialog--menu:not([open]) {
+  display: none;
+}
+
+.menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.dialog--menu .tabs {
+  flex-wrap: nowrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.menu__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.menu__grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.menu-dish {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.menu-dish--locked {
+  opacity: 0.5;
+}
+
+.menu-dish__photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  background: #2b2a2c;
+  cursor: zoom-in;
+}
+
+.menu-dish__photo--placeholder {
+  cursor: default;
+  background:
+    radial-gradient(circle at 50% 45%, #e9e1cf 0 22%, transparent 23%),
+    radial-gradient(circle at 50% 45%, rgba(212, 175, 55, 0.6) 0 24%, transparent 25%),
+    linear-gradient(160deg, #3a3238, #1a161d);
+}
+
+.menu-dish__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-dish__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
+
+.menu-dish__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--gold-soft);
+}
+
+.menu-dish__description,
+.menu-dish__effect,
+.menu-dish__price,
+.menu-dish__lock {
+  margin: 0;
+  font-size: 14px;
+}
+
+.menu-dish__description {
+  color: var(--muted);
+}
+
+.menu-dish__effect {
+  color: var(--text);
+}
+
+.menu-dish__price {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.menu-dish__lock {
+  color: var(--gold-soft);
+  font-style: italic;
+}
+
+.dialog--photo {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: 12px;
+  text-align: center;
+}
+
+.dialog--photo .btn--icon {
+  float: right;
+}
+
+.menu-photo__img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100dvh - 120px);
+  margin: 0 auto;
+  border-radius: 6px;
+}
+
+.menu-photo__caption {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  color: var(--gold-soft);
+}
+
+@media (max-width: 640px) {
+  .dialog--menu {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .menu__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog--menu .tabs {
+    overflow-x: auto;
+  }
+}

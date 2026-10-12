@@ -24,6 +24,8 @@ export interface DrawerExtras {
   history?: DrawerPanel | undefined;
   /** The master opens the Arquivo de registros even before it is built. */
   openArchive?: (() => void) | undefined;
+  /** Likewise for the tavern menu. */
+  openMenu?: (() => void) | undefined;
 }
 
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
@@ -130,6 +132,7 @@ export class InfoDrawer {
         session: this.session,
         act: this.act,
         openArchive: this.extras.openArchive,
+        openMenu: this.extras.openMenu,
       });
       return this.extras.invites ? [...tools, this.extras.invites.element] : tools;
     }

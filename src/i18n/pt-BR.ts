@@ -3,6 +3,7 @@ import type {
   ArchiveChange,
   JobEffect,
   LogEntry,
+  Meal,
   NpcReleaseReason,
   NpcStatus,
   ResearchStatus,
@@ -371,6 +372,22 @@ export const t = {
   characters: {
     portrait: 'Retrato (chave do assets.json ou URL)',
     newCharacter: 'Novo personagem',
+  },
+
+  menu: {
+    title: 'Cardápio da Taverna',
+    open: 'Ver cardápio',
+    panelHint: 'Café da manhã, almoço e janta servidos na Taverna.',
+    close: 'Fechar cardápio',
+    meals: { breakfast: 'Café da manhã', lunch: 'Almoço', dinner: 'Janta' } satisfies Record<
+      Meal,
+      string
+    >,
+    lockedAt: (level: number) => `Disponível na Taverna nv. ${level}`,
+    notBuilt: 'A Taverna ainda não foi construída: por enquanto nada é servido.',
+    empty: 'Nenhum prato nesta refeição.',
+    enlarge: (name: string) => `Ampliar a foto: ${name}`,
+    closePhoto: 'Fechar a foto',
   },
 
   archive: {

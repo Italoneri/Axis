@@ -19,7 +19,13 @@ export function renderMasterTools(
     session,
     act,
     openArchive,
-  }: { session: MasterAccess; act: Act; openArchive?: (() => void) | undefined },
+    openMenu,
+  }: {
+    session: MasterAccess;
+    act: Act;
+    openArchive?: (() => void) | undefined;
+    openMenu?: (() => void) | undefined;
+  },
 ): HTMLElement[] {
   return [
     timeSection(store),
@@ -30,6 +36,15 @@ export function renderMasterTools(
             t.archive.title,
             el('p', { class: 'panel__hint' }, t.archive.panelHint),
             el('button', { class: 'btn', type: 'button', onclick: openArchive }, t.archive.open),
+          ),
+        ]
+      : []),
+    ...(openMenu
+      ? [
+          section(
+            t.menu.title,
+            el('p', { class: 'panel__hint' }, t.menu.panelHint),
+            el('button', { class: 'btn', type: 'button', onclick: openMenu }, t.menu.open),
           ),
         ]
       : []),

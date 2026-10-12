@@ -1,6 +1,6 @@
 import { blockReasonText, t } from '../i18n/pt-BR';
 import type { SlotType } from '../map/layout';
-import { findBuilding, findSlot } from '../model/catalog';
+import { findBuilding, findSlot, TAVERN_BUILDING_ID } from '../model/catalog';
 import type { BuildingDef, BuildingLevel, Cost, GameState, PlacedBuilding } from '../model/schema';
 import {
   activeLevel,
@@ -38,6 +38,7 @@ export class SlotPanel {
     private readonly store: GameStore,
     private readonly session: MasterAccess,
     private readonly archive: { store: ArchiveStore; open: () => void },
+    private readonly openMenu: () => void,
   ) {
     store.subscribe(() => this.render());
     archive.store.subscribe(() => this.render());
@@ -295,7 +296,19 @@ export class SlotPanel {
     if (placed.buildingId === STUDY_STATION_ID) {
       return [this.researchArchive.render(this.store.catalog, state)];
     }
+    if (placed.buildingId === TAVERN_BUILDING_ID) return [this.menuSection()];
     return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
+  }
+
+  /** The Taverna, once built: the way into the menu window. */
+  private menuSection(): HTMLElement {
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.menu.title),
+      el('p', { class: 'panel__hint' }, t.menu.panelHint),
+      button(t.menu.open, this.openMenu, { primary: true }),
+    );
   }
 
   /** The Arquivo, once built: the way into the records window. */
