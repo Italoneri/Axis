@@ -165,6 +165,15 @@ Os registros da campanha (relatórios, formulários, anotações sobre personage
 - **Colar registros:** cole o texto do Discord. Cada linha só de traços (`-----`, 5 ou mais) separa um registro, e a primeira linha vira o título. Há uma prévia antes de salvar.
 - **Formatação do Discord:** `**negrito**`, `*itálico*`/`_itálico_`, `__sublinhado__`, `~~riscado~~`, `>`/`>>>` citação, listas `-`/`*`/`1.`, títulos `#`/`##`/`###` e linha de traços. O editor tem o botão **Prévia**. O texto é montado sem `innerHTML`: o que não é marcação aparece literal.
 - **Limites:** título até 200 caracteres e nota até 20.000.
+- **Imagens:** no editor da nota, **Anexar imagem**, arrastar e soltar ou colar com Ctrl+V (prints do Discord). Aceita JPG, PNG, WebP e GIF (fica a imagem parada). Antes de enviar, o navegador reduz o lado maior para até 2000 px, grava em WebP (ou JPEG, se o navegador não gera WebP) e faz uma miniatura de 320 px.
+  - **Limites** (`IMAGE_LIMITS` em `src/systems/ArchiveImages.ts`): original até 10 MB, até 2 MB depois de comprimida e 12 imagens por nota. Acima disso a imagem é recusada com o motivo.
+  - Cada imagem tem legenda opcional, que entra na busca, e pode ser reordenada. Remover uma imagem já salva vale na hora.
+  - A nota mostra as miniaturas abaixo do texto. Clicar abre a imagem ampliada, com setas (ou ← →) para passar entre elas, zoom para o tamanho real e Esc para fechar.
+  - Dá para criar uma nota só com imagens: o título continua obrigatório.
+  - As imagens seguem a nota: vão para a lixeira e voltam com ela. Só esvaziar a lixeira apaga os arquivos. Imagens de notas `mestre` nunca chegam aos jogadores.
+  - **Onde ficam:** offline, no IndexedDB do navegador (`axis-base-builder:archive-images`); online, no bucket privado `archive-images` do Supabase Storage, em `game_id/note_id/image_id.webp`, exibidas com links assinados de 10 minutos. Os dados de cada imagem (legenda, ordem, tamanho) ficam na própria nota (`images`).
+  - **Exportar save:** com imagens, o arquivo vira um `.zip` (`save.json` mais a pasta `images/`). **Importar save** aceita `.json` e `.zip`.
+  - **Publicar a mudança online:** `npx supabase db push` (coluna, bucket e regras de acesso) e `npm run deploy:functions` (o log ganhou "anexou"/"removeu uma imagem").
 - **Log:** toda ação vira uma entrada com quem fez ("Thorin criou o tópico Pets", "Mestre moveu 'Zolt-Raak' de NPCs para Jogadores"), menos as que envolvem notas `mestre`.
 - **Onde fica:** fora do `GameState`. Offline, em `localStorage` (`axis-base-builder:archive`); online, nas tabelas `archive_topics` e `archive_notes`. **Exportar/Importar save** levam o arquivo junto, na chave `archive`.
 
