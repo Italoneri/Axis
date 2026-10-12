@@ -19,9 +19,9 @@ create temporary table fixture as select id as game_id from public.games where n
 grant select on fixture to authenticated;
 
 insert into public.players (game_id, user_id, role, character_id)
-select game_id, '00000000-0000-0000-0000-00000000000b', 'player', 'thorin' from fixture
+select game_id, '00000000-0000-0000-0000-00000000000b'::uuid, 'player', 'thorin' from fixture
 union all
-select game_id, '00000000-0000-0000-0000-00000000000d', 'player', 'bia' from fixture;
+select game_id, '00000000-0000-0000-0000-00000000000d'::uuid, 'player', 'bia' from fixture;
 
 -- ---------------------------------------------------------------- the master writes
 
