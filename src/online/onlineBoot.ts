@@ -13,6 +13,8 @@ import { showCreateGame, showLogin, showMessage } from './screens';
 import type { OnlineConfig } from './config';
 import { createSupabase, supabaseArchiveBackend, supabaseBackend } from './supabase';
 import { SupabaseArchiveRepository } from './SupabaseArchiveRepository';
+import type { ArchiveImageStore } from '../persistence/ArchiveImageStore';
+import { indexedDbBlobTable, LocalImageStore } from '../persistence/LocalImageStore';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
 
 export interface Membership {
@@ -25,6 +27,7 @@ export interface Membership {
 export interface OnlineGame {
   repository: SupabaseRepository;
   archiveRepository: SupabaseArchiveRepository;
+  archiveImages: ArchiveImageStore;
   /** Who writes in the Arquivo de registros: fixed by the login. */
   archiveActor: Actor;
   membership: Membership;
@@ -80,6 +83,7 @@ export async function bootOnline(
       supabaseArchiveBackend(client),
       membership.gameId,
     ),
+    archiveImages: new LocalImageStore(indexedDbBlobTable()),
     archiveActor: onlineContext(membership).actor,
     membership,
     access: new OnlineAccess(membership.role, signOut),

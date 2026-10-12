@@ -1,12 +1,20 @@
 import type { Actor } from './commands/schema';
 import type { ArchiveChange } from './model/schema';
+import type {
+  ArchiveImageStore,
+  ImageFiles,
+  ImageRef,
+  ImageVariant,
+} from './persistence/ArchiveImageStore';
 import type { ArchiveRepository } from './persistence/ArchiveRepository';
 import {
+  droppedImages,
   EMPTY_ARCHIVE,
   visibleArchive,
   type Archive,
   type ArchiveCommand,
   type ArchiveError,
+  type ArchiveImage,
 } from './systems/Archive';
 
 export interface ArchiveHooks {
@@ -30,17 +38,22 @@ export class ArchiveStore {
   private readonly listeners = new Set<() => void>();
 
   /** A failed first load is reported, not fatal: the game stays playable and the window reloads. */
-  static async open(repository: ArchiveRepository, hooks: ArchiveHooks): Promise<ArchiveStore> {
+  static async open(
+    repository: ArchiveRepository,
+    images: ArchiveImageStore,
+    hooks: ArchiveHooks,
+  ): Promise<ArchiveStore> {
     try {
-      return new ArchiveStore(repository, hooks, await repository.load());
+      return new ArchiveStore(repository, images, hooks, await repository.load());
     } catch (error) {
       hooks.onPersistError(error);
-      return new ArchiveStore(repository, hooks, EMPTY_ARCHIVE);
+      return new ArchiveStore(repository, images, hooks, EMPTY_ARCHIVE);
     }
   }
 
   private constructor(
     private readonly repository: ArchiveRepository,
+    private readonly images: ArchiveImageStore,
     private readonly hooks: ArchiveHooks,
     initial: Archive,
   ) {
@@ -86,6 +99,33 @@ export class ArchiveStore {
     });
   }
 
+  /**
+   * Stores the files of an image the editor is attaching, before the note is
+   * saved. Resolves to whether it worked (failures are already reported).
+   */
+  async uploadImage(noteId: string, image: ArchiveImage, files: ImageFiles): Promise<boolean> {
+    try {
+      await this.images.put({ noteId, image }, files);
+      return true;
+    } catch (error) {
+      this.hooks.onPersistError(error);
+      return false;
+    }
+  }
+
+  /** Files uploaded by an editor that was then cancelled, so they never reached a note. */
+  discardImages(noteId: string, images: readonly ArchiveImage[]): Promise<void> {
+    return this.removeFiles(images.map((image) => ({ noteId, image })));
+  }
+
+  imageUrl(noteId: string, image: ArchiveImage, variant: ImageVariant): Promise<string> {
+    return this.images.url({ noteId, image }, variant);
+  }
+
+  readImage(noteId: string, image: ArchiveImage, variant: ImageVariant): Promise<Blob | null> {
+    return this.images.read({ noteId, image }, variant);
+  }
+
   /** An imported save brings its archive along. */
   replace(archive: Archive): Promise<boolean> {
     return this.enqueue(async () => {
@@ -108,12 +148,25 @@ export class ArchiveStore {
         this.hooks.onRefused(result.error);
         return false;
       }
+      const before = this.archive;
       this.show(result.archive);
       if (result.change) this.hooks.onLogged(result.change);
+      // Images removed from a note, or whose note left the trash for good, lose their files.
+      await this.removeFiles(droppedImages(before, result.archive));
       return true;
     } catch (error) {
       this.hooks.onPersistError(error);
       return false;
+    }
+  }
+
+  /** A file left behind only costs space, so a failure here is logged, not reported. */
+  private async removeFiles(refs: readonly ImageRef[]): Promise<void> {
+    if (refs.length === 0) return;
+    try {
+      await this.images.remove(refs);
+    } catch (error) {
+      console.warn('[archive] could not remove image files', error);
     }
   }
 

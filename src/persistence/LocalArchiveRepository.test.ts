@@ -4,6 +4,7 @@ import type { Actor } from '../commands/schema';
 import { EMPTY_ARCHIVE, type ArchiveImage } from '../systems/Archive';
 import { memoryStorage } from '../systems/testFixtures';
 import { ARCHIVE_STORAGE_KEY, LocalArchiveRepository } from './LocalArchiveRepository';
+import { LocalImageStore, memoryBlobTable } from './LocalImageStore';
 
 const NOW = '2026-10-11T12:00:00.000Z';
 const master: Actor = { role: 'master' };
@@ -44,7 +45,9 @@ describe('ArchiveStore', () => {
   async function open(viewer: () => Actor) {
     const logged: unknown[] = [];
     const refused: unknown[] = [];
-    const store = await ArchiveStore.open(new LocalArchiveRepository(memoryStorage()), {
+    const files = memoryBlobTable();
+    const images = new LocalImageStore(files, { create: () => 'blob:x', revoke: () => undefined });
+    const store = await ArchiveStore.open(new LocalArchiveRepository(memoryStorage()), images, {
       viewer,
       now: () => NOW,
       onLogged: (change) => logged.push(change),
@@ -53,7 +56,7 @@ describe('ArchiveStore', () => {
         throw error;
       },
     });
-    return { store, logged, refused };
+    return { store, logged, refused, files };
   }
 
   it('logs public changes and hides master notes from players', async () => {
@@ -74,5 +77,35 @@ describe('ArchiveStore', () => {
     const { store, refused } = await open(() => thorin);
     expect(await store.dispatch({ type: 'trash_empty' })).toBe(false);
     expect(refused).toEqual(['forbidden']);
+  });
+
+  it('removes image files when a note drops them or leaves the trash for good', async () => {
+    const { store, files } = await open(() => master);
+    const image = (id: string): ArchiveImage => ({
+      id,
+      caption: '',
+      width: 10,
+      height: 10,
+      bytes: 4,
+      format: 'webp',
+    });
+    const blobs = { full: new Blob(['full']), thumb: new Blob(['thumb']) };
+    await store.dispatch(topic);
+    await store.uploadImage('carta', image('a'), blobs);
+    await store.uploadImage('carta', image('b'), blobs);
+    await store.uploadImage('carta', image('nunca-salva'), blobs);
+    await store.discardImages('carta', [image('nunca-salva')]);
+    await store.dispatch({ ...secret, id: 'carta', images: [image('a'), image('b')] });
+    expect(files.keys()).toHaveLength(4);
+
+    await store.dispatch({ type: 'note_image_remove', noteId: 'carta', imageId: 'a' });
+    expect(files.keys()).toEqual(['carta/b.webp', 'carta/b.thumb.webp']);
+
+    await store.dispatch({ type: 'note_remove', noteId: 'carta' });
+    expect(files.keys()).toHaveLength(2);
+    await store.dispatch({ type: 'note_restore', noteId: 'carta' });
+    await store.dispatch({ type: 'note_remove', noteId: 'carta' });
+    await store.dispatch({ type: 'trash_empty' });
+    expect(files.keys()).toEqual([]);
   });
 });

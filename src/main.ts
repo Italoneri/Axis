@@ -10,6 +10,8 @@ import { PreloadScene } from './scenes/PreloadScene';
 import { ArchiveStore } from './archiveStore';
 import { LocalArchiveRepository } from './persistence/LocalArchiveRepository';
 import type { ArchiveRepository } from './persistence/ArchiveRepository';
+import type { ArchiveImageStore } from './persistence/ArchiveImageStore';
+import { indexedDbBlobTable, LocalImageStore } from './persistence/LocalImageStore';
 import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore } from './store';
 import { ArchiveWindow, CHARACTER_MEMORY_KEY } from './ui/archive/ArchiveWindow';
@@ -54,6 +56,7 @@ interface Mode {
   isOnline: boolean;
   repository: GameRepository;
   archiveRepository: ArchiveRepository;
+  archiveImages: ArchiveImageStore;
   /** Online, the login fixes who writes in the archive; offline the window asks. */
   archiveActor?: Actor;
   session: MasterAccess;
@@ -74,6 +77,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
       isOnline: false,
       repository: new LocalRepository(window.localStorage, catalog, window),
       archiveRepository: new LocalArchiveRepository(window.localStorage, window),
+      archiveImages: new LocalImageStore(indexedDbBlobTable()),
       session,
       contextFor: (command) => commandContext(session, command),
       drawerExtras: () => ({}),
@@ -86,6 +90,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
     isOnline: true,
     repository: game.repository,
     archiveRepository: game.archiveRepository,
+    archiveImages: game.archiveImages,
     archiveActor: game.archiveActor,
     session: game.access,
     contextFor: game.contextFor,
@@ -126,7 +131,7 @@ async function start(): Promise<void> {
       notify(mode.isOnline ? t.online.syncFailed : t.save.storageFailed, 'error');
     },
   });
-  const archive = await ArchiveStore.open(mode.archiveRepository, {
+  const archive = await ArchiveStore.open(mode.archiveRepository, mode.archiveImages, {
     viewer: archiveViewer,
     onLogged: (change) => void store.dispatch({ type: 'archive_log', change }),
     onRefused: (error) => notify(t.archive.errors[error], 'error'),
