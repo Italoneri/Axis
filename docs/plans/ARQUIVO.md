@@ -100,3 +100,83 @@ O save exportado ganha uma chave `archive` opcional (`{ topics, notes }`). Saves
 5. Migração, pgTAP e repositório online (antes da janela, que liga os dois modos).
 6. Janela e entradas na interface.
 7. README.
+
+---
+
+# Imagens anexadas às notas
+
+Fotos de anotações, prints do Discord e mapas anexados às notas.
+
+## Metadados: dentro da nota (`images`)
+
+Cada nota ganha `images: ArchiveImage[]` (no máximo 12), e a posição no array é a ordem:
+
+- `id`, `caption` (legenda, até 300 caracteres, pode ser vazia), `width`, `height`, `bytes` (tamanho comprimido) e `format` (`webp` ou `jpeg`, o mesmo da miniatura).
+
+Online fica numa coluna **`images jsonb`** em `archive_notes`, e não numa tabela própria, porque assim:
+
+- as imagens seguem a nota de graça: RLS e visibilidade `mestre`, lixeira (`deleted_at`), realtime, `replace_archive` e o export;
+- uma tabela à parte exigiria repetir as policies, e ainda haveria uma janela em que a imagem existe e a nota não.
+
+12 itens pequenos não pesam na linha. Saves e arquivos antigos sem `images` são lidos como `[]`.
+
+## Regras (puras)
+
+- **`note_create` / `note_update`** recebem a lista `images` completa, com ids únicos e no máximo 12. Os blobs já foram enviados quando o editor anexou (veja abaixo).
+  - Se a lista tem imagens novas, o log é "Bia anexou 2 imagens a 'Mapa do Portão Oito'". Sem imagens novas, segue "editou".
+- **`note_image_remove { noteId, imageId }`**: remover uma imagem já salva vale **na hora**, sem esperar o "Salvar" do editor. Log: "Gus removeu uma imagem de '...'".
+- **Lixeira:** a nota leva as imagens junto e as devolve ao ser restaurada. **`droppedImages(antes, depois)`** lista as imagens que deixaram de existir: removidas da nota ou cuja nota foi apagada de vez ao esvaziar a lixeira. Só essas têm os arquivos apagados.
+- **Busca:** procura também nas legendas.
+- **Notas `mestre`:** nada sobre elas vai para o log, como já é hoje.
+
+## Arquivos (blobs)
+
+`ArchiveImageStore` tem `put`, `url`, `read` e `remove`, com chave `nota/imagem` e o tipo (`full` ou `thumb`).
+
+| Modo    | Onde                                                                                             | URL                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Offline | IndexedDB `axis-base-builder:archive-images`                                                     | `URL.createObjectURL`, guardada em cache                               |
+| Online  | bucket privado `archive-images`, `game_id/note_id/image_id.webp` e `image_id.thumb.webp` ao lado | signed URL de 10 min, guardada até perto de expirar e renovada sozinha |
+
+- **Fluxo do editor:**
+  1. Anexar (seletor, arrastar ou Ctrl+V) valida o arquivo, comprime e envia o blob na hora. O editor mostra o arquivo local.
+  2. "Cancelar" apaga os blobs enviados e não salvos.
+  3. "Salvar" grava a lista.
+- **Apagar os arquivos:** o `ArchiveStore` faz isso depois de cada escrita aceita, a partir de `droppedImages`.
+- **Compressão no navegador:**
+  - lado maior até 2000 px, WebP 0,85 (JPEG 0,85 se o navegador não gera WebP), miniatura de 320 px;
+  - GIF vira estático (o primeiro quadro);
+  - formatos aceitos: JPG, PNG, WebP e GIF;
+  - limites em `IMAGE_LIMITS`: original até 10 MB, comprimida até 2 MB, 12 por nota. Acima disso, a recusa vem com a mensagem do motivo.
+  - O cálculo das dimensões (`fitWithin`) e a validação (`checkImageFile`) são funções puras, com teste.
+
+## Storage (migração `20261012000000_archive_images.sql`)
+
+- Bucket privado, limite de 2 MB por objeto e apenas `image/webp` e `image/jpeg`.
+- `can_read_archive_image(nome)` e `can_write_archive_image(nome)` (`security definer`, para enxergar a visibilidade da nota) leem `game_id/note_id` do caminho:
+  - **ler:** a nota existe e quem pede a vê (mestre vê tudo); arquivo sem nota, só o mestre;
+  - **escrever ou apagar:** membro da mesa, e a nota ainda não existe (nota nova no editor) ou é uma que ele vê. Jogador nunca toca imagens de nota `mestre`; não membro, nada.
+- `replace_archive` passa a gravar `images`.
+- Testes pgTAP em `supabase/tests/archive_images.test.sql`.
+
+## Exportar/Importar
+
+- Sem imagens, o save continua um `.json`.
+- Com imagens, vira um **`.zip`**: `save.json` mais `images/<nota>/<imagem>.<ext>` e `.thumb.<ext>` (`fflate`; as imagens já estão comprimidas, então o zip só as guarda).
+- A importação aceita `.json` e `.zip`. Imagem faltando no zip não derruba a importação: a nota fica sem o arquivo e mostra o placeholder.
+- Online, exporta as imagens que quem exporta vê. Importar (só o mestre) grava as notas, envia as imagens e apaga as das notas antigas.
+
+## Publicação
+
+- `npx supabase db push`, por causa do bucket, das policies e da coluna.
+- `npm run deploy:functions`: o log ganha dois tipos de entrada que o servidor valida (`archive_log`).
+
+## Partes (um commit cada)
+
+1. Este plano.
+2. Regras e metadados (`Archive.ts`, log), limites e dimensões, com testes.
+3. Arquivos offline (IndexedDB), compressão e `ArchiveStore`.
+4. Online: migração, pgTAP e Storage no repositório.
+5. Interface: anexar, legendas, miniaturas e visualizador.
+6. Exportar/Importar com `.zip`.
+7. README.
