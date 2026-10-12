@@ -421,6 +421,9 @@ export class ArchiveWindow {
   private pasteInto(topic: ArchiveTopic): void {
     const node = pasteEditor({
       isMaster: this.isMaster,
+      existingTitles: this.deps.archive.current.notes
+        .filter((note) => note.topicId === topic.id)
+        .map((note) => note.title),
       onCancel: () => this.closeEditor(),
       onSave: async (records, visibility) => {
         const command: ArchiveCommand = {

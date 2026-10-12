@@ -7,7 +7,14 @@ import {
   type NoteFields,
   type NoteVisibility,
 } from '../../systems/Archive';
-import { splitPastedRecords, type PastedRecord } from '../../systems/ArchivePaste';
+import {
+  DEFAULT_TITLE_PREFIX,
+  nextRecordNumber,
+  numberedTitle,
+  splitPastedRecords,
+  type PastedRecord,
+  type PastedText,
+} from '../../systems/ArchivePaste';
 import { el } from '../dom';
 import { button, confirmButton, field, selectInput } from '../widgets';
 import type { AttachmentsEditor } from './imageAttachments';
@@ -206,12 +213,22 @@ function parseVisibility(value: string): NoteVisibility {
 
 export interface PasteEditorOptions {
   isMaster: boolean;
+  /** Of the topic's notes, trashed ones included: the numbering continues after them. */
+  existingTitles: readonly string[];
   onSave: (records: readonly PastedRecord[], visibility: NoteVisibility) => void;
   onCancel: () => void;
 }
 
-/** "Colar registros": the big paste, then a preview of the notes it becomes. */
-export function pasteEditor({ isMaster, onSave, onCancel }: PasteEditorOptions): HTMLElement {
+/** Room left in the title for the space and the number. */
+const PREFIX_LIMIT = TITLE_LIMIT - 10;
+
+/** "Colar registros": the big paste, then a preview of the numbered notes it becomes. */
+export function pasteEditor({
+  isMaster,
+  existingTitles,
+  onSave,
+  onCancel,
+}: PasteEditorOptions): HTMLElement {
   const text = el('textarea', { class: 'input archive-editor__text', rows: '16' });
   const visibility = selectInput({
     label: t.archive.visibility,
@@ -236,23 +253,33 @@ export function pasteEditor({ isMaster, onSave, onCancel }: PasteEditorOptions):
     );
 
   const showPreview = () => {
-    const records = splitPastedRecords(text.value);
-    const isBlocked = records.length === 0 || records.some((r) => r.isTooLong);
-    root.replaceChildren(
-      records.length === 0
-        ? el('p', { class: 'notice' }, t.archive.pasteEmpty)
-        : el('ol', { class: 'archive-paste' }, ...records.map(pastedItem)),
-      ...(isMaster ? [field(t.archive.visibility, visibility)] : []),
-      el(
-        'div',
-        { class: 'row row--end' },
-        button(t.archive.pasteBack, showText),
-        button(
-          t.archive.pasteSave(records.length),
-          () => onSave(records, isMaster ? parseVisibility(visibility.value) : 'todos'),
-          { primary: true, disabled: isBlocked },
+    const texts = splitPastedRecords(text.value);
+    const items = texts.map(pastedItem);
+    const save = button(
+      t.archive.pasteSave(texts.length),
+      () =>
+        onSave(
+          items.map(({ text, title }) => ({ ...text, title: title.value.trim() })),
+          isMaster ? parseVisibility(visibility.value) : 'todos',
         ),
-      ),
+      { primary: true },
+    );
+    const updateSave = () => {
+      save.disabled =
+        items.length === 0 || items.some((item) => item.text.isTooLong || !item.title.value.trim());
+    };
+    items.forEach((item) => item.title.addEventListener('input', updateSave));
+    const numbering = numberingFields(existingTitles, (prefix, start) => {
+      items.forEach((item, index) => (item.title.value = numberedTitle(prefix, start + index)));
+      updateSave();
+    });
+    root.replaceChildren(
+      items.length === 0
+        ? el('p', { class: 'notice' }, t.archive.pasteEmpty)
+        : el('ol', { class: 'archive-paste' }, ...items.map((item) => item.node)),
+      ...(items.length === 0 ? [] : [numbering]),
+      ...(isMaster ? [field(t.archive.visibility, visibility)] : []),
+      el('div', { class: 'row row--end' }, button(t.archive.pasteBack, showText), save),
     );
   };
 
@@ -261,14 +288,62 @@ export function pasteEditor({ isMaster, onSave, onCancel }: PasteEditorOptions):
   return root;
 }
 
-function pastedItem(record: PastedRecord): HTMLElement {
+/**
+ * "Prefixo do título" and "Começar em". Changing the prefix suggests its next
+ * free number; either change renumbers every title (dropping hand edits).
+ */
+function numberingFields(
+  existingTitles: readonly string[],
+  renumber: (prefix: string, start: number) => void,
+): HTMLElement {
+  const prefix = el('input', {
+    class: 'input',
+    type: 'text',
+    maxlength: String(PREFIX_LIMIT),
+    value: DEFAULT_TITLE_PREFIX,
+  });
+  const start = el('input', { class: 'input archive-editor__number', type: 'number', min: '1' });
+  const startNumber = () => Math.max(1, Math.floor(Number(start.value)) || 1);
+  const suggestStart = () => {
+    start.value = String(nextRecordNumber(existingTitles, prefix.value));
+  };
+  prefix.addEventListener('input', () => {
+    suggestStart();
+    renumber(prefix.value, startNumber());
+  });
+  start.addEventListener('input', () => renumber(prefix.value, startNumber()));
+  suggestStart();
+  renumber(prefix.value, startNumber());
   return el(
+    'div',
+    { class: 'row' },
+    field(t.archive.pastePrefix, prefix),
+    field(t.archive.pasteStart, start),
+  );
+}
+
+interface PastedItem {
+  text: PastedText;
+  title: HTMLInputElement;
+  node: HTMLElement;
+}
+
+function pastedItem(text: PastedText): PastedItem {
+  const title = el('input', {
+    class: 'input input--wide',
+    type: 'text',
+    maxlength: String(TITLE_LIMIT),
+    required: true,
+    'aria-label': t.archive.pasteTitle,
+  });
+  const node = el(
     'li',
     { class: 'archive-paste__item' },
-    el('strong', {}, record.title),
-    el('span', { class: 'panel__hint' }, t.archive.pasteChars(record.body.length)),
-    record.isTooLong && el('span', { class: 'notice' }, t.archive.pasteTooLong(BODY_LIMIT)),
+    title,
+    el('span', { class: 'panel__hint' }, t.archive.pasteChars(text.body.length)),
+    text.isTooLong && el('span', { class: 'notice' }, t.archive.pasteTooLong(BODY_LIMIT)),
   );
+  return { text, title, node };
 }
 
 // ---------------------------------------------------------------- topic editor

@@ -1451,6 +1451,10 @@ details > summary {
   text-align: center;
 }
 
+.archive-editor__number {
+  width: 96px;
+}
+
 .archive-paste {
   margin: 0;
   padding-left: 22px;

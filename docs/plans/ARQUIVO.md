@@ -44,7 +44,7 @@ Offline, as notas `mestre` ficam só escondidas pela interface: é o mesmo naveg
 
 ### Colar registros
 
-`splitPastedRecords(text)` divide a cada linha só de traços (5 ou mais). Cada pedaço vira uma nota: o título é a primeira linha não vazia (sem `**` nem `#`, cortado em 200) e o texto é o resto. Uma prévia mostra as notas antes de salvar; texto acima do limite marca a nota e bloqueia o salvamento.
+`splitPastedRecords(text)` divide a cada linha só de traços (5 ou mais). Cada pedaço vira uma nota com o texto inteiro (só as linhas vazias das pontas saem). O título é numerado (`numberedTitle`): prefixo (padrão `Registro`, vazio = só o número) mais um número que começa no próximo livre do tópico (`nextRecordNumber`, contando a lixeira); cada título pode ser editado na prévia. Uma prévia mostra as notas antes de salvar; texto acima do limite marca a nota e bloqueia o salvamento.
 
 ## Texto formatado (markdown do Discord)
 

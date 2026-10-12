@@ -445,9 +445,12 @@ export const t = {
     byline: (author: string, editor?: string) =>
       editor && editor !== author ? `por ${author} · editado por ${editor}` : `por ${author}`,
     pasteHint:
-      'Cole o texto do Discord. Cada linha só de traços (-----) separa um registro; a primeira linha vira o título.',
+      'Cole o texto do Discord. Cada linha só de traços (-----) separa um registro; o texto vai inteiro para a nota e o título é numerado.',
     pastePreview: 'Pré-visualizar',
     pasteBack: 'Voltar',
+    pastePrefix: 'Prefixo do título',
+    pasteStart: 'Começar em',
+    pasteTitle: 'Título do registro',
     pasteSave: (count: number) => `Salvar ${count} ${count === 1 ? 'registro' : 'registros'}`,
     pasteEmpty: 'Nenhum registro encontrado no texto colado.',
     pasteTooLong: (limit: number) =>
