@@ -12,7 +12,7 @@ import {
 import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
 import { moveOutButton } from '../SlotNpcs';
-import { formatCount, formatWage } from '../format';
+import { formatCount, formatGold, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
   button,
@@ -134,6 +134,12 @@ export class NpcPanel {
       npc.description && el('p', { class: 'item__desc' }, npc.description),
       this.skillBars(npc),
       el('p', { class: 'card__sub' }, formatWage(catalog, npc.wage)),
+      (npc.earnings ?? 0) > 0 &&
+        el(
+          'p',
+          { class: 'card__sub' },
+          t.missions.npcEarned(formatGold(catalog, npc.earnings ?? 0)),
+        ),
       this.homeRow(npc),
       this.jobRow(npc),
       session.isActive && this.masterControls(npc),

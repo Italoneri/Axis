@@ -4,6 +4,7 @@ import type {
   JobEffect,
   LogEntry,
   Meal,
+  MissionDifficulty,
   NpcReleaseReason,
   NpcStatus,
   ResearchStatus,
@@ -395,6 +396,94 @@ export const t = {
     empty: 'Nenhum prato nesta refeição.',
     enlarge: (name: string) => `Ampliar a foto: ${name}`,
     closePhoto: 'Fechar a foto',
+  },
+
+  missions: {
+    title: 'Quadro de missões',
+    open: 'Abrir quadro de missões',
+    panelHint: 'Contratos pendurados por você e pelo grupo. Vá com o grupo ou envie NPCs.',
+    counts: (open: number, active: number) =>
+      `${open} ${open === 1 ? 'aberta' : 'abertas'} · ${active} em andamento`,
+    close: 'Fechar quadro',
+    closeFocus: 'Fechar missão',
+    tabs: {
+      abertas: 'Abertas',
+      andamento: 'Em andamento',
+      concluidas: 'Concluídas',
+    },
+    tabCount: (label: string, count: number) => `${label} (${count})`,
+    empty: {
+      abertas: 'Nenhum contrato no quadro. Pendure o primeiro em "Nova missão".',
+      andamento: 'Ninguém está em missão agora.',
+      concluidas: 'Nenhuma missão concluída ainda.',
+    },
+    notBuilt: 'A Guilda foi removida: o quadro só abre de novo quando ela for reconstruída.',
+    newMission: 'Nova missão',
+    editMission: 'Editar missão',
+    titleField: 'Título',
+    requester: 'Solicitante',
+    location: 'Local',
+    description: 'Descrição',
+    descriptionHint:
+      'Aceita o mesmo markdown do Arquivo: **negrito**, *itálico*, listas, > citação.',
+    reward: 'Recompensa',
+    rewardTotal: 'Valor',
+    days: 'Tempo esperado (dias)',
+    difficulty: 'Dificuldade',
+    difficulties: {
+      facil: 'Fácil',
+      media: 'Média',
+      dificil: 'Difícil',
+    } satisfies Record<MissionDifficulty, string>,
+    pin: 'Pendurar no quadro',
+    createdBy: (who: string | undefined, day: number) =>
+      who ? `Pendurada por ${who} no dia ${day}` : `Pendurada no dia ${day}`,
+    expected: (days: number) => `Tempo esperado: ${days === 1 ? '1 dia' : `${days} dias`}`,
+    guildBonus: (percent: number, total: string) =>
+      `Salão da Guilda: contratos pagam ${percent}% a mais (${total}).`,
+    takeParty: 'O grupo vai',
+    sendNpcs: 'Enviar NPCs',
+    chooseNpcs: 'Escolha quem vai',
+    noNpcs: 'Nenhum NPC na Axis ainda.',
+    send: (count: number) =>
+      count === 0 ? 'Escolha ao menos um NPC' : `Enviar ${count} ${count === 1 ? 'NPC' : 'NPCs'}`,
+    npcSplit: (commission: number, each: string, camp: string) =>
+      `Se der certo: ${each} para cada NPC e ${camp} para o Acampamento (comissão de ${commission}%).`,
+    worksAt: (place: string) => `trabalha em ${place}`,
+    noPost: 'sem posto',
+    unavailable: 'indisponível',
+    status: {
+      aberta: 'Aberta',
+      grupo: 'Em andamento (grupo)',
+      npcs: 'Em andamento (NPCs)',
+      aguardando: 'Aguardando o mestre',
+      concluida: 'Concluída',
+    },
+    partyAway: (day: number) => `O grupo partiu no dia ${day}.`,
+    partyHint: 'Quando o grupo voltar, o mestre marca se a missão foi concluída ou falhou.',
+    npcsAway: (names: readonly string[], day: number, left: number) =>
+      `${listText(names)} ${names.length === 1 ? 'volta' : 'voltam'} no dia ${day} (faltam ${left === 1 ? '1 dia' : `${left} dias`}).`,
+    npcsBack: (names: readonly string[]) =>
+      `${listText(names)} ${names.length === 1 ? 'voltou' : 'voltaram'}. O mestre decide como foi.`,
+    waitMaster: 'Só o mestre marca o resultado.',
+    success: 'Concluída',
+    failure: 'Falhou',
+    npcSuccess: 'Sucesso',
+    npcFailure: 'Falha',
+    injured: 'Feridos na falha',
+    resultParty: (result: 'sucesso' | 'falha', camp: string) =>
+      result === 'sucesso'
+        ? `Concluída pelo grupo: ${camp} para o Acampamento.`
+        : 'O grupo falhou: ninguém recebeu.',
+    resultNpcs: (result: 'sucesso' | 'falha', npcs: string, camp: string) =>
+      result === 'sucesso'
+        ? `Concluída pelos NPCs: ${npcs} para eles e ${camp} para o Acampamento.`
+        : 'Os NPCs falharam: ninguém recebeu.',
+    resolvedOn: (day: number) => `Resolvida no dia ${day}.`,
+    team: (names: string) => `Equipe: ${names}.`,
+    hurt: (names: string) => `Voltaram feridos: ${names}.`,
+    seal: (difficulty: string) => `Dificuldade: ${difficulty}`,
+    npcEarned: (gold: string) => `Ganhou ${gold} em missões`,
   },
 
   archive: {

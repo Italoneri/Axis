@@ -59,6 +59,9 @@ export interface Catalog {
 /** The building whose panel opens the menu, and whose level unlocks dishes. */
 export const TAVERN_BUILDING_ID = 'tavern';
 
+/** The building whose panel opens the mission board. */
+export const GUILD_BUILDING_ID = 'guild';
+
 export interface RawCatalog {
   currencies: unknown;
   buildings: unknown;

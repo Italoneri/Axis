@@ -31,6 +31,7 @@ import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
 import { MenuWindow } from './ui/menu/MenuWindow';
+import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
 import type { Act } from './ui/widgets';
 
@@ -169,12 +170,13 @@ async function start(): Promise<void> {
     act,
     { ...mode.drawerExtras(store), openArchive, openMenu },
   );
+  const missionBoard = new MissionBoard({ game: store, session, act, memory });
   const panel = new SlotPanel(
     requireElement('panel'),
     store,
     session,
     { store: archive, open: openArchive },
-    openMenu,
+    { menu: openMenu, missions: () => missionBoard.open() },
   );
 
   mountTopBar(
