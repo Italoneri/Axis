@@ -168,6 +168,43 @@ Os registros da campanha (relatórios, formulários, anotações sobre personage
 - **Log:** toda ação vira uma entrada com quem fez ("Thorin criou o tópico Pets", "Mestre moveu 'Zolt-Raak' de NPCs para Jogadores"), menos as que envolvem notas `mestre`.
 - **Onde fica:** fora do `GameState`. Offline, em `localStorage` (`axis-base-builder:archive`); online, nas tabelas `archive_topics` e `archive_notes`. **Exportar/Importar save** levam o arquivo junto, na chave `archive`.
 
+## Taverna
+
+A **Taverna** tem um **cardápio** com café da manhã, almoço e janta.
+
+- **Onde abrir:** no painel da Taverna construída (nível ≥ 1), o botão **Ver cardápio**. O mestre também abre pelas ferramentas do mestre, mesmo sem a Taverna construída.
+- **Janela:** uma aba por refeição (ela lembra a última vista) e os pratos em cards com foto, nome, descrição, preço e efeito. Clicar na foto amplia. Pratos que pedem uma Taverna de nível maior aparecem esmaecidos com "Disponível na Taverna nv. 2": o cardápio cresce junto com a construção. No celular os cards ficam em uma coluna.
+- **Somente leitura:** o cardápio vem do JSON e muda com um novo deploy do site. Não passa por comando, banco nem save (e não precisa de `deploy:functions`).
+
+### Editar o cardápio
+
+Os pratos ficam em `src/data/tavern_menu.json`, validado no carregamento (`npm test` aponta o erro):
+
+```json
+{
+  "id": "pao_mel",
+  "meal": "breakfast",
+  "name": "Pão com mel",
+  "description": "Pão quente do forno da muralha, com mel escuro das colmeias do vale.",
+  "image": "menu.pao_mel",
+  "price": { "bronze": 2 },
+  "effect": "+1 PV temporário até o próximo descanso.",
+  "minLevel": 2
+}
+```
+
+- `meal`: `breakfast` (café da manhã), `lunch` (almoço) ou `dinner` (janta). Os pratos aparecem na ordem do arquivo.
+- `price`, `effect` e `minLevel` são opcionais. O preço é escrito em moedas de `currencies.json` e aparece agrupado como o salário dos NPCs (`{ "bronze": 12 }` vira "1 Prata e 2 Bronze"). `minLevel` vale 1 quando falta e não pode passar do nível máximo da Taverna.
+- `id` não pode repetir e `image` precisa existir no `assets.json`.
+
+### Trocar as fotos
+
+Cada foto fica em `public/assets/menu/<id>.jpg` e está registrada no `assets.json` como `menu.<id>`. Para usar a foto real, **substitua o arquivo com o mesmo nome** (JPG em 4:3, por exemplo 800×600; o card corta o excesso com `object-fit: cover`). Prato novo: crie o arquivo, adicione `"menu.<id>": "assets/menu/<id>.jpg"` no `assets.json` e o item no `tavern_menu.json`.
+
+- `npm run gen:placeholders` gera a imagem genérica (um prato na cor da refeição com o nome escrito) para os pratos sem foto e nunca sobrescreve arquivos existentes.
+- Se o arquivo de uma foto não existir, o card mostra um prato desenhado em CSS no lugar, sem quebrar a janela.
+- As fotos do cardápio não entram no carregamento do mapa: só são baixadas quando a janela abre.
+
 ## Online / Supabase
 
 > Em andamento (Fase 3). Plano completo em [`docs/plans/FASE3_SUPABASE.md`](docs/plans/FASE3_SUPABASE.md).
