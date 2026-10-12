@@ -411,6 +411,14 @@ button {
 
 .toasts {
   position: fixed;
+  /* Undo the popover defaults (centered box with border and background). */
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+  color: inherit;
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
@@ -1713,5 +1721,237 @@ details > summary {
 
   .dialog--menu .tabs {
     overflow-x: auto;
+  }
+}
+
+/* ---------- Arquivo de registros: imagens ---------- */
+
+.archive-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #2b2a2c;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.archive-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.archive-image.is-loading {
+  background: linear-gradient(90deg, #2b2a2c, #3a3238, #2b2a2c);
+}
+
+.archive-image--missing {
+  border: 1px dashed var(--border);
+  padding: 4px;
+}
+
+.archive-images {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.archive-images__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 120px;
+}
+
+.archive-images__open {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.archive-images__thumb {
+  width: 118px;
+  height: 90px;
+}
+
+.archive-images__caption {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.archive-note__image-count {
+  margin-left: 6px;
+}
+
+.archive-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.archive-editor.is-dropping .archive-attachments {
+  border-style: solid;
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.archive-attachments__bar {
+  justify-content: space-between;
+}
+
+.archive-attachments__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive-attachments__item {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.archive-attachments__thumb {
+  width: 80px;
+  height: 60px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.archive-attachments__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dialog--viewer {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(10, 8, 12, 0.97);
+  display: flex;
+  flex-direction: column;
+}
+
+/* The [open] guard keeps the closed dialog hidden despite display: flex above. */
+.dialog--viewer:not([open]) {
+  display: none;
+}
+
+.archive-viewer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+.archive-viewer__position {
+  margin-right: auto;
+  color: var(--muted);
+}
+
+.archive-viewer__stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.archive-viewer__figure {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.archive-viewer__image {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+/* Fit: big images shrink to the screen, small ones keep their size. */
+.archive-viewer__image img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.archive-viewer__figure.is-zoomed {
+  display: block;
+  overflow: auto;
+  cursor: zoom-out;
+}
+
+.archive-viewer__figure.is-zoomed .archive-viewer__image {
+  display: inline-block;
+  width: auto;
+  height: auto;
+}
+
+.archive-viewer__figure.is-zoomed .archive-viewer__image img {
+  width: auto;
+  height: auto;
+  max-width: none;
+}
+
+.archive-viewer__nav {
+  font-size: 24px;
+  min-width: 44px;
+  min-height: 64px;
+}
+
+.archive-viewer__caption {
+  margin: 0;
+  padding: 10px 16px 16px;
+  text-align: center;
+  color: var(--gold-soft);
+}
+
+@media (max-width: 640px) {
+  .archive-attachments__item {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .archive-attachments__item .row {
+    grid-column: 1 / -1;
+  }
+
+  .archive-viewer__nav {
+    min-width: 36px;
   }
 }

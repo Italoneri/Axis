@@ -14,7 +14,7 @@ import {
   type ArchiveError,
   type NoteVisibility,
 } from '../systems/Archive';
-import { IMAGE_LIMITS } from '../systems/ArchiveImages';
+import { IMAGE_LIMITS, type ImagePrepareError } from '../systems/ArchiveImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -460,6 +460,34 @@ export const t = {
     trashedNote: (title: string, topic: string) => `${title} (em ${topic})`,
     restore: 'Restaurar',
     emptyTrash: 'Esvaziar lixeira',
+    images: {
+      title: 'Imagens',
+      attach: 'Anexar imagem',
+      hint: 'Arraste imagens para cá ou cole com Ctrl+V (JPG, PNG, WebP ou GIF).',
+      caption: 'Legenda',
+      remove: 'Remover imagem',
+      moveUp: 'Mover a imagem para antes',
+      moveDown: 'Mover a imagem para depois',
+      uploading: (count: number) =>
+        `Enviando ${count} ${count === 1 ? 'imagem' : 'imagens'}… espere para salvar.`,
+      open: (position: number, total: number) => `Ampliar a imagem ${position} de ${total}`,
+      missing: 'Imagem indisponível',
+      viewer: 'Imagem anexada',
+      previous: 'Imagem anterior',
+      next: 'Próxima imagem',
+      close: 'Fechar imagem',
+      zoomIn: 'Ver em tamanho real',
+      zoomOut: 'Ajustar à tela',
+      position: (position: number, total: number) => `${position} de ${total}`,
+      errors: {
+        unsupported_format: 'formato não aceito (use JPG, PNG, WebP ou GIF).',
+        file_too_large: `arquivo acima de ${IMAGE_LIMITS.originalBytes / 1024 / 1024} MB.`,
+        too_many_images: `a nota já tem ${IMAGE_LIMITS.perNote} imagens, o máximo.`,
+        unreadable: 'não foi possível ler a imagem.',
+        compressed_too_large: `mesmo comprimida, a imagem passou de ${IMAGE_LIMITS.storedBytes / 1024 / 1024} MB.`,
+      } satisfies Record<ImagePrepareError, string>,
+      refused: (fileName: string, reason: string) => `${fileName}: ${reason}`,
+    },
     errors: {
       empty_name: 'Informe um nome (ou título).',
       duplicate_name: 'Já existe um tópico com esse nome.',

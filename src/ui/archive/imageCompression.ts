@@ -2,12 +2,10 @@ import {
   checkImageFile,
   fitWithin,
   IMAGE_LIMITS,
-  type ImageFileError,
+  type ImagePrepareError,
 } from '../../systems/ArchiveImages';
 import type { ImageFormat } from '../../systems/Archive';
 import type { ImageFiles } from '../../persistence/ArchiveImageStore';
-
-export type PrepareError = ImageFileError | 'unreadable' | 'compressed_too_large';
 
 export interface PreparedImage {
   width: number;
@@ -17,7 +15,8 @@ export interface PreparedImage {
   files: ImageFiles;
 }
 
-export type PrepareResult = { ok: true; image: PreparedImage } | { ok: false; error: PrepareError };
+export type PrepareResult =
+  { ok: true; image: PreparedImage } | { ok: false; error: ImagePrepareError };
 
 /**
  * Checks, shrinks and re-encodes a picked, dropped or pasted file before it is

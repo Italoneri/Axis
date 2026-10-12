@@ -145,6 +145,7 @@ async function start(): Promise<void> {
     game: store,
     memory,
     canPickCharacter: () => !mode.isOnline && !session.isActive,
+    notify,
   });
   const openArchive = () => archiveWindow.open();
   const menuWindow = new MenuWindow({ game: store, memory });

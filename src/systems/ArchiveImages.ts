@@ -19,6 +19,8 @@ export const IMAGE_LIMITS = {
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
 
 export type ImageFileError = 'unsupported_format' | 'file_too_large' | 'too_many_images';
+/** Why a file was not attached: the checks above, or what decoding and compressing found. */
+export type ImagePrepareError = ImageFileError | 'unreadable' | 'compressed_too_large';
 
 /** A file the user offered, before anything is decoded. */
 export function checkImageFile(

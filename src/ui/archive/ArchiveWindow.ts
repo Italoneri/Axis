@@ -18,6 +18,8 @@ import {
 import { el } from '../dom';
 import type { UiMemory } from '../uiMemory';
 import { button, confirmButton, rememberedSelect } from '../widgets';
+import { attachmentsEditor } from './imageAttachments';
+import { openImageViewer } from './imageViews';
 import {
   noteCard,
   noteEditor,
@@ -36,6 +38,7 @@ export interface ArchiveWindowDeps {
   memory: UiMemory;
   /** Offline players pick who they are (as for deposits); online the login decides. */
   canPickCharacter: () => boolean;
+  notify: (message: string, tone?: 'error') => void;
 }
 
 /** What the right column shows besides the notes of the chosen topic. */
@@ -56,6 +59,8 @@ export class ArchiveWindow {
   /** Phones show one column at a time. */
   private step: 'topics' | 'notes' = 'topics';
   private readonly expanded = new Set<string>();
+  /** Files uploaded by the open note editor and not saved yet. */
+  private dropUnsaved: (() => Promise<void>) | null = null;
   private readonly cleanups: (() => void)[] = [];
   private readonly search = el('input', {
     class: 'input input--wide',
@@ -126,6 +131,7 @@ export class ArchiveWindow {
       if (event.key === 'Escape') event.stopPropagation();
     });
     dialog.addEventListener('close', () => {
+      this.dropUnsavedImages();
       this.cleanups.splice(0).forEach((cleanup) => cleanup());
       dialog.remove();
       this.dialog = null;
@@ -278,6 +284,13 @@ export class ArchiveWindow {
           onMove: (topicId) => void this.run({ type: 'note_move', noteId: note.id, topicId }),
           onShift: (direction) => void this.run({ type: 'note_shift', noteId: note.id, direction }),
           onRemove: () => void this.run({ type: 'note_remove', noteId: note.id }),
+          images: {
+            url: (image, variant) => this.deps.archive.imageUrl(note.id, image, variant),
+            open: (index) =>
+              openImageViewer(note.images, index, (image) =>
+                this.deps.archive.imageUrl(note.id, image, 'full'),
+              ),
+          },
         }),
       ),
     );
@@ -327,6 +340,7 @@ export class ArchiveWindow {
   }
 
   private showPane(pane: Pane): void {
+    if (pane.kind !== 'editor') this.dropUnsavedImages();
     this.pane = pane;
     this.step = 'notes';
     this.render();
@@ -368,22 +382,40 @@ export class ArchiveWindow {
   private editNote(note: ArchiveNote | null): void {
     const topicId = this.topicId;
     if (!topicId) return;
+    this.dropUnsavedImages();
+    // Known before saving: images are uploaded under the note while it is edited.
+    const id = note?.id ?? newId('note');
+    const attachments = attachmentsEditor({
+      noteId: id,
+      saved: note?.images ?? [],
+      archive: this.deps.archive,
+      notify: this.deps.notify,
+      removeSaved: (imageId) => this.run({ type: 'note_image_remove', noteId: id, imageId }),
+    });
+    this.dropUnsaved = () => attachments.discardUnsaved();
     const node = noteEditor({
       note,
       day: this.deps.game.current.day,
       isMaster: this.isMaster,
+      attachments,
       onCancel: () => this.closeEditor(),
       onSave: async (fields) => {
-        const id = note?.id ?? newId('note');
         const command: ArchiveCommand = note
           ? { type: 'note_update', noteId: id, ...fields }
           : { type: 'note_create', id, topicId, ...fields };
         if (!(await this.run(command))) return;
+        this.dropUnsaved = null;
         this.expanded.add(id);
         this.closeEditor();
       },
     });
     this.showPane({ kind: 'editor', node });
+  }
+
+  private dropUnsavedImages(): void {
+    const drop = this.dropUnsaved;
+    this.dropUnsaved = null;
+    if (drop) void drop();
   }
 
   private pasteInto(topic: ArchiveTopic): void {

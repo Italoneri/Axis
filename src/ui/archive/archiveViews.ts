@@ -10,6 +10,8 @@ import {
 import { splitPastedRecords, type PastedRecord } from '../../systems/ArchivePaste';
 import { el } from '../dom';
 import { button, confirmButton, field, selectInput } from '../widgets';
+import type { AttachmentsEditor } from './imageAttachments';
+import { imageStrip, type ImageStripDeps } from './imageViews';
 import { renderMarkdown } from './markdownView';
 
 // Pieces of the archive window: note cards, the note and paste editors, the trash.
@@ -26,6 +28,7 @@ export interface NoteCardDeps {
   onMove: (topicId: string) => void;
   onShift: (direction: 'up' | 'down') => void;
   onRemove: () => void;
+  images: ImageStripDeps;
 }
 
 export function noteCard(note: ArchiveNote, deps: NoteCardDeps): HTMLElement {
@@ -54,11 +57,19 @@ export function noteCard(note: ArchiveNote, deps: NoteCardDeps): HTMLElement {
         'span',
         { class: 'archive-note__meta' },
         `${t.archive.day(note.day)} · ${t.archive.byline(author, editor || undefined)}`,
+        note.images.length > 0 &&
+          el('span', { class: 'archive-note__image-count' }, `🖼 ${note.images.length}`),
         isSecret && el('span', { class: 'archive-note__secret' }, t.archive.masterOnlyBadge),
       ),
     ),
     deps.isExpanded &&
-      el('div', { class: 'archive-note__body' }, renderMarkdown(note.body), noteActions(deps)),
+      el(
+        'div',
+        { class: 'archive-note__body' },
+        renderMarkdown(note.body),
+        note.images.length > 0 && imageStrip(note.images, deps.images),
+        noteActions(deps),
+      ),
   );
 }
 
@@ -92,6 +103,8 @@ export interface NoteEditorOptions {
   day: number;
   /** Only the master chooses who sees the note. */
   isMaster: boolean;
+  /** The images section, which uploads as files arrive. */
+  attachments: AttachmentsEditor;
   onSave: (fields: NoteFields) => void;
   onCancel: () => void;
 }
@@ -101,6 +114,7 @@ export function noteEditor({
   note,
   day,
   isMaster,
+  attachments,
   onSave,
   onCancel,
 }: NoteEditorOptions): HTMLElement {
@@ -158,6 +172,7 @@ export function noteEditor({
     ),
     body,
     preview,
+    attachments.element,
     el(
       'div',
       { class: 'row row--end' },
@@ -165,15 +180,18 @@ export function noteEditor({
       el('button', { class: 'btn btn--primary', type: 'submit' }, t.archive.save),
     ),
   );
+  attachments.listenOn(form);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+    // The status line says images are still uploading.
+    if (attachments.isBusy()) return;
     onSave({
       title: title.value,
       body: body.value,
       day: Math.max(0, Math.floor(Number(dayInput.value) || 0)),
       pinned: pinned.checked,
       visibility: isMaster ? parseVisibility(visibility.value) : (note?.visibility ?? 'todos'),
-      images: note?.images ?? [],
+      images: attachments.images(),
     });
   });
   queueMicrotask(() => title.focus());
