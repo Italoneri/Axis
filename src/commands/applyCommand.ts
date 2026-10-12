@@ -49,6 +49,7 @@ import {
   updateMission,
   type MissionFields,
 } from '../systems/Missions';
+import { isUploadFor, looksLikeUpload, setImage } from '../systems/GameImages';
 import { advanceDays } from '../systems/TimeSystem';
 import { adjustCoins, consolidateWallet, depositToCamp, transferCoins } from '../systems/Wallets';
 import {
@@ -138,6 +139,7 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'mission_remove',
   'mission_take_party',
   'mission_send_npcs',
+  'set_image',
 ]);
 
 /**
@@ -177,10 +179,16 @@ export function actorName(state: GameState, { actor }: CommandContext): string |
   return state.characters.find((c) => c.id === actor.characterId)?.name;
 }
 
-function isAllowed(command: GameCommand, { actor }: CommandContext): boolean {
+/** Whether `ctx` may run `command` at all, before any rule looks at the game. */
+export function isAllowed(command: GameCommand, { actor }: CommandContext): boolean {
   if (actor.role === 'master') return true;
   if (!PLAYER_COMMANDS.has(command.type)) return false;
-  return command.type !== 'deposit' || command.characterId === actor.characterId;
+  // A player only acts for their own character: their coins, their photo.
+  if (command.type === 'deposit') return command.characterId === actor.characterId;
+  if (command.type === 'set_image') {
+    return command.target.kind === 'character' && command.target.id === actor.characterId;
+  }
+  return true;
 }
 
 type CommandOf = { [C in GameCommand as C['type']]: C };
@@ -324,6 +332,14 @@ const handlers: Handlers = {
     missions(sendNpcsOnMission(state, missionId, npcIds)),
   mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
+
+  set_image: ({ target, image }, { state, catalog }) => {
+    // An uploaded photo only fits the record whose folder holds it (the Storage policies look at it).
+    if (looksLikeUpload(image) && !isUploadFor(image, target)) {
+      return { ok: false, error: 'invalid_command' };
+    }
+    return resources(setImage(state, catalog, target, image));
+  },
 
   archive_log: ({ change }, { state }) =>
     resources(ok(withLog(state, { day: state.day, kind: 'archive_changed', change }))),

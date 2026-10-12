@@ -11,6 +11,7 @@ import {
   researchSchema,
   skillLevelSchema,
 } from '../model/schema';
+import { IMAGE_KINDS } from '../systems/GameImages';
 
 // Every action in the game as plain data: it can be logged, sent to a server
 // and validated there. Names are checked by the systems (not here) so an empty
@@ -128,6 +129,11 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
     missionId: ref,
     result: missionResultSchema,
     injuredNpcIds: z.array(ref).max(50).default([]),
+  }),
+  // Photos (the master's forms send them with the other fields too)
+  command('set_image', {
+    target: z.object({ kind: z.enum(IMAGE_KINDS), id: ref }),
+    image: optionalText,
   }),
   // Arquivo de registros: the records live apart; this only writes what changed to the log.
   command('archive_log', { change: archiveChangeSchema }),

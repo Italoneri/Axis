@@ -7,7 +7,10 @@ import { slotTypeSchema } from '../map/layout';
 const positiveInt = z.number().int().nonnegative();
 const percent = z.number().int().min(0).max(100);
 const displayName = z.string().trim().min(1);
-/** Asset key from assets.json or an image URL; empty means "draw a placeholder". */
+/**
+ * Asset key from assets.json, an image URL, or a photo sent in game
+ * (`upload:…`, see src/systems/GameImages.ts); empty means "draw a placeholder".
+ */
 const imageRef = z.string().optional();
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -597,6 +600,8 @@ export const gameStateSchema = z.object({
   materials: materialsSchema,
   research: researchBookSchema,
   influence: influenceSchema,
+  /** Photos the master gave the fixed worlds, by world id (influence.json has no in-game edit). */
+  worldIcons: z.record(z.string(), z.string()).optional(),
   npcs: z.array(npcSchema),
   missions: z.array(missionSchema),
   slots: z.record(z.string(), placedBuildingSchema),
