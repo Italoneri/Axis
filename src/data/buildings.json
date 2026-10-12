@@ -1127,5 +1127,56 @@
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
+  },
+  {
+    "id": "guild",
+    "name": "Salão da Guilda",
+    "description": "Sede dos aventureiros da Axis: balcão de contratos, mural de missões e mesas para planejar a próxima expedição.",
+    "icon": "icon.guild",
+    "sprite": "building.guild",
+    "allowedSlots": ["outer"],
+    "fx": [
+      { "type": "glow", "x": 0.307, "y": 0.201, "color": "#ffb347", "radius": 0.06 },
+      {
+        "type": "glow",
+        "x": 0.334,
+        "y": 0.537,
+        "color": "#ffb347",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.666,
+        "y": 0.537,
+        "color": "#ffb347",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.116, "y": 0.182, "color": "#ffd76a", "radius": 0.05, "minLevel": 3 },
+      { "type": "sparks", "x": 0.116, "y": 0.182, "color": "#ffe9a0", "minLevel": 3 },
+      { "type": "glow", "x": 0.898, "y": 0.781, "color": "#ff7a1a", "radius": 0.09, "minLevel": 3 },
+      { "type": "sparks", "x": 0.898, "y": 0.781, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.559, "color": "#ffd27a", "radius": 0.12, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 150, "materials": { "wood": 50, "iron": 20 } },
+        "buildTime": 2,
+        "effect": "Mural de missões: uma vez por sessão, o mestre oferece um contrato extra (trabalho pago ou rumor de tesouro)."
+      },
+      {
+        "cost": { "coins": 350, "materials": { "wood": 100, "iron": 50 } },
+        "buildTime": 4,
+        "effect": "Contratos fechados pela Guilda pagam 10% a mais em ouro.",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 800, "materials": { "wood": 180, "iron": 100, "aetherium": 20 } },
+        "buildTime": 7,
+        "effect": "Contratos raros: uma vez por arco, a Guilda oferece um contrato cuja recompensa é um item mágico.",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
   }
 ]

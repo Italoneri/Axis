@@ -46,6 +46,8 @@
     "building.meeting_hall": "assets/buildings/meeting_hall.png",
     "icon.research_lab": "assets/icons/research_lab.png",
     "building.research_lab": "assets/buildings/research_lab.png",
+    "icon.guild": "assets/icons/guild.png",
+    "building.guild": "assets/buildings/guild.png",
     "menu.pao_mel": "assets/menu/pao_mel.jpg",
     "menu.mingau_aveia": "assets/menu/mingau_aveia.jpg",
     "menu.queijo_maca": "assets/menu/queijo_maca.jpg",
