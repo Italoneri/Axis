@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { availableArtFiles } from '../map/buildingArt';
 import type { BuildingPreview } from '../map/buildingPreview';
+import { slotBounds } from '../map/geometry';
 import { Gates, type GateState } from '../map/gates';
 import { MAP_TEXTURE, type LiveMap } from '../map/liveMap';
 import { MAP_TEXTURE_KEYS, textureImage } from '../map/textures';
@@ -9,6 +10,7 @@ import type { GameState, PlacedBuilding } from '../model/schema';
 import type { GameStore, StateChange } from '../store';
 import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
+import { coveredInsets, type Insets } from './cameraMath';
 import { isCanvasGesture } from './pointerGesture';
 import { SlotView } from './SlotView';
 
@@ -47,7 +49,7 @@ export class BaseScene extends Phaser.Scene {
     const { layout, size, theme } = this.liveMap;
     this.cameras.main.setBackgroundColor(BACKGROUND);
     this.add.image(0, 0, MAP_TEXTURE).setOrigin(0);
-    const camera = new CameraController(this, size, size);
+    const camera = new CameraController(this, size, size, () => this.coveredInsets());
 
     this.gates = new Gates(this, {
       layout,
@@ -85,6 +87,14 @@ export class BaseScene extends Phaser.Scene {
 
     this.selection.onSelectionChange((selectedId) => {
       this.slotViews.forEach((view, id) => view.setSelected(id === selectedId));
+      const slot = layout.slots.find((candidate) => candidate.id === selectedId);
+      if (!slot) return camera.settle();
+      // An arc's (x, y) is not its middle; its bounding box is.
+      const bounds = slotBounds(slot);
+      camera.reveal(
+        (bounds.left + bounds.width / 2) * size,
+        (bounds.top + bounds.height / 2) * size,
+      );
     });
 
     this.render(this.store.current);
@@ -99,6 +109,14 @@ export class BaseScene extends Phaser.Scene {
       stopTheme();
       stopReference();
     });
+  }
+
+  /** The canvas hidden behind the slot panel and the drawer (both `.panel` elements). */
+  private coveredInsets(): Insets {
+    const covers = [...document.querySelectorAll<HTMLElement>('.panel')]
+      .filter((panel) => !panel.hidden)
+      .map((panel) => panel.getBoundingClientRect());
+    return coveredInsets(this.game.canvas.getBoundingClientRect(), covers);
   }
 
   /** Lays the reference render over the map so the two can be compared by fading it. */
