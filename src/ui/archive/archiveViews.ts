@@ -173,6 +173,7 @@ export function noteEditor({
       day: Math.max(0, Math.floor(Number(dayInput.value) || 0)),
       pinned: pinned.checked,
       visibility: isMaster ? parseVisibility(visibility.value) : (note?.visibility ?? 'todos'),
+      images: note?.images ?? [],
     });
   });
   queueMicrotask(() => title.focus());

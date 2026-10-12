@@ -4,12 +4,15 @@ import {
   applyArchiveCommand,
   archiveCounts,
   archiveDiff,
+  droppedImages,
+  parseArchive,
   BODY_LIMIT,
   EMPTY_ARCHIVE,
   searchNotes,
   topicNotes,
   visibleArchive,
   type Archive,
+  type ArchiveImage,
   type ArchiveCommand,
   type ArchiveNote,
   type ArchiveTopic,
@@ -38,6 +41,7 @@ function note(id: string, topicId: string, extra: Partial<ArchiveNote> = {}): Ar
     createdAt: NOW,
     updatedAt: NOW,
     deletedAt: null,
+    images: [],
     ...extra,
   };
 }
@@ -65,7 +69,13 @@ function applied(command: ArchiveCommand, viewer: Actor, archive: Archive = base
   return outcome;
 }
 
-const fields = { title: 'Nova', body: 'texto', day: 3, pinned: false } as const;
+const fields = {
+  title: 'Nova',
+  body: 'texto',
+  day: 3,
+  pinned: false,
+  images: [] as ArchiveImage[],
+} as const;
 
 describe('archive permissions', () => {
   it('lets a player create, edit and remove topics and notes of anyone', () => {
@@ -319,5 +329,104 @@ describe('archive rules', () => {
     expect(searchNotes(base, 'REQUISICAO').map((n) => n.id)).toEqual(['selos']);
     expect(searchNotes(base, 'forja').map((n) => n.id)).toEqual(['zolt']);
     expect(searchNotes(base, '   ')).toEqual([]);
+  });
+});
+
+describe('note images', () => {
+  const image = (id: string, caption = ''): ArchiveImage => ({
+    id,
+    caption,
+    width: 800,
+    height: 600,
+    bytes: 1000,
+    format: 'webp',
+  });
+  const mapa = image('mapa', 'Mapa do Portão Oito');
+  const withImages: Archive = {
+    ...base,
+    notes: base.notes.map((n) =>
+      n.id === 'zolt'
+        ? { ...n, images: [mapa] }
+        : n.id === 'plano'
+          ? { ...n, images: [image('segredo')] }
+          : n,
+    ),
+  };
+  const zolt = withImages.notes.find((n) => n.id === 'zolt') ?? note('zolt', 'npcs');
+  const update = (images: ArchiveImage[], noteId = 'zolt') =>
+    ({
+      type: 'note_update',
+      noteId,
+      title: zolt.title,
+      body: zolt.body,
+      day: zolt.day,
+      pinned: zolt.pinned,
+      visibility: 'todos',
+      images,
+    }) as const;
+
+  it('reads archives saved before images as notes without any', () => {
+    const old: Partial<ArchiveNote> = note('velha', 'npcs');
+    delete old.images;
+    const parsed = parseArchive({ topics: [npcs], notes: [old] });
+    expect(parsed.ok && parsed.archive.notes[0]?.images).toEqual([]);
+  });
+
+  it('logs the images attached, keeping their order and trimmed captions', () => {
+    const outcome = applied(update([image('carta', '  Carta  '), mapa]), bia, withImages);
+    expect(outcome.change).toEqual({
+      target: 'images',
+      action: 'attached',
+      title: 'Zolt-Raak',
+      count: 1,
+    });
+    const images = outcome.archive.notes.find((n) => n.id === 'zolt')?.images;
+    expect(images?.map((i) => [i.id, i.caption])).toEqual([
+      ['carta', 'Carta'],
+      ['mapa', 'Mapa do Portão Oito'],
+    ]);
+  });
+
+  it('logs a caption change or a new order as an edit', () => {
+    const outcome = applied(update([{ ...mapa, caption: 'Portão' }]), bia, withImages);
+    expect(outcome.change).toMatchObject({ target: 'note', action: 'edited' });
+    expect(run(update([mapa]), bia, withImages)).toMatchObject({ ok: true, change: null });
+  });
+
+  it('refuses more images than a note holds, or the same image twice', () => {
+    const many = Array.from({ length: 13 }, (_, i) => image(`img${i}`));
+    expect(run(update(many), bia, withImages)).toEqual({ ok: false, error: 'too_many_images' });
+    expect(run(update([mapa, mapa]), bia, withImages)).toEqual({
+      ok: false,
+      error: 'duplicate_id',
+    });
+  });
+
+  it('removes one image at once and logs it, never for the master notes', () => {
+    const removed = applied(
+      { type: 'note_image_remove', noteId: 'zolt', imageId: 'mapa' },
+      bia,
+      withImages,
+    );
+    expect(removed.change).toEqual({ target: 'image', action: 'removed', title: 'Zolt-Raak' });
+    expect(droppedImages(withImages, removed.archive)).toEqual([{ noteId: 'zolt', image: mapa }]);
+
+    const secret = { type: 'note_image_remove', noteId: 'plano', imageId: 'segredo' } as const;
+    expect(run(secret, thorin, withImages)).toEqual({ ok: false, error: 'not_found' });
+    expect(applied(secret, master, withImages).change).toBeNull();
+  });
+
+  it('keeps the images of a note in the trash and drops their files only when emptied', () => {
+    const trashed = applied({ type: 'note_remove', noteId: 'zolt' }, bia, withImages).archive;
+    expect(droppedImages(withImages, trashed)).toEqual([]);
+    const restored = applied({ type: 'note_restore', noteId: 'zolt' }, bia, trashed).archive;
+    expect(restored.notes.find((n) => n.id === 'zolt')?.images).toEqual([mapa]);
+
+    const emptied = applied({ type: 'trash_empty' }, master, trashed).archive;
+    expect(droppedImages(trashed, emptied)).toEqual([{ noteId: 'zolt', image: mapa }]);
+  });
+
+  it('finds notes by their image captions', () => {
+    expect(searchNotes(withImages, 'portao oito').map((n) => n.id)).toEqual(['zolt']);
   });
 });

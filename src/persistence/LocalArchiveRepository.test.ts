@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ArchiveStore } from '../archiveStore';
 import type { Actor } from '../commands/schema';
-import { EMPTY_ARCHIVE } from '../systems/Archive';
+import { EMPTY_ARCHIVE, type ArchiveImage } from '../systems/Archive';
 import { memoryStorage } from '../systems/testFixtures';
 import { ARCHIVE_STORAGE_KEY, LocalArchiveRepository } from './LocalArchiveRepository';
 
@@ -18,6 +18,7 @@ const secret = {
   day: 1,
   pinned: false,
   visibility: 'mestre',
+  images: [] as ArchiveImage[],
 } as const;
 
 describe('LocalArchiveRepository', () => {

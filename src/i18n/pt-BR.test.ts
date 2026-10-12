@@ -125,6 +125,18 @@ describe('archive log', () => {
       change: { target: 'trash', action: 'emptied' },
       text: 'Thorin esvaziou a lixeira do Arquivo',
     },
+    {
+      change: { target: 'images', action: 'attached', title: 'Mapa do Portão Oito', count: 2 },
+      text: "Thorin anexou 2 imagens a 'Mapa do Portão Oito'",
+    },
+    {
+      change: { target: 'images', action: 'attached', title: 'Carta', count: 1 },
+      text: "Thorin anexou uma imagem a 'Carta'",
+    },
+    {
+      change: { target: 'image', action: 'removed', title: 'Carta' },
+      text: "Thorin removeu uma imagem de 'Carta'",
+    },
   ] as const)('reads $text', ({ change, text }) => {
     expect(archiveAction('Thorin', change)).toBe(text);
   });

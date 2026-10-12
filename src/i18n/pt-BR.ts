@@ -14,6 +14,7 @@ import {
   type ArchiveError,
   type NoteVisibility,
 } from '../systems/Archive';
+import { IMAGE_LIMITS } from '../systems/ArchiveImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -467,6 +468,7 @@ export const t = {
       category_not_empty: 'O tópico ainda tem notas. Mova-as ou remova-as antes.',
       forbidden: 'Somente o Mestre pode fazer isso.',
       too_long: `Título até ${TITLE_LIMIT} caracteres e texto até ${BODY_LIMIT.toLocaleString('pt-BR')}.`,
+      too_many_images: `Uma nota leva no máximo ${IMAGE_LIMITS.perNote} imagens.`,
       invalid_command: 'Ação inválida. Confira os valores informados.',
       no_author: 'Escolha seu personagem antes de escrever no Arquivo.',
     } satisfies Record<ArchiveError, string>,
@@ -617,6 +619,10 @@ export function archiveAction(actor: string, change: ArchiveChange): string {
       return `${actor} colou ${change.count} ${change.count === 1 ? 'registro' : 'registros'} em ${change.title}`;
     case 'trash':
       return `${actor} esvaziou a lixeira do Arquivo`;
+    case 'images':
+      return `${actor} anexou ${change.count === 1 ? 'uma imagem' : `${change.count} imagens`} a '${change.title}'`;
+    case 'image':
+      return `${actor} removeu uma imagem de '${change.title}'`;
     default:
       return assertNever(change);
   }

@@ -35,6 +35,7 @@ const zolt: ArchiveNote = {
   createdAt: NOW,
   updatedAt: NOW,
   deletedAt: null,
+  images: [],
 };
 
 function fakeBackend(answer: ArchiveWriteResult = { ok: true }, notes = [zolt]) {

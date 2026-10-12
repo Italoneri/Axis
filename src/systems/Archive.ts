@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Actor } from '../commands/schema';
 import type { ArchiveChange } from '../model/schema';
+import { IMAGE_LIMITS } from './ArchiveImages';
 
 // Arquivo de registros: topics and notes kept outside the GameState (see
 // docs/plans/ARQUIVO.md). Pure rules, run the same way offline and online.
@@ -30,6 +31,20 @@ export const archiveTopicSchema = z.object({
   deletedAt: timestamp.nullable(),
 });
 
+export const imageFormatSchema = z.enum(['webp', 'jpeg']);
+
+/** An image attached to a note; the file itself is in the image store (see ArchiveImageStore). */
+export const archiveImageSchema = z.object({
+  id: recordId,
+  caption: z.string().max(IMAGE_LIMITS.captionLength),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  /** Size of the stored (compressed) file. */
+  bytes: z.number().int().positive(),
+  /** Of both the image and its thumbnail. */
+  format: imageFormatSchema,
+});
+
 export const archiveNoteSchema = z.object({
   id: recordId,
   topicId: recordId,
@@ -45,6 +60,8 @@ export const archiveNoteSchema = z.object({
   createdAt: timestamp,
   updatedAt: timestamp,
   deletedAt: timestamp.nullable(),
+  /** In display order. Archives from before images read as none. */
+  images: z.array(archiveImageSchema).max(IMAGE_LIMITS.perNote).default([]),
 });
 
 export const archiveSchema = z.object({
@@ -55,6 +72,8 @@ export const archiveSchema = z.object({
 export type NoteVisibility = z.infer<typeof noteVisibilitySchema>;
 export type ArchiveTopic = z.infer<typeof archiveTopicSchema>;
 export type ArchiveNote = z.infer<typeof archiveNoteSchema>;
+export type ArchiveImage = z.infer<typeof archiveImageSchema>;
+export type ImageFormat = z.infer<typeof imageFormatSchema>;
 export type Archive = z.infer<typeof archiveSchema>;
 
 export const EMPTY_ARCHIVE: Archive = { topics: [], notes: [] };
@@ -77,6 +96,8 @@ const noteFields = {
   day: dayNumber,
   pinned: z.boolean(),
   visibility: noteVisibilitySchema,
+  // Checked by the rules, so too many images is reported as such, not as a bad command.
+  images: z.array(archiveImageSchema).max(100),
 };
 const topicFields = { name: z.string(), icon: z.string().max(16).optional() };
 
@@ -94,6 +115,7 @@ export const archiveCommandSchema = z.discriminatedUnion('type', [
   command('note_move', { noteId: recordId, topicId: recordId }),
   command('note_shift', { noteId: recordId, direction }),
   command('note_remove', { noteId: recordId }),
+  command('note_image_remove', { noteId: recordId, imageId: recordId }),
   command('note_restore', { noteId: recordId }),
   command('notes_paste', {
     topicId: recordId,
@@ -109,7 +131,10 @@ export const archiveCommandSchema = z.discriminatedUnion('type', [
 
 export type ArchiveCommand = z.infer<typeof archiveCommandSchema>;
 export type ArchiveCommandType = ArchiveCommand['type'];
-export type NoteFields = Pick<ArchiveNote, 'title' | 'body' | 'day' | 'pinned' | 'visibility'>;
+export type NoteFields = Pick<
+  ArchiveNote,
+  'title' | 'body' | 'day' | 'pinned' | 'visibility' | 'images'
+>;
 
 export type ArchiveError =
   | 'empty_name'
@@ -119,6 +144,7 @@ export type ArchiveError =
   | 'category_not_empty'
   | 'forbidden'
   | 'too_long'
+  | 'too_many_images'
   | 'invalid_command'
   /** Offline, a player must pick their character before writing. */
   | 'no_author';
@@ -206,7 +232,7 @@ export function normalizeForSearch(text: string): string {
     .toLocaleLowerCase('pt-BR');
 }
 
-/** Notes in use whose title or text contain `query`, in display order. */
+/** Notes in use whose title, text or image captions contain `query`, in display order. */
 export function searchNotes(archive: Archive, query: string): ArchiveNote[] {
   const needle = normalizeForSearch(query.trim());
   if (!needle) return [];
@@ -216,8 +242,28 @@ export function searchNotes(archive: Archive, query: string): ArchiveNote[] {
       (note) =>
         note.deletedAt === null &&
         topicIds.has(note.topicId) &&
-        normalizeForSearch(`${note.title}\n${note.body}`).includes(needle),
+        normalizeForSearch(searchableText(note)).includes(needle),
     ),
+  );
+}
+
+function searchableText(note: ArchiveNote): string {
+  return [note.title, note.body, ...note.images.map((image) => image.caption)].join('\n');
+}
+
+/** An image whose file can go: its note dropped it, or the note itself is gone for good. */
+export interface DroppedImage {
+  noteId: string;
+  image: ArchiveImage;
+}
+
+/** A note in the trash keeps its images (they come back with it); only these lose their files. */
+export function droppedImages(before: Archive, after: Archive): DroppedImage[] {
+  const kept = new Map(after.notes.map((note) => [note.id, new Set(note.images.map((i) => i.id))]));
+  return before.notes.flatMap((note) =>
+    note.images
+      .filter((image) => !kept.get(note.id)?.has(image.id))
+      .map((image) => ({ noteId: note.id, image })),
   );
 }
 
@@ -348,7 +394,10 @@ const handlers: Handlers = {
   note_create: ({ id, topicId, ...fields }, { archive, ctx, authorId }) => {
     if (!findActiveTopic(archive, topicId)) return fail('not_found');
     const error =
-      idError(id, archive.notes) ?? noteFieldsError(fields) ?? visibilityError(ctx, fields);
+      idError(id, archive.notes) ??
+      noteFieldsError(fields) ??
+      imagesError(fields.images) ??
+      visibilityError(ctx, fields);
     if (error) return fail(error);
     const note: ArchiveNote = {
       id,
@@ -366,12 +415,18 @@ const handlers: Handlers = {
   note_update: ({ noteId, ...fields }, { archive, ctx, authorId }) => {
     const note = findVisibleNote(archive, ctx.viewer, noteId);
     if (!note) return fail('not_found');
-    const error = noteFieldsError(fields) ?? visibilityError(ctx, fields);
+    const error =
+      noteFieldsError(fields) ?? imagesError(fields.images) ?? visibilityError(ctx, fields);
     if (error) return fail(error);
     const clean = cleanFields(fields);
     if (sameFields(note, clean)) return unchanged(archive);
     const next = { ...note, ...clean, editedBy: authorId, updatedAt: ctx.now };
-    return done(replaceNote(archive, next), noteChange(next, 'edited'));
+    const oldIds = new Set(note.images.map((image) => image.id));
+    const attached = next.images.filter((image) => !oldIds.has(image.id)).length;
+    const change: ArchiveChange = attached
+      ? { target: 'images', action: 'attached', title: next.title, count: attached }
+      : { target: 'note', action: 'edited', title: next.title };
+    return done(replaceNote(archive, next), isPublic(next) ? change : null);
   },
 
   note_move: ({ noteId, topicId }, { archive, ctx }) => {
@@ -412,6 +467,15 @@ const handlers: Handlers = {
     return done(next, noteChange(note, 'removed'));
   },
 
+  note_image_remove: ({ noteId, imageId }, { archive, ctx, authorId }) => {
+    const note = findVisibleNote(archive, ctx.viewer, noteId);
+    if (!note?.images.some((image) => image.id === imageId)) return fail('not_found');
+    const images = note.images.filter((image) => image.id !== imageId);
+    const next = { ...note, images, editedBy: authorId, updatedAt: ctx.now };
+    const change = { target: 'image', action: 'removed', title: note.title } as const;
+    return done(replaceNote(archive, next), isPublic(note) ? change : null);
+  },
+
   note_restore: ({ noteId }, { archive, ctx }) => {
     const note = archive.notes.find(
       (n) => n.id === noteId && n.deletedAt !== null && canSee(ctx.viewer, n),
@@ -448,6 +512,7 @@ const handlers: Handlers = {
       createdAt: ctx.now,
       updatedAt: ctx.now,
       deletedAt: null,
+      images: [],
     }));
     const change = {
       target: 'notes',
@@ -504,6 +569,12 @@ function noteFieldsError({ title, body }: Pick<NoteFields, 'title' | 'body'>): A
   return null;
 }
 
+/** A note holds at most `IMAGE_LIMITS.perNote` images, each once. */
+function imagesError(images: readonly ArchiveImage[]): ArchiveError | null {
+  if (images.length > IMAGE_LIMITS.perNote) return 'too_many_images';
+  return new Set(images.map((image) => image.id)).size === images.length ? null : 'duplicate_id';
+}
+
 /** Only the master writes notes that only the master sees. */
 function visibilityError(
   { viewer }: ArchiveContext,
@@ -513,12 +584,17 @@ function visibilityError(
 }
 
 function cleanFields(fields: NoteFields): NoteFields {
-  const { title, body, day, pinned, visibility } = fields;
-  return { title: title.trim(), body, day, pinned, visibility };
+  const { title, body, day, pinned, visibility, images } = fields;
+  const captioned = images.map((image) => ({ ...image, caption: image.caption.trim() }));
+  return { title: title.trim(), body, day, pinned, visibility, images: captioned };
 }
 
 function sameFields(note: ArchiveNote, fields: NoteFields): boolean {
-  return (Object.keys(fields) as (keyof NoteFields)[]).every((key) => note[key] === fields[key]);
+  const { images, ...plain } = fields;
+  const samePlain = (Object.keys(plain) as (keyof typeof plain)[]).every(
+    (key) => note[key] === plain[key],
+  );
+  return samePlain && JSON.stringify(note.images) === JSON.stringify(images);
 }
 
 function isPublic(note: Pick<ArchiveNote, 'visibility'>): boolean {

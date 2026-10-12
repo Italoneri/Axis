@@ -334,6 +334,14 @@ export const archiveChangeSchema = z.union([
     count: z.number().int().positive(),
   }),
   z.object({ target: z.literal('trash'), action: z.literal('emptied') }),
+  /** `title` is the note the images were attached to. */
+  z.object({
+    target: z.literal('images'),
+    action: z.literal('attached'),
+    title: z.string(),
+    count: z.number().int().positive(),
+  }),
+  z.object({ target: z.literal('image'), action: z.literal('removed'), title: z.string() }),
 ]);
 
 // Log entries keep display names (not ids) for things the master can rename or delete,
