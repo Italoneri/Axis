@@ -271,12 +271,18 @@ Como as mudanças viajam:
 
 ### Entrar na mesa (online)
 
-1. **Login por e-mail:** a pessoa digita o e-mail e recebe um link (magic link), sem senha.
-2. **Convite:** o link de convite do mestre (`?invite=…`) liga o jogador ao personagem. Ele sobrevive ao login, porque o magic link volta para a mesma URL.
-3. **Mesa:** quem ainda não participa de nenhuma mesa pode criar uma (vira o mestre), começando do seed ou de um save exportado. Com várias mesas, `?game=<id>` escolhe qual abrir.
-4. **Papel:** as ferramentas de mestre aparecem para quem tem `role = master` em `players`. No online, "Sair da conta" substitui "Sair do modo mestre". Quem decide de fato é o servidor.
+1. **Login:** botão **Entrar com Google** (a conta Gmail do jogador). O link por e-mail continua como alternativa ("Entrar com e-mail"), mas só funciona com um servidor de e-mail (SMTP) próprio configurado no Supabase: o e-mail padrão do Supabase manda pouquíssimas mensagens por hora. Os dois logins voltam para a mesma URL, então `?game=`, `?invite=` e `?join=` sobrevivem.
+2. **Link de entrada da mesa (`?join=…`):** o link que o mestre manda no grupo. Quem abre, logado e ainda fora da mesa, vê a tela **"Entrar na Axis"**:
+   - **"Sou um personagem que já existe":** lista, com foto e nome, os personagens sem jogador. Escolher liga o jogador a ele, sem aprovação; o registro mostra "Um jogador assumiu Thorin" e o mestre pode desfazer.
+   - **"Criar meu personagem":** nome, cor e a foto da conta Google como começo. O personagem nasce com a carteira vazia e o registro mostra "Bruna entrou na Axis". Para trocar a foto, o jogador usa o seletor de foto da ficha depois de entrar (antes disso ele ainda não pode enviar arquivos para a mesa).
+   - Quem já está na mesa e abre o link de novo entra direto.
+3. **Convite por personagem (`?invite=…`):** continua existindo. Liga quem aceitar a um personagem escolhido pelo mestre; vale uma vez.
+4. **Mesa:** quem ainda não participa de nenhuma mesa pode criar uma (vira o mestre), começando do seed ou de um save exportado. Com várias mesas, `?game=<id>` escolhe qual abrir.
+5. **Papel:** as ferramentas de mestre aparecem para quem tem `role = master` em `players`. No online, "Sair da conta" substitui "Sair do modo mestre". Quem decide de fato é o servidor.
 
-**Convites (mestre):** na aba **Mestre** da gaveta, o cartão **Convites** gera um link por personagem (botão **Copiar link**) e lista os convites pendentes, que podem ser cancelados.
+**Link de entrada e jogadores (mestre):** na aba **Mestre** da gaveta, o cartão **Link de entrada** gera o link da mesa (sem validade, 7 ou 30 dias), mostra os links ativos e cancela um link. Abaixo, **Jogadores** lista quem está na mesa (nome ou e-mail da conta → personagem) com **Desligar**: o personagem e a carteira ficam, só o vínculo sai (o registro mostra "Mestre desligou o jogador de Thorin").
+
+**Convites (mestre):** o cartão **Convites** gera um link por personagem (botão **Copiar link**) e lista os convites pendentes, que podem ser cancelados.
 
 **Histórico completo:** na aba **Registro**, abaixo das entradas recentes (o `state.log` guarda só as últimas 200), o cartão **Histórico completo** lê o `game_log` em páginas de 50.
 
@@ -300,6 +306,8 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 - **`create_game`:** cria o jogo a partir do seed ou de um save exportado (`state`); quem cria vira mestre.
 - **`restore_save`:** (mestre) substitui o jogo por um backup, como a próxima revisão.
 - **Convites:** `create_invite` (mestre) gera um token de uso único para um personagem, válido por 7 dias (até 30); o banco guarda só o hash. `accept_invite` liga quem aceitou ao personagem; `revoke_invite` cancela um convite pendente.
+- **Link de entrada:** `create_join_link` (mestre) gera o token da mesa, reutilizável, sem validade ou com até 90 dias; o banco guarda só o hash. `revoke_join_link` cancela. `join_preview` devolve a mesa e os personagens sem jogador (fotos enviadas vão como URL assinada, porque quem entra ainda não é membro). `join_game` faz `claim` (assumir um personagem livre) ou `create` (nome, cor, foto do Google), validado no servidor: nome não vazio e sem repetir, um personagem por usuário, um jogador por personagem. Os comandos `character_join`, `character_claim` e `character_release` só rodam nesse fluxo (`CommandContext.membership`); enviados como comando comum, são recusados.
+- **`unlink_player`** (mestre): desliga um jogador do personagem e registra no log.
 - Testes em `src/server/http.test.ts` e `src/server/handler.test.ts`, com o banco simulado em memória.
 
 | Comando                    | O que faz                                                |
@@ -309,14 +317,28 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 
 ### Banco (Supabase)
 
-`supabase/migrations/` cria as tabelas `games` (estado em jsonb + `revision`), `players` (papel e personagem), `game_log` (histórico completo) e `invites` (convites de uso único, só o hash do token é gravado).
+`supabase/migrations/` cria as tabelas `games` (estado em jsonb + `revision`), `players` (papel e personagem), `game_log` (histórico completo), `invites` (convites de uso único) e `join_links` (links de entrada da mesa). Dos dois tipos de link, só o hash do token é gravado.
 
 - **RLS:** clientes só **leem**, e só os jogos de que participam. Ninguém grava direto: as escritas passam pela Edge Function, que usa a service role e as funções `commit_game_update` (grava só se a `revision` bater), `create_game` e `accept_invite`.
 - `games` está na publicação do Realtime, que também respeita a RLS.
 - **Arquivo de registros:** `archive_topics` e `archive_notes` são a exceção: membros escrevem direto, e a RLS só deixa o mestre ler e escrever as notas `mestre` (jogador não cria nem transforma uma nota em `mestre`). Um trigger recusa mandar à lixeira um tópico com notas, contando as `mestre` sem revelá-las, e `replace_archive` (só o mestre) restaura o arquivo de um save importado. As duas tabelas estão no Realtime.
-- **Verificação:** `supabase/tests/games_rls.test.sql` e `supabase/tests/archive_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
+- **Entrar e sair:** `join_game` liga o usuário e grava o estado numa transação só, com as mesmas garantias de `accept_invite` (chave `(game_id, user_id)` e índice único por personagem); `unlink_player` nunca remove o mestre. `list_players` (só o mestre) junta `players` com o nome e o e-mail das contas, que os clientes não leem direto.
+- **Verificação:** `supabase/tests/games_rls.test.sql`, `supabase/tests/archive_rls.test.sql` e `supabase/tests/join_links.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
 
 O Supabase CLI vem como devDependency: use `npx supabase …`.
+
+### Login com Google (configuração única)
+
+1. **Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)): crie um projeto (ou use um existente).
+2. **APIs e serviços → Tela de consentimento OAuth:** tipo **Externo**, nome do app (Axis) e seu e-mail de suporte. Escopos: os padrão (`email`, `profile`, `openid`). Publique o app (**Em produção**) para qualquer conta Google entrar, ou deixe em teste e adicione os jogadores em **Usuários de teste**.
+3. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth:** tipo **Aplicativo da Web**.
+   - **Origens JavaScript autorizadas:** `https://italoneri.github.io` e `http://localhost:5173`.
+   - **URIs de redirecionamento autorizados:** a URL de callback do Supabase, `https://icpsmdtkirgfmlxmgxvd.supabase.co/auth/v1/callback` (o painel mostra a mesma em _Authentication → Providers → Google → Callback URL_).
+4. Copie o **Client ID** e o **Client Secret**.
+5. **Supabase → Authentication → Providers → Google:** ative, cole o Client ID e o Client Secret e salve.
+6. **Supabase → Authentication → URL Configuration:** Site URL `https://italoneri.github.io/Axis/`; em Redirect URLs, `https://italoneri.github.io/Axis/**` e `http://localhost:5173/**`.
+
+Para o Supabase local (`npx supabase start`), o `supabase/config.toml` lê `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` e `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` do ambiente (veja `.env.example`); os valores nunca vão para o arquivo.
 
 ### Publicação (GitHub Pages)
 

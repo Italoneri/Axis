@@ -28,11 +28,11 @@ Edge Function `game` (Deno)
 
 ## Tabelas
 
-| Tabela     | Colunas principais                                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------------------------------- |
-| `games`    | `id uuid`, `name`, `state jsonb`, `revision int`, `created_by`, `created_at`, `updated_at`                          |
-| `players`  | `game_id`, `user_id`, `role` (`master` \| `player`), `character_id` (nulo para o mestre); PK `(game_id, user_id)`   |
-| `game_log` | `id bigserial`, `game_id`, `revision`, `user_id`, `actor` (nome exibido), `command jsonb`, `entries jsonb`, `created_at` |
+| Tabela     | Colunas principais                                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `games`    | `id uuid`, `name`, `state jsonb`, `revision int`, `created_by`, `created_at`, `updated_at`                                                                |
+| `players`  | `game_id`, `user_id`, `role` (`master` \| `player`), `character_id` (nulo para o mestre); PK `(game_id, user_id)`                                         |
+| `game_log` | `id bigserial`, `game_id`, `revision`, `user_id`, `actor` (nome exibido), `command jsonb`, `entries jsonb`, `created_at`                                  |
 | `invites`  | `id uuid`, `game_id`, `character_id`, `token_hash` (sha256; o token puro nunca é gravado), `expires_at`, `used_by`, `used_at`, `revoked_at`, `created_by` |
 
 ### RLS
@@ -48,14 +48,14 @@ Edge Function `game` (Deno)
 
 Rotas por `action` no corpo (POST):
 
-| action          | Quem    | O que faz                                                                                 |
-| --------------- | ------- | ----------------------------------------------------------------------------------------- |
+| action          | Quem    | O que faz                                                                                                        |
+| --------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
 | `command`       | membros | `{ gameId, command, expectedRevision }` → aplica, grava, 200 com `{ state }`; 409 em conflito; 403/422 em recusa |
-| `create_game`   | logado  | cria o jogo a partir do seed ou de um save importado; quem cria vira `master`             |
-| `restore_save`  | mestre  | substitui o estado por um save importado (backup), registrando no `game_log`              |
-| `create_invite` | mestre  | gera token de uso único (validade padrão: 7 dias) para um personagem; devolve o link       |
-| `accept_invite` | logado  | consome o token e cria/atualiza a linha em `players` (role `player`, `character_id`)       |
-| `revoke_invite` | mestre  | revoga um convite ainda não usado                                                          |
+| `create_game`   | logado  | cria o jogo a partir do seed ou de um save importado; quem cria vira `master`                                    |
+| `restore_save`  | mestre  | substitui o estado por um save importado (backup), registrando no `game_log`                                     |
+| `create_invite` | mestre  | gera token de uso único (validade padrão: 7 dias) para um personagem; devolve o link                             |
+| `accept_invite` | logado  | consome o token e cria/atualiza a linha em `players` (role `player`, `character_id`)                             |
+| `revoke_invite` | mestre  | revoga um convite ainda não usado                                                                                |
 
 - JWT ausente ou inválido → 401. Não membro → 403. Comando malformado → 422. Conflito → 409 com a revisão atual.
 - O núcleo (`src/server/handler.ts`) é TypeScript comum, sem Deno: recebe as dependências (`auth`, `db`, `random`, `now`) por injeção. É testado no Vitest com fakes. O `index.ts` da função (Deno) só liga essas dependências ao `supabase-js`.
@@ -72,34 +72,40 @@ Rotas por `action` no corpo (POST):
 
 ## Login e papéis
 
-- Supabase Auth com magic link (`signInWithOtp`). Redirect para a própria URL do jogo.
+- Supabase Auth com **Google** (`signInWithOAuth`) e, como alternativa, magic link (`signInWithOtp`, que precisa de SMTP próprio). Os dois voltam para a própria URL do jogo, preservando `?game=`, `?invite=` e `?join=`.
+- **Entrada na mesa:** além do convite por personagem, o mestre gera um **link de entrada** reutilizável (`join_links`, só o hash; validade opcional; revogável). Fluxo:
+  1. O jogador abre `?join=<token>` e entra com Google.
+  2. `join_preview`: se já é membro, entra direto; senão, a tela "Entrar na Axis" lista os personagens sem jogador.
+  3. `join_game` com `claim` (assume um livre) ou `create` (nome, cor, foto do Google). O servidor aplica `character_claim` / `character_join` com `membership: true`, e a função SQL `join_game` liga o jogador e grava o estado na mesma transação. Com a revisão desatualizada, o servidor recalcula (até 3 vezes).
+  4. A foto enviada vem depois, pelo seletor da ficha: o Storage só aceita arquivos de membros.
+- **Mestre:** cartão "Link de entrada" e lista "Jogadores" (`list_players`), com **Desligar** (`unlink_player` + `character_release` no log). O personagem e a carteira ficam.
 - Papel e personagem vêm de `players`. A interface mostra as ferramentas do mestre quando `role = master`; a decisão real é do servidor.
 - Substitui o `VITE_MASTER_PASSWORD` e o `commandContext` baseado na sessão local. Offline, depois que o login funcionar, o Modo Mestre abre sem senha (o save é do próprio navegador; a senha nunca protegeu nada).
 
 ## Etapas
 
-Status (2026-10-10): etapas 1–11 concluídas e commitadas. Os testes pgTAP (etapa 5) estão escritos, mas ainda não rodaram, porque precisam do Docker. Próxima: etapa 12, que precisa do mestre.
+Status (2026-10-12): etapas 1–12 e 14 concluídas; a mesa está publicada (GitHub Pages + Supabase). Os testes pgTAP estão escritos, mas só rodam com o Docker; os cenários de `join_links` foram conferidos no PGlite. Falta a etapa 13.
 
 Cada etapa é testável sozinha e vira um commit. Ao fim de cada uma: typecheck, lint, testes, build e README ("Online / Supabase").
 
-| #   | Etapa                                                                                   | Teste                                                       | Precisa de você? |
-| --- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------- |
-| 1   | Este plano                                                                              | —                                                           | não              |
-| 2   | Repositório por comandos (`submit`), `LocalRepository` aplica                           | testes do store/repositório                                 | não              |
-| 3   | `migrateSave` por `version` (infra para NPCs)                                           | testes de migração                                          | não              |
-| 4   | Bundle das regras + catálogo; paridade Node/Deno                                        | Vitest + `npm run parity`                                   | não              |
-| 5   | `supabase/` (config, migrations, RLS, pgTAP)                                            | `npx supabase test db` (precisa Docker)                     | rodar local (opcional) |
-| 6   | Handler `command` (JWT → ctx → applyCommand → RPC; 401/403/409/422) + `index.ts` Deno   | Vitest com fakes                                            | não              |
-| 7   | Handler `create_game`, `restore_save`, convites                                         | Vitest com fakes                                            | não              |
-| 8   | `SupabaseRepository` + Realtime + escolha offline/online                                 | Vitest com cliente fake                                     | não              |
-| 9   | Login (magic link), escolha/criação do jogo, aceitar convite, papel na interface        | Vitest + manual                                             | não              |
-| 10  | Painel de convites do mestre                                                             | manual                                                      | não              |
-| 11  | Histórico completo paginado (`game_log`)                                                 | Vitest + manual                                             | não              |
-| 12  | Criar projeto, login no CLI, `db push`, deploy da função, URLs do Auth                   | ponta a ponta                                               | **sim**          |
-| 13  | Remover `VITE_MASTER_PASSWORD` (após o login validado)                                   | testes + manual                                             | confirmar        |
+| #   | Etapa                                                                                 | Teste                                   | Precisa de você?       |
+| --- | ------------------------------------------------------------------------------------- | --------------------------------------- | ---------------------- |
+| 1   | Este plano                                                                            | —                                       | não                    |
+| 2   | Repositório por comandos (`submit`), `LocalRepository` aplica                         | testes do store/repositório             | não                    |
+| 3   | `migrateSave` por `version` (infra para NPCs)                                         | testes de migração                      | não                    |
+| 4   | Bundle das regras + catálogo; paridade Node/Deno                                      | Vitest + `npm run parity`               | não                    |
+| 5   | `supabase/` (config, migrations, RLS, pgTAP)                                          | `npx supabase test db` (precisa Docker) | rodar local (opcional) |
+| 6   | Handler `command` (JWT → ctx → applyCommand → RPC; 401/403/409/422) + `index.ts` Deno | Vitest com fakes                        | não                    |
+| 7   | Handler `create_game`, `restore_save`, convites                                       | Vitest com fakes                        | não                    |
+| 8   | `SupabaseRepository` + Realtime + escolha offline/online                              | Vitest com cliente fake                 | não                    |
+| 9   | Login (magic link), escolha/criação do jogo, aceitar convite, papel na interface      | Vitest + manual                         | não                    |
+| 10  | Painel de convites do mestre                                                          | manual                                  | não                    |
+| 11  | Histórico completo paginado (`game_log`)                                              | Vitest + manual                         | não                    |
+| 12  | Criar projeto, login no CLI, `db push`, deploy da função, URLs do Auth                | ponta a ponta                           | **sim**                |
+| 13  | Remover `VITE_MASTER_PASSWORD` (após o login validado)                                | testes + manual                         | confirmar              |
+| 14  | Login com Google, link de entrada, "Entrar na Axis", jogadores e Desligar             | Vitest + SQL (PGlite/pgTAP) + manual    | configurar Google      |
 
 ## O que fica de fora
 
-- Deploy do front (GitHub Pages etc.).
 - NPCs (prompt próprio, depois desta fase).
 - Vários jogos por usuário na interface: o modelo suporta, a interface abre o primeiro (ou o `?game=`).
