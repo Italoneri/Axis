@@ -17,6 +17,9 @@ import {
   type ArchiveImage,
 } from './systems/Archive';
 
+/** The image files an imported save carries (a .zip); undefined for those it lacks. */
+export type ImageFileSource = (ref: ImageRef, variant: ImageVariant) => Blob | undefined;
+
 export interface ArchiveHooks {
   /** Who is acting and looking: the master, or the player's character. */
   viewer: () => Actor;
@@ -118,19 +121,26 @@ export class ArchiveStore {
     return this.removeFiles(images.map((image) => ({ noteId, image })));
   }
 
-  imageUrl(noteId: string, image: ArchiveImage, variant: ImageVariant): Promise<string> {
+  imageUrl(noteId: string, image: ImageRef['image'], variant: ImageVariant): Promise<string> {
     return this.images.url({ noteId, image }, variant);
   }
 
-  readImage(noteId: string, image: ArchiveImage, variant: ImageVariant): Promise<Blob | null> {
+  readImage(noteId: string, image: ImageRef['image'], variant: ImageVariant): Promise<Blob | null> {
     return this.images.read({ noteId, image }, variant);
   }
 
-  /** An imported save brings its archive along. */
-  replace(archive: Archive): Promise<boolean> {
+  /**
+   * An imported save brings its archive along, and a .zip save the image
+   * files too (`files`). Images of the old archive that the new one lacks go.
+   */
+  replace(archive: Archive, files: ImageFileSource = () => undefined): Promise<boolean> {
     return this.enqueue(async () => {
       try {
+        const before = this.archive;
         await this.repository.replace(archive);
+        // After the notes: online, the Storage policies look the notes up.
+        await this.restoreImageFiles(archive, files);
+        await this.removeFiles(droppedImages(before, archive));
         this.show(await this.repository.load());
         return true;
       } catch (error) {
@@ -157,6 +167,18 @@ export class ArchiveStore {
     } catch (error) {
       this.hooks.onPersistError(error);
       return false;
+    }
+  }
+
+  /** A file missing from the import leaves its image showing as unavailable. */
+  private async restoreImageFiles(archive: Archive, files: ImageFileSource): Promise<void> {
+    const refs = archive.notes.flatMap((note) =>
+      note.images.map((image): ImageRef => ({ noteId: note.id, image })),
+    );
+    for (const ref of refs) {
+      const full = files(ref, 'full');
+      const thumb = files(ref, 'thumb');
+      if (full && thumb) await this.images.put(ref, { full, thumb });
     }
   }
 

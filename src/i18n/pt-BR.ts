@@ -77,6 +77,8 @@ export const t = {
     imported: 'Save importado.',
     invalid: (detail: string) => `Save inválido: ${detail}`,
     confirmImport: 'Importar este save substitui a base atual. Continuar?',
+    imagesMissing: (count: number) =>
+      `${count} ${count === 1 ? 'arquivo de imagem não pôde' : 'arquivos de imagem não puderam'} ser exportados: as notas ficam sem eles.`,
     storageFailed:
       'Não foi possível salvar no navegador. Exporte o save para não perder o progresso.',
   },
