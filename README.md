@@ -318,6 +318,17 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 
 O Supabase CLI vem como devDependency: use `npx supabase …`.
 
+### Publicação (GitHub Pages)
+
+Todo push na `master` roda `.github/workflows/pages.yml`: testes, build com as variáveis do Supabase e publicação em `https://italoneri.github.io/Axis/`. O build falha se as variáveis faltarem, para não publicar o jogo offline por engano.
+
+Configuração única no GitHub:
+
+1. **Settings → Pages → Source:** `GitHub Actions`.
+2. **Settings → Secrets and variables → Actions → Variables:** `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (a chave publishable; são públicas, por isso variáveis e não secrets). Nunca a service role.
+
+No Supabase, **Authentication → URL Configuration:** Site URL `https://italoneri.github.io/Axis/` e, em Redirect URLs, `https://italoneri.github.io/Axis/**` e `http://localhost:5173/**`. O `**` é necessário: o magic link volta para a URL inteira, com `?invite=` e `?game=`.
+
 ## Estrutura
 
 ```
