@@ -1,13 +1,9 @@
 import type { GameState } from './model/schema';
-import type {
-  ArchiveImageStore,
-  ImageFiles,
-  ImageRef,
-  ImageVariant,
-} from './persistence/ArchiveImageStore';
+import type { ArchiveImageStore, ImageFiles, ImageVariant } from './persistence/ArchiveImageStore';
 import type { ImageFormat } from './systems/Archive';
 import {
   droppedUploads,
+  fileRef,
   parseUploadRef,
   uploadRef,
   uploadsOf,
@@ -104,11 +100,6 @@ export class GameImages {
       console.warn('[photos] could not remove photo files', error);
     }
   }
-}
-
-/** `<kind>/<id>/<image>.webp`: the record's folder takes the place of the note id. */
-export function fileRef({ target, imageId, format }: UploadRef): ImageRef {
-  return { noteId: `${target.kind}/${target.id}`, image: { id: imageId, format } };
 }
 
 function knownKey(ref: string, variant: ImageVariant): string {

@@ -1,5 +1,6 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
+import type { ImageRef } from '../persistence/ArchiveImageStore';
 import type { ImageFormat } from './Archive';
 import { ACCEPTED_IMAGE_TYPES, IMAGE_LIMITS } from './ArchiveImages';
 import { fail, ok, type Outcome } from './outcome';
@@ -58,6 +59,11 @@ const UPLOAD_PATTERN =
 
 export function uploadRef({ target, imageId, format }: UploadRef): string {
   return `${UPLOAD_PREFIX}${target.kind}/${target.id}/${imageId}.${format}`;
+}
+
+/** Where the file stores keep it: the record's folder, `<kind>/<id>`, takes the place of a note id. */
+export function fileRef({ target, imageId, format }: UploadRef): ImageRef {
+  return { noteId: `${target.kind}/${target.id}`, image: { id: imageId, format } };
 }
 
 /** Anything claiming to be an upload, valid or not: never shown as an asset key or URL. */

@@ -346,7 +346,11 @@ describe('applyCommand permissions', () => {
 
 describe('applyCommand set_image', () => {
   const setImage = (kind: 'character' | 'npc' | 'material' | 'world', id: string, image?: string) =>
-    ({ type: 'set_image', target: { kind, id }, ...(image === undefined ? {} : { image }) }) as const;
+    ({
+      type: 'set_image',
+      target: { kind, id },
+      ...(image === undefined ? {} : { image }),
+    }) as const;
 
   it.each([
     { kind: 'npc', id: 'bianca', read: (s: GameState) => s.npcs[0]?.portrait },

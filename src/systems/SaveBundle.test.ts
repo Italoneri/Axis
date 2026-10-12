@@ -1,6 +1,9 @@
 import { zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { ArchiveStore } from '../archiveStore';
+import { GameImages } from '../gameImages';
+import { LocalRepository } from '../persistence/LocalRepository';
+import { GameStore } from '../store';
 import type { Actor } from '../commands/schema';
 import { LocalArchiveRepository } from '../persistence/LocalArchiveRepository';
 import { LocalImageStore, memoryBlobTable } from '../persistence/LocalImageStore';
@@ -8,13 +11,15 @@ import type { Archive, ArchiveImage } from './Archive';
 import {
   archiveImageFiles,
   bundleImagePath,
+  bundlePhotoPath,
   bundleSave,
   hasArchiveImages,
   isZip,
+  photoFiles,
   readBundle,
 } from './SaveBundle';
-import { parseSave, parseSaveArchive, serializeSave } from './SaveSystem';
-import { makeState, memoryStorage, testCatalog } from './testFixtures';
+import { parseSave, parseSaveArchive, serializeSave, STORAGE_KEY } from './SaveSystem';
+import { makeState, memoryStorage, npc, testCatalog } from './testFixtures';
 
 const NOW = '2026-10-12T12:00:00.000Z';
 const master: Actor = { role: 'master' };
@@ -136,6 +141,83 @@ describe('save bundles', () => {
     ]);
     const thumb = await target.store.readImage('mapa', image('rio'), 'thumb');
     expect(await thumb?.text()).toBe('rio-thumb');
+  });
+
+  it('carries the photos sent in game, and drops those the import lacks', async () => {
+    const thorinPhoto = 'upload:character/thorin/img_t.webp';
+    const npcPhoto = 'upload:npc/bianca/img_b.jpeg';
+    const exported = makeState({
+      characters: [{ id: 'thorin', name: 'Thorin', color: '#aa5500', portrait: thorinPhoto }],
+      npcs: [npc({ id: 'bianca', name: 'Bianca', portrait: npcPhoto })],
+    });
+    expect(photoFiles(exported).map(({ ref, variant }) => bundlePhotoPath(ref, variant))).toEqual([
+      'game-images/character/thorin/img_t.webp',
+      'game-images/character/thorin/img_t.thumb.webp',
+      'game-images/npc/bianca/img_b.jpeg',
+      'game-images/npc/bianca/img_b.thumb.jpeg',
+    ]);
+
+    // Export, as SaveControls does: the files come straight from the bundle paths here.
+    const files = new Map(
+      photoFiles(exported).map(({ ref, variant }) => [
+        bundlePhotoPath(ref, variant),
+        bytesOf(`${ref.imageId}-${variant}`),
+      ]),
+    );
+    const bundle = readBundle(bundleSave(serializeSave(exported, archive), files));
+    if (!bundle.ok) throw new Error(bundle.error);
+    const parsed = parseSave(bundle.saveText, testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+
+    // Import into a browser whose game had another photo.
+    const table = memoryBlobTable();
+    const images = new GameImages(new LocalImageStore(table));
+    const storage = memoryStorage();
+    const before = makeState({
+      characters: [
+        {
+          id: 'thorin',
+          name: 'Thorin',
+          color: '#aa5500',
+          portrait: 'upload:character/thorin/img_old.webp',
+        },
+      ],
+    });
+    storage.setItem(STORAGE_KEY, serializeSave(before, archive));
+    await table.put('character/thorin/img_old.webp', new Blob(['old']));
+    await table.put('character/thorin/img_old.thumb.webp', new Blob(['old']));
+    const store = await GameStore.open(
+      testCatalog,
+      new LocalRepository(storage, testCatalog),
+      {
+        contextFor: () => ({ actor: { role: 'master' } }),
+        onRefused: () => undefined,
+        onPersistError: (error) => {
+          throw error;
+        },
+      },
+      images,
+    );
+
+    await images.restore(parsed.state, (ref, variant) => {
+      const data = bundle.files.get(bundlePhotoPath(ref, variant));
+      return data && new Blob([data.slice()]);
+    });
+    store.replace(parsed.state);
+    await store.whenSynced();
+    await Promise.resolve();
+
+    expect(table.keys().sort()).toEqual([
+      'character/thorin/img_t.thumb.webp',
+      'character/thorin/img_t.webp',
+      'npc/bianca/img_b.jpeg',
+      'npc/bianca/img_b.thumb.jpeg',
+    ]);
+    const thumb = await images.read(
+      { target: { kind: 'npc', id: 'bianca' }, imageId: 'img_b', format: 'jpeg' },
+      'thumb',
+    );
+    expect(await thumb?.text()).toBe('img_b-thumb');
   });
 
   it('keeps reading old JSON saves without images', () => {
