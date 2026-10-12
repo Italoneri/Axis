@@ -125,7 +125,12 @@ export const t = {
 
   online: {
     title: 'Axis — mesa online',
-    loginHint: 'Entre com seu e-mail. Você recebe um link para acessar, sem senha.',
+    loginHint: 'Entre com sua conta Google para jogar.',
+    google: 'Entrar com Google',
+    googleFailed: 'Não foi possível abrir o login do Google. Tente de novo.',
+    emailToggle: 'Entrar com e-mail',
+    emailHint:
+      'Você recebe um link por e-mail, sem senha. Só funciona se o mestre configurou um servidor de e-mail próprio no Supabase.',
     email: 'E-mail',
     sendLink: 'Enviar link',
     linkSent: (email: string) => `Link enviado para ${email}. Abra o e-mail neste aparelho.`,
@@ -148,6 +153,29 @@ export const t = {
       ['invite_is_master', 'Você é o mestre desta mesa; o convite é para um jogador.'],
     ]),
     inviteFailed: 'Não foi possível aceitar o convite.',
+    joinTitle: (game: string) => `Entrar na ${game}`,
+    joinHint: 'Escolha quem você vai jogar. O mestre vê no registro e pode desfazer.',
+    joinClaim: 'Sou um personagem que já existe',
+    joinClaimHint: 'Personagens que ainda não têm jogador:',
+    joinNoFree: 'Todos os personagens já têm jogador. Crie o seu.',
+    joinAs: (name: string) => `Sou ${name}`,
+    joinCreate: 'Criar meu personagem',
+    joinName: 'Nome do personagem',
+    joinColor: 'Cor',
+    joinPhotoHint:
+      'Começa com a foto da sua conta Google. Depois de entrar, troque pela foto que quiser na ficha do personagem.',
+    joinSubmit: 'Entrar na mesa',
+    joinFailed: 'Não foi possível entrar na mesa. Tente de novo.',
+    /** Keyed by the `error` (or refusal `reason`) the game function answers to a join. */
+    joinRefused: new Map([
+      ['join_invalid', 'Este link de entrada não existe.'],
+      ['join_expired', 'Este link de entrada expirou. Peça um novo ao mestre.'],
+      ['join_revoked', 'Este link de entrada foi cancelado pelo mestre.'],
+      ['character_taken', 'Alguém acabou de assumir este personagem. Escolha outro.'],
+      ['already_member', 'Você já está nesta mesa.'],
+      ['empty_name', 'Dê um nome ao personagem.'],
+      ['duplicate_name', 'Já existe um personagem com esse nome na mesa.'],
+    ]),
     signOut: 'Sair da conta',
     loadFailed: 'Não foi possível carregar a mesa. Confira a conexão e recarregue a página.',
     masterOnly: 'Só o mestre da mesa tem as ferramentas de mestre.',
@@ -169,6 +197,29 @@ export const t = {
     revoked: 'Convite cancelado.',
     failed: 'Não foi possível concluir. Tente de novo.',
     loadFailed: 'Não foi possível carregar os convites.',
+  },
+
+  players: {
+    linkTitle: 'Link de entrada',
+    linkHint:
+      'Um link só para a mesa toda, para mandar no grupo. Quem abre escolhe um personagem sem jogador ou cria o seu.',
+    validity: 'Validade',
+    validityOption: (days: string) => (days ? `${days} dias` : 'Sem validade'),
+    createLink: 'Gerar link de entrada',
+    newLink: 'Link de entrada da mesa (aparece só agora, copie):',
+    noLinks: 'Nenhum link de entrada ativo.',
+    linkForever: 'Link ativo, sem validade',
+    linkExpires: (date: string) => `Link ativo até ${date}`,
+    revoke: 'Cancelar link',
+    revoked: 'Link de entrada cancelado.',
+    title: 'Jogadores',
+    empty: 'Ninguém na mesa ainda.',
+    unnamed: 'Jogador sem nome',
+    master: 'mestre',
+    unlink: 'Desligar',
+    unlinked: 'Jogador desligado. O personagem e a carteira continuam na mesa.',
+    failed: 'Não foi possível concluir. Tente de novo.',
+    loadFailed: 'Não foi possível carregar os jogadores.',
   },
 
   history: {

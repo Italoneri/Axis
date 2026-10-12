@@ -9,7 +9,16 @@ import type { DrawerExtras } from '../ui/InfoDrawer';
 import type { MasterAccess } from '../ui/MasterSession';
 import { HistoryPanel } from './HistoryPanel';
 import { InvitesPanel } from './InvitesPanel';
-import { showCreateGame, showLogin, showMessage } from './screens';
+import {
+  followJoinLink,
+  gameUrl,
+  signInWithGoogle,
+  submitJoin,
+  suggestionFrom,
+  withoutParam,
+} from './joinLink';
+import { PlayersPanel } from './PlayersPanel';
+import { showCreateGame, showJoinGame, showLogin, showMessage, type JoinChoice } from './screens';
 import type { OnlineConfig } from './config';
 import {
   createSupabase,
@@ -50,9 +59,10 @@ export interface OnlineGame {
 type Notify = (message: string, tone?: 'error') => void;
 
 /**
- * Gets the player into a game: login by magic link, an invite in the URL, or
- * creating a game. Resolves to null while a screen (login, create) is waiting
- * for the user; those screens reload the page when done.
+ * Gets the player into a game: login (Google or magic link), an invite or the
+ * game's entry link in the URL, or creating a game. Resolves to null while a
+ * screen (login, join, create) is waiting for the user; those screens reload
+ * the page when done.
  */
 export async function bootOnline(
   config: OnlineConfig,
@@ -62,22 +72,39 @@ export async function bootOnline(
   const client = createSupabase(config);
   const backend = supabaseBackend(client, config);
   const { data } = await client.auth.getSession();
-  const userId = data.session?.user.id;
-  if (!userId) {
-    showLogin((email) => sendMagicLink(client, email));
+  const user = data.session?.user;
+  if (!user) {
+    showLogin({
+      google: () => signInWithGoogle(client.auth, window.location.href),
+      sendLink: (email) => sendMagicLink(client, email),
+    });
     return null;
   }
 
   const link = readLinkParams(new URL(window.location.href));
   const invitedGame = link.invite ? await acceptInvite(backend, link.invite, notify) : null;
-  if (link.invite)
-    window.history.replaceState(null, '', withoutInvite(new URL(window.location.href)));
+  if (link.invite) dropParam('invite');
+
+  let requestedGame = invitedGame ?? link.gameId;
+  if (link.join) {
+    const token = link.join;
+    const step = await followJoinLink(backend, token);
+    if (step.kind === 'choose') {
+      showJoinGame({
+        preview: step.preview,
+        catalog,
+        suggestion: suggestionFrom(user.user_metadata),
+        join: (choice) => joinAndOpen(backend, token, choice),
+      });
+      return null;
+    }
+    dropParam('join');
+    if (step.kind === 'open') requestedGame = step.gameId;
+    else notify(step.message, 'error');
+  }
 
   showMessage(t.online.loading);
-  const membership = chooseMembership(
-    await loadMemberships(client, userId),
-    invitedGame ?? link.gameId,
-  );
+  const membership = chooseMembership(await loadMemberships(client, user.id), requestedGame);
   if (!membership) {
     showCreateGame((name, saveText) => createGame(backend, catalog, { name, saveText }));
     return null;
@@ -104,13 +131,15 @@ export async function bootOnline(
     backend,
     client,
     contextFor: () => onlineContext(membership),
-    drawerExtras: (store, notify) => ({
-      history: new HistoryPanel({ client, gameId: membership.gameId, store }),
-      invites:
-        membership.role === 'master'
-          ? new InvitesPanel({ client, backend, gameId: membership.gameId, store, notify })
-          : undefined,
-    }),
+    drawerExtras: (store, notify) => {
+      const panelDeps = { client, backend, gameId: membership.gameId, store, notify };
+      const isMaster = membership.role === 'master';
+      return {
+        history: new HistoryPanel({ client, gameId: membership.gameId, store }),
+        players: isMaster ? new PlayersPanel(panelDeps) : undefined,
+        invites: isMaster ? new InvitesPanel(panelDeps) : undefined,
+      };
+    },
   };
 }
 
@@ -142,16 +171,37 @@ export function onlineContext({ role, characterId }: Membership): CommandContext
   return { actor: { role: 'player', characterId: characterId ?? undefined } };
 }
 
-/** `?invite=<token>` from an invite link, `?game=<id>` to pick one of several games. */
-export function readLinkParams(url: URL): { invite: string | null; gameId: string | null } {
-  return { invite: url.searchParams.get('invite'), gameId: url.searchParams.get('game') };
+export interface LinkParams {
+  /** `?invite=<token>`: a master's invite for one character. */
+  invite: string | null;
+  /** `?join=<token>`: the game's entry link. */
+  join: string | null;
+  /** `?game=<id>`: which of several games to open. */
+  gameId: string | null;
 }
 
-/** The same URL without the invite, so a reload does not try to use it again. */
-export function withoutInvite(url: URL): string {
-  const next = new URL(url);
-  next.searchParams.delete('invite');
-  return next.toString();
+export function readLinkParams(url: URL): LinkParams {
+  return {
+    invite: url.searchParams.get('invite'),
+    join: url.searchParams.get('join'),
+    gameId: url.searchParams.get('game'),
+  };
+}
+
+function dropParam(name: 'invite' | 'join'): void {
+  window.history.replaceState(null, '', withoutParam(new URL(window.location.href), name));
+}
+
+/** Returns a message for the join screen, or reloads into the game. */
+async function joinAndOpen(
+  backend: GameBackend,
+  token: string,
+  choice: JoinChoice,
+): Promise<string | null> {
+  const result = await submitJoin(backend, token, choice);
+  if ('message' in result) return result.message;
+  window.location.assign(gameUrl(new URL(window.location.href), result.gameId));
+  return null;
 }
 
 /** The requested game when the user is in it; otherwise the first one. */

@@ -4,6 +4,7 @@ import { t } from '../i18n/pt-BR';
 import type { GameStore } from '../store';
 import { el } from '../ui/dom';
 import { button, confirmButton } from '../ui/widgets';
+import { copyLink, linkBox } from './linkBox';
 import type { GameBackend } from './SupabaseRepository';
 
 const PAGE_SIZE = 50;
@@ -90,16 +91,6 @@ export class InvitesPanel {
     await this.refresh();
   }
 
-  private async copy(url: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(url);
-      this.deps.notify(t.invites.copied);
-    } catch (error) {
-      console.warn('[invites] clipboard', error);
-      this.deps.notify(t.invites.copyFailed, 'error');
-    }
-  }
-
   private render(): void {
     const { characters } = this.deps.store.current;
     const nameOf = (id: string) => characters.find((c) => c.id === id)?.name ?? id;
@@ -123,7 +114,10 @@ export class InvitesPanel {
             ),
           ),
         ),
-        this.newLink && this.linkBox(nameOf(this.newLink.characterId), this.newLink.url),
+        this.newLink &&
+          linkBox(t.invites.newLink(nameOf(this.newLink.characterId)), this.newLink.url, (url) =>
+            copyLink(url, this.deps.notify),
+          ),
         el('h4', { class: 'section-title' }, t.invites.pending),
         this.pendingList(pending, nameOf),
       ].filter((child): child is HTMLElement => child !== null),
@@ -149,18 +143,6 @@ export class InvitesPanel {
           confirmButton(t.invites.revoke, () => void this.revoke(invite.id)),
         ),
       ),
-    );
-  }
-
-  private linkBox(name: string, url: string): HTMLElement {
-    const input = el('input', { class: 'input input--wide', value: url, readonly: true });
-    input.addEventListener('focus', () => input.select());
-    return el(
-      'div',
-      { class: 'subform' },
-      el('p', {}, t.invites.newLink(name)),
-      input,
-      button(t.invites.copy, () => void this.copy(url), { primary: true }),
     );
   }
 }

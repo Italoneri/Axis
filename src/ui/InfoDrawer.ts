@@ -18,8 +18,10 @@ export interface DrawerPanel {
   refresh(): Promise<void>;
 }
 
-/** Online additions (invites in the master tab, the full history in the log tab) and the archive. */
+/** Online additions (players and invites in the master tab, the full history in the log tab) and the archive. */
 export interface DrawerExtras {
+  /** The game's entry link and who plays which character. */
+  players?: DrawerPanel | undefined;
   invites?: DrawerPanel | undefined;
   history?: DrawerPanel | undefined;
   /** The master opens the Arquivo de registros even before it is built. */
@@ -53,9 +55,9 @@ export class InfoDrawer {
   open(tab: DrawerTab): void {
     this.tab = tab;
     this.render();
-    this.panelOf(tab)
-      ?.refresh()
-      .catch((error: unknown) => console.error(`[drawer] refresh ${tab}`, error));
+    this.panelsOf(tab).forEach((panel) =>
+      panel.refresh().catch((error: unknown) => console.error(`[drawer] refresh ${tab}`, error)),
+    );
   }
 
   toggle(): void {
@@ -134,7 +136,7 @@ export class InfoDrawer {
         openArchive: this.extras.openArchive,
         openMenu: this.extras.openMenu,
       });
-      return this.extras.invites ? [...tools, this.extras.invites.element] : tools;
+      return [...tools, ...this.panelsOf(tab).map((panel) => panel.element)];
     }
     if (tab === 'map')
       return renderMapVisual(this.map.liveMap, this.store.catalog, this.map.preview);
@@ -145,10 +147,14 @@ export class InfoDrawer {
     return this.renderBonuses();
   }
 
-  private panelOf(tab: DrawerTab): DrawerPanel | undefined {
-    if (tab === 'master') return this.extras.invites;
-    if (tab === 'log') return this.extras.history;
-    return undefined;
+  private panelsOf(tab: DrawerTab): DrawerPanel[] {
+    const panels =
+      tab === 'master'
+        ? [this.extras.players, this.extras.invites]
+        : tab === 'log'
+          ? [this.extras.history]
+          : [];
+    return panels.filter((panel): panel is DrawerPanel => panel !== undefined);
   }
 
   private renderBonuses(): HTMLElement[] {
