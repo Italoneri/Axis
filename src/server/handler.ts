@@ -1,37 +1,41 @@
 import { z } from 'zod';
-import {
-  actorName,
-  applyCommand,
-  MASTER_ACTOR,
-  type CommandOutcome,
-} from '../commands/applyCommand';
-import type { CommandContext } from '../commands/schema';
-import type { Catalog } from '../model/catalog';
+import { actorName, applyCommand, MASTER_ACTOR } from '../commands/applyCommand';
 import { createInitialState, parseState, type ParseResult } from '../systems/SaveSystem';
-import type { GameDb, InviteStatus, MemberGame } from './gameDb';
+import {
+  conflict,
+  contextOf,
+  isGame,
+  loadAsMaster,
+  randomToken,
+  refusal,
+  reply,
+  sha256Hex,
+  type AuthPort,
+  type Caller,
+  type GameResponse,
+  type HandlerDeps,
+} from './caller';
+import type { InviteStatus } from './gameDb';
+import {
+  createJoinLink,
+  joinChoiceSchema,
+  joinGame,
+  joinTokenSchema,
+  MAX_JOIN_LINK_DAYS,
+  previewJoin,
+  revokeJoinLink,
+  unlinkPlayer,
+} from './joining';
 
 // Core of the `game` Edge Function: plain TypeScript with its dependencies
 // injected, so Vitest runs it in Node and the bundle runs it in Deno.
 
-export interface AuthPort {
-  /** The user id of a valid access token; null when the token is invalid or expired. */
-  userFromToken(token: string): Promise<string | null>;
-}
-
-export interface HandlerDeps {
-  auth: AuthPort;
-  db: GameDb;
-  catalog: Catalog;
-}
+export type { AuthPort, GameResponse, HandlerDeps, PhotoSigner } from './caller';
+export { sha256Hex } from './caller';
 
 export interface GameRequest {
   authorization: string | null;
   body: unknown;
-}
-
-export interface GameResponse {
-  status: number;
-  body: Readonly<Record<string, unknown>>;
 }
 
 const DEFAULT_INVITE_DAYS = 7;
@@ -66,14 +70,21 @@ const requestSchema = z.discriminatedUnion('action', [
   }),
   z.object({ action: z.literal('accept_invite'), token: z.string().min(16).max(128) }),
   z.object({ action: z.literal('revoke_invite'), gameId: z.uuid(), inviteId: z.uuid() }),
+  z.object({
+    action: z.literal('create_join_link'),
+    gameId: z.uuid(),
+    /** Absent: valid until revoked. */
+    expiresInDays: z.number().int().min(1).max(MAX_JOIN_LINK_DAYS).optional(),
+  }),
+  z.object({ action: z.literal('revoke_join_link'), gameId: z.uuid(), linkId: z.uuid() }),
+  z.object({ action: z.literal('join_preview'), token: joinTokenSchema }),
+  z.object({ action: z.literal('join_game'), token: joinTokenSchema, choice: joinChoiceSchema }),
+  z.object({ action: z.literal('unlink_player'), gameId: z.uuid(), userId: z.uuid() }),
 ]);
 
 type GameAction = z.infer<typeof requestSchema>;
 type ActionOf = { [A in GameAction as A['action']]: A };
 type ActionName = keyof ActionOf;
-interface Caller extends HandlerDeps {
-  userId: string;
-}
 type Actions = {
   [K in ActionName]: (request: ActionOf[K], caller: Caller) => Promise<GameResponse>;
 };
@@ -191,6 +202,12 @@ const actions: Actions = {
     const revoked = await caller.db.revokeInvite(gameId, inviteId);
     return revoked ? reply(200, { revoked: true }) : reply(404, { error: 'not_found' });
   },
+
+  create_join_link: createJoinLink,
+  revoke_join_link: revokeJoinLink,
+  join_preview: previewJoin,
+  join_game: joinGame,
+  unlink_player: unlinkPlayer,
 };
 
 const INVITE_REFUSAL_STATUS: Record<Exclude<InviteStatus, 'ok'>, number> = {
@@ -201,55 +218,7 @@ const INVITE_REFUSAL_STATUS: Record<Exclude<InviteStatus, 'ok'>, number> = {
   is_master: 409,
 };
 
-/** The game when the caller is its master; otherwise the 403 to send back. */
-async function loadAsMaster(
-  gameId: string,
-  { userId, db }: Caller,
-): Promise<MemberGame | GameResponse> {
-  const game = await db.loadForMember(gameId, userId);
-  if (!game) return reply(403, { error: 'not_member' });
-  if (game.role !== 'master') return reply(403, { error: 'refused', reason: 'forbidden' });
-  return game;
-}
-
-function isGame(value: MemberGame | GameResponse): value is MemberGame {
-  return 'role' in value;
-}
-
-/** 256 random bits, URL-safe: the secret part of an invite link. */
-function randomToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/, '');
-}
-
-export async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/** The server's idea of who is acting: from the players table, never from the request. */
-function contextOf(game: MemberGame): CommandContext {
-  if (game.role === 'master') return { actor: { role: 'master' } };
-  return { actor: { role: 'player', characterId: game.characterId ?? undefined } };
-}
-
 async function authenticate(authorization: string | null, auth: AuthPort): Promise<string | null> {
   const token = /^Bearer\s+(\S+)$/i.exec(authorization ?? '')?.[1];
   return token ? auth.userFromToken(token) : null;
-}
-
-function refusal(outcome: Extract<CommandOutcome, { ok: false }>): GameResponse {
-  const status = outcome.error === 'forbidden' ? 403 : 422;
-  return reply(status, { error: 'refused', reason: outcome.error, reasons: outcome.reasons });
-}
-
-function conflict(revision?: number): GameResponse {
-  return reply(409, { error: 'conflict', revision });
-}
-
-function reply(status: number, body: Record<string, unknown>): GameResponse {
-  return { status, body };
 }

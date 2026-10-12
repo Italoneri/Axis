@@ -7,13 +7,19 @@ import { MemoryDb } from './memoryDb';
 const MASTER = 'user-master';
 const PLAYER = 'user-player';
 const character = serverCatalog.seed.wallets.characters[0]?.id ?? '';
+const noPhotos = { signPhotos: () => Promise.resolve({}) };
 
 function setup() {
   const db = new MemoryDb();
   const request = (body: unknown, userId: string = MASTER): Promise<GameResponse> =>
     handleGameRequest(
       { authorization: `Bearer ${userId}`, body },
-      { db, catalog: serverCatalog, auth: { userFromToken: (t) => Promise.resolve(t) } },
+      {
+        db,
+        catalog: serverCatalog,
+        auth: { userFromToken: (t) => Promise.resolve(t) },
+        photos: noPhotos,
+      },
     );
   const createGame = async (state?: unknown) => {
     const response = await request({ action: 'create_game', name: 'Axis', state });
@@ -126,5 +132,163 @@ describe('invites', () => {
       PLAYER,
     );
     expect(byStranger).toEqual({ status: 403, body: { error: 'not_member' } });
+  });
+});
+
+describe('join links', () => {
+  const NEWCOMER = 'user-newcomer';
+
+  async function withLink(expiresInDays?: number) {
+    const context = setup();
+    const gameId = await context.createGame();
+    const created = await context.request({ action: 'create_join_link', gameId, expiresInDays });
+    const token = String(created.body['token']);
+    const join = (choice: unknown, userId = NEWCOMER) =>
+      context.request({ action: 'join_game', token, choice }, userId);
+    return { ...context, gameId, created, token, join };
+  }
+
+  const create = { kind: 'create', name: 'Bruna', color: '#6a8fd4' } as const;
+
+  it('creates a reusable link that never expires unless asked, storing only its hash', async () => {
+    const { db, created, token } = await withLink();
+    expect(created).toMatchObject({ status: 201, body: { expiresAt: null } });
+    expect(db.joinLinks[0]?.tokenHash).toBe(await sha256Hex(token));
+    expect(JSON.stringify(db.joinLinks)).not.toContain(token);
+  });
+
+  it('lists the characters without a player to someone about to join', async () => {
+    const { request, gameId, token, join } = await withLink();
+    const before = await request({ action: 'join_preview', token }, NEWCOMER);
+    expect(before).toMatchObject({
+      status: 200,
+      body: { gameId, gameName: 'Axis', isMember: false },
+    });
+    expect(before.body['characters']).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: character })]),
+    );
+    await join({ kind: 'claim', characterId: character }, PLAYER);
+    const after = await request({ action: 'join_preview', token }, NEWCOMER);
+    expect(after.body['characters']).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: character })]),
+    );
+  });
+
+  it('links a player to a free character and logs it', async () => {
+    const { db, gameId, join } = await withLink();
+    const joined = await join({ kind: 'claim', characterId: character });
+    expect(joined).toEqual({ status: 200, body: { gameId, characterId: character } });
+    expect(db.players.get(`${gameId}:${NEWCOMER}`)).toEqual({
+      role: 'player',
+      characterId: character,
+    });
+    expect(db.games.get(gameId)).toMatchObject({
+      revision: 1,
+      state: {
+        log: expect.arrayContaining([expect.objectContaining({ kind: 'character_claimed' })]),
+      },
+    });
+  });
+
+  it('creates the player character with an empty wallet', async () => {
+    const { db, gameId, join } = await withLink();
+    const joined = await join({ ...create, portrait: 'https://lh3.googleusercontent.com/a/x' });
+    const characterId = String(joined.body['characterId']);
+    expect(joined.status).toBe(200);
+    expect(db.games.get(gameId)?.state).toMatchObject({
+      characters: expect.arrayContaining([
+        {
+          id: characterId,
+          name: 'Bruna',
+          color: '#6a8fd4',
+          portrait: 'https://lh3.googleusercontent.com/a/x',
+        },
+      ]),
+      wallets: { characters: expect.objectContaining({ [characterId]: {} }) },
+    });
+    expect(db.players.get(`${gameId}:${NEWCOMER}`)?.characterId).toBe(characterId);
+  });
+
+  it.each([
+    {
+      name: 'a character someone already plays',
+      setup: 'taken',
+      status: 409,
+      error: 'character_taken',
+    },
+    {
+      name: 'a second character for the same user',
+      setup: 'member',
+      status: 409,
+      error: 'already_member',
+    },
+  ] as const)('refuses $name', async ({ setup: arrange, status, error }) => {
+    const { join } = await withLink();
+    await join({ kind: 'claim', characterId: character }, arrange === 'taken' ? PLAYER : NEWCOMER);
+    const refused = await join(
+      arrange === 'taken' ? { kind: 'claim', characterId: character } : create,
+    );
+    expect(refused).toMatchObject({ status, body: { error } });
+  });
+
+  it.each([
+    { name: 'an empty name', choice: { ...create, name: '  ' }, reason: 'empty_name' },
+    {
+      name: 'the name of a character at the table',
+      choice: { ...create, name: serverCatalog.seed.wallets.characters[0]?.name ?? '' },
+      reason: 'duplicate_name',
+    },
+  ])('refuses a new character with $name', async ({ choice, reason }) => {
+    const { join } = await withLink();
+    expect(await join(choice)).toMatchObject({ status: 422, body: { reason } });
+  });
+
+  it('refuses an uploaded photo before the player is in the game', async () => {
+    const { join } = await withLink();
+    const choice = { ...create, portrait: 'upload:character/x/img_1.webp' };
+    expect((await join(choice)).status).toBe(422);
+  });
+
+  it('stops working once revoked or expired', async () => {
+    const { request, gameId, created, join, db } = await withLink(7);
+    const linkId = created.body['linkId'];
+    expect((await request({ action: 'revoke_join_link', gameId, linkId })).status).toBe(200);
+    expect(await join(create)).toEqual({ status: 410, body: { error: 'join_revoked' } });
+    const link = db.joinLinks[0];
+    if (link) Object.assign(link, { revoked: false, expiresAt: new Date(Date.now() - 1000) });
+    expect(await join(create)).toEqual({ status: 410, body: { error: 'join_expired' } });
+  });
+
+  it('refuses an unknown link and lets only the master create one', async () => {
+    const { request, gameId } = await withLink();
+    const unknown = await request({ action: 'join_preview', token: 'x'.repeat(43) }, NEWCOMER);
+    expect(unknown).toEqual({ status: 404, body: { error: 'join_invalid' } });
+    const byStranger = await request({ action: 'create_join_link', gameId }, NEWCOMER);
+    expect(byStranger).toEqual({ status: 403, body: { error: 'not_member' } });
+  });
+
+  it('lets the master unlink a player, keeping the character and its wallet', async () => {
+    const { db, request, gameId, join } = await withLink();
+    await join({ kind: 'claim', characterId: character });
+    const userId = '00000000-0000-4000-8000-0000000000ff';
+    db.players.set(
+      `${gameId}:${userId}`,
+      db.players.get(`${gameId}:${NEWCOMER}`) ?? { role: 'player', characterId: character },
+    );
+    db.players.delete(`${gameId}:${NEWCOMER}`);
+    const unlinked = await request({ action: 'unlink_player', gameId, userId });
+    expect(unlinked.status).toBe(200);
+    expect(db.players.has(`${gameId}:${userId}`)).toBe(false);
+    expect(db.games.get(gameId)?.state).toMatchObject({
+      characters: expect.arrayContaining([expect.objectContaining({ id: character })]),
+      log: expect.arrayContaining([expect.objectContaining({ kind: 'character_released' })]),
+    });
+  });
+
+  it('never unlinks the master', async () => {
+    const { request, gameId } = await withLink();
+    const userId = '00000000-0000-4000-8000-0000000000aa';
+    const refused = await request({ action: 'unlink_player', gameId, userId }, MASTER);
+    expect(refused.status).toBe(404);
   });
 });

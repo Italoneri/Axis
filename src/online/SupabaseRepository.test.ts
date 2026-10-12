@@ -8,6 +8,8 @@ import { createInitialState } from '../systems/SaveSystem';
 import { onlineConfig } from './config';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
 
+const noPhotos = { signPhotos: () => Promise.resolve({}) };
+
 const MASTER = 'user-master';
 const PLAYER = 'user-player';
 
@@ -24,7 +26,12 @@ async function onlineWorld() {
     callFunction: async (body) => {
       const response = await handleGameRequest(
         { authorization: `Bearer ${userId}`, body },
-        { db, catalog: serverCatalog, auth: { userFromToken: (t) => Promise.resolve(t) } },
+        {
+          db,
+          catalog: serverCatalog,
+          auth: { userFromToken: (t) => Promise.resolve(t) },
+          photos: noPhotos,
+        },
       );
       if (response.status === 200) watchers.forEach((watch) => watch(db.games.get(gameId)?.state));
       return response;

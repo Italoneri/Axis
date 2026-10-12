@@ -1,9 +1,9 @@
 import { rpcGameDb, type RpcClient } from './gameDb';
-import { handleGameRequest, type AuthPort } from './handler';
+import { handleGameRequest, type AuthPort, type PhotoSigner } from './handler';
 import { serverCatalog } from './catalog';
 
 /** What supabase/functions/game/index.ts hands over: thin wrappers around supabase-js. */
-export interface GameFunctionDeps extends RpcClient, AuthPort {}
+export interface GameFunctionDeps extends RpcClient, AuthPort, PhotoSigner {}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +22,7 @@ export async function serveGame(request: Request, deps: GameFunctionDeps): Promi
   try {
     const response = await handleGameRequest(
       { authorization: request.headers.get('Authorization'), body },
-      { auth: deps, db: rpcGameDb(deps), catalog: serverCatalog },
+      { auth: deps, db: rpcGameDb(deps), catalog: serverCatalog, photos: deps },
     );
     log('info', { operation, status: response.status, durationMs: Date.now() - started });
     return json(response.status, response.body);

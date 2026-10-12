@@ -5,6 +5,8 @@ import { serveGame } from '../_shared/game.js';
 
 /** Every database or auth call gives up after this, so a stuck request never hangs the function. */
 const REQUEST_TIMEOUT_MS = 10_000;
+/** Portraits shown on the "Entrar na Axis" screen, to someone who is not a member yet. */
+const PHOTO_URL_SECONDS = 600;
 
 function requireEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -27,6 +29,16 @@ Deno.serve((request) =>
     userFromToken: async (token) => {
       const { data, error } = await supabase.auth.getUser(token);
       return error ? null : data.user.id;
+    },
+    signPhotos: async (paths) => {
+      if (paths.length === 0) return {};
+      const { data, error } = await supabase.storage
+        .from('game-images')
+        .createSignedUrls([...paths], PHOTO_URL_SECONDS);
+      if (error) throw new Error(`sign photos: ${error.message}`);
+      return Object.fromEntries(
+        data.flatMap((item) => (item.path && item.signedUrl ? [[item.path, item.signedUrl]] : [])),
+      );
     },
   }),
 );

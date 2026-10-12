@@ -43,6 +43,7 @@ function fakeSupabase(game: FakeGame): GameFunctionDeps {
   };
   return {
     userFromToken: (token) => Promise.resolve(tokens[token] ?? null),
+    signPhotos: () => Promise.resolve({}),
     rpc: (fn, args) => {
       const handler = handlers[fn];
       if (!handler) return Promise.resolve({ data: null, error: { message: `no ${fn}` } });

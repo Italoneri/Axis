@@ -7,6 +7,8 @@ export interface GameFunctionDeps {
     args: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   userFromToken(token: string): Promise<string | null>;
+  /** Path in the game-images bucket → short-lived URL; paths that cannot be signed are left out. */
+  signPhotos(paths: readonly string[]): Promise<Record<string, string>>;
 }
 
 export declare function serveGame(request: Request, deps: GameFunctionDeps): Promise<Response>;

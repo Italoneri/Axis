@@ -1,4 +1,14 @@
-import type { GameDb, InviteAcceptance, MemberGame } from './gameDb';
+import type {
+  GameDb,
+  InviteAcceptance,
+  JoinPeek,
+  JoinStatus,
+  JoinUpdate,
+  MemberGame,
+  NewJoinLink,
+  UnlinkStatus,
+  UnlinkUpdate,
+} from './gameDb';
 
 interface Invite {
   id: string;
@@ -10,11 +20,18 @@ interface Invite {
   revoked: boolean;
 }
 
+interface JoinLink extends NewJoinLink {
+  id: string;
+  revoked: boolean;
+}
+
 /** In-memory GameDb with the same rules as the SQL functions in supabase/migrations (tests only). */
 export class MemoryDb implements GameDb {
   games = new Map<string, { state: unknown; revision: number }>();
   players = new Map<string, { role: 'master' | 'player'; characterId: string | null }>();
   invites: Invite[] = [];
+  joinLinks: JoinLink[] = [];
+  names = new Map<string, string>();
   private nextId = 1;
 
   private uuid(): string {
@@ -34,8 +51,9 @@ export class MemoryDb implements GameDb {
     return Promise.resolve(true);
   }
 
-  createGame(_name: string, state: unknown, ownerId: string): Promise<string> {
+  createGame(name: string, state: unknown, ownerId: string): Promise<string> {
     const id = this.uuid();
+    this.names.set(id, name);
     this.games.set(id, { state, revision: 0 });
     this.players.set(`${id}:${ownerId}`, { role: 'master', characterId: null });
     return Promise.resolve(id);
@@ -71,4 +89,67 @@ export class MemoryDb implements GameDb {
     invite.revoked = true;
     return Promise.resolve(true);
   }
+
+  createJoinLink(link: NewJoinLink): Promise<string> {
+    const id = this.uuid();
+    this.joinLinks.push({ ...link, id, revoked: false });
+    return Promise.resolve(id);
+  }
+
+  revokeJoinLink(gameId: string, linkId: string): Promise<boolean> {
+    const link = this.joinLinks.find((l) => l.id === linkId && l.gameId === gameId);
+    if (!link || link.revoked) return Promise.resolve(false);
+    link.revoked = true;
+    return Promise.resolve(true);
+  }
+
+  peekJoin(tokenHash: string, userId: string): Promise<JoinPeek> {
+    const link = this.joinLinks.find((l) => l.tokenHash === tokenHash);
+    const refusal = linkRefusal(link);
+    const game = link && this.games.get(link.gameId);
+    if (refusal || !link || !game) return Promise.resolve({ status: refusal ?? 'invalid' });
+    return Promise.resolve({
+      status: 'ok',
+      gameId: link.gameId,
+      gameName: this.names.get(link.gameId) ?? '',
+      ...game,
+      isMember: this.players.has(`${link.gameId}:${userId}`),
+      taken: this.takenCharacters(link.gameId),
+    });
+  }
+
+  async joinGame(join: JoinUpdate): Promise<JoinStatus> {
+    const link = this.joinLinks.find((l) => l.tokenHash === join.tokenHash);
+    const refusal = linkRefusal(link);
+    if (refusal || !link) return refusal ?? 'invalid';
+    if (this.players.has(`${link.gameId}:${join.userId}`)) return 'already_member';
+    if (this.takenCharacters(link.gameId).includes(join.characterId)) return 'character_taken';
+    if (!(await this.commitUpdate({ ...join, gameId: link.gameId }))) return 'conflict';
+    this.players.set(`${link.gameId}:${join.userId}`, {
+      role: 'player',
+      characterId: join.characterId,
+    });
+    return 'ok';
+  }
+
+  async unlinkPlayer(unlink: UnlinkUpdate): Promise<UnlinkStatus> {
+    const key = `${unlink.gameId}:${unlink.unlinkedUserId}`;
+    if (this.players.get(key)?.role !== 'player') return 'not_found';
+    if (!(await this.commitUpdate(unlink))) return 'conflict';
+    this.players.delete(key);
+    return 'ok';
+  }
+
+  private takenCharacters(gameId: string): string[] {
+    return [...this.players]
+      .filter(([key, player]) => key.startsWith(`${gameId}:`) && player.characterId)
+      .map(([, player]) => player.characterId ?? '');
+  }
+}
+
+function linkRefusal(link: JoinLink | undefined): 'invalid' | 'revoked' | 'expired' | null {
+  if (!link) return 'invalid';
+  if (link.revoked) return 'revoked';
+  if (link.expiresAt && link.expiresAt <= new Date()) return 'expired';
+  return null;
 }
