@@ -133,7 +133,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   ]
   ```
 
-  Moradia por nível: Alojamento 6/14/14, Torre dos Magos 2/3/4 e Taverna 2/2/3.
+  Moradia só no Alojamento (6/14/14 por nível): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras.
 
   Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos, com um `penalty` opcional para quando alguém atrapalha). O posto **Construir**, que aparece em toda obra em andamento, e o divisor das habilidades negativas (`negativeDivisor`) ficam em `src/data/npcs.json`.
 
@@ -152,7 +152,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
 
   Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
 
-- **Save:** versão 5. Saves da versão 4 ganham `npcs: []` ao carregar; online o estado continua no mesmo jsonb.
+- **Save:** versão 6. Saves da versão 4 ganham `npcs: []` ao carregar. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
 
 ## Arquivo de registros
 

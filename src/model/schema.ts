@@ -76,6 +76,8 @@ export const buildingLevelSchema = z.object({
 export const npcsConfigSchema = z.object({
   /** A negative skill yields `base × skill / negativeDivisor`. */
   negativeDivisor: z.number().positive(),
+  /** The only buildings whose levels may offer `housing`. */
+  housingBuildings: z.array(z.string().min(1)).min(1),
   construction: jobDefSchema.extend({
     effect: jobEffectSchema.options[2],
   }),
@@ -424,6 +426,14 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     npc: z.string(),
     place: z.string().optional(),
   }),
+  /** Moved by the game, not by a player: its old home stopped housing NPCs. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('npc_moved'),
+    npc: z.string(),
+    from: z.string(),
+    place: z.string(),
+  }),
   z.object({
     ...entryBase,
     kind: z.literal('npc_job_set'),
@@ -462,7 +472,7 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   z.object({ ...entryBase, kind: z.literal('archive_changed'), change: archiveChangeSchema }),
 ]);
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),

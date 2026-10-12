@@ -158,6 +158,7 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('world', catalog.worlds),
     ...duplicates('skill', catalog.skills),
     ...jobProblems(catalog),
+    ...housingProblems(catalog),
     ...layoutProblems(catalog),
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
@@ -215,6 +216,19 @@ function jobProblems({ buildings, skills, npcs }: Catalog): string[] {
     }),
   );
   return [...unknownSkill('npcs.json', npcs.construction), ...levelProblems];
+}
+
+/** Housing lives only in the buildings npcs.json lists (the Alojamento). */
+function housingProblems({ buildings, npcs }: Catalog): string[] {
+  const housingIds = new Set(npcs.housingBuildings);
+  return [
+    ...npcs.housingBuildings
+      .filter((id) => !buildings.some((b) => b.id === id))
+      .map((id) => `npcs.json: housingBuildings lists unknown building "${id}"`),
+    ...buildings
+      .filter((b) => !housingIds.has(b.id) && b.levels.some((level) => level.housing))
+      .map((b) => `${b.id}: housing is only allowed in npcs.json housingBuildings`),
+  ];
 }
 
 /** Every slot type a building accepts must exist, and no slot may sit on a reserved stretch. */

@@ -229,6 +229,7 @@ describe('migrateSave', () => {
     expect(migrateSave(v4, migrations, 6)).toEqual({
       ok: true,
       json: { version: 6, day: 3, npcs: [] },
+      from: 4,
     });
   });
 
@@ -240,7 +241,7 @@ describe('migrateSave', () => {
   });
 
   it('leaves a current save untouched', () => {
-    expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4 });
+    expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4, from: 4 });
   });
 
   it('refuses a gap in the chain (kept) and saves older than the oldest supported (outdated)', () => {
@@ -254,6 +255,58 @@ describe('migrateSave', () => {
       error: 'save version 3',
       outdated: true,
     });
+  });
+});
+
+describe('version 5 saves: housing only in the Alojamento', () => {
+  // outer_n holds a Forja, which offers no housing, like the old Taverna homes.
+  const slots = {
+    outer_n: { buildingId: 'forge', level: 1, status: 'done' },
+    outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+  } as const;
+  const forjar = { slotId: 'outer_n', activityId: 'forjar', carry: 3 };
+  const pele = npc({
+    id: 'pele',
+    name: 'Pelé',
+    home: 'outer_n',
+    job: forjar,
+    status: 'trabalhando',
+  });
+  const ana = npc({ id: 'ana', name: 'Ana', home: 'outer_n' });
+
+  function load(version: number, npcs: ReturnType<typeof npc>[]) {
+    const parsed = parseSave(
+      JSON.stringify({ ...makeState({ slots, npcs }), version }),
+      testCatalog,
+    );
+    if (!parsed.ok) throw new Error(parsed.error);
+    return parsed.state;
+  }
+
+  it('moves residents to the Alojamento when there is room, keeping their post', () => {
+    const state = load(5, [pele]);
+    expect(state.version).toBe(6);
+    expect(state.npcs[0]).toMatchObject({ home: 'outer_e', job: forjar, status: 'trabalhando' });
+    expect(state.log).toEqual([
+      { day: 1, kind: 'npc_moved', npc: 'Pelé', from: 'forge', place: 'barracks' },
+    ]);
+  });
+
+  it('releases, in list order, whoever does not fit', () => {
+    const resident = npc({ id: 'bia', name: 'Bia', home: 'outer_e' });
+    const state = load(5, [resident, pele, ana]);
+    expect(state.npcs.map((n) => [n.name, n.home, n.job?.activityId ?? null])).toEqual([
+      ['Bia', 'outer_e', null],
+      ['Pelé', 'outer_e', 'forjar'],
+      ['Ana', null, null],
+    ]);
+    expect(state.log.map((entry) => entry.kind)).toEqual(['npc_moved', 'npc_released']);
+    expect(state.log[1]).toMatchObject({ npc: 'Ana', from: 'home', reason: 'capacity' });
+  });
+
+  it('runs only on the upgrade from version 5', () => {
+    const state = load(6, [pele]);
+    expect(state.npcs[0]).toMatchObject({ home: null, job: null, status: 'disponivel' });
   });
 });
 

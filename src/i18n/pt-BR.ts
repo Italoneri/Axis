@@ -627,6 +627,7 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'npc_removed':
     case 'npc_unassigned':
     case 'npc_home_set':
+    case 'npc_moved':
     case 'npc_job_set':
     case 'npc_released':
     case 'npc_worked':
@@ -717,6 +718,8 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
       return entry.place
         ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
         : `${who}${entry.npc} deixou a moradia`;
+    case 'npc_moved':
+      return `${entry.npc} mudou-se de ${ctx.building(entry.from)} para ${ctx.building(entry.place)}`;
     case 'npc_job_set':
       return `${who}${entry.npc} assumiu o posto ${entry.activity} em ${ctx.building(entry.place)}`;
     case 'npc_released': {

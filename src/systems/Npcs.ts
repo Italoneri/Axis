@@ -253,6 +253,33 @@ export function settleNpcs(state: GameState, catalog: Catalog): GameState {
   return withLog({ ...state, npcs }, ...released);
 }
 
+/**
+ * Residents of a building that no longer offers housing (saves from when the
+ * Taverna and the Torre dos Magos housed NPCs) move to housing with room,
+ * keeping their post. Whoever does not fit is left for `settleNpcs` to release.
+ */
+export function rehomeNpcs(state: GameState, catalog: Catalog): GameState {
+  const homes = housingList(state, catalog);
+  const moved: LogEntry[] = [];
+  const npcs = state.npcs.map((npc) => {
+    const oldHome = npc.home ? state.slots[npc.home] : undefined;
+    if (!npc.home || !oldHome || housingCapacity(state, catalog, npc.home) > 0) return npc;
+    const home = homes.find((h) => h.residents < h.capacity);
+    if (!home) return npc;
+    home.residents += 1;
+    moved.push({
+      day: state.day,
+      kind: 'npc_moved',
+      npc: npc.name,
+      from: oldHome.buildingId,
+      place: home.buildingId,
+    });
+    return { ...npc, home: home.slotId };
+  });
+  if (moved.length === 0) return state;
+  return withLog({ ...state, npcs }, ...moved);
+}
+
 /** `disponivel` and `trabalhando` follow the job; the master's `ferido`/`em_missao` stay. */
 export function settledStatus(status: NpcStatus, job: NpcJob | null): NpcStatus {
   if (status === 'ferido' || status === 'em_missao') return status;

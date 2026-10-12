@@ -3,7 +3,7 @@ import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import { gameStateSchema, SAVE_VERSION, type GameState } from '../model/schema';
 import { parseArchive, type Archive } from './Archive';
 import { initialInfluence } from './Influence';
-import { settleNpcs } from './Npcs';
+import { rehomeNpcs, settleNpcs } from './Npcs';
 import { trimLog } from './outcome';
 
 export const STORAGE_KEY = 'axis-base-builder:save';
@@ -93,7 +93,8 @@ export function parseState(json: unknown, catalog: Catalog): ParseResult {
     return { ok: false, error: z.prettifyError(result.error), outdated: false };
   }
 
-  const dropped = settleNpcs(dropMissingSlots(result.data, catalog), catalog);
+  const upgraded = upgradeWithCatalog(result.data, catalog, migrated.from);
+  const dropped = settleNpcs(dropMissingSlots(upgraded, catalog), catalog);
   const state = { ...dropped, log: trimLog(dropped.log) };
   const problems = referenceProblems(state, catalog);
   if (problems.length > 0) return { ok: false, error: problems.join('; '), outdated: false };
@@ -112,7 +113,25 @@ export type SaveMigration = (save: SaveJson) => SaveJson;
  */
 export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   4: (save) => ({ ...save, npcs: [] }),
+  // Housing moved to the Alojamento alone; the move itself needs the catalog (below).
+  5: (save) => save,
 };
+
+/** Turns a parsed save that came from version N into the rules of N + 1, with the catalog at hand. */
+type CatalogMigration = (state: GameState, catalog: Catalog) => GameState;
+
+/** Steps of `SAVE_MIGRATIONS` that need the catalog, keyed the same way and run after parsing. */
+const CATALOG_MIGRATIONS: Readonly<Record<number, CatalogMigration>> = {
+  5: rehomeNpcs,
+};
+
+function upgradeWithCatalog(state: GameState, catalog: Catalog, from: number): GameState {
+  let upgraded = state;
+  for (let version = from; version < SAVE_VERSION; version++) {
+    upgraded = CATALOG_MIGRATIONS[version]?.(upgraded, catalog) ?? upgraded;
+  }
+  return upgraded;
+}
 
 /** Saves older than this predate real games and are discarded instead of migrated. */
 export const OLDEST_SUPPORTED_VERSION = 4;
@@ -123,10 +142,10 @@ export function migrateSave(
   json: unknown,
   migrations: Readonly<Record<number, SaveMigration>> = SAVE_MIGRATIONS,
   target: number = SAVE_VERSION,
-): { ok: true; json: unknown } | { ok: false; error: string; outdated: boolean } {
+): { ok: true; json: unknown; from: number } | { ok: false; error: string; outdated: boolean } {
   const versioned = versionedSchema.safeParse(json);
   // Not even versioned: leave it to the schema to report what is wrong.
-  if (!versioned.success) return { ok: true, json };
+  if (!versioned.success) return { ok: true, json, from: target };
   const { version } = versioned.data;
   if (version < OLDEST_SUPPORTED_VERSION)
     return { ok: false, error: `save version ${version}`, outdated: true };
@@ -140,7 +159,7 @@ export function migrateSave(
     }
     save = { ...migration(save), version: from + 1 };
   }
-  return { ok: true, json: save };
+  return { ok: true, json: save, from: version };
 }
 
 /** Buildings on slots the layout no longer has (say, fewer mid_N) are removed and logged. */

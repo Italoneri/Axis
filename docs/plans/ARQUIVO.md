@@ -60,7 +60,7 @@ Novo `GameCommand` `archive_log` (liberado para jogadores) com uma entrada `arch
 - É despachado depois que a escrita no arquivo deu certo. Não é atômico (são duas escritas) e o servidor não confere o texto da entrada; para uma mesa de amigos, aceitável.
 - **Nunca** é despachado para notas `mestre` (nem para colar em lote só de notas `mestre`).
 - "Colar registros" gera uma entrada só ("Bia colou 12 registros em NPCs"). Esvaziar a lixeira registra só o fato, sem contagem.
-- Novo tipo de entrada é só um acréscimo: o save continua na versão 5.
+- Novo tipo de entrada é só um acréscimo: não muda a versão do save.
 
 ## Online (Supabase)
 

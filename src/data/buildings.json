@@ -603,7 +603,6 @@
         "cost": { "coins": 120, "materials": { "wood": 54, "iron": 18 } },
         "buildTime": 2,
         "effect": "Comida e bebida na Axis são de graça: o grupo não paga estilo de vida modesto entre sessões.",
-        "housing": { "capacity": 2 },
         "jobs": [
           {
             "activity": "cozinhar",
@@ -622,7 +621,6 @@
         "cost": { "coins": 280, "materials": { "wood": 108, "iron": 36, "aetherium": 10 } },
         "buildTime": 4,
         "effect": "Uma vez por sessão, o mestre conta ao grupo um boato útil ouvido entre os fregueses.",
-        "housing": { "capacity": 2 },
         "jobs": [
           {
             "activity": "cozinhar",
@@ -642,7 +640,6 @@
         "cost": { "coins": 650, "materials": { "wood": 200, "iron": 70, "aetherium": 30 } },
         "buildTime": 7,
         "effect": "Uma vez por arco, um banquete no restaurante dá ao grupo os efeitos de Banquete de Heróis.",
-        "housing": { "capacity": 3 },
         "jobs": [
           {
             "activity": "cozinhar",
@@ -864,7 +861,6 @@
         "cost": { "coins": 180, "materials": { "wood": 30, "iron": 20, "aetherium": 15 } },
         "buildTime": 3,
         "effect": "Uma vez por sessão, um conjurador que descansar na Axis recupera um espaço de magia de 1º nível.",
-        "housing": { "capacity": 2 },
         "jobs": [
           {
             "activity": "estudar",
@@ -879,7 +875,6 @@
         "cost": { "coins": 420, "materials": { "wood": 60, "iron": 40, "aetherium": 45 } },
         "buildTime": 5,
         "effect": "Magias conjuradas como ritual na Axis não levam os 10 minutos extras.",
-        "housing": { "capacity": 3 },
         "jobs": [
           {
             "activity": "estudar",
@@ -895,7 +890,6 @@
         "cost": { "coins": 950, "materials": { "wood": 100, "iron": 70, "aetherium": 110 } },
         "buildTime": 10,
         "effect": "Uma vez por arco, o grupo pode voltar para a Axis de qualquer lugar por um Círculo de Teletransporte.",
-        "housing": { "capacity": 4 },
         "jobs": [
           {
             "activity": "estudar",

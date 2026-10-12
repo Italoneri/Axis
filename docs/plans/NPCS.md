@@ -1,6 +1,6 @@
 # NPCs: moradores e trabalhadores da Axis
 
-Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **moram** em construções de moradia e são **designados** para postos de trabalho, que rendem efeitos a cada dia de jogo. Tudo nasce como `GameCommand`, validado no `applyCommand`, e funciona igual offline e online.
+Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **moram** no Alojamento e são **designados** para postos de trabalho, que rendem efeitos a cada dia de jogo. Tudo nasce como `GameCommand`, validado no `applyCommand`, e funciona igual offline e online.
 
 ## Dados (JSON, validados no `parseCatalog`)
 
@@ -15,7 +15,7 @@ Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **mor
   ]
   ```
 
-- `src/data/npcs.json`: o divisor das habilidades negativas e o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "negativeDivisor": 5, "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`.
+- `src/data/npcs.json`: o divisor das habilidades negativas, as construções que podem ter moradia e o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "negativeDivisor": 5, "housingBuildings": ["barracks"], "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`. O `parseCatalog` recusa `housing` em construção fora de `housingBuildings`, para a moradia não voltar sem querer a outras construções.
 
 ### Tipos de efeito
 
@@ -44,8 +44,8 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 | Construção         | Moradia | Posto (habilidade)     | Vagas | Efeito (base)              |
 | ------------------ | ------- | ---------------------- | ----- | -------------------------- |
 | Alojamento         | 6/14/14 | —                      | —     | —                          |
-| Torre dos Magos    | 2/3/4   | Estudar (Pesquisa)     | 1/1/2 | research 1/1/2             |
-| Taverna            | 2/2/3   | Cozinhar (Gastronomia) | 1/2/2 | bonus (texto e penalidade) |
+| Torre dos Magos    | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/1/2             |
+| Taverna            | —       | Cozinhar (Gastronomia) | 1/2/2 | bonus (texto e penalidade) |
 | Forja              | —       | Forjar (Ferraria)      | 1/2/3 | produce Ferro 1/2/3        |
 | Biblioteca         | —       | Pesquisar (Pesquisa)   | 1/2/3 | research 1/1/2             |
 | Estação de Estudo  | —       | Estudar (Pesquisa)     | 1/1/2 | research 1/2/2             |
@@ -55,7 +55,7 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 | Laboratório Arcano | —       | Destilar (Alquimia)    | 1/1/2 | produce Aetherium 1/1/2    |
 | Obra em andamento  | —       | Construir (Construção) | 2     | construction 1             |
 
-## Modelo (`GameState.npcs`, save versão 5)
+## Modelo (`GameState.npcs`, save versão 6)
 
 ```ts
 npc = {
@@ -69,6 +69,7 @@ npc = {
 ```
 
 - `status`: `ferido` e `em_missao` são definidos pelo mestre; nesses casos o NPC mantém casa e posto, mas não trabalha nem recebe. `disponivel` e `trabalhando` são derivados do `job` automaticamente.
+- Migração 5 → 6: a moradia passou a existir só no Alojamento (antes a Taverna e a Torre dos Magos também abrigavam NPCs). Como a mudança precisa do catálogo, o passo em JSON só sobe a versão e o `parseState` roda `rehomeNpcs` (`CATALOG_MIGRATIONS`) depois de validar: quem mora numa construção sem moradia muda, na ordem da lista, para um Alojamento com vaga, mantendo o posto, com `npc_moved` no log ("Pelé mudou-se de Taverna para Alojamento"). Quem não couber é liberado pelo `settleNpcs` com o motivo de sempre (`capacity`). Online é igual: o jsonb passa pela mesma `parseState`, no servidor e no cliente.
 - Migração 4 → 5 acrescenta `npcs: []`. As habilidades negativas não mudaram a versão: os campos só ficaram mais permissivos (habilidade, `carry` e `amount` do log com sinal), então saves v5 antigos continuam válidos. Online o estado continua sendo o mesmo jsonb da tabela `games`, sem mudança de tabela.
 
 ## Regras

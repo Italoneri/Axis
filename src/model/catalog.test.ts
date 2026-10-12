@@ -137,6 +137,26 @@ describe('parseCatalog', () => {
       /unknown skill "juggling"[\s\S]*duplicate .* post id "b"[\s\S]*"construir" is reserved/,
     );
   });
+
+  it('keeps housing in the buildings npcs.json lists', () => {
+    const buildings = rawGameData.buildings.map((building) =>
+      building.id === 'tavern'
+        ? {
+            ...building,
+            levels: building.levels.map((level) => ({ ...level, housing: { capacity: 2 } })),
+          }
+        : building,
+    );
+    const npcs = { ...rawGameData.npcs, housingBuildings: ['barracks', 'nowhere'] };
+    expect(() => parseCatalog({ ...rawGameData, buildings, npcs })).toThrow(
+      /unknown building "nowhere"[\s\S]*tavern: housing is only allowed/,
+    );
+  });
+
+  it('ships housing only in the Alojamento', () => {
+    const housed = gameData.buildings.filter((b) => b.levels.some((level) => level.housing));
+    expect(housed.map((b) => b.id)).toEqual(['barracks']);
+  });
 });
 
 describe('tavern menu data', () => {
