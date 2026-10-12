@@ -151,10 +151,11 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   1. Salários: o Acampamento paga (o salário é digitado em moedas e salvo em PO); sem saldo, o NPC não trabalha naquele dia.
   2. Efeitos dos postos.
   3. Conclusão das obras.
+  4. Retorno dos NPCs em missão (veja [Guilda](#guilda)).
 
   Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
 
-- **Save:** versão 6. Saves da versão 4 ganham `npcs: []` ao carregar. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
+- **Save:** versão 7. Saves da versão 4 ganham `npcs: []` ao carregar; os da versão 6 ganham `missions: []`. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
 
 ## Arquivo de registros
 
@@ -215,6 +216,25 @@ Cada foto fica em `public/assets/menu/<id>.jpg` e está registrada no `assets.js
 - `npm run gen:placeholders` gera a imagem genérica (um prato na cor da refeição com o nome escrito) para os pratos sem foto e nunca sobrescreve arquivos existentes.
 - Se o arquivo de uma foto não existir, o card mostra um prato desenhado em CSS no lugar, sem quebrar a janela.
 - As fotos do cardápio não entram no carregamento do mapa: só são baixadas quando a janela abre.
+
+## Guilda
+
+O **Salão da Guilda** tem um **quadro de missões** onde mestre e jogadores penduram contratos. Cada missão é feita pelo **grupo** ou por **NPCs** enviados pela Axis. O design completo está em `docs/plans/MISSOES.md`.
+
+- **Onde abrir:** no painel da Guilda construída (nível ≥ 1), o botão **Abrir quadro de missões**, com a contagem de abertas e em andamento. Se a Guilda for removida ou rebaixada, as missões e os NPCs fora continuam; só o botão some até reconstruir.
+- **Quadro:** madeira escura com uma gema azul no topo e um pergaminho por missão, tudo em CSS. Cor (laranja, bege, roxo, amarelo-claro), inclinação e bordas rasgadas vêm do id, então são iguais para todos. O selo de cera mostra a dificuldade: verde fácil, amarelo média, vermelho difícil. Abas **Abertas · Em andamento · Concluídas** com contagem; no celular os pergaminhos viram uma coluna.
+- **Primeiro plano:** clicar num pergaminho o traz para o centro com o quadro escurecido, mostrando o texto completo (mesmo markdown do Arquivo) e as ações. Fecha com Esc, no X ou clicando fora.
+- **Nova missão** (aba Abertas): título, solicitante, local, descrição, recompensa (nos campos de moeda), tempo esperado em dias e dificuldade. Registra quem criou e o dia. Limites: título até 120 caracteres, descrição até 4.000, de 1 a 365 dias, recompensa maior que zero. Qualquer um edita ou remove uma missão **aberta**.
+- **"O grupo vai":** a missão fica em andamento. Quando o grupo voltar, o mestre marca **Concluída** (o Acampamento recebe 100%) ou **Falhou** (ninguém recebe).
+- **"Enviar NPCs":** escolha um ou mais NPCs `disponivel` ou `trabalhando` (a lista mostra habilidades, status e posto). Eles ficam `em_missao`, mantêm casa e posto, mas não trabalham nem recebem. Ao avançar os dias até o retorno (dia da saída + tempo esperado), a missão passa para **Aguardando o mestre**, com log. O mestre decide:
+  - **Sucesso:** 80% para os NPCs, divididos igualmente em bronze e somados ao `earnings` de cada um ("Ganhou 1,6 PO em missões" no card), e 20% de comissão para o Acampamento. O resto da divisão vai para o Acampamento, então nenhuma moeda se perde (2 PO com 3 NPCs: 0,53 PO para cada e 0,41 PO para o Acampamento).
+  - **Falha:** ninguém recebe, e o mestre marca quem voltou ferido.
+  - Depois, cada NPC volta a `trabalhando` (se tem posto) ou `disponivel`, menos os feridos.
+- **Guilda nv. 2:** as recompensas pagam 10% a mais nos dois modos enquanto o nível em vigor for ≥ 2 (o primeiro plano mostra o valor).
+- **NPC removido em missão:** sai da equipe; se ninguém sobrar, a missão volta para Abertas, com log.
+- **Configuração:** `src/data/missions.json` define a comissão (`campCommissionPercent`) e o bônus da Guilda (`guildBonus`: construção, nível mínimo e percentual).
+- **Regras:** tudo passa pelo `applyCommand` (`mission_create`, `mission_update`, `mission_remove`, `mission_take_party` e `mission_send_npcs` para jogador e mestre; `mission_resolve` só para o mestre), sem sorteio: servidor e cliente chegam ao mesmo resultado. As missões ficam no `GameState` (`missions`).
+- **Publicar a mudança online:** `npm run deploy:functions`. Não há migração SQL: o save migra ao carregar.
 
 ## Online / Supabase
 
