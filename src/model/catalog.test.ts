@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameData, rawGameData } from '../data/gameData';
-import { parseCatalog } from './catalog';
+import { parseCatalog, type RawCatalog } from './catalog';
 
 describe('shipped game data', () => {
   // Guards hand edits to src/data/*.json: `npm test` points at the broken entry.
@@ -118,7 +118,6 @@ describe('parseCatalog', () => {
       activity,
       name: activity,
       skill,
-      slots: 1,
       effect: { type: 'bonus', text: 'x' },
     });
     const buildings = rawGameData.buildings.slice(0, 1).map((building) => ({
@@ -136,5 +135,73 @@ describe('parseCatalog', () => {
     expect(() => parseCatalog({ ...rawGameData, buildings })).toThrow(
       /unknown skill "juggling"[\s\S]*duplicate .* post id "b"[\s\S]*"construir" is reserved/,
     );
+  });
+
+  it('keeps housing in the buildings npcs.json lists', () => {
+    const buildings = rawGameData.buildings.map((building) =>
+      building.id === 'tavern'
+        ? {
+            ...building,
+            levels: building.levels.map((level) => ({ ...level, housing: { capacity: 2 } })),
+          }
+        : building,
+    );
+    const npcs = { ...rawGameData.npcs, housingBuildings: ['barracks', 'nowhere'] };
+    expect(() => parseCatalog({ ...rawGameData, buildings, npcs })).toThrow(
+      /unknown building "nowhere"[\s\S]*tavern: housing is only allowed/,
+    );
+  });
+
+  it('needs post openings for every ring a building with posts accepts, at each level', () => {
+    const npcs = { ...rawGameData.npcs, postSlots: { outer: [3, 6] } };
+    expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(
+      /postSlots "outer" needs 3 levels[\s\S]*postSlots "middle" needs 3 levels/,
+    );
+  });
+
+  it('refuses openings written on a post', () => {
+    const buildings = rawGameData.buildings.map((building) => ({
+      ...building,
+      levels: building.levels.map((level) => ({
+        ...level,
+        jobs: 'jobs' in level ? level.jobs.map((job) => ({ ...job, slots: 1 })) : [],
+      })),
+    }));
+    expect(() => parseCatalog({ ...rawGameData, buildings })).toThrow(/slots/);
+  });
+
+  it('ships housing only in the Alojamento', () => {
+    const housed = gameData.buildings.filter((b) => b.levels.some((level) => level.housing));
+    expect(housed.map((b) => b.id)).toEqual(['barracks']);
+  });
+});
+
+describe('tavern menu data', () => {
+  const items = rawGameData.tavernMenu.items;
+  const withItems = (next: unknown[]) => () =>
+    parseCatalog({ ...rawGameData, tavernMenu: { items: next } });
+
+  it('ships dishes for every meal', () => {
+    const meals = new Set(gameData.tavernMenu.items.map((item) => item.meal));
+    expect([...meals].sort()).toEqual(['breakfast', 'dinner', 'lunch']);
+  });
+
+  it.each([
+    { name: 'an unknown meal', item: { meal: 'supper' }, error: /tavern_menu\.json/ },
+    { name: 'a photo missing from assets.json', item: { image: 'menu.nope' }, error: /menu\.nope/ },
+    { name: 'an unknown coin', item: { price: { copper: 2 } }, error: /unknown coin "copper"/ },
+    { name: 'a level the tavern lacks', item: { minLevel: 9 }, error: /minLevel 9/ },
+  ])('rejects a dish with $name', ({ item, error }) => {
+    expect(withItems([...items, { ...items[0], id: 'extra', ...item }])).toThrow(error);
+  });
+
+  it('rejects a repeated dish id', () => {
+    expect(withItems([...items, items[0]])).toThrow(/duplicate menu item id/);
+  });
+
+  it('defaults to an empty menu when the file is left out, as on the server', () => {
+    const withoutMenu: RawCatalog = { ...rawGameData };
+    delete withoutMenu.tavernMenu;
+    expect(parseCatalog(withoutMenu).tavernMenu.items).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import { parseCatalog } from '../model/catalog';
-import { SAVE_VERSION, type GameState, type Npc } from '../model/schema';
+import { SAVE_VERSION, type GameState, type Mission, type Npc } from '../model/schema';
 
 const currencies = [
   { id: 'emerald', name: 'Esmeralda', icon: 'i', bronzeValue: 10000, order: 1 },
@@ -33,9 +33,9 @@ const influence = {
   ],
 };
 
-function forging(slots: number, perDay: number) {
+function forging(perDay: number) {
   const effect = { type: 'produce', material: 'iron', perDay };
-  return { activity: 'forjar', name: 'Forjar', skill: 'smithing', slots, effect };
+  return { activity: 'forjar', name: 'Forjar', skill: 'smithing', effect };
 }
 
 /** Small catalog independent of the shipped balance numbers, so data tweaks never break tests. */
@@ -59,7 +59,6 @@ export const testCatalog = parseCatalog({
               activity: 'estudar',
               name: 'Estudar',
               skill: 'research',
-              slots: 1,
               effect: { type: 'research', perDay: 2 },
             },
           ],
@@ -73,7 +72,6 @@ export const testCatalog = parseCatalog({
               activity: 'rezar',
               name: 'Rezar',
               skill: 'research',
-              slots: 1,
               effect: { type: 'bonus', text: 'bênção' },
             },
           ],
@@ -88,13 +86,13 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1, 1)] },
+        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1)] },
         {
           cost: { coins: 30 },
           buildTime: 0,
           effect: 'f2',
           requires: [{ building: 'heart', minLevel: 1 }],
-          jobs: [forging(2, 2)],
+          jobs: [forging(2)],
         },
       ],
     },
@@ -118,6 +116,18 @@ export const testCatalog = parseCatalog({
       levels: [
         { cost: { coins: 10 }, buildTime: 2, effect: 'b1', housing: { capacity: 2 } },
         { cost: { coins: 10 }, buildTime: 2, effect: 'b2', housing: { capacity: 3 } },
+      ],
+    },
+    {
+      id: 'guild',
+      name: 'Guilda',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [
+        { cost: { coins: 10 }, buildTime: 1, effect: 'g1' },
+        { cost: { coins: 10 }, buildTime: 1, effect: 'g2' },
       ],
     },
   ],
@@ -149,6 +159,9 @@ export const testCatalog = parseCatalog({
     ],
   },
   npcs: {
+    negativeDivisor: 5,
+    housingBuildings: ['barracks'],
+    postSlots: { core: [1, 1], outer: [1, 2] },
     construction: {
       activity: 'construir',
       name: 'Construir',
@@ -156,6 +169,10 @@ export const testCatalog = parseCatalog({
       slots: 2,
       effect: { type: 'construction', perDay: 1 },
     },
+  },
+  missions: {
+    campCommissionPercent: 20,
+    guildBonus: { building: 'guild', minLevel: 2, percent: 10 },
   },
   ...seed,
 });
@@ -172,6 +189,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     research: seed.research,
     influence: { human: 0, draconic: 0 },
     npcs: [],
+    missions: [],
     slots: {},
     log: [],
     ...overrides,
@@ -187,6 +205,22 @@ export function npc(overrides: Partial<Npc> & Pick<Npc, 'id' | 'name'>): Npc {
     home: null,
     job: null,
     status: 'disponivel',
+    ...overrides,
+  };
+}
+
+/** An open mission worth 2 gold, for tests to override. */
+export function mission(overrides: Partial<Mission> & Pick<Mission, 'id'>): Mission {
+  return {
+    title: 'Contrato',
+    requester: '',
+    location: '',
+    description: '',
+    reward: { gold: 2 },
+    days: 3,
+    difficulty: 'facil',
+    createdOnDay: 1,
+    progress: { status: 'aberta' },
     ...overrides,
   };
 }

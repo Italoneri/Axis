@@ -7,9 +7,11 @@ import currencies from './currencies.json';
 import influence from './influence.json';
 import layout from './layout.json';
 import materials from './materials.json';
+import missions from './missions.json';
 import npcs from './npcs.json';
 import research from './research.json';
 import skills from './skills.json';
+import tavernMenu from './tavern_menu.json';
 import wallets from './wallets.json';
 
 export const rawGameData = {
@@ -23,6 +25,8 @@ export const rawGameData = {
   influence,
   skills,
   npcs,
+  missions,
+  tavernMenu,
 };
 
 export const gameData = parseCatalog(rawGameData);

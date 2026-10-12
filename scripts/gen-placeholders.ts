@@ -1,6 +1,7 @@
 /**
  * Generates placeholder PNGs for every building and coin listed in src/data, plus
- * any other icon in assets.json (top bar resource icons, for example).
+ * any other icon in assets.json (top bar resource icons, for example), and a
+ * generic plate photo (JPG) for every dish of the tavern menu.
  * Existing files are kept (they may already be final art); pass --force to overwrite.
  *
  *   npm run gen:placeholders [-- --force]
@@ -32,6 +33,10 @@ const SHAPES: readonly Shape[] = [
 const GOLD = '#d4af37';
 const SPRITE_SIZE = 256;
 const ICON_SIZE = 64;
+const MENU_WIDTH = 800;
+const MENU_HEIGHT = 600;
+/** Table cloth hue per meal: morning gold, midday green, evening wine. */
+const MEAL_HUES: Record<string, number> = { breakfast: 42, lunch: 110, dinner: 345 };
 
 const root = join(import.meta.dirname, '..');
 const force = process.argv.includes('--force');
@@ -40,6 +45,9 @@ const readJson = <T>(file: string): T => JSON.parse(readFileSync(join(root, file
 const manifest = readJson<{ images: Record<string, string> }>('src/data/assets.json').images;
 const buildings = readJson<Entity[]>('src/data/buildings.json');
 const currencies = readJson<Entity[]>('src/data/currencies.json');
+const menu = readJson<{ items: { id: string; meal: string; name: string; image: string }[] }>(
+  'src/data/tavern_menu.json',
+).items;
 
 let written = 0;
 buildings.forEach((b, i) => {
@@ -68,6 +76,7 @@ Object.keys(manifest)
     const name = key.slice('icon.'.length);
     writeAsset(key, ICON_SIZE, { shape: 'octagon', hue: 30 + i * 70, letter: initial(name) });
   });
+menu.forEach((dish) => writeMenuPhoto(dish.image, dish.name, MEAL_HUES[dish.meal] ?? 30));
 console.log(
   `placeholders: ${written} written${force ? '' : ' (existing files kept; use --force to overwrite)'}`,
 );
@@ -90,6 +99,50 @@ function writeAsset(
   drawPlaceholder(canvas.getContext('2d'), size, style);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, canvas.toBuffer('image/png'));
+  written++;
+}
+
+/** A plate seen from above on a cloth of the meal's colour, with the dish name below. */
+function writeMenuPhoto(key: string, name: string, hue: number): void {
+  const relPath = manifest[key];
+  if (!relPath) throw new Error(`asset key "${key}" missing from assets.json`);
+  const file = join(root, 'public', relPath);
+  if (existsSync(file) && !force) return;
+
+  const canvas = createCanvas(MENU_WIDTH, MENU_HEIGHT);
+  const ctx = canvas.getContext('2d');
+  const cloth = ctx.createRadialGradient(400, 260, 60, 400, 300, 520);
+  cloth.addColorStop(0, `hsl(${hue} 35% 30%)`);
+  cloth.addColorStop(1, `hsl(${hue} 40% 10%)`);
+  ctx.fillStyle = cloth;
+  ctx.fillRect(0, 0, MENU_WIDTH, MENU_HEIGHT);
+
+  ctx.shadowColor = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur = 30;
+  ctx.beginPath();
+  ctx.arc(400, 255, 175, 0, Math.PI * 2);
+  ctx.fillStyle = '#e9e1cf';
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = GOLD;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(400, 255, 119, 0, Math.PI * 2);
+  ctx.fillStyle = `hsl(${hue} 45% 42%)`;
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.stroke();
+
+  ctx.fillStyle = '#f3e3a6';
+  ctx.font = 'bold 34px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(name, 400, 520, MENU_WIDTH - 60);
+
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, canvas.toBuffer('image/jpeg', 85));
   written++;
 }
 

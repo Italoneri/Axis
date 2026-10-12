@@ -7,8 +7,14 @@ import { LiveMap } from './map/liveMap';
 import { mapResolution } from './map/textures';
 import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
+import { ArchiveStore } from './archiveStore';
+import { LocalArchiveRepository } from './persistence/LocalArchiveRepository';
+import type { ArchiveRepository } from './persistence/ArchiveRepository';
+import type { ArchiveImageStore } from './persistence/ArchiveImageStore';
+import { indexedDbBlobTable, LocalImageStore } from './persistence/LocalImageStore';
 import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore } from './store';
+import { ArchiveWindow, CHARACTER_MEMORY_KEY } from './ui/archive/ArchiveWindow';
 import { InfoDrawer, type DrawerExtras } from './ui/InfoDrawer';
 import { commandContext } from './ui/currentActor';
 import { askMasterPassword } from './ui/MasterLogin';
@@ -16,7 +22,7 @@ import { parseCredits, showCredits } from './ui/Credits';
 import { MasterSession, type MasterAccess } from './ui/MasterSession';
 import { hideGate } from './online/screens';
 import { onlineConfig } from './online/config';
-import type { CommandContext, GameCommand } from './commands/schema';
+import type { Actor, CommandContext, GameCommand } from './commands/schema';
 import type { Catalog } from './model/catalog';
 import type { GameRepository } from './persistence/GameRepository';
 import { textContext } from './ui/format';
@@ -24,6 +30,8 @@ import { SlotPanel } from './ui/SlotPanel';
 import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
+import { MenuWindow } from './ui/menu/MenuWindow';
+import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
 import type { Act } from './ui/widgets';
 
@@ -48,6 +56,10 @@ function safeLocalStorage(): Storage | undefined {
 interface Mode {
   isOnline: boolean;
   repository: GameRepository;
+  archiveRepository: ArchiveRepository;
+  archiveImages: ArchiveImageStore;
+  /** Online, the login fixes who writes in the archive; offline the window asks. */
+  archiveActor?: Actor;
   session: MasterAccess;
   contextFor: (command: GameCommand) => CommandContext;
   drawerExtras: (store: GameStore) => DrawerExtras;
@@ -65,6 +77,8 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
     return {
       isOnline: false,
       repository: new LocalRepository(window.localStorage, catalog, window),
+      archiveRepository: new LocalArchiveRepository(window.localStorage, window),
+      archiveImages: new LocalImageStore(indexedDbBlobTable()),
       session,
       contextFor: (command) => commandContext(session, command),
       drawerExtras: () => ({}),
@@ -76,6 +90,9 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
   return {
     isOnline: true,
     repository: game.repository,
+    archiveRepository: game.archiveRepository,
+    archiveImages: game.archiveImages,
+    archiveActor: game.archiveActor,
     session: game.access,
     contextFor: game.contextFor,
     drawerExtras: (store) => game.drawerExtras(store, notify),
@@ -94,15 +111,46 @@ async function start(): Promise<void> {
   ]);
   const mode = await openMode(gameData, notify);
   if (!mode) return;
-  const { repository, session, contextFor } = mode;
+  const { repository, session } = mode;
+  const memory = new UiMemory(safeLocalStorage());
+  // Offline, the character picked in the archive window writes (and logs) the records.
+  const archiveViewer = (): Actor => {
+    if (mode.archiveActor) return mode.archiveActor;
+    if (session.isActive) return { role: 'master' };
+    const ids = store.current.characters.map((c) => c.id);
+    return {
+      role: 'player',
+      characterId: memory.pick(CHARACTER_MEMORY_KEY, ids, ids[0] ?? '') || undefined,
+    };
+  };
   const store = await GameStore.open(gameData, repository, {
-    contextFor,
+    contextFor: (command) =>
+      command.type === 'archive_log' ? { actor: archiveViewer() } : mode.contextFor(command),
     onRefused: (error) => notify(t.errors[error], 'error'),
     onPersistError: (error) => {
       console.error('[save] could not persist state', error);
       notify(mode.isOnline ? t.online.syncFailed : t.save.storageFailed, 'error');
     },
   });
+  const archive = await ArchiveStore.open(mode.archiveRepository, mode.archiveImages, {
+    viewer: archiveViewer,
+    onLogged: (change) => void store.dispatch({ type: 'archive_log', change }),
+    onRefused: (error) => notify(t.archive.errors[error], 'error'),
+    onPersistError: (error) => {
+      console.error('[archive] could not reach the archive', error);
+      notify(mode.isOnline ? t.online.syncFailed : t.save.storageFailed, 'error');
+    },
+  });
+  const archiveWindow = new ArchiveWindow({
+    archive,
+    game: store,
+    memory,
+    canPickCharacter: () => !mode.isOnline && !session.isActive,
+    notify,
+  });
+  const openArchive = () => archiveWindow.open();
+  const menuWindow = new MenuWindow({ game: store, memory });
+  const openMenu = () => menuWindow.open();
   hideGate();
 
   // Every entry a local command logs becomes a toast.
@@ -113,7 +161,6 @@ async function start(): Promise<void> {
 
   const liveMap = new LiveMap(gameData.layout, new ThemeStore(theme), mapResolution());
   const act: Act = (command) => store.dispatch(command) === null;
-  const memory = new UiMemory(safeLocalStorage());
   const preview = new BuildingPreview();
   const drawer = new InfoDrawer(
     requireElement('drawer'),
@@ -121,14 +168,21 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview },
     act,
-    mode.drawerExtras(store),
+    { ...mode.drawerExtras(store), openArchive, openMenu },
   );
-  const panel = new SlotPanel(requireElement('panel'), store, session);
+  const missionBoard = new MissionBoard({ game: store, session, act, memory });
+  const panel = new SlotPanel(
+    requireElement('panel'),
+    store,
+    session,
+    { store: archive, open: openArchive },
+    { menu: openMenu, missions: () => missionBoard.open() },
+  );
 
   mountTopBar(
     requireElement('topbar'),
     requireElement('popover'),
-    { store, session, act, memory },
+    { store, session, act, memory, archive },
     {
       notify,
       toggleDrawer: () => drawer.toggle(),

@@ -1,11 +1,21 @@
 import type { SlotType } from '../map/layout';
 import type {
+  ArchiveChange,
   JobEffect,
   LogEntry,
+  Meal,
+  MissionDifficulty,
   NpcReleaseReason,
   NpcStatus,
   ResearchStatus,
 } from '../model/schema';
+import {
+  BODY_LIMIT,
+  TITLE_LIMIT,
+  type ArchiveError,
+  type NoteVisibility,
+} from '../systems/Archive';
+import { IMAGE_LIMITS, type ImagePrepareError } from '../systems/ArchiveImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 
@@ -68,6 +78,8 @@ export const t = {
     imported: 'Save importado.',
     invalid: (detail: string) => `Save inválido: ${detail}`,
     confirmImport: 'Importar este save substitui a base atual. Continuar?',
+    imagesMissing: (count: number) =>
+      `${count} ${count === 1 ? 'arquivo de imagem não pôde' : 'arquivos de imagem não puderam'} ser exportados: as notas ficam sem eles.`,
     storageFailed:
       'Não foi possível salvar no navegador. Exporte o save para não perder o progresso.',
   },
@@ -83,6 +95,7 @@ export const t = {
     emptyLog: 'Nada aconteceu na Axis ainda.',
     postsTitle: 'Postos de trabalho',
     postsSub: 'Efeitos dos NPCs em serviço',
+    penalty: (text: string) => `Penalidade: ${text}`,
   },
 
   master: {
@@ -243,7 +256,12 @@ export const t = {
     noJob: 'Sem trabalho',
     jobAt: (activity: string, building: string) => `${activity} em ${building}`,
     currentPost: (building: string) => `posto atual: ${building}`,
+    hinders: '⚠ atrapalha',
     unassign: 'Dispensar',
+    moveOut: 'Retirar',
+    moveOutOfHome: 'Retirar da moradia',
+    moveOutLeavesPost: (npc: string, activity: string, building: string) =>
+      `${npc} também vai deixar o posto ${activity} em ${building}. Clique de novo para confirmar`,
     newNpc: 'Novo NPC',
     titleField: 'Título (ex.: Maga)',
     portrait: 'Retrato (chave do assets.json ou URL)',
@@ -364,6 +382,223 @@ export const t = {
     newCharacter: 'Novo personagem',
   },
 
+  menu: {
+    title: 'Cardápio da Taverna',
+    open: 'Ver cardápio',
+    panelHint: 'Café da manhã, almoço e janta servidos na Taverna.',
+    close: 'Fechar cardápio',
+    meals: { breakfast: 'Café da manhã', lunch: 'Almoço', dinner: 'Janta' } satisfies Record<
+      Meal,
+      string
+    >,
+    lockedAt: (level: number) => `Disponível na Taverna nv. ${level}`,
+    notBuilt: 'A Taverna ainda não foi construída: por enquanto nada é servido.',
+    empty: 'Nenhum prato nesta refeição.',
+    enlarge: (name: string) => `Ampliar a foto: ${name}`,
+    closePhoto: 'Fechar a foto',
+  },
+
+  missions: {
+    title: 'Quadro de missões',
+    open: 'Abrir quadro de missões',
+    panelHint: 'Contratos pendurados por você e pelo grupo. Vá com o grupo ou envie NPCs.',
+    counts: (open: number, active: number) =>
+      `${open} ${open === 1 ? 'aberta' : 'abertas'} · ${active} em andamento`,
+    close: 'Fechar quadro',
+    closeFocus: 'Fechar missão',
+    tabs: {
+      abertas: 'Abertas',
+      andamento: 'Em andamento',
+      concluidas: 'Concluídas',
+    },
+    tabCount: (label: string, count: number) => `${label} (${count})`,
+    empty: {
+      abertas: 'Nenhum contrato no quadro. Pendure o primeiro em "Nova missão".',
+      andamento: 'Ninguém está em missão agora.',
+      concluidas: 'Nenhuma missão concluída ainda.',
+    },
+    notBuilt: 'A Guilda foi removida: o quadro só abre de novo quando ela for reconstruída.',
+    newMission: 'Nova missão',
+    editMission: 'Editar missão',
+    titleField: 'Título',
+    requester: 'Solicitante',
+    location: 'Local',
+    description: 'Descrição',
+    descriptionHint:
+      'Aceita o mesmo markdown do Arquivo: **negrito**, *itálico*, listas, > citação.',
+    reward: 'Recompensa',
+    rewardTotal: 'Valor',
+    days: 'Tempo esperado (dias)',
+    difficulty: 'Dificuldade',
+    difficulties: {
+      facil: 'Fácil',
+      media: 'Média',
+      dificil: 'Difícil',
+    } satisfies Record<MissionDifficulty, string>,
+    pin: 'Pendurar no quadro',
+    createdBy: (who: string | undefined, day: number) =>
+      who ? `Pendurada por ${who} no dia ${day}` : `Pendurada no dia ${day}`,
+    expected: (days: number) => `Tempo esperado: ${days === 1 ? '1 dia' : `${days} dias`}`,
+    guildBonus: (percent: number, total: string) =>
+      `Salão da Guilda: contratos pagam ${percent}% a mais (${total}).`,
+    takeParty: 'O grupo vai',
+    sendNpcs: 'Enviar NPCs',
+    chooseNpcs: 'Escolha quem vai',
+    noNpcs: 'Nenhum NPC na Axis ainda.',
+    send: (count: number) =>
+      count === 0 ? 'Escolha ao menos um NPC' : `Enviar ${count} ${count === 1 ? 'NPC' : 'NPCs'}`,
+    npcSplit: (commission: number, each: string, camp: string) =>
+      `Se der certo: ${each} para cada NPC e ${camp} para o Acampamento (comissão de ${commission}%).`,
+    worksAt: (place: string) => `trabalha em ${place}`,
+    noPost: 'sem posto',
+    unavailable: 'indisponível',
+    status: {
+      aberta: 'Aberta',
+      grupo: 'Em andamento (grupo)',
+      npcs: 'Em andamento (NPCs)',
+      aguardando: 'Aguardando o mestre',
+      concluida: 'Concluída',
+    },
+    partyAway: (day: number) => `O grupo partiu no dia ${day}.`,
+    partyHint: 'Quando o grupo voltar, o mestre marca se a missão foi concluída ou falhou.',
+    npcsAway: (names: readonly string[], day: number, left: number) =>
+      `${listText(names)} ${names.length === 1 ? 'volta' : 'voltam'} no dia ${day} (faltam ${left === 1 ? '1 dia' : `${left} dias`}).`,
+    npcsBack: (names: readonly string[]) =>
+      `${listText(names)} ${names.length === 1 ? 'voltou' : 'voltaram'}. O mestre decide como foi.`,
+    waitMaster: 'Só o mestre marca o resultado.',
+    success: 'Concluída',
+    failure: 'Falhou',
+    npcSuccess: 'Sucesso',
+    npcFailure: 'Falha',
+    injured: 'Feridos na falha',
+    resultParty: (result: 'sucesso' | 'falha', camp: string) =>
+      result === 'sucesso'
+        ? `Concluída pelo grupo: ${camp} para o Acampamento.`
+        : 'O grupo falhou: ninguém recebeu.',
+    resultNpcs: (result: 'sucesso' | 'falha', npcs: string, camp: string) =>
+      result === 'sucesso'
+        ? `Concluída pelos NPCs: ${npcs} para eles e ${camp} para o Acampamento.`
+        : 'Os NPCs falharam: ninguém recebeu.',
+    resolvedOn: (day: number) => `Resolvida no dia ${day}.`,
+    team: (names: string) => `Equipe: ${names}.`,
+    hurt: (names: string) => `Voltaram feridos: ${names}.`,
+    seal: (difficulty: string) => `Dificuldade: ${difficulty}`,
+    npcEarned: (gold: string) => `Ganhou ${gold} em missões`,
+  },
+
+  archive: {
+    title: 'Arquivo de registros',
+    open: 'Abrir registros',
+    panelHint: 'Relatórios, formulários, personagens e cartas da campanha, organizados em tópicos.',
+    counts: (topics: number, notes: number) =>
+      `${topics} ${topics === 1 ? 'tópico' : 'tópicos'} · ${notes} ${notes === 1 ? 'nota' : 'notas'}`,
+    close: 'Fechar',
+    search: 'Buscar nas notas',
+    searchResults: (count: number) =>
+      count === 0
+        ? 'Nenhuma nota encontrada.'
+        : `${count} ${count === 1 ? 'nota encontrada' : 'notas encontradas'}`,
+    character: 'Você é',
+    topics: 'Tópicos',
+    backToTopics: '← Tópicos',
+    noTopics: 'Nenhum tópico ainda. Crie o primeiro (ex.: NPCs, Monstros, Relatórios).',
+    newTopic: '+ Tópico',
+    topicName: 'Nome do tópico',
+    topicIcon: 'Ícone (emoji)',
+    createTopic: 'Criar',
+    renameTopic: 'Editar tópico',
+    saveTopic: 'Salvar',
+    removeTopic: 'Remover tópico',
+    moveUp: 'Subir',
+    moveDown: 'Descer',
+    pickTopic: 'Escolha um tópico à esquerda.',
+    emptyTopic: 'Nenhuma nota neste tópico.',
+    newNote: '+ Nota',
+    paste: 'Colar registros',
+    noteTitle: 'Título',
+    noteDay: 'Dia de jogo',
+    notePinned: 'Fixar no topo',
+    noteBody: 'Texto (aceita a formatação do Discord)',
+    visibility: 'Quem vê',
+    visibilityOptions: { todos: 'Todos', mestre: 'Só o mestre' } satisfies Record<
+      NoteVisibility,
+      string
+    >,
+    masterOnlyBadge: '🔒 só o mestre',
+    pinnedBadge: '📌',
+    preview: 'Prévia',
+    rawText: 'Texto',
+    save: 'Salvar',
+    cancel: 'Cancelar',
+    edit: 'Editar',
+    remove: 'Remover',
+    moveTo: 'Mover para',
+    move: 'Mover',
+    day: (day: number) => `Dia ${day}`,
+    byline: (author: string, editor?: string) =>
+      editor && editor !== author ? `por ${author} · editado por ${editor}` : `por ${author}`,
+    pasteHint:
+      'Cole o texto do Discord. Cada linha só de traços (-----) separa um registro; o texto vai inteiro para a nota e o título é numerado.',
+    pastePreview: 'Pré-visualizar',
+    pasteBack: 'Voltar',
+    pastePrefix: 'Prefixo do título',
+    pasteStart: 'Começar em',
+    pasteTitle: 'Título do registro',
+    pasteSave: (count: number) => `Salvar ${count} ${count === 1 ? 'registro' : 'registros'}`,
+    pasteEmpty: 'Nenhum registro encontrado no texto colado.',
+    pasteTooLong: (limit: number) =>
+      `Texto acima de ${limit.toLocaleString('pt-BR')} caracteres: divida antes de salvar.`,
+    pasteChars: (count: number) => `${count.toLocaleString('pt-BR')} caracteres`,
+    trash: (count: number) => `🗑 Lixeira (${count})`,
+    trashTitle: 'Lixeira',
+    trashHint:
+      'O que foi removido fica aqui até o mestre esvaziar a lixeira. Qualquer um pode restaurar.',
+    trashEmpty: 'A lixeira está vazia.',
+    trashedTopic: (name: string) => `Tópico: ${name}`,
+    trashedNote: (title: string, topic: string) => `${title} (em ${topic})`,
+    restore: 'Restaurar',
+    emptyTrash: 'Esvaziar lixeira',
+    images: {
+      title: 'Imagens',
+      attach: 'Anexar imagem',
+      hint: 'Arraste imagens para cá ou cole com Ctrl+V (JPG, PNG, WebP ou GIF).',
+      caption: 'Legenda',
+      remove: 'Remover imagem',
+      moveUp: 'Mover a imagem para antes',
+      moveDown: 'Mover a imagem para depois',
+      uploading: (count: number) =>
+        `Enviando ${count} ${count === 1 ? 'imagem' : 'imagens'}… espere para salvar.`,
+      open: (position: number, total: number) => `Ampliar a imagem ${position} de ${total}`,
+      missing: 'Imagem indisponível',
+      viewer: 'Imagem anexada',
+      previous: 'Imagem anterior',
+      next: 'Próxima imagem',
+      close: 'Fechar imagem',
+      zoomIn: 'Ver em tamanho real',
+      zoomOut: 'Ajustar à tela',
+      position: (position: number, total: number) => `${position} de ${total}`,
+      errors: {
+        unsupported_format: 'formato não aceito (use JPG, PNG, WebP ou GIF).',
+        file_too_large: `arquivo acima de ${IMAGE_LIMITS.originalBytes / 1024 / 1024} MB.`,
+        too_many_images: `a nota já tem ${IMAGE_LIMITS.perNote} imagens, o máximo.`,
+        unreadable: 'não foi possível ler a imagem.',
+        compressed_too_large: `mesmo comprimida, a imagem passou de ${IMAGE_LIMITS.storedBytes / 1024 / 1024} MB.`,
+      } satisfies Record<ImagePrepareError, string>,
+      refused: (fileName: string, reason: string) => `${fileName}: ${reason}`,
+    },
+    errors: {
+      empty_name: 'Informe um nome (ou título).',
+      duplicate_name: 'Já existe um tópico com esse nome.',
+      duplicate_id: 'Esse registro já foi criado.',
+      not_found: 'Registro não encontrado (talvez já tenha sido removido).',
+      category_not_empty: 'O tópico ainda tem notas. Mova-as ou remova-as antes.',
+      forbidden: 'Somente o Mestre pode fazer isso.',
+      too_long: `Título até ${TITLE_LIMIT} caracteres e texto até ${BODY_LIMIT.toLocaleString('pt-BR')}.`,
+      too_many_images: `Uma nota leva no máximo ${IMAGE_LIMITS.perNote} imagens.`,
+      invalid_command: 'Ação inválida. Confira os valores informados.',
+      no_author: 'Escolha seu personagem antes de escrever no Arquivo.',
+    } satisfies Record<ArchiveError, string>,
+  },
   errors: {
     empty_name: 'Informe um nome.',
     duplicate_name: 'Já existe um item com esse nome.',
@@ -380,6 +615,9 @@ export const t = {
     post_full: 'Todas as vagas deste posto estão ocupadas.',
     invalid_post: 'Esta construção não oferece esse posto agora.',
     invalid_target: 'Escolha uma pesquisa em andamento para este posto.',
+    mission_closed: 'Esta missão não está mais nessa etapa (talvez alguém já tenha agido).',
+    npc_unavailable: 'Só NPCs disponíveis ou trabalhando podem sair em missão.',
+    empty_reward: 'Informe uma recompensa maior que zero.',
     forbidden: 'Somente o Mestre pode fazer isso.',
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
@@ -481,27 +719,117 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'npc_removed':
     case 'npc_unassigned':
     case 'npc_home_set':
+    case 'npc_moved':
     case 'npc_job_set':
     case 'npc_released':
     case 'npc_worked':
     case 'npc_wages_paid':
     case 'npc_unpaid':
       return npcAction(entry, ctx);
+    case 'archive_changed':
+      return archiveAction(masterActor(entry), entry.change);
+    case 'mission_created':
+    case 'mission_updated':
+    case 'mission_removed':
+    case 'mission_taken':
+    case 'mission_returned':
+    case 'mission_reopened':
+    case 'mission_npcs_sent':
+    case 'mission_resolved':
+      return missionAction(entry, ctx);
     default:
       return assertNever(entry);
   }
 }
 
+/** "Thorin criou o tópico Pets", "Gus removeu 'Mapa do Portão Oito' (está na lixeira)". */
+export function archiveAction(actor: string, change: ArchiveChange): string {
+  switch (change.target) {
+    case 'topic':
+    case 'note': {
+      if (change.action === 'moved') {
+        return `${actor} moveu '${change.title}' de ${change.from} para ${change.to}`;
+      }
+      const what = change.target === 'topic' ? `o tópico ${change.title}` : `'${change.title}'`;
+      const trash = change.action === 'removed' ? ' (está na lixeira)' : '';
+      return `${actor} ${ARCHIVE_VERBS[change.action]} ${what}${trash}`;
+    }
+    case 'notes':
+      return `${actor} colou ${change.count} ${change.count === 1 ? 'registro' : 'registros'} em ${change.title}`;
+    case 'trash':
+      return `${actor} esvaziou a lixeira do Arquivo`;
+    case 'images':
+      return `${actor} anexou ${change.count === 1 ? 'uma imagem' : `${change.count} imagens`} a '${change.title}'`;
+    case 'image':
+      return `${actor} removeu uma imagem de '${change.title}'`;
+    default:
+      return assertNever(change);
+  }
+}
+
+type MissionEntry = Extract<LogEntry, { kind: `mission_${string}` }>;
+
+function missionAction(entry: MissionEntry, ctx: TextContext): string {
+  const who = entry.actor ? `${entry.actor} ` : '';
+  const title = `'${entry.title}'`;
+  switch (entry.kind) {
+    case 'mission_created':
+      return who ? `${who}pendurou a missão ${title}` : `Nova missão no quadro: ${title}`;
+    case 'mission_updated':
+      return who ? `${who}editou a missão ${title}` : `Missão ${title} editada`;
+    case 'mission_removed':
+      return who ? `${who}tirou a missão ${title} do quadro` : `Missão ${title} tirada do quadro`;
+    case 'mission_taken':
+      return `O grupo partiu na missão ${title}`;
+    case 'mission_returned':
+      return `Os NPCs voltaram da missão ${title}: o mestre decide o resultado`;
+    case 'mission_reopened':
+      return `A missão ${title} ficou sem NPCs e voltou para Abertas`;
+    case 'mission_npcs_sent':
+      return `${listText(entry.npcs)} ${entry.npcs.length === 1 ? 'partiu' : 'partiram'} na missão ${title}`;
+    case 'mission_resolved':
+      return missionResolvedText(entry, ctx);
+    default:
+      return assertNever(entry);
+  }
+}
+
+function missionResolvedText(
+  entry: Extract<LogEntry, { kind: 'mission_resolved' }>,
+  ctx: TextContext,
+): string {
+  const title = `'${entry.title}'`;
+  if (entry.result === 'falha') {
+    const hurt = entry.injured.length > 1 ? 'voltaram feridos' : 'voltou ferido';
+    const injured = entry.injured.length > 0 ? ` ${listText(entry.injured)} ${hurt}.` : '';
+    return `A missão ${title} falhou: ninguém recebe.${injured}`;
+  }
+  if (entry.by === 'grupo') {
+    return `Missão ${title} concluída pelo grupo: ${ctx.gold(entry.campBronze)} para o Acampamento`;
+  }
+  return `Missão ${title} concluída pelos NPCs: ${ctx.gold(entry.npcBronze)} para eles e ${ctx.gold(entry.campBronze)} para o Acampamento`;
+}
+
+const ARCHIVE_VERBS = {
+  created: 'criou',
+  edited: 'editou',
+  reordered: 'reordenou',
+  removed: 'removeu',
+  restored: 'restaurou',
+} as const;
+
 /** "+3,4 Ferro por dia"; a bonus reads as its own text. */
+/** "+3,4 Ferro por dia"; a negative yield reads "-2,0 Ferro por dia" or "obra atrasada…". */
 export function jobEffectText(effect: JobEffect, tenthsPerDay: number, ctx: TextContext): string {
-  const amount = t.tenths(tenthsPerDay);
+  const amount = t.tenths(Math.abs(tenthsPerDay));
+  const signed = `${tenthsPerDay < 0 ? '-' : '+'}${amount}`;
   switch (effect.type) {
     case 'produce':
-      return `+${amount} ${ctx.material(effect.material)} por dia`;
+      return `${signed} ${ctx.material(effect.material)} por dia`;
     case 'research':
-      return `+${amount} de progresso por dia`;
+      return `${signed} de progresso por dia`;
     case 'construction':
-      return `obra adiantada em ${amount} dia por dia`;
+      return `obra ${tenthsPerDay < 0 ? 'atrasada' : 'adiantada'} em ${amount} dia por dia`;
     case 'bonus':
       return effect.text;
     default:
@@ -534,6 +862,8 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
       return entry.place
         ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
         : `${who}${entry.npc} deixou a moradia`;
+    case 'npc_moved':
+      return `${entry.npc} mudou-se de ${ctx.building(entry.from)} para ${ctx.building(entry.place)}`;
     case 'npc_job_set':
       return `${who}${entry.npc} assumiu o posto ${entry.activity} em ${ctx.building(entry.place)}`;
     case 'npc_released': {
@@ -551,14 +881,20 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
   }
 }
 
+/** A negative amount means the NPC worked against the post. */
 function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: TextContext): string {
+  const { npc, target } = entry;
+  const amount = Math.abs(entry.amount);
+  const hindered = entry.amount < 0;
   switch (entry.effect) {
     case 'produce':
-      return `${entry.npc} produziu ${entry.amount} ${entry.target}`;
+      return `${npc} ${hindered ? 'estragou' : 'produziu'} ${amount} ${target}`;
     case 'research':
-      return `${entry.npc} avançou a pesquisa '${entry.target}' em ${entry.amount}%`;
+      return hindered
+        ? `${npc} fez a pesquisa '${target}' regredir ${amount}%`
+        : `${npc} avançou a pesquisa '${target}' em ${amount}%`;
     case 'construction':
-      return `${entry.npc} adiantou a obra de ${ctx.building(entry.target)} em ${t.days(entry.amount)}`;
+      return `${npc} ${hindered ? 'atrasou' : 'adiantou'} a obra de ${ctx.building(target)} em ${t.days(amount)}`;
     default:
       return assertNever(entry.effect);
   }

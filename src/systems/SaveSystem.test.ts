@@ -4,11 +4,15 @@ import {
   loadState,
   migrateSave,
   parseSave,
+  parseSaveArchive,
+  serializeSave,
   serializeState,
   STORAGE_KEY,
 } from './SaveSystem';
+import type { Archive } from './Archive';
+import { SAVE_VERSION } from '../model/schema';
 import { LOG_LIMIT } from './outcome';
-import { makeState, memoryStorage, testCatalog } from './testFixtures';
+import { makeState, memoryStorage, npc, testCatalog } from './testFixtures';
 
 describe('createInitialState', () => {
   it('starts on day 1 with the seeded wallets, materials, research and influence', () => {
@@ -124,6 +128,35 @@ describe('parseSave', () => {
     vi.restoreAllMocks();
   });
 
+  // Negative skills only widened the fields: v5 saves from before them stay valid as they are.
+  it.each([
+    { name: 'a v5 save with only positive skills', skill: 7, carry: 4, amount: 3 },
+    { name: 'a save with negative skills', skill: -6, carry: -2, amount: -3 },
+  ])('reads $name without a version bump', ({ skill, carry, amount }) => {
+    const state = makeState({
+      slots: {
+        outer_n: { buildingId: 'forge', level: 1, status: 'done' },
+        outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+      },
+      npcs: [
+        npc({
+          id: 'bianca',
+          name: 'Bianca',
+          skills: { smithing: skill },
+          home: 'outer_e',
+          job: { slotId: 'outer_n', activityId: 'forjar', carry },
+          status: 'trabalhando',
+        }),
+      ],
+      log: [
+        { day: 1, kind: 'npc_worked', npc: 'Bianca', effect: 'produce', amount, target: 'Ferro' },
+      ],
+    });
+    const parsed = parseSave(serializeState(state), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed).toEqual({ ok: true, state });
+  });
+
   // Hand-edited or imported saves: a bad number must never reach the top bar.
   it.each([
     { name: 'a coin count as text', camp: { gold: '11' } },
@@ -197,6 +230,7 @@ describe('migrateSave', () => {
     expect(migrateSave(v4, migrations, 6)).toEqual({
       ok: true,
       json: { version: 6, day: 3, npcs: [] },
+      from: 4,
     });
   });
 
@@ -207,8 +241,18 @@ describe('migrateSave', () => {
     expect(parsed).toEqual({ ok: true, state: makeState({ day: 9 }) });
   });
 
+  it('gives a version 6 save an empty mission board, keeping everything else', () => {
+    const { missions, ...rest } = makeState({ day: 9, npcs: [npc({ id: 'bia', name: 'Bia' })] });
+    expect(missions).toEqual([]);
+    const parsed = parseSave(JSON.stringify({ ...rest, version: 6 }), testCatalog);
+    expect(parsed).toEqual({
+      ok: true,
+      state: makeState({ day: 9, npcs: [npc({ id: 'bia', name: 'Bia' })] }),
+    });
+  });
+
   it('leaves a current save untouched', () => {
-    expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4 });
+    expect(migrateSave(v4, {}, 4)).toEqual({ ok: true, json: v4, from: 4 });
   });
 
   it('refuses a gap in the chain (kept) and saves older than the oldest supported (outdated)', () => {
@@ -222,5 +266,79 @@ describe('migrateSave', () => {
       error: 'save version 3',
       outdated: true,
     });
+  });
+});
+
+describe('version 5 saves: housing only in the Alojamento', () => {
+  // outer_n holds a Forja, which offers no housing, like the old Taverna homes.
+  const slots = {
+    outer_n: { buildingId: 'forge', level: 1, status: 'done' },
+    outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+  } as const;
+  const forjar = { slotId: 'outer_n', activityId: 'forjar', carry: 3 };
+  const pele = npc({
+    id: 'pele',
+    name: 'Pelé',
+    home: 'outer_n',
+    job: forjar,
+    status: 'trabalhando',
+  });
+  const ana = npc({ id: 'ana', name: 'Ana', home: 'outer_n' });
+
+  function load(version: number, npcs: ReturnType<typeof npc>[]) {
+    const parsed = parseSave(
+      JSON.stringify({ ...makeState({ slots, npcs }), version }),
+      testCatalog,
+    );
+    if (!parsed.ok) throw new Error(parsed.error);
+    return parsed.state;
+  }
+
+  it('moves residents to the Alojamento when there is room, keeping their post', () => {
+    const state = load(5, [pele]);
+    expect(state.version).toBe(SAVE_VERSION);
+    expect(state.npcs[0]).toMatchObject({ home: 'outer_e', job: forjar, status: 'trabalhando' });
+    expect(state.log).toEqual([
+      { day: 1, kind: 'npc_moved', npc: 'Pelé', from: 'forge', place: 'barracks' },
+    ]);
+  });
+
+  it('releases, in list order, whoever does not fit', () => {
+    const resident = npc({ id: 'bia', name: 'Bia', home: 'outer_e' });
+    const state = load(5, [resident, pele, ana]);
+    expect(state.npcs.map((n) => [n.name, n.home, n.job?.activityId ?? null])).toEqual([
+      ['Bia', 'outer_e', null],
+      ['Pelé', 'outer_e', 'forjar'],
+      ['Ana', null, null],
+    ]);
+    expect(state.log.map((entry) => entry.kind)).toEqual(['npc_moved', 'npc_released']);
+    expect(state.log[1]).toMatchObject({ npc: 'Ana', from: 'home', reason: 'capacity' });
+  });
+
+  it('runs only on the upgrade from version 5', () => {
+    const state = load(6, [pele]);
+    expect(state.npcs[0]).toMatchObject({ home: null, job: null, status: 'disponivel' });
+  });
+});
+
+describe('save file with the archive', () => {
+  const archive: Archive = {
+    topics: [{ id: 'npcs', name: 'NPCs', order: 0, authorId: 'mestre', deletedAt: null }],
+    notes: [],
+  };
+
+  it('exports and imports the archive beside the game', () => {
+    const text = serializeSave(makeState({ day: 4 }), archive);
+    expect(parseSave(text, testCatalog)).toMatchObject({ ok: true, state: { day: 4 } });
+    expect(parseSaveArchive(text)).toEqual({ ok: true, archive });
+  });
+
+  it('reads saves without an archive as having none', () => {
+    expect(parseSaveArchive(serializeState(makeState()))).toEqual({ ok: true, archive: null });
+  });
+
+  it('refuses an invalid archive', () => {
+    const text = JSON.stringify({ ...makeState(), archive: { topics: 'x' } });
+    expect(parseSaveArchive(text)).toMatchObject({ ok: false });
   });
 });

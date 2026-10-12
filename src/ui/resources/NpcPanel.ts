@@ -11,7 +11,8 @@ import {
 } from '../../systems/Coins';
 import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
-import { formatCount, formatWage } from '../format';
+import { moveOutButton } from '../SlotNpcs';
+import { formatCount, formatGold, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
   button,
@@ -19,7 +20,6 @@ import {
   confirmButton,
   field,
   numberInput,
-  progressBar,
   rememberedSelect,
   selectInput,
   thumb,
@@ -30,12 +30,16 @@ const SKILL_KEY = 'npcs.skill';
 const IDLE_KEY = 'npcs.idle';
 const ALL = 'all';
 const MAX_SKILL = 10;
+const MIN_SKILL = -10;
 const STATUSES: readonly NpcStatus[] = ['disponivel', 'ferido', 'em_missao'];
 
 /** NPCs: cards with skills, home and job; players move them, the master edits them. */
 export class NpcPanel {
   private editing: string | null = null;
-  private isNewOpen = false;
+  /** The "Novo NPC" block being filled in, kept across redraws only while it has focus. */
+  private draft: HTMLDetailsElement | null = null;
+  /** The NPC just created: its card is scrolled into view and highlighted once. */
+  private createdId: string | null = null;
   private redraw: () => void = () => undefined;
 
   constructor(private readonly deps: PanelDeps) {}
@@ -61,9 +65,9 @@ export class NpcPanel {
     const list =
       state.npcs.length === 0 ? el('p', { class: 'panel__hint' }, t.npcs.empty) : this.list(state);
     return [
+      ...(session.isActive ? [this.newNpcForm()] : []),
       ...(state.npcs.length > 0 ? [this.filters(store.catalog)] : []),
       list,
-      ...(session.isActive ? [this.newNpcForm()] : []),
     ];
   }
 
@@ -108,9 +112,10 @@ export class NpcPanel {
   private card(npc: Npc): HTMLElement {
     const { store, session } = this.deps;
     const { catalog } = store;
-    return el(
+    const isCreated = npc.id === this.createdId;
+    const node = el(
       'li',
-      { class: 'item npc-card' },
+      { class: `item npc-card${isCreated ? ' npc-card--created' : ''}` },
       el(
         'div',
         { class: 'card__head' },
@@ -129,10 +134,22 @@ export class NpcPanel {
       npc.description && el('p', { class: 'item__desc' }, npc.description),
       this.skillBars(npc),
       el('p', { class: 'card__sub' }, formatWage(catalog, npc.wage)),
+      (npc.earnings ?? 0) > 0 &&
+        el(
+          'p',
+          { class: 'card__sub' },
+          t.missions.npcEarned(formatGold(catalog, npc.earnings ?? 0)),
+        ),
       this.homeRow(npc),
       this.jobRow(npc),
       session.isActive && this.masterControls(npc),
     );
+    if (isCreated) {
+      this.createdId = null;
+      // After the menu puts its scroll position back.
+      queueMicrotask(() => node.scrollIntoView({ block: 'nearest' }));
+    }
+    return node;
   }
 
   private skillBars(npc: Npc): HTMLElement {
@@ -146,8 +163,12 @@ export class NpcPanel {
           'li',
           { class: 'npc-skill', title: skill.description },
           el('span', { class: 'npc-skill__name' }, `${skill.icon} ${skill.name}`),
-          progressBar(level / MAX_SKILL),
-          el('span', { class: 'npc-skill__value' }, String(level)),
+          skillBar(level),
+          el(
+            'span',
+            { class: `npc-skill__value${level < 0 ? ' is-negative' : ''}` },
+            String(level),
+          ),
         );
       }),
     );
@@ -175,7 +196,13 @@ export class NpcPanel {
         this.redraw();
       }
     });
-    return el('div', { class: 'row row--wrap' }, field(t.npcs.home, select));
+    const moveOut = () => act({ type: 'npc_set_home', npcId: npc.id, slotId: null });
+    return el(
+      'div',
+      { class: 'row row--wrap' },
+      field(t.npcs.home, select),
+      npc.home && moveOutButton(store, npc, t.npcs.moveOutOfHome, moveOut),
+    );
   }
 
   private jobRow(npc: Npc): HTMLElement {
@@ -212,17 +239,27 @@ export class NpcPanel {
     );
   }
 
+  /**
+   * Always starts closed (on opening the panel, after creating, on redraws),
+   * except while the master is typing in it.
+   */
   private newNpcForm(): HTMLElement {
+    if (this.draft?.contains(document.activeElement)) return this.draft;
     const form = this.npcForm(undefined, (fields) => {
-      this.deps.act({ type: 'npc_create', id: newId('npc'), ...fields });
+      const id = newId('npc');
+      this.draft = null;
+      this.createdId = id;
+      if (this.deps.act({ type: 'npc_create', id, ...fields })) return;
+      this.draft = details;
+      this.createdId = null;
     });
     const details = el(
       'details',
-      { class: 'card card--master', open: this.isNewOpen },
+      { class: 'card card--master' },
       el('summary', { class: 'section-title' }, t.npcs.newNpc),
       form,
     );
-    details.addEventListener('toggle', () => (this.isNewOpen = details.open));
+    this.draft = details;
     return details;
   }
 
@@ -248,7 +285,7 @@ export class NpcPanel {
     const levels = skills.map((skill) => ({
       skill,
       input: numberInput({
-        min: 0,
+        min: MIN_SKILL,
         max: MAX_SKILL,
         value: npc ? skillOf(npc, skill.id) : 0,
         label: skill.name,
@@ -319,7 +356,27 @@ function wageInputs(catalog: Catalog, wage: number | undefined) {
 
 function clampSkill(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.min(MAX_SKILL, Math.max(0, Math.round(value)));
+  return Math.min(MAX_SKILL, Math.max(MIN_SKILL, Math.round(value)));
+}
+
+/** Grows right from the middle in gold, or left in red for a skill that hinders. */
+function skillBar(level: number): HTMLElement {
+  const isNegative = level < 0;
+  const width = (Math.min(MAX_SKILL, Math.abs(level)) / MAX_SKILL) * 50;
+  return el(
+    'div',
+    {
+      class: 'progress npc-skill-bar',
+      role: 'meter',
+      'aria-valuemin': String(MIN_SKILL),
+      'aria-valuemax': String(MAX_SKILL),
+      'aria-valuenow': String(level),
+    },
+    el('div', {
+      class: `npc-skill-bar__fill${isNegative ? ' is-negative' : ''}`,
+      style: `${isNegative ? 'right' : 'left'}: 50%; width: ${width}%`,
+    }),
+  );
 }
 
 function parseStatus(value: string): NpcStatus {

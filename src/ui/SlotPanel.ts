@@ -1,6 +1,6 @@
 import { blockReasonText, t } from '../i18n/pt-BR';
 import type { SlotType } from '../map/layout';
-import { findBuilding, findSlot } from '../model/catalog';
+import { findBuilding, findSlot, GUILD_BUILDING_ID, TAVERN_BUILDING_ID } from '../model/catalog';
 import type { BuildingDef, BuildingLevel, Cost, GameState, PlacedBuilding } from '../model/schema';
 import {
   activeLevel,
@@ -11,6 +11,9 @@ import {
 } from '../systems/BuildSystem';
 import { toBronze } from '../systems/Coins';
 import { findMaterial } from '../systems/Materials';
+import type { ArchiveStore } from '../archiveStore';
+import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
+import { missionTab } from '../systems/Missions';
 import { STUDY_STATION_ID } from '../systems/Research';
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
@@ -20,9 +23,15 @@ import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
 import { ResearchArchive } from './resources/ResearchArchive';
-import { thumb } from './widgets';
+import { button, thumb } from './widgets';
 
 type SelectionListener = (slotId: string | null) => void;
+
+/** Windows a building panel opens. */
+export interface BuildingWindows {
+  menu: () => void;
+  missions: () => void;
+}
 
 /** Side panel (bottom sheet on phones) showing what can be built in, or is built on, a slot. */
 export class SlotPanel {
@@ -35,8 +44,11 @@ export class SlotPanel {
     private readonly root: HTMLElement,
     private readonly store: GameStore,
     private readonly session: MasterAccess,
+    private readonly archive: { store: ArchiveStore; open: () => void },
+    private readonly windows: BuildingWindows,
   ) {
     store.subscribe(() => this.render());
+    archive.store.subscribe(() => this.render());
     session.subscribe(() => this.render());
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') this.close();
@@ -287,8 +299,52 @@ export class SlotPanel {
 
   /** The study station shows every research in full once it has been built. */
   private extraSections(placed: PlacedBuilding, state: GameState): HTMLElement[] {
-    const hasArchive = placed.buildingId === STUDY_STATION_ID && activeLevel(placed) >= 1;
-    return hasArchive ? [this.researchArchive.render(this.store.catalog, state)] : [];
+    if (activeLevel(placed) < 1) return [];
+    if (placed.buildingId === STUDY_STATION_ID) {
+      return [this.researchArchive.render(this.store.catalog, state)];
+    }
+    if (placed.buildingId === TAVERN_BUILDING_ID) return [this.menuSection()];
+    if (placed.buildingId === GUILD_BUILDING_ID) return [this.missionsSection(state)];
+    return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
+  }
+
+  /** The Guilda, once built: the way into the mission board. */
+  private missionsSection(state: GameState): HTMLElement {
+    const tabs = state.missions.map(missionTab);
+    const open = tabs.filter((tab) => tab === 'abertas').length;
+    const active = tabs.filter((tab) => tab === 'andamento').length;
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.missions.title),
+      el('p', { class: 'panel__hint' }, t.missions.panelHint),
+      el('p', {}, t.missions.counts(open, active)),
+      button(t.missions.open, this.windows.missions, { primary: true }),
+    );
+  }
+
+  /** The Taverna, once built: the way into the menu window. */
+  private menuSection(): HTMLElement {
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.menu.title),
+      el('p', { class: 'panel__hint' }, t.menu.panelHint),
+      button(t.menu.open, this.windows.menu, { primary: true }),
+    );
+  }
+
+  /** The Arquivo, once built: the way into the records window. */
+  private recordsSection(): HTMLElement {
+    const { topics, notes } = archiveCounts(this.archive.store.current);
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.archive.title),
+      el('p', { class: 'panel__hint' }, t.archive.panelHint),
+      el('p', {}, t.archive.counts(topics, notes)),
+      button(t.archive.open, this.archive.open, { primary: true }),
+    );
   }
 }
 

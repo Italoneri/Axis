@@ -41,6 +41,27 @@
     "icon.mage_tower": "assets/icons/mage_tower.png",
     "building.mage_tower": "assets/buildings/mage_tower.png",
     "icon.archive": "assets/icons/archive.png",
-    "building.archive": "assets/buildings/archive.png"
+    "building.archive": "assets/buildings/archive.png",
+    "icon.meeting_hall": "assets/icons/meeting_hall.png",
+    "building.meeting_hall": "assets/buildings/meeting_hall.png",
+    "icon.research_lab": "assets/icons/research_lab.png",
+    "building.research_lab": "assets/buildings/research_lab.png",
+    "icon.guild": "assets/icons/guild.png",
+    "building.guild": "assets/buildings/guild.png",
+    "menu.pao_mel": "assets/menu/pao_mel.jpg",
+    "menu.mingau_aveia": "assets/menu/mingau_aveia.jpg",
+    "menu.queijo_maca": "assets/menu/queijo_maca.jpg",
+    "menu.ovos_toucinho": "assets/menu/ovos_toucinho.jpg",
+    "menu.panquecas_amora": "assets/menu/panquecas_amora.jpg",
+    "menu.ensopado_lentilha": "assets/menu/ensopado_lentilha.jpg",
+    "menu.sopa_cebola": "assets/menu/sopa_cebola.jpg",
+    "menu.torta_carne": "assets/menu/torta_carne.jpg",
+    "menu.peixe_brasa": "assets/menu/peixe_brasa.jpg",
+    "menu.javali_assado": "assets/menu/javali_assado.jpg",
+    "menu.caldo_ossos": "assets/menu/caldo_ossos.jpg",
+    "menu.cogumelos_caverna": "assets/menu/cogumelos_caverna.jpg",
+    "menu.frango_batatas": "assets/menu/frango_batatas.jpg",
+    "menu.cozido_cordeiro": "assets/menu/cozido_cordeiro.jpg",
+    "menu.banquete_taverneiro": "assets/menu/banquete_taverneiro.jpg"
   }
 }

@@ -12,6 +12,7 @@ import {
   updateNpc,
   yieldTenths,
 } from './Npcs';
+import { gameData } from '../data/gameData';
 import { makeState, npc, testCatalog } from './testFixtures';
 
 const research = {
@@ -55,8 +56,16 @@ describe('yieldTenths', () => {
     { base: 2, skill: 7, tenths: 34 },
     { base: 3, skill: 10, tenths: 60 },
     { base: 0.5, skill: 3, tenths: 7 },
+    { base: 1, skill: -1, tenths: -2 },
+    { base: 1, skill: -5, tenths: -10 },
+    { base: 1, skill: -10, tenths: -20 },
+    { base: 1.5, skill: -1, tenths: -3 },
+    { base: 1.5, skill: -5, tenths: -15 },
+    { base: 1.5, skill: -10, tenths: -30 },
+    { base: 1.5, skill: 0, tenths: 15 },
+    { base: 1.5, skill: 10, tenths: 30 },
   ])('turns base $base at skill $skill into $tenths tenths', ({ base, skill, tenths }) => {
-    expect(yieldTenths(base, skill)).toBe(tenths);
+    expect(yieldTenths(base, skill, 5)).toBe(tenths);
   });
 });
 
@@ -203,7 +212,12 @@ describe('assignNpcJob', () => {
   });
 
   it('keeps one job at a time, moving the NPC to the new post', () => {
-    const forging = expectOk(assignNpcJob(base(), testCatalog, 'bianca', forjar));
+    const assigned = expectOk(assignNpcJob(base(), testCatalog, 'bianca', forjar));
+    // Leftover tenths of the old post do not follow the NPC.
+    const forging = {
+      ...assigned,
+      npcs: assigned.npcs.map((n) => (n.job ? { ...n, job: { ...n.job, carry: -5 } } : n)),
+    };
     const order = { slotId: 'core', activityId: 'estudar', researchId: 'runes' };
     const studying = expectOk(assignNpcJob(forging, testCatalog, 'bianca', order));
     expect(studying.npcs.find((n) => n.id === 'bianca')?.job).toEqual({ ...order, carry: 0 });
@@ -244,6 +258,27 @@ describe('addNpc and updateNpc', () => {
       updateNpc(working, testCatalog, 'gus', { ...fields, name: 'Gus', status: 'disponivel' }),
     );
     expect(edited.npcs.find((n) => n.id === 'gus')?.status).toBe('trabalhando');
+  });
+
+  it('keeps negative skills and drops only the zeros', () => {
+    const skills = { smithing: -4, research: 0, construction: 2 };
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', skills }));
+    expect(added.npcs.find((n) => n.id === 'lia')?.skills).toEqual({
+      smithing: -4,
+      construction: 2,
+    });
+  });
+
+  it.each([
+    { name: 'new skills', skills: { smithing: -2 }, carry: 0 },
+    { name: 'the same skills', skills: { smithing: 10 }, carry: -4 },
+  ])('drops the leftover tenths only for $name', ({ skills, carry }) => {
+    const gus = base().npcs.find((n) => n.id === 'gus');
+    const job = { ...forjar, carry: -4 };
+    const working = base({ npcs: gus ? [{ ...gus, job, status: 'trabalhando' }] : [] });
+    const edit = { ...fields, name: 'Gus', skills, wage: 1, status: 'disponivel' as const };
+    const edited = expectOk(updateNpc(working, testCatalog, 'gus', edit));
+    expect(edited.npcs[0]?.job?.carry).toBe(carry);
   });
 });
 
@@ -323,5 +358,82 @@ describe('settleNpcs', () => {
   it('keeps the very same state when everything still fits', () => {
     const state = working();
     expect(settleNpcs(state, testCatalog)).toBe(state);
+  });
+});
+
+describe('post openings by ring (shipped data)', () => {
+  const at = (slotId: string, buildingId: string, level: number) =>
+    makeState({ slots: { [slotId]: { buildingId, level, status: 'done' } } });
+  const openings = (slotId: string, buildingId: string, level: number) =>
+    postsAt(at(slotId, buildingId, level), gameData, slotId).map((post) => post.slots);
+
+  it.each([
+    { ring: 'outer', slotId: 'outer_1', buildingId: 'forge', perLevel: [3, 6, 8] },
+    { ring: 'middle', slotId: 'mid_1', buildingId: 'library', perLevel: [2, 4, 6] },
+    { ring: 'outer', slotId: 'outer_1', buildingId: 'study_station', perLevel: [3, 6, 8] },
+    { ring: 'middle', slotId: 'mid_1', buildingId: 'study_station', perLevel: [2, 4, 6] },
+  ])('gives $buildingId on the $ring ring $perLevel', ({ slotId, buildingId, perLevel }) => {
+    expect([1, 2, 3].map((level) => openings(slotId, buildingId, level))).toEqual(
+      perLevel.map((slots) => [slots]),
+    );
+  });
+
+  it.each([
+    { slotId: 'outer_1', buildingId: 'forge', inForce: 6 },
+    { slotId: 'mid_1', buildingId: 'library', inForce: 4 },
+  ])(
+    'keeps the construction post at its own openings on $slotId',
+    ({ slotId, buildingId, inForce }) => {
+      const upgrading = makeState({
+        slots: {
+          [slotId]: {
+            buildingId,
+            level: 3,
+            status: 'building',
+            startedOnDay: 1,
+            completesOnDay: 9,
+          },
+        },
+      });
+      const posts = postsAt(upgrading, gameData, slotId);
+      expect(posts.map((post) => [post.job.activity, post.slots])).toEqual([
+        // Upgrading to level 3: the building posts keep level 2's openings.
+        [posts[0]?.job.activity, inForce],
+        ['construir', 2],
+      ]);
+    },
+  );
+
+  it('releases the workers beyond the openings of a lower level, in list order', () => {
+    const workers = Array.from({ length: 6 }, (_, index) =>
+      npc({
+        id: `w${index}`,
+        name: `W${index}`,
+        home: 'outer_2',
+        job: { slotId: 'outer_1', activityId: 'forjar', carry: 0 },
+        status: 'trabalhando',
+      }),
+    );
+    const state = makeState({
+      slots: {
+        outer_1: { buildingId: 'forge', level: 1, status: 'done' },
+        outer_2: { buildingId: 'barracks', level: 3, status: 'done' },
+      },
+      npcs: workers,
+    });
+    const settled = settleNpcs(state, gameData);
+    expect(settled.npcs.map((n) => n.job !== null)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+    ]);
+    expect(settled.log.map((entry) => entry.kind === 'npc_released' && entry.reason)).toEqual([
+      'capacity',
+      'capacity',
+      'capacity',
+    ]);
   });
 });

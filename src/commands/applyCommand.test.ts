@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { gameStateSchema, type GameState } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
-import { makeState, npc, testCatalog, withIron } from '../systems/testFixtures';
+import { makeState, mission, npc, testCatalog, withIron } from '../systems/testFixtures';
 import { applyCommand } from './applyCommand';
 import { newId } from './newId';
 import type { CommandContext, CommandType, GameCommand } from './schema';
@@ -49,6 +49,10 @@ function richState(): GameState {
       ...base.materials,
       categories: [...base.materials.categories, { id: 'gems', name: 'Gemas' }],
     },
+    missions: [
+      mission({ id: 'contrato', title: 'Contrato' }),
+      mission({ id: 'escolta', title: 'Escolta', progress: { status: 'grupo', startedOnDay: 2 } }),
+    ],
   };
 }
 
@@ -60,6 +64,16 @@ const draft = {
   notes: '',
   status: 'em_andamento',
   progress: 0,
+} as const;
+
+const missionFields = {
+  title: 'Caçada',
+  requester: 'Rizzelena',
+  location: 'Forja',
+  description: 'Uma *guivra* no rio.',
+  reward: { gold: 2 },
+  days: 3,
+  difficulty: 'media',
 } as const;
 
 const npcFields = {
@@ -133,6 +147,21 @@ const validCommands: Record<CommandType, GameCommand> = {
     researchId: 'runes',
   },
   npc_unassign: { type: 'npc_unassign', npcId: 'bianca' },
+  archive_log: {
+    type: 'archive_log',
+    change: { target: 'topic', action: 'created', title: 'Pets' },
+  },
+  mission_create: { type: 'mission_create', id: 'mission_1', ...missionFields },
+  mission_update: { type: 'mission_update', missionId: 'contrato', ...missionFields },
+  mission_remove: { type: 'mission_remove', missionId: 'contrato' },
+  mission_take_party: { type: 'mission_take_party', missionId: 'contrato' },
+  mission_send_npcs: { type: 'mission_send_npcs', missionId: 'contrato', npcIds: ['tomas'] },
+  mission_resolve: {
+    type: 'mission_resolve',
+    missionId: 'escolta',
+    result: 'sucesso',
+    injuredNpcIds: [],
+  },
 };
 
 function run(command: unknown, ctx: CommandContext = master, state = richState()) {
@@ -167,6 +196,26 @@ describe('applyCommand', () => {
     { name: 'bad color', input: { type: 'add_character', id: 'c', name: 'X', color: 'red' } },
     { name: 'missing id', input: { type: 'add_character', name: 'X', color: '#123456' } },
     { name: 'unsafe id', input: { type: 'add_material_category', id: 'Ferro Bom!', name: 'X' } },
+    {
+      name: 'skill below -10',
+      input: {
+        type: 'npc_create',
+        id: 'npc_x',
+        ...npcFields,
+        name: 'X',
+        skills: { smithing: -11 },
+      },
+    },
+    {
+      name: 'skill above 10',
+      input: {
+        type: 'npc_update',
+        npcId: 'bianca',
+        ...npcFields,
+        status: 'disponivel',
+        skills: { smithing: 11 },
+      },
+    },
   ])('refuses a malformed command: $name', ({ input }) => {
     expect(run(input)).toEqual({ ok: false, error: 'invalid_command' });
   });
@@ -231,6 +280,12 @@ describe('applyCommand permissions', () => {
     'npc_set_home',
     'npc_assign_job',
     'npc_unassign',
+    'archive_log',
+    'mission_create',
+    'mission_update',
+    'mission_remove',
+    'mission_take_party',
+    'mission_send_npcs',
   ]);
   const masterOnly = Object.values(validCommands).filter((c) => !playerCommands.has(c.type));
 
@@ -275,6 +330,19 @@ describe('applyCommand log', () => {
       { day: 3, kind: 'coins_deposited', actor, character: 'Thorin', coins: { gold: 2 } },
     ]);
     expect(result.state.log.at(-1)).toEqual(result.logged[0]);
+  });
+
+  it('logs an archive change with its actor', () => {
+    const result = run(validCommands.archive_log, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.logged).toEqual([
+      {
+        day: 3,
+        kind: 'archive_changed',
+        actor: 'Thorin',
+        change: { target: 'topic', action: 'created', title: 'Pets' },
+      },
+    ]);
   });
 
   it('leaves an anonymous player out of the entry', () => {

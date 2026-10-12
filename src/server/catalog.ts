@@ -4,6 +4,7 @@ import currencies from '../data/currencies.json';
 import influence from '../data/influence.json';
 import layout from '../data/layout.json';
 import materials from '../data/materials.json';
+import missions from '../data/missions.json';
 import npcs from '../data/npcs.json';
 import research from '../data/research.json';
 import skills from '../data/skills.json';
@@ -26,4 +27,5 @@ export const serverCatalog = parseCatalog({
   influence,
   skills,
   npcs,
+  missions,
 });

@@ -1,7 +1,7 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState, JobEffect } from '../model/schema';
 import { builtLevel } from './BuildSystem';
-import { findPost, isOnDuty, skillOf, yieldTenths } from './Npcs';
+import { findPost, isOnDuty, postYieldTenths, skillOf } from './Npcs';
 
 export interface ActiveBonus {
   buildingId: string;
@@ -30,17 +30,21 @@ export interface PostEffect {
   effect: JobEffect;
   /** Sum of the workers' daily yield in tenths; 0 for a bonus. */
   tenthsPerDay: number;
+  /** Some worker has a negative skill: a bonus post shows its `penalty` instead. */
+  hindered: boolean;
 }
 
-/** Effects of the posts in use, in the order their first worker appears in the NPC list. */
+/**
+ * Effects of the posts in use, in the order their first worker appears in the NPC list.
+ * A hindered bonus post without a `penalty` text is left out.
+ */
 export function activePostEffects(state: GameState, catalog: Catalog): PostEffect[] {
   const byPost = state.npcs.filter(isOnDuty).reduce((posts, npc) => {
     const post = findPost(state, catalog, npc.job);
     if (!post) return posts;
     const key = `${post.slotId}/${post.job.activity}`;
     const { effect } = post.job;
-    const tenths =
-      effect.type === 'bonus' ? 0 : yieldTenths(effect.perDay, skillOf(npc, post.job.skill));
+    const tenths = postYieldTenths(catalog, post, npc);
     const previous = posts.get(key);
     return new Map(posts).set(key, {
       slotId: post.slotId,
@@ -49,7 +53,10 @@ export function activePostEffects(state: GameState, catalog: Catalog): PostEffec
       workers: [...(previous?.workers ?? []), npc.name],
       effect,
       tenthsPerDay: (previous?.tenthsPerDay ?? 0) + tenths,
+      hindered: (previous?.hindered ?? false) || skillOf(npc, post.job.skill) < 0,
     });
   }, new Map<string, PostEffect>());
-  return [...byPost.values()];
+  return [...byPost.values()].filter(
+    (post) => !(post.hindered && post.effect.type === 'bonus' && !post.effect.penalty),
+  );
 }

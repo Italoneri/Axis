@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import {
   amountBagSchema,
+  archiveChangeSchema,
+  MISSION_DESCRIPTION_LIMIT,
+  MISSION_MAX_DAYS,
+  MISSION_TITLE_LIMIT,
+  missionDifficultySchema,
+  missionResultSchema,
   npcStatusSchema,
   researchSchema,
   skillLevelSchema,
@@ -41,6 +47,16 @@ const npcFields = {
   description: z.string(),
   skills: z.record(z.string(), skillLevelSchema),
   wage: z.number().nonnegative().optional(),
+};
+
+const missionFields = {
+  title: z.string().max(MISSION_TITLE_LIMIT),
+  requester: z.string().max(MISSION_TITLE_LIMIT),
+  location: z.string().max(MISSION_TITLE_LIMIT),
+  description: z.string().max(MISSION_DESCRIPTION_LIMIT),
+  reward: amountBagSchema,
+  days: z.number().int().min(1).max(MISSION_MAX_DAYS),
+  difficulty: missionDifficultySchema,
 };
 
 const [inProgress, completed] = researchSchema.options;
@@ -102,6 +118,19 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
     researchId: ref.optional(),
   }),
   command('npc_unassign', { npcId: ref }),
+  // Missions (Guilda)
+  command('mission_create', { id: newRecordId, ...missionFields }),
+  command('mission_update', { missionId: ref, ...missionFields }),
+  command('mission_remove', { missionId: ref }),
+  command('mission_take_party', { missionId: ref }),
+  command('mission_send_npcs', { missionId: ref, npcIds: z.array(ref).min(1).max(50) }),
+  command('mission_resolve', {
+    missionId: ref,
+    result: missionResultSchema,
+    injuredNpcIds: z.array(ref).max(50).default([]),
+  }),
+  // Arquivo de registros: the records live apart; this only writes what changed to the log.
+  command('archive_log', { change: archiveChangeSchema }),
 ]);
 
 export type GameCommand = z.infer<typeof gameCommandSchema>;

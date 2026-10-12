@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
+    "fflate": "^0.8.3",
     "phaser": "^3.90.0",
     "zod": "^4.6.5"
   },

@@ -6,9 +6,11 @@ import {
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
+  missionsConfigSchema,
   npcsConfigSchema,
   researchBookSchema,
   skillDefSchema,
+  tavernMenuSchema,
   walletsSeedSchema,
   worldsFileSchema,
   type AssetManifest,
@@ -16,9 +18,11 @@ import {
   type CurrencyDef,
   type JobDef,
   type Materials,
+  type MissionsConfig,
   type NpcsConfig,
   type ResearchBook,
   type SkillDef,
+  type TavernMenu,
   type WalletsSeed,
   type World,
 } from './schema';
@@ -46,7 +50,17 @@ export interface Catalog {
   /** NPC skills, in display order. */
   readonly skills: readonly SkillDef[];
   readonly npcs: NpcsConfig;
+  /** How mission rewards are shared out. */
+  readonly missions: MissionsConfig;
+  /** Dishes the tavern serves; empty where the menu is not shipped (the Edge Function). */
+  readonly tavernMenu: TavernMenu;
 }
+
+/** The building whose panel opens the menu, and whose level unlocks dishes. */
+export const TAVERN_BUILDING_ID = 'tavern';
+
+/** The building whose panel opens the mission board. */
+export const GUILD_BUILDING_ID = 'guild';
 
 export interface RawCatalog {
   currencies: unknown;
@@ -59,6 +73,9 @@ export interface RawCatalog {
   influence: unknown;
   skills: unknown;
   npcs: unknown;
+  missions: unknown;
+  /** Display only, so the server catalog leaves it out. */
+  tavernMenu?: unknown;
 }
 
 /**
@@ -81,6 +98,8 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
       .skills,
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
+    missions: parseFile('missions.json', missionsConfigSchema, raw.missions),
+    tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
   };
   const problems = findReferenceProblems(catalog);
   if (problems.length > 0) {
@@ -148,11 +167,44 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('world', catalog.worlds),
     ...duplicates('skill', catalog.skills),
     ...jobProblems(catalog),
+    ...housingProblems(catalog),
+    ...postSlotProblems(catalog),
     ...layoutProblems(catalog),
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
     ...seedProblems(catalog),
     ...buildingProblems,
+    ...menuProblems(catalog, missingAsset),
+    ...(buildingIds.has(catalog.missions.guildBonus.building)
+      ? []
+      : [
+          `missions.json: guildBonus uses unknown building "${catalog.missions.guildBonus.building}"`,
+        ]),
+  ];
+}
+
+/** Dishes need a known photo, known coins and a level the tavern can reach. */
+function menuProblems(
+  { tavernMenu, buildings, currencies }: Catalog,
+  missingAsset: (owner: string, key: string) => string[],
+): string[] {
+  const { items } = tavernMenu;
+  if (items.length === 0) return [];
+  const tavern = buildings.find((b) => b.id === TAVERN_BUILDING_ID);
+  const maxLevel = tavern?.levels.length ?? 0;
+  const currencyIds = new Set(currencies.map((c) => c.id));
+  return [
+    ...(tavern ? [] : [`tavern_menu.json: building "${TAVERN_BUILDING_ID}" is missing`]),
+    ...duplicates('menu item', items),
+    ...items.flatMap((item) => [
+      ...missingAsset(`menu ${item.id}`, item.image),
+      ...Object.keys(item.price ?? {})
+        .filter((id) => !currencyIds.has(id))
+        .map((id) => `menu ${item.id}: unknown coin "${id}"`),
+      ...((item.minLevel ?? 1) > maxLevel
+        ? [`menu ${item.id}: minLevel ${item.minLevel} is above the tavern's ${maxLevel} levels`]
+        : []),
+    ]),
   ];
 }
 
@@ -179,6 +231,32 @@ function jobProblems({ buildings, skills, npcs }: Catalog): string[] {
     }),
   );
   return [...unknownSkill('npcs.json', npcs.construction), ...levelProblems];
+}
+
+/** Housing lives only in the buildings npcs.json lists (the Alojamento). */
+function housingProblems({ buildings, npcs }: Catalog): string[] {
+  const housingIds = new Set(npcs.housingBuildings);
+  return [
+    ...npcs.housingBuildings
+      .filter((id) => !buildings.some((b) => b.id === id))
+      .map((id) => `npcs.json: housingBuildings lists unknown building "${id}"`),
+    ...buildings
+      .filter((b) => !housingIds.has(b.id) && b.levels.some((level) => level.housing))
+      .map((b) => `${b.id}: housing is only allowed in npcs.json housingBuildings`),
+  ];
+}
+
+/** A building with posts needs openings for every slot type it accepts, at each of its levels. */
+function postSlotProblems({ buildings, npcs }: Catalog): string[] {
+  return buildings
+    .filter((b) => b.levels.some((level) => (level.jobs ?? []).length > 0))
+    .flatMap((b) =>
+      b.allowedSlots
+        .filter((type) => (npcs.postSlots[type]?.length ?? 0) < b.levels.length)
+        .map(
+          (type) => `npcs.json: postSlots "${type}" needs ${b.levels.length} levels for ${b.id}`,
+        ),
+    );
 }
 
 /** Every slot type a building accepts must exist, and no slot may sit on a reserved stretch. */

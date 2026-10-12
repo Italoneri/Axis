@@ -22,9 +22,9 @@ create temporary table fixture as select id as game_id from public.games where n
 grant select on fixture to authenticated, service_role;
 
 insert into public.invites (game_id, character_id, token_hash, created_by, expires_at)
-select game_id, 'thorin', 'hash-ok', '00000000-0000-0000-0000-00000000000a', now() + interval '1 day' from fixture
+select game_id, 'thorin', 'hash-ok', '00000000-0000-0000-0000-00000000000a'::uuid, now() + interval '1 day' from fixture
 union all
-select game_id, 'thorin', 'hash-expired', '00000000-0000-0000-0000-00000000000a', now() - interval '1 day' from fixture;
+select game_id, 'thorin', 'hash-expired', '00000000-0000-0000-0000-00000000000a'::uuid, now() - interval '1 day' from fixture;
 
 -- ---------------------------------------------------------------- invites (service role)
 

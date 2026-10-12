@@ -4,7 +4,7 @@ import type { GameCommand } from '../commands/schema';
 import type { GameState, Npc } from '../model/schema';
 import { createInitialState } from './SaveSystem';
 import { advanceDays } from './TimeSystem';
-import { makeState, npc, testCatalog } from './testFixtures';
+import { makeState, npc, testCatalog, withIron } from './testFixtures';
 
 const research = {
   id: 'runes',
@@ -169,5 +169,107 @@ describe('NPC work on advanceDays', () => {
     expect(JSON.stringify(play())).toBe(JSON.stringify(first));
     // 3,4 per day for 17 days: 57,8 → 57 delivered.
     expect(iron(first)).toBe(57);
+  });
+});
+
+const stock = (quantity: number) => withIron(quantity).materials;
+const worked = (state: GameState) => state.log.filter((e) => e.kind === 'npc_worked');
+
+describe('NPCs with negative skills', () => {
+  it('carries signed tenths over the days (-0,6 Ferro per day)', () => {
+    const state = base({ npcs: [forger({ skills: { smithing: -3 } })], materials: stock(10) });
+    const afterTwo = advance(state, 2);
+    expect(iron(afterTwo)).toBe(9);
+    expect(afterTwo.npcs[0]?.job?.carry).toBe(-2);
+    expect(iron(advance(afterTwo, 3))).toBe(7);
+    expect(worked(afterTwo)).toEqual([
+      { day: 3, kind: 'npc_worked', npc: 'Gus', effect: 'produce', amount: -1, target: 'Ferro' },
+    ]);
+  });
+
+  it.each([
+    { name: 'enough stock', quantity: 10, left: 6, amounts: [-4] },
+    { name: 'too little stock', quantity: 3, left: 0, amounts: [-3] },
+    { name: 'an empty stock', quantity: 0, left: 0, amounts: [] },
+  ])('spoils material from $name, never below 0', ({ quantity, left, amounts }) => {
+    const state = base({
+      npcs: [forger({ skills: { smithing: -10 } })],
+      materials: stock(quantity),
+    });
+    const next = advance(state, 2);
+    expect(iron(next)).toBe(left);
+    expect(worked(next).map((e) => e.kind === 'npc_worked' && e.amount)).toEqual(amounts);
+    expect(next.npcs[0]?.job?.carry).toBe(0);
+  });
+
+  it('sets research back from 100% and stops at 0%', () => {
+    const hindering = student({ skills: { research: -10 } });
+    const ready = { ...research, progress: 100 };
+    const fromReady = advance(
+      base({ npcs: [hindering], research: { ...makeState().research, entries: [ready] } }),
+      1,
+    );
+    expect(fromReady.research.entries[0]).toMatchObject({ status: 'em_andamento', progress: 96 });
+
+    const nearZero = { ...research, progress: 6 };
+    const next = advance(
+      base({ npcs: [hindering], research: { ...makeState().research, entries: [nearZero] } }),
+      3,
+    );
+    expect(next.research.entries[0]).toMatchObject({ progress: 0 });
+    expect(worked(next)).toEqual([
+      { day: 4, kind: 'npc_worked', npc: 'Bia', effect: 'research', amount: -6, target: 'Runas' },
+    ]);
+  });
+
+  it('delays the construction it works on', () => {
+    const clumsy = npc({
+      id: 'ana',
+      name: 'Ana',
+      skills: { construction: -5 },
+      home: 'outer_e',
+      job: { slotId: 'outer_s', activityId: 'construir', carry: 0 },
+      status: 'trabalhando',
+    });
+    const building = {
+      buildingId: 'armory',
+      level: 1,
+      status: 'building',
+      startedOnDay: 1,
+      completesOnDay: 3,
+    } as const;
+    const next = advance(
+      base({ slots: { ...base().slots, outer_s: building }, npcs: [clumsy] }),
+      2,
+    );
+    expect(next.slots['outer_s']).toMatchObject({ status: 'building', completesOnDay: 5 });
+    expect(worked(next)).toEqual([
+      {
+        day: 3,
+        kind: 'npc_worked',
+        npc: 'Ana',
+        effect: 'construction',
+        amount: -2,
+        target: 'armory',
+      },
+    ]);
+  });
+
+  it('counts each worker on a post apart, so a good and a bad one cancel out', () => {
+    const job = { slotId: 'outer_n', activityId: 'forjar', carry: 0 };
+    const state = base({
+      slots: { ...base().slots, outer_n: { buildingId: 'forge', level: 2, status: 'done' } },
+      materials: stock(10),
+      npcs: [
+        forger({ skills: {}, job }),
+        forger({ id: 'tom', name: 'Tom', skills: { smithing: -5 }, job }),
+      ],
+    });
+    const next = advance(state, 3);
+    expect(iron(next)).toBe(10);
+    expect(worked(next).map((e) => e.kind === 'npc_worked' && [e.npc, e.amount])).toEqual([
+      ['Gus', 6],
+      ['Tom', -6],
+    ]);
   });
 });

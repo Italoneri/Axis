@@ -1,5 +1,6 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState, LogEntry, PlacedBuilding } from '../model/schema';
+import { returnFromMissions } from './Missions';
 import { settleNpcs } from './Npcs';
 import { EMPTY_TALLY, tallyLog, workOneDay, type WorkTally } from './NpcWork';
 
@@ -17,8 +18,8 @@ interface Progress {
 
 /**
  * Moves the calendar forward one day at a time. Each day runs, in order: NPC
- * wages, the effects of the posts, finished constructions, then NPCs freed by
- * them. NPC work is logged once, summed over the whole advance.
+ * wages, the effects of the posts, finished constructions, NPCs freed by them,
+ * then NPCs back from missions. NPC work is logged once, summed over the whole advance.
  */
 export function advanceDays(state: GameState, catalog: Catalog, days: number): AdvanceResult {
   if (!Number.isInteger(days) || days < 1) throw new Error(`invalid day count: ${days}`);
@@ -41,7 +42,7 @@ function passDay(progress: Progress, catalog: Catalog, day: number): Progress {
   const worked = workOneDay({ ...progress.state, day }, catalog, progress.tally);
   const completed = completeConstructions(worked.state);
   return {
-    state: settleNpcs(completed.state, catalog),
+    state: returnFromMissions(settleNpcs(completed.state, catalog)),
     tally: worked.tally,
     completedSlotIds: [...progress.completedSlotIds, ...completed.slotIds],
   };

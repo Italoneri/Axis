@@ -122,25 +122,28 @@ Toda alteração de recurso, seja do mestre, de um depósito ou de uma construç
 
 Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.md`.
 
-- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de 0 a 10 em cada uma.
+- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de -10 a 10 em cada uma; negativo atrapalha o posto.
 - **Moradia e postos** ficam por nível no `buildings.json`:
 
   ```json
   "housing": { "capacity": 4 },
   "jobs": [
-    { "activity": "forjar", "name": "Forjar", "skill": "smithing", "slots": 2,
+    { "activity": "forjar", "name": "Forjar", "skill": "smithing",
       "effect": { "type": "produce", "material": "iron", "perDay": 2 } }
   ]
   ```
 
-  Moradia por nível: Alojamento 6/14/14, Torre dos Magos 2/3/4 e Taverna 2/2/3.
+  Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. A Estação de Estudo, que vai nos dois anéis, segue o espaço onde está. Reduzir o nível libera quem sobra.
 
-  Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos). O posto **Construir**, que aparece em toda obra em andamento, fica em `src/data/npcs.json`.
+  Moradia só no Alojamento (6/14/14 por nível): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras.
+
+  Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos, com um `penalty` opcional para quando alguém atrapalha). O posto **Construir**, que aparece em toda obra em andamento, e o divisor das habilidades negativas (`negativeDivisor`) ficam em `src/data/npcs.json`.
 
 - **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
-- **Quem faz o quê:** só o mestre cria, edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
+- **Habilidade negativa:** rende `base × habilidade / 5` e atrapalha: consome material (sem passar de 0), faz a pesquisa regredir (sem passar de 0%), atrasa a obra ou troca o bônus pela penalidade. Aparece em vermelho, com "⚠ atrapalha" no seletor do posto. Vários NPCs no mesmo posto contam separados, então um bom e um ruim se compensam.
+- **Quem faz o quê:** só o mestre cria (bloco **Novo NPC**, no topo do painel, sempre fechado), edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
 - **Regras:**
-  - Trabalho exige moradia.
+  - Trabalho exige moradia. Para tirar alguém de casa, use **Retirar** no card "Moradores" da construção ou **Retirar da moradia** no card do NPC; se ele trabalha, um segundo clique confirma que também deixa o posto.
   - Um trabalho por vez.
   - Capacidade e postos vêm do nível em vigor: durante uma melhoria a construção continua funcionando no nível atual.
   - Remover uma construção, reduzir a capacidade, terminar uma obra ou encerrar a pesquisa alvo libera os NPCs, com registro no log.
@@ -148,10 +151,90 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   1. Salários: o Acampamento paga (o salário é digitado em moedas e salvo em PO); sem saldo, o NPC não trabalha naquele dia.
   2. Efeitos dos postos.
   3. Conclusão das obras.
+  4. Retorno dos NPCs em missão (veja [Guilda](#guilda)).
 
   Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
 
-- **Save:** versão 5. Saves da versão 4 ganham `npcs: []` ao carregar; online o estado continua no mesmo jsonb.
+- **Save:** versão 7. Saves da versão 4 ganham `npcs: []` ao carregar; os da versão 6 ganham `missions: []`. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
+
+## Arquivo de registros
+
+Os registros da campanha (relatórios, formulários, anotações sobre personagens, cartas) ficam no **Arquivo**, organizados em **tópicos** com **notas**. O design completo está em `docs/plans/ARQUIVO.md`.
+
+- **Onde abrir:** no painel do Arquivo construído (nível ≥ 1), o botão **Abrir registros** mostra a contagem de tópicos e notas. O mestre também abre pelas ferramentas do mestre, mesmo sem o Arquivo construído.
+- **Janela:** tópicos à esquerda (ícone, nome e quantidade de notas), notas do tópico à direita (fixadas primeiro, cada uma recolhe e expande) e uma busca no título e no texto, que ignora maiúsculas e acentos. No celular vira duas etapas (tópicos → notas). A janela lembra o último tópico aberto.
+- **Quem faz o quê:** jogadores e mestre criam, editam, reordenam, movem e removem qualquer tópico ou nota `todos`. Só o mestre cria, vê e edita notas `mestre`; os jogadores nunca as recebem (nem na lista, nem na busca, nem na contagem, nem no log). Offline o jogador escolhe o personagem no topo da janela.
+- **Lixeira:** remover manda para a lixeira, onde qualquer um restaura. Só o mestre esvazia. Um tópico só sai quando está vazio (mova as notas antes).
+- **Colar registros:** cole o texto do Discord. Cada linha só de traços (`-----`, 5 ou mais) separa um registro. O texto vai inteiro para a nota, e os títulos são numerados (`Registro 1`, `Registro 2`...): na prévia dá para trocar o prefixo, o número inicial (sugere o próximo livre do tópico, contando a lixeira) e cada título antes de salvar.
+- **Formatação do Discord:** `**negrito**`, `*itálico*`/`_itálico_`, `__sublinhado__`, `~~riscado~~`, `>`/`>>>` citação, listas `-`/`*`/`1.`, títulos `#`/`##`/`###` e linha de traços. O editor tem o botão **Prévia**. O texto é montado sem `innerHTML`: o que não é marcação aparece literal.
+- **Limites:** título até 200 caracteres e nota até 20.000.
+- **Imagens:** no editor da nota, **Anexar imagem**, arrastar e soltar ou colar com Ctrl+V (prints do Discord). Aceita JPG, PNG, WebP e GIF (fica a imagem parada). Antes de enviar, o navegador reduz o lado maior para até 2000 px, grava em WebP (ou JPEG, se o navegador não gera WebP) e faz uma miniatura de 320 px.
+  - **Limites** (`IMAGE_LIMITS` em `src/systems/ArchiveImages.ts`): original até 10 MB, até 2 MB depois de comprimida e 12 imagens por nota. Acima disso a imagem é recusada com o motivo.
+  - Cada imagem tem legenda opcional, que entra na busca, e pode ser reordenada. Remover uma imagem já salva vale na hora.
+  - A nota mostra as miniaturas abaixo do texto. Clicar abre a imagem ampliada, com setas (ou ← →) para passar entre elas, zoom para o tamanho real e Esc para fechar.
+  - Dá para criar uma nota só com imagens: o título continua obrigatório.
+  - As imagens seguem a nota: vão para a lixeira e voltam com ela. Só esvaziar a lixeira apaga os arquivos. Imagens de notas `mestre` nunca chegam aos jogadores.
+  - **Onde ficam:** offline, no IndexedDB do navegador (`axis-base-builder:archive-images`); online, no bucket privado `archive-images` do Supabase Storage, em `game_id/note_id/image_id.webp`, exibidas com links assinados de 10 minutos. Os dados de cada imagem (legenda, ordem, tamanho) ficam na própria nota (`images`).
+  - **Exportar save:** com imagens, o arquivo vira um `.zip` (`save.json` mais a pasta `images/`). **Importar save** aceita `.json` e `.zip`.
+  - **Publicar a mudança online:** `npx supabase db push` (coluna, bucket e regras de acesso) e `npm run deploy:functions` (o log ganhou "anexou"/"removeu uma imagem").
+- **Log:** toda ação vira uma entrada com quem fez ("Thorin criou o tópico Pets", "Mestre moveu 'Zolt-Raak' de NPCs para Jogadores"), menos as que envolvem notas `mestre`.
+- **Onde fica:** fora do `GameState`. Offline, em `localStorage` (`axis-base-builder:archive`); online, nas tabelas `archive_topics` e `archive_notes`. **Exportar/Importar save** levam o arquivo junto, na chave `archive`.
+
+## Taverna
+
+A **Taverna** tem um **cardápio** com café da manhã, almoço e janta.
+
+- **Onde abrir:** no painel da Taverna construída (nível ≥ 1), o botão **Ver cardápio**. O mestre também abre pelas ferramentas do mestre, mesmo sem a Taverna construída.
+- **Janela:** uma aba por refeição (ela lembra a última vista) e os pratos em cards com foto, nome, descrição, preço e efeito. Clicar na foto amplia. Pratos que pedem uma Taverna de nível maior aparecem esmaecidos com "Disponível na Taverna nv. 2": o cardápio cresce junto com a construção. No celular os cards ficam em uma coluna.
+- **Somente leitura:** o cardápio vem do JSON e muda com um novo deploy do site. Não passa por comando, banco nem save (e não precisa de `deploy:functions`).
+
+### Editar o cardápio
+
+Os pratos ficam em `src/data/tavern_menu.json`, validado no carregamento (`npm test` aponta o erro):
+
+```json
+{
+  "id": "pao_mel",
+  "meal": "breakfast",
+  "name": "Pão com mel",
+  "description": "Pão quente do forno da muralha, com mel escuro das colmeias do vale.",
+  "image": "menu.pao_mel",
+  "price": { "bronze": 2 },
+  "effect": "+1 PV temporário até o próximo descanso.",
+  "minLevel": 2
+}
+```
+
+- `meal`: `breakfast` (café da manhã), `lunch` (almoço) ou `dinner` (janta). Os pratos aparecem na ordem do arquivo.
+- `price`, `effect` e `minLevel` são opcionais. O preço é escrito em moedas de `currencies.json` e aparece agrupado como o salário dos NPCs (`{ "bronze": 12 }` vira "1 Prata e 2 Bronze"). `minLevel` vale 1 quando falta e não pode passar do nível máximo da Taverna.
+- `id` não pode repetir e `image` precisa existir no `assets.json`.
+
+### Trocar as fotos
+
+Cada foto fica em `public/assets/menu/<id>.jpg` e está registrada no `assets.json` como `menu.<id>`. Para usar a foto real, **substitua o arquivo com o mesmo nome** (JPG em 4:3, por exemplo 800×600; o card corta o excesso com `object-fit: cover`). Prato novo: crie o arquivo, adicione `"menu.<id>": "assets/menu/<id>.jpg"` no `assets.json` e o item no `tavern_menu.json`.
+
+- `npm run gen:placeholders` gera a imagem genérica (um prato na cor da refeição com o nome escrito) para os pratos sem foto e nunca sobrescreve arquivos existentes.
+- Se o arquivo de uma foto não existir, o card mostra um prato desenhado em CSS no lugar, sem quebrar a janela.
+- As fotos do cardápio não entram no carregamento do mapa: só são baixadas quando a janela abre.
+
+## Guilda
+
+O **Salão da Guilda** tem um **quadro de missões** onde mestre e jogadores penduram contratos. Cada missão é feita pelo **grupo** ou por **NPCs** enviados pela Axis. O design completo está em `docs/plans/MISSOES.md`.
+
+- **Onde abrir:** no painel da Guilda construída (nível ≥ 1), o botão **Abrir quadro de missões**, com a contagem de abertas e em andamento. Se a Guilda for removida ou rebaixada, as missões e os NPCs fora continuam; só o botão some até reconstruir.
+- **Quadro:** madeira escura com uma gema azul no topo e um pergaminho por missão, tudo em CSS. Cor (laranja, bege, roxo, amarelo-claro), inclinação e bordas rasgadas vêm do id, então são iguais para todos. O selo de cera mostra a dificuldade: verde fácil, amarelo média, vermelho difícil. Abas **Abertas · Em andamento · Concluídas** com contagem; no celular os pergaminhos viram uma coluna.
+- **Primeiro plano:** clicar num pergaminho o traz para o centro com o quadro escurecido, mostrando o texto completo (mesmo markdown do Arquivo) e as ações. Fecha com Esc, no X ou clicando fora.
+- **Nova missão** (aba Abertas): título, solicitante, local, descrição, recompensa (nos campos de moeda), tempo esperado em dias e dificuldade. Registra quem criou e o dia. Limites: título até 120 caracteres, descrição até 4.000, de 1 a 365 dias, recompensa maior que zero. Qualquer um edita ou remove uma missão **aberta**.
+- **"O grupo vai":** a missão fica em andamento. Quando o grupo voltar, o mestre marca **Concluída** (o Acampamento recebe 100%) ou **Falhou** (ninguém recebe).
+- **"Enviar NPCs":** escolha um ou mais NPCs `disponivel` ou `trabalhando` (a lista mostra habilidades, status e posto). Eles ficam `em_missao`, mantêm casa e posto, mas não trabalham nem recebem. Ao avançar os dias até o retorno (dia da saída + tempo esperado), a missão passa para **Aguardando o mestre**, com log. O mestre decide:
+  - **Sucesso:** 80% para os NPCs, divididos igualmente em bronze e somados ao `earnings` de cada um ("Ganhou 1,6 PO em missões" no card), e 20% de comissão para o Acampamento. O resto da divisão vai para o Acampamento, então nenhuma moeda se perde (2 PO com 3 NPCs: 0,53 PO para cada e 0,41 PO para o Acampamento).
+  - **Falha:** ninguém recebe, e o mestre marca quem voltou ferido.
+  - Depois, cada NPC volta a `trabalhando` (se tem posto) ou `disponivel`, menos os feridos.
+- **Guilda nv. 2:** as recompensas pagam 10% a mais nos dois modos enquanto o nível em vigor for ≥ 2 (o primeiro plano mostra o valor).
+- **NPC removido em missão:** sai da equipe; se ninguém sobrar, a missão volta para Abertas, com log.
+- **Configuração:** `src/data/missions.json` define a comissão (`campCommissionPercent`) e o bônus da Guilda (`guildBonus`: construção, nível mínimo e percentual).
+- **Regras:** tudo passa pelo `applyCommand` (`mission_create`, `mission_update`, `mission_remove`, `mission_take_party` e `mission_send_npcs` para jogador e mestre; `mission_resolve` só para o mestre), sem sorteio: servidor e cliente chegam ao mesmo resultado. As missões ficam no `GameState` (`missions`).
+- **Publicar a mudança online:** `npm run deploy:functions`. Não há migração SQL: o save migra ao carregar.
 
 ## Online / Supabase
 
@@ -189,9 +272,9 @@ O código online (e o `supabase-js`) só é baixado quando as variáveis do Supa
 
 O servidor roda **o mesmo código** do jogo. `npm run build:functions` empacota (esbuild) as regras, o zod e os JSONs de `src/data` num único módulo, `supabase/functions/_shared/game.js` (gerado, fora do git). Assim a Edge Function valida com exatamente os dados do commit publicado.
 
-| Comando                   | O que faz                                                                   |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `npm run build:functions` | Gera o bundle das regras para as Edge Functions                             |
+| Comando                   | O que faz                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `npm run build:functions` | Gera o bundle das regras para as Edge Functions                              |
 | `npm run parity`          | Gera o bundle e roda os mesmos comandos em Node e em Deno; falha se divergir |
 
 O Deno vem como devDependency (`npx deno`), não precisa instalar à parte.
@@ -205,10 +288,10 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 - **Convites:** `create_invite` (mestre) gera um token de uso único para um personagem, válido por 7 dias (até 30); o banco guarda só o hash. `accept_invite` liga quem aceitou ao personagem; `revoke_invite` cancela um convite pendente.
 - Testes em `src/server/http.test.ts` e `src/server/handler.test.ts`, com o banco simulado em memória.
 
-| Comando                    | O que faz                                                   |
-| -------------------------- | ----------------------------------------------------------- |
-| `npm run check:functions`  | Gera o bundle e confere os tipos da função com o Deno        |
-| `npm run deploy:functions` | Gera o bundle e publica a função (precisa do CLI logado)      |
+| Comando                    | O que faz                                                |
+| -------------------------- | -------------------------------------------------------- |
+| `npm run check:functions`  | Gera o bundle e confere os tipos da função com o Deno    |
+| `npm run deploy:functions` | Gera o bundle e publica a função (precisa do CLI logado) |
 
 ### Banco (Supabase)
 
@@ -216,7 +299,8 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 
 - **RLS:** clientes só **leem**, e só os jogos de que participam. Ninguém grava direto: as escritas passam pela Edge Function, que usa a service role e as funções `commit_game_update` (grava só se a `revision` bater), `create_game` e `accept_invite`.
 - `games` está na publicação do Realtime, que também respeita a RLS.
-- **Verificação:** `supabase/tests/games_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
+- **Arquivo de registros:** `archive_topics` e `archive_notes` são a exceção: membros escrevem direto, e a RLS só deixa o mestre ler e escrever as notas `mestre` (jogador não cria nem transforma uma nota em `mestre`). Um trigger recusa mandar à lixeira um tópico com notas, contando as `mestre` sem revelá-las, e `replace_archive` (só o mestre) restaura o arquivo de um save importado. As duas tabelas estão no Realtime.
+- **Verificação:** `supabase/tests/games_rls.test.sql` e `supabase/tests/archive_rls.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
 
 O Supabase CLI vem como devDependency: use `npx supabase …`.
 
@@ -227,16 +311,20 @@ src/
   main.ts            monta UI + jogo
   store.ts           estado atual, envio de comandos e eventos (camada imperativa)
   commands/          comandos serializáveis e applyCommand (regras + permissões)
-  persistence/       GameRepository e LocalRepository (localStorage)
+  archiveStore.ts    Arquivo de registros: envio de comandos e avisos de mudança
+  persistence/       GameRepository e LocalRepository (localStorage); ArchiveRepository e
+                     LocalArchiveRepository
   server/            Edge Function: handler, acesso ao banco, catálogo e entrada do bundle
-  online/            SupabaseRepository, cliente Supabase e configuração online/offline
+  online/            SupabaseRepository, SupabaseArchiveRepository, cliente Supabase e
+                     configuração online/offline
   model/             schemas (zod) e tipos, carregamento/validação do catálogo
   map/               mapa gerado por código: layout, geometria, veios, gerador, portões, tema
   systems/           regras puras: Build, Coins, Wallets, Materials, Research, Influence,
-                     Characters, Time, Save, Master, Bonus (+ testes)
+                     Characters, Time, Save, Master, Bonus, Archive (+ testes)
   scenes/            Boot, Preload, Base, SlotView, CameraController
   ui/                barra superior e painéis de recursos (ui/resources), painel do espaço,
-                     gaveta (bônus/registro/mestre), login, save, CSS
+                     gaveta (bônus/registro/mestre), login, save, janela do Arquivo
+                     (ui/archive, com o markdown do Discord), CSS
   i18n/pt-BR.ts      todos os textos da interface
   data/              buildings.json, layout.json, theme.json, credits.json, assets.json,
                      currencies.json e os seeds

@@ -13,6 +13,7 @@ import type { BuildingDef, PlacedBuilding } from '../model/schema';
 import { constructionProgress } from '../systems/TimeSystem';
 import { SPARK_TEXTURE } from './BootScene';
 import { BuildingFx, type FxBudget } from './BuildingFx';
+import { isCanvasGesture, isOverCanvas } from './pointerGesture';
 
 const GOLD = 0xd4af37;
 const GOLD_SOFT = 0xf3e3a6;
@@ -262,12 +263,20 @@ export class SlotView {
         slotContains(slot, { x: (left + x) / mapSize, y: (top + y) / mapSize }),
       useHandCursor: true,
     });
-    zone.on('pointerover', () => this.setHovered(true));
+    const canvas = this.scene.game.canvas;
+    zone.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+      if (isOverCanvas(pointer, canvas)) this.setHovered(true);
+    });
     zone.on('pointerout', () => this.setHovered(false));
-    zone.on('pointerup', onClick);
+    // Leaving the canvas for the panel or a dialog sends no pointerout.
+    this.scene.input.on(Phaser.Input.Events.GAME_OUT, () => this.setHovered(false));
+    zone.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (isCanvasGesture(pointer, canvas)) onClick();
+    });
   }
 
   private setHovered(hovered: boolean): void {
+    if (this.hovered === hovered) return;
     this.hovered = hovered;
     this.drawFoundation();
   }

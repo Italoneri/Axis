@@ -1,11 +1,12 @@
 import { goldInBronze, type Catalog } from '../model/catalog';
 import type { GameState, JobEffect, LogEntry, NpcJob } from '../model/schema';
 import { goldToBronze, pay } from './Coins';
-import { findPost, isOnDuty, skillOf, yieldTenths } from './Npcs';
+import { findPost, isOnDuty, postYieldTenths } from './Npcs';
 import { CAMP, setWallet } from './Wallets';
 
 // One day of NPC work: wages first, then the effects of the posts that were
-// paid for. Deterministic (no randomness), so server and client agree.
+// paid for. Deterministic (no randomness), so server and client agree. A negative
+// yield works against the target: it spoils stock, sets research back, delays works.
 
 type WorkEffect = Exclude<JobEffect['type'], 'bonus'>;
 
@@ -14,7 +15,7 @@ export interface WorkTally {
   readonly wagesBronze: number;
   /** Days without pay, by NPC name (names are unique). */
   readonly unpaid: ReadonlyMap<string, number>;
-  /** Whole units delivered, by NPC id and target. */
+  /** Whole units delivered (negative when hindering), by NPC id and target. */
   readonly delivered: ReadonlyMap<string, Delivery>;
 }
 
@@ -44,7 +45,7 @@ export function workOneDay(state: GameState, catalog: Catalog, tally: WorkTally)
 export function tallyLog(tally: WorkTally, day: number): LogEntry[] {
   return [
     ...[...tally.delivered.values()]
-      .filter((d) => d.amount > 0)
+      .filter((d) => d.amount !== 0)
       .map((d): LogEntry => ({ day, kind: 'npc_worked', ...d })),
     ...(tally.wagesBronze > 0
       ? [{ day, kind: 'npc_wages_paid', bronze: tally.wagesBronze } as const]
@@ -86,12 +87,13 @@ function work({ state, tally }: WorkDay, catalog: Catalog, npcId: string): WorkD
   const post = npc?.job && findPost(state, catalog, npc.job);
   if (!npc?.job || !post || post.job.effect.type === 'bonus') return { state, tally };
 
-  const { effect, skill } = { effect: post.job.effect, skill: post.job.skill };
-  const tenths = yieldTenths(effect.perDay, skillOf(npc, skill)) + npc.job.carry;
-  const units = Math.floor(tenths / 10);
+  const { effect } = post.job;
+  const tenths = postYieldTenths(catalog, post, npc) + npc.job.carry;
+  const units = Math.trunc(tenths / 10);
   const result = deliver(state, { effect, job: npc.job, units });
-  // A blocked target (research at 100%, construction due today) drops the leftover tenths.
-  const carry = result.amount < units ? 0 : tenths % 10;
+  // A blocked target (empty stock, research at 0% or 100%, construction due today)
+  // drops the leftover tenths; otherwise they carry over with their sign.
+  const carry = result.amount === units ? tenths - units * 10 : 0;
   const next = setCarry(result.state, npc.id, carry);
   if (!result.target) return { state: next, tally };
 
@@ -122,37 +124,32 @@ function deliver(state: GameState, { effect, job, units }: DeliveryOrder): Deliv
     case 'produce':
       return produce(state, effect.material, units);
     case 'research':
-      return advanceResearch(state, job.researchId, units);
+      return shiftResearch(state, job.researchId, units);
     case 'construction':
-      return speedUpConstruction(state, job.slotId, units);
+      return shiftConstruction(state, job.slotId, units);
     default:
       return assertNever(effect);
   }
 }
 
-/** A material the master deleted produces nothing. */
+/** Spoiling never takes the stock below 0; a material the master deleted takes nothing. */
 function produce(state: GameState, materialId: string, units: number): Delivered {
   const material = state.materials.items.find((m) => m.id === materialId);
   if (!material) return { state, amount: 0 };
-  const items = state.materials.items.map((m) =>
-    m.id === materialId ? { ...m, quantity: m.quantity + units } : m,
-  );
+  const quantity = Math.max(0, material.quantity + units);
+  const items = state.materials.items.map((m) => (m.id === materialId ? { ...m, quantity } : m));
   return {
     state: { ...state, materials: { ...state.materials, items } },
-    amount: units,
+    amount: quantity - material.quantity,
     target: material.name,
   };
 }
 
-/** Stops at 100%: the master completes the research. */
-function advanceResearch(
-  state: GameState,
-  researchId: string | undefined,
-  units: number,
-): Delivered {
+/** Stays within 0–100%: the master completes the research. */
+function shiftResearch(state: GameState, researchId: string | undefined, units: number): Delivered {
   const entry = state.research.entries.find((r) => r.id === researchId);
   if (entry?.status !== 'em_andamento') return { state, amount: 0 };
-  const progress = Math.min(100, entry.progress + units);
+  const progress = Math.min(100, Math.max(0, entry.progress + units));
   const amount = progress - entry.progress;
   if (amount === 0) return { state, amount, target: entry.title };
 
@@ -165,8 +162,8 @@ function advanceResearch(
   return { state: { ...next, log: [...next.log, ...ready] }, amount, target: entry.title };
 }
 
-/** Takes days off the construction, never finishing it before the day being worked. */
-function speedUpConstruction(state: GameState, slotId: string, units: number): Delivered {
+/** Takes days off the construction (never finishing it before the day being worked), or delays it. */
+function shiftConstruction(state: GameState, slotId: string, units: number): Delivered {
   const placed = state.slots[slotId];
   if (placed?.status !== 'building') return { state, amount: 0 };
   const completesOnDay = Math.max(state.day, placed.completesOnDay - units);

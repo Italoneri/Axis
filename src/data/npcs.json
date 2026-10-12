@@ -1,4 +1,7 @@
 {
+  "negativeDivisor": 5,
+  "housingBuildings": ["barracks"],
+  "postSlots": { "outer": [3, 6, 8], "middle": [2, 4, 6] },
   "construction": {
     "activity": "construir",
     "name": "Construir",

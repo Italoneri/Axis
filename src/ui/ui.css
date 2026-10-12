@@ -411,6 +411,14 @@ button {
 
 .toasts {
   position: fixed;
+  /* Undo the popover defaults (centered box with border and background). */
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+  color: inherit;
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
@@ -1118,6 +1126,26 @@ details > summary {
   padding: 10px 0;
 }
 
+.npc-card--created {
+  animation: npc-created 2.4s ease-out;
+}
+
+@keyframes npc-created {
+  from {
+    background: rgba(212, 175, 55, 0.18);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .npc-card--created {
+    animation: none;
+    background: rgba(212, 175, 55, 0.12);
+  }
+}
+
 .npc-skills {
   display: grid;
   gap: 4px;
@@ -1128,7 +1156,7 @@ details > summary {
 
 .npc-skill {
   display: grid;
-  grid-template-columns: minmax(110px, auto) 1fr 2ch;
+  grid-template-columns: minmax(110px, auto) 1fr 3ch;
   align-items: center;
   gap: 8px;
   font-size: 13px;
@@ -1137,6 +1165,32 @@ details > summary {
 .npc-skill__value {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.npc-skill-bar {
+  position: relative;
+}
+
+/* The zero mark: skills grow right from it, hindering ones grow left. */
+.npc-skill-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.npc-skill-bar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(to right, #8a6a17, var(--gold));
+}
+
+.npc-skill-bar__fill.is-negative {
+  background: var(--danger);
 }
 
 .npc-skill-inputs {
@@ -1158,4 +1212,1327 @@ details > summary {
 .research-ready {
   color: var(--gold);
   font-weight: 600;
+}
+
+/* NPCs working against their post: spoiled stock, research set back, delayed works. */
+.is-negative {
+  color: var(--danger);
+}
+
+/* ---------- Arquivo de registros ---------- */
+
+.dialog--archive {
+  box-sizing: border-box;
+  width: min(1200px, calc(100vw - 32px));
+  height: calc(100dvh - 32px);
+  max-height: none;
+  max-width: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The [open] guard keeps the closed dialog hidden despite display: flex above. */
+.dialog--archive:not([open]) {
+  display: none;
+}
+
+.archive__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.archive__header .panel__title {
+  flex: 1;
+  margin: 0;
+}
+
+.archive__character select.input {
+  max-width: 180px;
+}
+
+.archive {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) 1fr;
+}
+
+.archive__topics {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 14px;
+  border-right: 1px solid rgba(212, 175, 55, 0.18);
+  overflow-y: auto;
+}
+
+.archive__topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive__topics-bar {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.archive__topics-bar .section-title {
+  margin: 0;
+}
+
+.archive__topic-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.archive__topic,
+.archive__trash-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+}
+
+.archive__topic:hover,
+.archive__trash-link:hover {
+  border-color: var(--border);
+}
+
+.archive__topic[aria-current='true'],
+.archive__trash-link.is-current {
+  border-color: var(--gold);
+  background: var(--surface-raised);
+  color: var(--gold-soft);
+}
+
+.archive__topic:focus-visible,
+.archive__trash-link:focus-visible,
+.archive-note__toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.archive__topic-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.archive__count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.archive__trash-link {
+  margin-top: auto;
+  color: var(--muted);
+}
+
+.archive__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px 18px;
+  overflow-y: auto;
+}
+
+.archive__back {
+  display: none;
+  align-self: flex-start;
+}
+
+.archive__topic-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive__topic-title {
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--gold-soft);
+}
+
+.archive__note-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive-note {
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.archive-note--pinned {
+  border-color: var(--border);
+}
+
+.archive-note__toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.archive-note__topic {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.archive-note__title {
+  font-weight: 700;
+  color: var(--gold-soft);
+  overflow-wrap: anywhere;
+}
+
+.archive-note__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.archive-note__secret {
+  color: var(--danger);
+}
+
+.archive-note__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.archive-note__actions {
+  padding-top: 8px;
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
+}
+
+.archive-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.archive-editor__bar {
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+}
+
+.archive-editor__text {
+  width: 100%;
+  min-height: 240px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 14px;
+}
+
+.archive-editor__text[hidden],
+.archive-editor__preview[hidden] {
+  display: none;
+}
+
+.archive-editor__preview {
+  min-height: 240px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.archive-editor__icon {
+  width: 64px;
+  text-align: center;
+}
+
+.archive-editor__number {
+  width: 96px;
+}
+
+.archive-paste {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archive-paste__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+/* Note text as pasted from Discord. */
+.markdown {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol {
+  margin: 0 0 8px;
+}
+
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: 12px 0 6px;
+  font-family: var(--font-display);
+  color: var(--gold-soft);
+}
+
+.markdown h4 {
+  font-size: 1.25rem;
+}
+
+.markdown h5 {
+  font-size: 1.1rem;
+}
+
+.markdown h6 {
+  font-size: 1rem;
+}
+
+.markdown blockquote {
+  margin: 0 0 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.markdown hr {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Phones: topics first, then the chosen topic's notes. */
+@media (max-width: 640px) {
+  .dialog--archive {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .archive {
+    grid-template-columns: 1fr;
+  }
+
+  .archive__topics {
+    border-right: 0;
+  }
+
+  .archive[data-step='topics'] .archive__notes,
+  .archive[data-step='notes'] .archive__topics {
+    display: none;
+  }
+
+  .archive__back {
+    display: inline-flex;
+  }
+}
+
+.archive__searchbar {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+/* ---------- Cardápio da Taverna ---------- */
+
+.dialog--menu {
+  box-sizing: border-box;
+  width: min(1100px, calc(100vw - 32px));
+  height: calc(100dvh - 32px);
+  max-height: none;
+  max-width: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The [open] guard keeps the closed dialog hidden despite display: flex above. */
+.dialog--menu:not([open]) {
+  display: none;
+}
+
+.menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.dialog--menu .tabs {
+  flex-wrap: nowrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.menu__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.menu__grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.menu-dish {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.menu-dish--locked {
+  opacity: 0.5;
+}
+
+.menu-dish__photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  background: #2b2a2c;
+  cursor: zoom-in;
+}
+
+.menu-dish__photo--placeholder {
+  cursor: default;
+  background:
+    radial-gradient(circle at 50% 45%, #e9e1cf 0 22%, transparent 23%),
+    radial-gradient(circle at 50% 45%, rgba(212, 175, 55, 0.6) 0 24%, transparent 25%),
+    linear-gradient(160deg, #3a3238, #1a161d);
+}
+
+.menu-dish__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-dish__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
+
+.menu-dish__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--gold-soft);
+}
+
+.menu-dish__description,
+.menu-dish__effect,
+.menu-dish__price,
+.menu-dish__lock {
+  margin: 0;
+  font-size: 14px;
+}
+
+.menu-dish__description {
+  color: var(--muted);
+}
+
+.menu-dish__effect {
+  color: var(--text);
+}
+
+.menu-dish__price {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.menu-dish__lock {
+  color: var(--gold-soft);
+  font-style: italic;
+}
+
+.dialog--photo {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: 12px;
+  text-align: center;
+}
+
+.dialog--photo .btn--icon {
+  float: right;
+}
+
+.menu-photo__img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100dvh - 120px);
+  margin: 0 auto;
+  border-radius: 6px;
+}
+
+.menu-photo__caption {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  color: var(--gold-soft);
+}
+
+@media (max-width: 640px) {
+  .dialog--menu {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .menu__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog--menu .tabs {
+    overflow-x: auto;
+  }
+}
+
+/* ---------- Arquivo de registros: imagens ---------- */
+
+.archive-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #2b2a2c;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.archive-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.archive-image.is-loading {
+  background: linear-gradient(90deg, #2b2a2c, #3a3238, #2b2a2c);
+}
+
+.archive-image--missing {
+  border: 1px dashed var(--border);
+  padding: 4px;
+}
+
+.archive-images {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.archive-images__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 120px;
+}
+
+.archive-images__open {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.archive-images__thumb {
+  width: 118px;
+  height: 90px;
+}
+
+.archive-images__caption {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.archive-note__image-count {
+  margin-left: 6px;
+}
+
+.archive-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.archive-editor.is-dropping .archive-attachments {
+  border-style: solid;
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.archive-attachments__bar {
+  justify-content: space-between;
+}
+
+.archive-attachments__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive-attachments__item {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.archive-attachments__thumb {
+  width: 80px;
+  height: 60px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.archive-attachments__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dialog--viewer {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(10, 8, 12, 0.97);
+  display: flex;
+  flex-direction: column;
+}
+
+/* The [open] guard keeps the closed dialog hidden despite display: flex above. */
+.dialog--viewer:not([open]) {
+  display: none;
+}
+
+.archive-viewer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+.archive-viewer__position {
+  margin-right: auto;
+  color: var(--muted);
+}
+
+.archive-viewer__stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.archive-viewer__figure {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.archive-viewer__image {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+/* Fit: big images shrink to the screen, small ones keep their size. */
+.archive-viewer__image img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.archive-viewer__figure.is-zoomed {
+  display: block;
+  overflow: auto;
+  cursor: zoom-out;
+}
+
+.archive-viewer__figure.is-zoomed .archive-viewer__image {
+  display: inline-block;
+  width: auto;
+  height: auto;
+}
+
+.archive-viewer__figure.is-zoomed .archive-viewer__image img {
+  width: auto;
+  height: auto;
+  max-width: none;
+}
+
+.archive-viewer__nav {
+  font-size: 24px;
+  min-width: 44px;
+  min-height: 64px;
+}
+
+.archive-viewer__caption {
+  margin: 0;
+  padding: 10px 16px 16px;
+  text-align: center;
+  color: var(--gold-soft);
+}
+
+@media (max-width: 640px) {
+  .archive-attachments__item {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .archive-attachments__item .row {
+    grid-column: 1 / -1;
+  }
+
+  .archive-viewer__nav {
+    min-width: 36px;
+  }
+}
+
+/* ---------- Quadro de missões da Guilda ---------- */
+
+.dialog--missions {
+  box-sizing: border-box;
+  width: min(1240px, calc(100vw - 32px));
+  height: calc(100dvh - 32px);
+  max-height: none;
+  max-width: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #160e08;
+}
+
+/* The [open] guard keeps the closed dialog hidden despite display: flex above. */
+.dialog--missions:not([open]) {
+  display: none;
+}
+
+.mission-board__scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 26px 18px 18px;
+}
+
+/* The thick frame around the planks. */
+.mission-board {
+  position: relative;
+  padding: 20px;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #6b4526, #3a2312 55%, #2a180b);
+  box-shadow:
+    inset 0 0 0 2px #120a04,
+    inset 0 0 0 5px #7a5230,
+    inset 0 0 0 7px #1d1108,
+    0 14px 34px rgba(0, 0, 0, 0.65);
+}
+
+/* Dark planks with vertical seams and a faint grain. */
+.mission-board__wood {
+  min-height: 62dvh;
+  padding: 40px 26px 34px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.55) 0 3px, transparent 3px 150px),
+    repeating-linear-gradient(0deg, rgba(255, 220, 170, 0.03) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 27px),
+    linear-gradient(90deg, #4a2d18, #3a2312 18%, #4d311b 37%, #36200f 58%, #482d18 79%, #3a2312);
+  box-shadow:
+    inset 0 0 70px rgba(0, 0, 0, 0.75),
+    inset 0 2px 0 rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Blue gem in a silver setting, top center of the frame. */
+.mission-board__gem {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  z-index: 2;
+  width: 64px;
+  height: 70px;
+  transform: translateX(-50%);
+  clip-path: polygon(30% 0, 70% 0, 100% 25%, 100% 75%, 70% 100%, 30% 100%, 0 75%, 0 25%);
+  background: linear-gradient(135deg, #f2f2f2, #8c8f96 40%, #e2e4e8 60%, #5d6068);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7));
+}
+
+.mission-board__gem::after {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  clip-path: polygon(30% 0, 70% 0, 100% 25%, 100% 75%, 70% 100%, 30% 100%, 0 75%, 0 25%);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.85) 0 12%, transparent 13%),
+    conic-gradient(
+      from 30deg at 50% 50%,
+      #9fe4ff,
+      #2b8fd6,
+      #0f4f9a,
+      #61c2f5,
+      #1a6fbf,
+      #b8efff,
+      #9fe4ff
+    );
+  box-shadow: inset 0 0 8px rgba(0, 30, 80, 0.8);
+}
+
+.mission-board__tabs {
+  align-self: center;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.mission-board__new {
+  background: var(--surface);
+}
+
+.mission-board__pins {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 30px 24px;
+  align-items: start;
+}
+
+.mission-board__empty {
+  grid-column: 1 / -1;
+  padding: 48px 12px;
+  text-align: center;
+  font-style: italic;
+  color: var(--gold-soft);
+}
+
+.mission-pin {
+  margin-top: var(--drop, 0);
+  transform: rotate(var(--tilt, 0deg));
+}
+
+/* ----- The scroll: paper, rolled ends, nail and wax seal ----- */
+
+.mission-scroll {
+  --paper: #c9a46a;
+  --paper-dark: #8a6537;
+  --ink: #33200d;
+  position: relative;
+  display: block;
+  cursor: pointer;
+  color: var(--ink);
+  filter: drop-shadow(0 7px 8px rgba(0, 0, 0, 0.6));
+  transition: transform 0.15s ease;
+}
+
+.mission-scroll--laranja {
+  --paper: #e9902f;
+  --paper-dark: #a95a14;
+}
+
+.mission-scroll--bege {
+  --paper: #cfae78;
+  --paper-dark: #8d6a3c;
+}
+
+.mission-scroll--roxo {
+  --paper: #a48ad0;
+  --paper-dark: #6a539c;
+  --ink: #241534;
+}
+
+.mission-scroll--amarelo {
+  --paper: #efd690;
+  --paper-dark: #b3934a;
+}
+
+.mission-pin .mission-scroll:hover,
+.mission-pin .mission-scroll:focus-visible {
+  transform: translateY(-4px) scale(1.03);
+  outline: none;
+  filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.6));
+}
+
+.mission-scroll__paper {
+  position: relative;
+  margin: 0 7px;
+  padding: 20px 18px 30px;
+  background:
+    radial-gradient(ellipse at 28% 18%, rgba(255, 255, 255, 0.28), transparent 60%),
+    radial-gradient(ellipse at 82% 92%, rgba(0, 0, 0, 0.2), transparent 55%),
+    repeating-radial-gradient(circle at 23% 31%, rgba(0, 0, 0, 0.03) 0 2px, transparent 2px 6px),
+    var(--paper);
+  box-shadow: inset 0 0 26px var(--paper-dark);
+  font-family: 'IM Fell English', Georgia, serif;
+}
+
+.mission-scroll__roll {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: 16px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--paper-dark), var(--paper) 45%, var(--paper-dark));
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+}
+
+.mission-scroll__roll--top {
+  margin-bottom: -7px;
+}
+
+.mission-scroll__roll--bottom {
+  margin-top: -7px;
+}
+
+/* The curled ends of each roll. */
+.mission-scroll__roll::before,
+.mission-scroll__roll::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 40%, var(--paper) 0 25%, var(--paper-dark) 70%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.mission-scroll__roll::before {
+  left: -4px;
+}
+
+.mission-scroll__roll::after {
+  right: -4px;
+}
+
+.mission-scroll__nail {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  z-index: 3;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 35% 35%, #e6e6e6, #6b6b6b 60%, #2b2b2b);
+  box-shadow: 0 1px 2px #000;
+}
+
+.mission-scroll__title {
+  margin: 0 0 10px;
+  font-family: 'MedievalSharp', var(--font-display);
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  overflow-wrap: anywhere;
+}
+
+.mission-scroll__line {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-style: italic;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.mission-scroll__label {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mission-scroll__snippet {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mission-scroll__stamp {
+  display: inline-block;
+  margin: 6px 0 0;
+  padding: 2px 8px;
+  border: 2px solid rgba(122, 22, 18, 0.75);
+  border-radius: 3px;
+  color: rgba(122, 22, 18, 0.9);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-style: normal;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+}
+
+/* Wax by difficulty: green easy, yellow medium, red hard (the default). */
+.mission-seal {
+  --wax: #b3201c;
+  --wax-light: #ff7b6c;
+  --wax-dark: #5e0b08;
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  clip-path: polygon(
+    100% 50%,
+    94% 60%,
+    95% 72%,
+    85% 78%,
+    81% 89%,
+    70% 91%,
+    61% 99%,
+    50% 95%,
+    39% 99%,
+    30% 91%,
+    19% 89%,
+    15% 78%,
+    5% 72%,
+    6% 60%,
+    0% 50%,
+    6% 40%,
+    5% 28%,
+    15% 22%,
+    19% 11%,
+    30% 9%,
+    39% 1%,
+    50% 5%,
+    61% 1%,
+    70% 9%,
+    81% 11%,
+    85% 22%,
+    95% 28%,
+    94% 40%
+  );
+  background: radial-gradient(circle at 38% 34%, var(--wax-light), var(--wax) 50%, var(--wax-dark));
+}
+
+.mission-seal::after {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.28);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.18),
+    inset 2px 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.mission-seal--facil {
+  --wax: #3f9a2e;
+  --wax-light: #9be37a;
+  --wax-dark: #1c5412;
+}
+
+.mission-seal--media {
+  --wax: #d4ae17;
+  --wax-light: #fff08a;
+  --wax-dark: #876a04;
+}
+
+/* ----- A mission brought to the front ----- */
+
+.dialog--mission {
+  box-sizing: border-box;
+  width: min(660px, calc(100vw - 24px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.dialog--mission::backdrop {
+  background: rgba(8, 5, 2, 0.74);
+  backdrop-filter: blur(2px);
+}
+
+.mission-focus {
+  cursor: default;
+  animation: mission-grow 0.28s ease-out;
+}
+
+.mission-focus .mission-scroll__paper {
+  max-height: calc(100dvh - 72px);
+  overflow-y: auto;
+  padding: 30px 30px 60px;
+}
+
+.mission-focus .mission-seal {
+  width: 56px;
+  height: 56px;
+  right: 26px;
+  bottom: 14px;
+}
+
+.mission-focus .mission-scroll__line {
+  font-size: 17px;
+}
+
+.mission-focus__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.mission-focus__status {
+  margin: 0 0 4px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.mission-focus__title {
+  font-size: 32px;
+}
+
+.mission-focus__meta,
+.mission-focus__bonus {
+  margin: 4px 0;
+  font-size: 15px;
+}
+
+.mission-focus__bonus {
+  font-weight: 700;
+}
+
+.mission-focus .markdown {
+  font-style: normal;
+}
+
+.mission-focus__actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(51, 32, 13, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--font-body);
+}
+
+.mission-focus__actions p {
+  margin: 0;
+}
+
+.mission-focus .card__sub,
+.mission-focus .panel__hint {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.mission-focus .section-title {
+  color: var(--ink);
+}
+
+/* Buttons inherit the ink of the paper otherwise. */
+.mission-focus .btn:not(.btn--primary, .btn--danger) {
+  color: var(--text);
+}
+
+.mission-npcs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mission-npc {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+}
+
+.mission-npc--away {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mission-npc__info {
+  display: block;
+  font-size: 13px;
+}
+
+.mission-injured {
+  margin: 0;
+  border: 1px dashed rgba(51, 32, 13, 0.45);
+  border-radius: 6px;
+}
+
+.mission-form__description {
+  min-height: 110px;
+  resize: vertical;
+  font-family: var(--font-body);
+}
+
+@keyframes mission-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.55) rotate(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-focus {
+    animation: none;
+  }
+
+  .mission-scroll {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .dialog--missions {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .mission-board__scroller {
+    padding: 24px 8px 8px;
+  }
+
+  .mission-board {
+    padding: 12px;
+  }
+
+  .mission-board__wood {
+    padding: 34px 14px 24px;
+  }
+
+  .mission-board__pins {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-pin {
+    margin-top: 0;
+    transform: rotate(calc(var(--tilt, 0deg) / 2));
+  }
+
+  .mission-board__tabs {
+    align-self: stretch;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .mission-focus .mission-scroll__paper {
+    padding: 26px 18px 58px;
+  }
+
+  .mission-focus__title {
+    font-size: 26px;
+  }
 }

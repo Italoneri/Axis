@@ -1,4 +1,4 @@
-import { findBuilding, type Catalog } from '../model/catalog';
+import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import type {
   BuildingLevel,
   GameState,
@@ -22,6 +22,8 @@ export interface Post {
   slotId: string;
   buildingId: string;
   job: JobDef;
+  /** How many NPCs can work it at once. */
+  slots: number;
 }
 
 export interface NpcFields {
@@ -41,9 +43,20 @@ export interface JobOrder {
   researchId?: string | undefined;
 }
 
-/** Yield in tenths: `base × (1 + skill / 10)`, kept integer so daily sums stay exact. */
-export function yieldTenths(base: number, skill: number): number {
+/**
+ * Yield in tenths, kept integer so daily sums stay exact: `base × (1 + skill / 10)`,
+ * or `base × skill / negativeDivisor` for a negative skill, which works against the post.
+ */
+export function yieldTenths(base: number, skill: number, negativeDivisor: number): number {
+  if (skill < 0) return Math.round((base * skill * 10) / negativeDivisor);
   return Math.round(base * (10 + skill));
+}
+
+/** What this NPC adds to the post each day, in tenths; bonus posts have no amount. */
+export function postYieldTenths(catalog: Catalog, post: Post, npc: Npc): number {
+  const { effect, skill } = post.job;
+  if (effect.type === 'bonus') return 0;
+  return yieldTenths(effect.perDay, skillOf(npc, skill), catalog.npcs.negativeDivisor);
 }
 
 export function skillOf(npc: Npc, skillId: string): number {
@@ -54,13 +67,30 @@ export function housingCapacity(state: GameState, catalog: Catalog, slotId: stri
   return levelInForce(state, catalog, slotId)?.housing?.capacity ?? 0;
 }
 
+/**
+ * Building posts take their openings from the slot type and the level in force
+ * (`postSlots`); the construction post keeps its own.
+ */
 export function postsAt(state: GameState, catalog: Catalog, slotId: string): Post[] {
   const placed = state.slots[slotId];
   if (!placed) return [];
   const { buildingId } = placed;
-  const jobs = levelInForce(state, catalog, slotId)?.jobs ?? [];
-  const construction = placed.status === 'building' ? [catalog.npcs.construction] : [];
-  return [...jobs, ...construction].map((job) => ({ slotId, buildingId, job }));
+  const slotType = findSlot(catalog, slotId)?.type;
+  const openings = slotType
+    ? (catalog.npcs.postSlots[slotType]?.[activeLevel(placed) - 1] ?? 0)
+    : 0;
+  const jobs = (levelInForce(state, catalog, slotId)?.jobs ?? []).map((job) => ({
+    slotId,
+    buildingId,
+    job,
+    slots: openings,
+  }));
+  const { construction } = catalog.npcs;
+  const constructionPost =
+    placed.status === 'building'
+      ? [{ slotId, buildingId, job: construction, slots: construction.slots }]
+      : [];
+  return [...jobs, ...constructionPost];
 }
 
 export function findPost(
@@ -125,13 +155,17 @@ export function updateNpc(state: GameState, catalog: Catalog, id: string, edit: 
   if (!npc) return fail('not_found');
   const error = fieldsError(state, catalog, edit, id);
   if (error) return fail(error);
-  const { home, job } = npc;
+  const fields = cleanFields(edit);
+  // New skills mean a new yield: the leftover tenths of the old one are dropped.
+  const job =
+    npc.job && !sameSkills(npc.skills, fields.skills) ? { ...npc.job, carry: 0 } : npc.job;
   const next: Npc = {
-    ...cleanFields(edit),
+    ...fields,
     id,
-    home,
+    home: npc.home,
     job,
     status: settledStatus(edit.status, job),
+    ...(npc.earnings ? { earnings: npc.earnings } : {}),
   };
   return ok(withLog(replaceNpc(state, next), entry(state, 'npc_updated', next.name)));
 }
@@ -245,6 +279,33 @@ export function settleNpcs(state: GameState, catalog: Catalog): GameState {
   return withLog({ ...state, npcs }, ...released);
 }
 
+/**
+ * Residents of a building that no longer offers housing (saves from when the
+ * Taverna and the Torre dos Magos housed NPCs) move to housing with room,
+ * keeping their post. Whoever does not fit is left for `settleNpcs` to release.
+ */
+export function rehomeNpcs(state: GameState, catalog: Catalog): GameState {
+  const homes = housingList(state, catalog);
+  const moved: LogEntry[] = [];
+  const npcs = state.npcs.map((npc) => {
+    const oldHome = npc.home ? state.slots[npc.home] : undefined;
+    if (!npc.home || !oldHome || housingCapacity(state, catalog, npc.home) > 0) return npc;
+    const home = homes.find((h) => h.residents < h.capacity);
+    if (!home) return npc;
+    home.residents += 1;
+    moved.push({
+      day: state.day,
+      kind: 'npc_moved',
+      npc: npc.name,
+      from: oldHome.buildingId,
+      place: home.buildingId,
+    });
+    return { ...npc, home: home.slotId };
+  });
+  if (moved.length === 0) return state;
+  return withLog({ ...state, npcs }, ...moved);
+}
+
 /** `disponivel` and `trabalhando` follow the job; the master's `ferido`/`em_missao` stay. */
 export function settledStatus(status: NpcStatus, job: NpcJob | null): NpcStatus {
   if (status === 'ferido' || status === 'em_missao') return status;
@@ -269,7 +330,7 @@ function jobError(state: GameState, catalog: Catalog, npc: Npc, order: JobOrder)
   const post = findPost(state, catalog, order);
   if (!post) return { ok: false, error: 'invalid_post' };
   const others = workersAt(state, post).filter((worker) => worker.id !== npc.id);
-  if (others.length >= post.job.slots) return { ok: false, error: 'post_full' };
+  if (others.length >= post.slots) return { ok: false, error: 'post_full' };
   if (post.job.effect.type !== 'research') return { ok: true, post };
 
   const target = state.research.entries.find((r) => r.id === order.researchId);
@@ -310,7 +371,7 @@ function jobProblem(
     const wasConstruction = job.activityId === catalog.npcs.construction.activity;
     return wasConstruction ? 'construction_done' : 'capacity';
   }
-  if ((used.get(postKey(job)) ?? 0) >= post.job.slots) return 'capacity';
+  if ((used.get(postKey(job)) ?? 0) >= post.slots) return 'capacity';
   if (post.job.effect.type === 'research' && !isOpenResearch(state, job.researchId)) {
     return 'research_closed';
   }
@@ -345,7 +406,7 @@ function fieldsError(
   return nameError(fields.name, state.npcs, ownId) ?? (hasUnknownSkill ? 'not_found' : null);
 }
 
-function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'status'> {
+function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'status' | 'earnings'> {
   const portrait = fields.portrait?.trim();
   const wage = fields.wage && fields.wage > 0 ? fields.wage : undefined;
   return {
@@ -353,9 +414,14 @@ function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'stat
     title: fields.title.trim(),
     ...(portrait ? { portrait } : {}),
     description: fields.description,
-    skills: Object.fromEntries(Object.entries(fields.skills).filter(([, level]) => level > 0)),
+    skills: Object.fromEntries(Object.entries(fields.skills).filter(([, level]) => level !== 0)),
     ...(wage ? { wage } : {}),
   };
+}
+
+function sameSkills(a: Npc['skills'], b: Npc['skills']): boolean {
+  const ids = new Set([...Object.keys(a), ...Object.keys(b)]);
+  return [...ids].every((id) => (a[id] ?? 0) === (b[id] ?? 0));
 }
 
 function replaceNpc(state: GameState, next: Npc): GameState {

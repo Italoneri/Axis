@@ -1,8 +1,8 @@
-import { jobEffectText, logEntryText, t } from '../i18n/pt-BR';
+import { jobEffectText, logEntryText, t, type TextContext } from '../i18n/pt-BR';
 import type { BuildingPreview } from '../map/buildingPreview';
 import type { LiveMap } from '../map/liveMap';
 import type { GameStore } from '../store';
-import { activeBonuses, activePostEffects } from '../systems/BonusSystem';
+import { activeBonuses, activePostEffects, type PostEffect } from '../systems/BonusSystem';
 import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
 import type { MasterAccess } from './MasterSession';
@@ -18,10 +18,14 @@ export interface DrawerPanel {
   refresh(): Promise<void>;
 }
 
-/** Online additions: invites in the master tab, the full history in the log tab. */
+/** Online additions (invites in the master tab, the full history in the log tab) and the archive. */
 export interface DrawerExtras {
   invites?: DrawerPanel | undefined;
   history?: DrawerPanel | undefined;
+  /** The master opens the Arquivo de registros even before it is built. */
+  openArchive?: (() => void) | undefined;
+  /** Likewise for the tavern menu. */
+  openMenu?: (() => void) | undefined;
 }
 
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
@@ -124,7 +128,12 @@ export class InfoDrawer {
 
   private renderTab(tab: DrawerTab): HTMLElement[] {
     if (tab === 'master') {
-      const tools = renderMasterTools(this.store, { session: this.session, act: this.act });
+      const tools = renderMasterTools(this.store, {
+        session: this.session,
+        act: this.act,
+        openArchive: this.extras.openArchive,
+        openMenu: this.extras.openMenu,
+      });
       return this.extras.invites ? [...tools, this.extras.invites.element] : tools;
     }
     if (tab === 'map')
@@ -200,7 +209,7 @@ export class InfoDrawer {
               'li',
               {},
               `${ctx.building(post.buildingId)} · ${post.activity} (${post.workers.join(', ')}): `,
-              jobEffectText(post.effect, post.tenthsPerDay, ctx),
+              postEffectText(post, ctx),
             ),
           ),
         ),
@@ -221,4 +230,14 @@ export class InfoDrawer {
       ),
     ];
   }
+}
+
+/** The yield of a post, or its penalty when a hindering worker spoils a bonus. */
+function postEffectText(post: PostEffect, ctx: TextContext): HTMLElement | string {
+  const { effect } = post;
+  if (effect.type === 'bonus' && post.hindered && effect.penalty) {
+    return el('span', { class: 'is-negative' }, t.drawer.penalty(effect.penalty));
+  }
+  const text = jobEffectText(effect, post.tenthsPerDay, ctx);
+  return post.tenthsPerDay < 0 ? el('span', { class: 'is-negative' }, text) : text;
 }

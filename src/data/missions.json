@@ -1,0 +1,4 @@
+{
+  "campCommissionPercent": 20,
+  "guildBonus": { "building": "guild", "minLevel": 2, "percent": 10 }
+}

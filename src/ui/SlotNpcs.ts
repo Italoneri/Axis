@@ -1,18 +1,20 @@
 import { jobEffectText, t, type TextContext } from '../i18n/pt-BR';
+import type { Catalog } from '../model/catalog';
 import type { GameState, Npc } from '../model/schema';
 import {
+  findPost,
   housingCapacity,
   postsAt,
   residentsOf,
   skillOf,
+  postYieldTenths,
   workersAt,
-  yieldTenths,
   type Post,
 } from '../systems/Npcs';
 import type { GameStore } from '../store';
 import { el } from './dom';
 import { textContext } from './format';
-import { button, field, selectInput } from './widgets';
+import { button, confirmButton, field, selectInput } from './widgets';
 
 /** Residents and work posts of a slot, for the building side panel. */
 export function renderSlotNpcs(store: GameStore, slotId: string): HTMLElement[] {
@@ -21,19 +23,52 @@ export function renderSlotNpcs(store: GameStore, slotId: string): HTMLElement[] 
   const capacity = housingCapacity(state, catalog, slotId);
   const posts = postsAt(state, catalog, slotId);
   return [
-    ...(capacity > 0 ? [residentsCard(state, slotId, capacity)] : []),
+    ...(capacity > 0 ? [residentsCard(store, slotId, capacity)] : []),
     ...posts.map((post) => postCard(store, post, ctx)),
   ];
 }
 
-function residentsCard(state: GameState, slotId: string, capacity: number): HTMLElement {
-  const residents = residentsOf(state, slotId);
+function residentsCard(store: GameStore, slotId: string, capacity: number): HTMLElement {
+  const residents = residentsOf(store.current, slotId);
   return el(
     'section',
     { class: 'card' },
     el('h3', { class: 'section-title' }, t.npcs.residents(residents.length, capacity)),
     residents.length > 0 &&
-      el('ul', { class: 'effects' }, ...residents.map((npc) => el('li', {}, npc.name))),
+      el(
+        'ul',
+        { class: 'effects' },
+        ...residents.map((npc) =>
+          el(
+            'li',
+            { class: 'row row--wrap' },
+            el('span', {}, npc.name),
+            moveOutButton(store, npc, t.npcs.moveOut, () =>
+              store.dispatch({ type: 'npc_set_home', npcId: npc.id, slotId: null }),
+            ),
+          ),
+        ),
+      ),
+  );
+}
+
+/**
+ * Moves the NPC out of its home. Work needs a home, so for an NPC with a post
+ * it asks a second click naming the post it will leave.
+ */
+export function moveOutButton(
+  { catalog, current: state }: Pick<GameStore, 'catalog' | 'current'>,
+  npc: Npc,
+  label: string,
+  onMoveOut: () => void,
+): HTMLButtonElement {
+  const post = npc.job && findPost(state, catalog, npc.job);
+  if (!post) return button(label, onMoveOut);
+  const building = textContext(catalog, state).building(post.buildingId);
+  return confirmButton(
+    label,
+    onMoveOut,
+    t.npcs.moveOutLeavesPost(npc.name, post.job.name, building),
   );
 }
 
@@ -41,7 +76,7 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
   const { catalog, current: state } = store;
   const workers = workersAt(state, post);
   const skill = catalog.skills.find((s) => s.id === post.job.skill);
-  const isFull = workers.length >= post.job.slots;
+  const isFull = workers.length >= post.slots;
   return el(
     'section',
     { class: 'card npc-post' },
@@ -50,7 +85,7 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
       { class: 'section-title' },
       `${post.job.name} · ${skill?.icon ?? ''} ${skill?.name ?? ''}`,
     ),
-    el('p', { class: 'card__sub' }, t.npcs.slotsUsed(workers.length, post.job.slots)),
+    el('p', { class: 'card__sub' }, t.npcs.slotsUsed(workers.length, post.slots)),
     workers.length > 0 &&
       el(
         'ul',
@@ -59,7 +94,11 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
           el(
             'li',
             { class: 'row row--wrap' },
-            el('span', {}, t.npcs.preview(npc.name, preview(post, npc, ctx))),
+            el(
+              'span',
+              { class: hinders(post, npc) ? 'is-negative' : undefined },
+              t.npcs.preview(npc.name, preview(catalog, post, npc, ctx)),
+            ),
             button(t.npcs.unassign, () => store.dispatch({ type: 'npc_unassign', npcId: npc.id })),
           ),
         ),
@@ -81,7 +120,7 @@ function assignForm(store: GameStore, post: Post, ctx: TextContext): HTMLElement
     value: candidates[0]?.id ?? '',
     options: candidates.map((npc) => ({
       value: npc.id,
-      label: candidateLabel(state, post, npc, ctx),
+      label: candidateLabel(store, post, npc, ctx),
     })),
   });
   const research = researchSelect(state, post);
@@ -116,13 +155,14 @@ function researchSelect(state: GameState, post: Post): HTMLSelectElement | null 
   });
 }
 
-/** "Bia (10) · +3,0 … · posto atual: Biblioteca · Ferido", so moves and absences show up front. */
-function candidateLabel(state: GameState, post: Post, npc: Npc, ctx: TextContext): string {
+/** "Bia (10) · +3,0 … · posto atual: Biblioteca · Ferido": moves, absences and hindering up front. */
+function candidateLabel(store: GameStore, post: Post, npc: Npc, ctx: TextContext): string {
+  const { catalog, current: state } = store;
   const away = npc.status === 'ferido' || npc.status === 'em_missao';
   const workplace = npc.job && state.slots[npc.job.slotId]?.buildingId;
   return [
     `${npc.name} (${skillOf(npc, post.job.skill)})`,
-    preview(post, npc, ctx),
+    preview(catalog, post, npc, ctx) + (hinders(post, npc) ? ` ${t.npcs.hinders}` : ''),
     workplace && t.npcs.currentPost(ctx.building(workplace)),
     away && t.npcs.statuses[npc.status],
   ]
@@ -130,11 +170,12 @@ function candidateLabel(state: GameState, post: Post, npc: Npc, ctx: TextContext
     .join(' · ');
 }
 
-function preview(post: Post, npc: Npc, ctx: TextContext): string {
-  const { effect } = post.job;
-  const tenths =
-    effect.type === 'bonus' ? 0 : yieldTenths(effect.perDay, skillOf(npc, post.job.skill));
-  return jobEffectText(effect, tenths, ctx);
+function preview(catalog: Catalog, post: Post, npc: Npc, ctx: TextContext): string {
+  return jobEffectText(post.job.effect, postYieldTenths(catalog, post, npc), ctx);
+}
+
+function hinders(post: Post, npc: Npc): boolean {
+  return skillOf(npc, post.job.skill) < 0;
 }
 
 function isAt(npc: Npc, post: Post): boolean {
