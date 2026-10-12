@@ -18,7 +18,7 @@ import {
   supabaseImageBucket,
 } from './supabase';
 import { SupabaseArchiveRepository } from './SupabaseArchiveRepository';
-import { SupabaseImageStore } from './SupabaseImageStore';
+import { ARCHIVE_IMAGE_BUCKET, GAME_IMAGE_BUCKET, SupabaseImageStore } from './SupabaseImageStore';
 import type { ArchiveImageStore } from '../persistence/ArchiveImageStore';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
 
@@ -33,6 +33,8 @@ export interface OnlineGame {
   repository: SupabaseRepository;
   archiveRepository: SupabaseArchiveRepository;
   archiveImages: ArchiveImageStore;
+  /** Files of the photos of characters, NPCs, materials and worlds. */
+  gamePhotos: ArchiveImageStore;
   /** Who writes in the Arquivo de registros: fixed by the login. */
   archiveActor: Actor;
   membership: Membership;
@@ -88,7 +90,14 @@ export async function bootOnline(
       supabaseArchiveBackend(client),
       membership.gameId,
     ),
-    archiveImages: new SupabaseImageStore(supabaseImageBucket(client), membership.gameId),
+    archiveImages: new SupabaseImageStore(
+      supabaseImageBucket(client, ARCHIVE_IMAGE_BUCKET),
+      membership.gameId,
+    ),
+    gamePhotos: new SupabaseImageStore(
+      supabaseImageBucket(client, GAME_IMAGE_BUCKET),
+      membership.gameId,
+    ),
     archiveActor: onlineContext(membership).actor,
     membership,
     access: new OnlineAccess(membership.role, signOut),

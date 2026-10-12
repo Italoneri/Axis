@@ -3,11 +3,11 @@ import { z } from 'zod';
 import type { OnlineConfig } from './config';
 import type { ArchiveBackend, ArchiveTable, ArchiveWriteResult } from './SupabaseArchiveRepository';
 import type { FunctionReply, GameBackend } from './SupabaseRepository';
-import { ARCHIVE_IMAGE_BUCKET, type ImageBucket } from './SupabaseImageStore';
+import type { ImageBucket } from './SupabaseImageStore';
 
 /** Every request to Supabase gives up after this, so a dead network never freezes the game. */
 const REQUEST_TIMEOUT_MS = 15_000;
-/** Archive images (up to 2 MB each way) get longer, for slow connections. */
+/** Images (archive ones up to 2 MB each way) get longer, for slow connections. */
 const STORAGE_TIMEOUT_MS = 60_000;
 
 export function createSupabase({ url, anonKey }: OnlineConfig): SupabaseClient {
@@ -24,29 +24,29 @@ function timeoutFor(input: RequestInfo | URL): number {
   return target.includes('/storage/v1/') ? STORAGE_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
 }
 
-/** The private bucket of archive images; the Storage policies apply the note's rules. */
-export function supabaseImageBucket(client: SupabaseClient): ImageBucket {
-  const bucket = () => client.storage.from(ARCHIVE_IMAGE_BUCKET);
+/** A private image bucket (archive images or game photos); its Storage policies decide who gets what. */
+export function supabaseImageBucket(client: SupabaseClient, name: string): ImageBucket {
+  const bucket = () => client.storage.from(name);
   return {
     upload: async (path, blob, contentType) => {
       const { error } = await bucket().upload(path, blob, { contentType, upsert: true });
-      if (error) throw new Error(`upload archive image: ${error.message}`);
+      if (error) throw new Error(`upload ${name}: ${error.message}`);
     },
     signedUrl: async (path, seconds) => {
       const { data, error } = await bucket().createSignedUrl(path, seconds);
-      if (error) throw new Error(`sign archive image: ${error.message}`);
+      if (error) throw new Error(`sign ${name}: ${error.message}`);
       return data.signedUrl;
     },
     download: async (path) => {
       const { data, error } = await bucket().download(path);
       if (!error) return data;
-      // A missing (or forbidden) file leaves its note without the picture; anything else fails.
+      // A missing (or forbidden) file leaves its record without the picture; anything else fails.
       if (/not.?found|400|404/i.test(error.message)) return null;
-      throw new Error(`download archive image: ${error.message}`);
+      throw new Error(`download ${name}: ${error.message}`);
     },
     remove: async (paths) => {
       const { error } = await bucket().remove([...paths]);
-      if (error) throw new Error(`remove archive images: ${error.message}`);
+      if (error) throw new Error(`remove ${name}: ${error.message}`);
     },
   };
 }
