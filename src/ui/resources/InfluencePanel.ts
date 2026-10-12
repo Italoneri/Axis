@@ -4,11 +4,15 @@ import type { GameStore } from '../../store';
 import { averageInfluence, worldStandings, type WorldStanding } from '../../systems/Influence';
 import { el } from '../dom';
 import type { MasterAccess } from '../MasterSession';
+import { photoForm } from '../photos/photoField';
 import type { ResourceMenuItem } from '../ResourceMenu';
-import { progressBar, stepper, thumb, type Act, type PanelDeps } from '../widgets';
+import { button, progressBar, stepper, thumb, type Act, type PanelDeps } from '../widgets';
 
 /** Influência: the fixed worlds and their average, the overall influence. */
 export class InfluencePanel {
+  /** World whose photo form is open. */
+  private editingPhoto: string | null = null;
+  private redraw: () => void = () => undefined;
   private readonly store: GameStore;
   private readonly session: MasterAccess;
   private readonly act: Act;
@@ -27,7 +31,10 @@ export class InfluencePanel {
       icon: 'icon.influence',
       summary: total,
       compactSummary: total,
-      render: () => this.render(),
+      render: (redraw) => {
+        this.redraw = redraw;
+        return this.render();
+      },
     };
   }
 
@@ -53,26 +60,52 @@ export class InfluencePanel {
   }
 
   private row({ world, influence }: WorldStanding): HTMLElement {
-    const { catalog } = this.store;
+    const icon = this.store.current.worldIcons?.[world.id] ?? world.icon;
+    const isEditingPhoto = this.editingPhoto === world.id;
     return el(
       'li',
       { class: 'item world', title: world.description ?? '' },
       el(
         'div',
         { class: 'item-row' },
-        thumb(catalog, { image: world.icon, name: world.name, color: world.color }),
+        thumb(this.store, { image: icon, name: world.name, color: world.color }),
         el('span', { class: 'item-row__name' }, world.name),
         el('span', { class: 'item-row__value' }, t.percent(influence)),
       ),
       progressBar(influence / 100, world.color),
       world.description && el('p', { class: 'item__desc' }, world.description),
       this.session.isActive &&
-        stepper(
-          influence,
-          (value) => this.act({ type: 'set_influence', worldId: world.id, value }),
-          { label: world.name },
+        el(
+          'div',
+          { class: 'row row--wrap' },
+          stepper(
+            influence,
+            (value) => this.act({ type: 'set_influence', worldId: world.id, value }),
+            { label: world.name },
+          ),
+          button(t.photos.change, () => this.toggleWorldPhoto(world.id), {
+            title: t.photos.worldIcon(world.name),
+          }),
         ),
+      this.session.isActive && isEditingPhoto && this.photoForm(world, icon),
     );
+  }
+
+  private toggleWorldPhoto(worldId: string): void {
+    this.editingPhoto = this.editingPhoto === worldId ? null : worldId;
+    this.redraw();
+  }
+
+  private photoForm(world: WorldStanding['world'], icon: string | undefined): HTMLElement {
+    return photoForm({
+      source: this.store,
+      target: { kind: 'world', id: world.id },
+      current: icon,
+      name: world.name,
+      color: world.color,
+      act: this.act,
+      close: () => this.toggleWorldPhoto(world.id),
+    });
   }
 
   private standings(state: GameState): WorldStanding[] {

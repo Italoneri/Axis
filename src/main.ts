@@ -11,7 +11,8 @@ import { ArchiveStore } from './archiveStore';
 import { LocalArchiveRepository } from './persistence/LocalArchiveRepository';
 import type { ArchiveRepository } from './persistence/ArchiveRepository';
 import type { ArchiveImageStore } from './persistence/ArchiveImageStore';
-import { indexedDbBlobTable, LocalImageStore } from './persistence/LocalImageStore';
+import { indexedDbBlobTable, LocalImageStore, PHOTO_DB_NAME } from './persistence/LocalImageStore';
+import { GameImages } from './gameImages';
 import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore } from './store';
 import { ArchiveWindow, CHARACTER_MEMORY_KEY } from './ui/archive/ArchiveWindow';
@@ -58,6 +59,7 @@ interface Mode {
   repository: GameRepository;
   archiveRepository: ArchiveRepository;
   archiveImages: ArchiveImageStore;
+  gamePhotos: ArchiveImageStore;
   /** Online, the login fixes who writes in the archive; offline the window asks. */
   archiveActor?: Actor;
   session: MasterAccess;
@@ -79,6 +81,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
       repository: new LocalRepository(window.localStorage, catalog, window),
       archiveRepository: new LocalArchiveRepository(window.localStorage, window),
       archiveImages: new LocalImageStore(indexedDbBlobTable()),
+      gamePhotos: new LocalImageStore(indexedDbBlobTable(PHOTO_DB_NAME)),
       session,
       contextFor: (command) => commandContext(session, command),
       drawerExtras: () => ({}),
@@ -92,6 +95,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
     repository: game.repository,
     archiveRepository: game.archiveRepository,
     archiveImages: game.archiveImages,
+    gamePhotos: game.gamePhotos,
     archiveActor: game.archiveActor,
     session: game.access,
     contextFor: game.contextFor,
@@ -123,22 +127,32 @@ async function start(): Promise<void> {
       characterId: memory.pick(CHARACTER_MEMORY_KEY, ids, ids[0] ?? '') || undefined,
     };
   };
-  const store = await GameStore.open(gameData, repository, {
-    contextFor: (command) =>
-      command.type === 'archive_log' ? { actor: archiveViewer() } : mode.contextFor(command),
-    onRefused: (error) => notify(t.errors[error], 'error'),
-    onPersistError: (error) => {
-      console.error('[save] could not persist state', error);
-      notify(mode.isOnline ? t.online.syncFailed : t.save.storageFailed, 'error');
-    },
+  const persistFailed = mode.isOnline ? t.online.syncFailed : t.save.storageFailed;
+  const photos = new GameImages(mode.gamePhotos, (error) => {
+    console.error('[photos] could not store a photo', error);
+    notify(persistFailed, 'error');
   });
+  const store = await GameStore.open(
+    gameData,
+    repository,
+    {
+      contextFor: (command) =>
+        command.type === 'archive_log' ? { actor: archiveViewer() } : mode.contextFor(command),
+      onRefused: (error) => notify(t.errors[error], 'error'),
+      onPersistError: (error) => {
+        console.error('[save] could not persist state', error);
+        notify(persistFailed, 'error');
+      },
+    },
+    photos,
+  );
   const archive = await ArchiveStore.open(mode.archiveRepository, mode.archiveImages, {
     viewer: archiveViewer,
     onLogged: (change) => void store.dispatch({ type: 'archive_log', change }),
     onRefused: (error) => notify(t.archive.errors[error], 'error'),
     onPersistError: (error) => {
       console.error('[archive] could not reach the archive', error);
-      notify(mode.isOnline ? t.online.syncFailed : t.save.storageFailed, 'error');
+      notify(persistFailed, 'error');
     },
   });
   const archiveWindow = new ArchiveWindow({

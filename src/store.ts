@@ -1,8 +1,15 @@
-import { applyCommand, type CommandError, type StateChange } from './commands/applyCommand';
+import {
+  applyCommand,
+  isAllowed,
+  type CommandError,
+  type StateChange,
+} from './commands/applyCommand';
 import type { CommandContext, GameCommand } from './commands/schema';
+import { GameImages } from './gameImages';
 import type { Catalog } from './model/catalog';
 import type { GameState, LogEntry } from './model/schema';
 import type { GameChange, GameRepository } from './persistence/GameRepository';
+import { LocalImageStore, memoryBlobTable } from './persistence/LocalImageStore';
 
 export type { StateChange } from './commands/applyCommand';
 
@@ -41,18 +48,22 @@ export class GameStore {
   private hasDeferredRemote = false;
   private readonly listeners = new Set<Listener>();
 
+  /** `images` holds the photo files; by default they only last in memory (tests). */
   static async open(
     catalog: Catalog,
     repository: GameRepository,
     hooks: StoreHooks,
+    images = new GameImages(new LocalImageStore(memoryBlobTable())),
   ): Promise<GameStore> {
-    return new GameStore(catalog, repository, hooks, await repository.load());
+    return new GameStore(catalog, repository, hooks, images, await repository.load());
   }
 
   private constructor(
     readonly catalog: Catalog,
     private readonly repository: GameRepository,
     private readonly hooks: StoreHooks,
+    /** Files of the photos sent in game, which the state only refers to. */
+    readonly images: GameImages,
     initial: GameState,
   ) {
     this.confirmed = initial;
@@ -80,6 +91,11 @@ export class GameStore {
     if (outcome.state === this.state) return null;
     this.enqueue({ kind: 'command', command, ctx }, outcome.state, outcome.change, outcome.logged);
     return null;
+  }
+
+  /** Whether this device may run `command` at all: who acts, before any game rule. */
+  allows(command: GameCommand): boolean {
+    return isAllowed(command, this.hooks.contextFor(command));
   }
 
   /** Restores an imported save (already validated by `parseSave`), overwriting the stored game. */
@@ -123,7 +139,7 @@ export class GameStore {
       if (result.ok) {
         conflicts = 0;
         // Realtime may already have brought this revision (or a newer one).
-        if (result.state.revision > this.confirmed.revision) this.confirmed = result.state;
+        if (result.state.revision > this.confirmed.revision) this.confirm(result.state);
         this.pending = this.pending.slice(1);
       } else if (result.reason === 'refused') {
         this.pending = this.pending.slice(1);
@@ -131,12 +147,12 @@ export class GameStore {
         isStale = true;
       } else if (++conflicts >= MAX_CONFLICTS) {
         console.warn('[save] giving up after repeated conflicts', { dropped: this.pending.length });
-        this.confirmed = await this.repository.load();
+        this.confirm(await this.repository.load());
         this.pending = [];
         this.hooks.onRefused('conflict');
         isStale = true;
       } else {
-        this.confirmed = await this.repository.load();
+        this.confirm(await this.repository.load());
         isStale = true;
       }
     }
@@ -149,10 +165,20 @@ export class GameStore {
   /** Someone else saved: their game becomes the base, and local changes go on top. */
   private receiveRemote(remote: GameState): void {
     if (remote.revision <= this.confirmed.revision) return;
-    this.confirmed = remote;
+    this.confirm(remote);
     // Mid-submit, this can be the echo of the change being sent: replaying it on top would apply it twice.
     if (this.isSubmitting) this.hasDeferredRemote = true;
     else this.showConfirmedPlusPending();
+  }
+
+  /**
+   * The stored game moved on. Photos it no longer refers to lose their files
+   * here, never on an optimistic change: a refused one must keep the old photo.
+   */
+  private confirm(next: GameState): void {
+    const before = this.confirmed;
+    this.confirmed = next;
+    void this.images.removeDropped(before, next);
   }
 
   private showConfirmedPlusPending(): void {

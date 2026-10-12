@@ -94,7 +94,7 @@ export class ResourceMenu {
         'aria-controls': this.popover.id,
         onclick: () => this.toggle(item.id),
       },
-      thumb(catalog, { image: item.icon, name: item.label }),
+      thumb({ catalog }, { image: item.icon, name: item.label }),
       el('span', { class: 'resource__name' }, item.label),
       full,
       compact,
@@ -146,7 +146,10 @@ export class ResourceMenu {
   private closeIfOutside(event: PointerEvent): void {
     const target = event.target;
     if (!this.openId || !(target instanceof Node)) return;
+    // A modal opened from the dropdown (the photo crop) sits on top of it: clicks there stay inside.
+    const isInModal = target instanceof Element && target.closest('dialog[open]') !== null;
     const isInside =
+      isInModal ||
       this.popover.contains(target) ||
       [...this.buttons.values()].some((node) => node.contains(target));
     if (!isInside) this.close();

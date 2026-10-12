@@ -5,6 +5,7 @@ import { totalMaterialUnits, type MaterialFields } from '../../systems/Materials
 import { newId } from '../../commands/newId';
 import { el } from '../dom';
 import { formatCount } from '../format';
+import { photoField, saveWithPhoto } from '../photos/photoField';
 import type { MasterAccess } from '../MasterSession';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import type { UiMemory } from '../uiMemory';
@@ -111,7 +112,6 @@ export class MaterialsPanel {
   }
 
   private row(material: Material, categories: readonly Category[]): HTMLElement {
-    const { catalog } = this.store;
     const isExpanded = this.expanded === material.id;
     const head = el(
       'button',
@@ -122,7 +122,7 @@ export class MaterialsPanel {
         'aria-expanded': String(isExpanded),
         onclick: () => this.update(() => (this.expanded = isExpanded ? null : material.id)),
       },
-      thumb(catalog, { image: material.icon, name: material.name }),
+      thumb(this.store, { image: material.icon, name: material.name }),
       el('span', { class: 'item-row__name' }, material.name),
       el('span', { class: 'item-row__value' }, formatCount(material.quantity)),
     );
@@ -162,8 +162,9 @@ export class MaterialsPanel {
       ),
       isEditing &&
         this.materialForm(material, categories, (fields) => {
-          if (this.act({ type: 'update_material', materialId: material.id, ...fields }))
-            this.update(() => (this.editing = null));
+          const done = this.act({ type: 'update_material', materialId: material.id, ...fields });
+          if (done) this.update(() => (this.editing = null));
+          return done;
         }),
     );
   }
@@ -173,15 +174,14 @@ export class MaterialsPanel {
     const form = this.materialForm(
       undefined,
       [],
-      (fields) => {
+      (fields, id) =>
         this.act({
           type: 'add_material',
-          id: newId('mat'),
+          id,
           ...fields,
           category: categoryId,
           quantity: readCount(quantity),
-        });
-      },
+        }),
       field(t.materials.quantity, quantity),
     );
     const details = el(
@@ -194,15 +194,23 @@ export class MaterialsPanel {
     return details;
   }
 
-  /** Shared add/edit form; the category select only appears when editing. */
+  /**
+   * Shared add/edit form; the category select only appears when editing.
+   * `onSubmit` gets the id the icon was stored under: the material's, or a new one.
+   */
   private materialForm(
     material: Material | undefined,
     categories: readonly Category[],
-    onSubmit: (fields: MaterialFields) => void,
+    onSubmit: (fields: MaterialFields, id: string) => boolean,
     ...extra: HTMLElement[]
   ): HTMLElement {
+    const id = material?.id ?? newId('mat');
     const name = el('input', { class: 'input input--wide', value: material?.name ?? '' });
-    const icon = el('input', { class: 'input input--wide', value: material?.icon ?? '' });
+    const icon = photoField({
+      source: this.store,
+      current: material?.icon,
+      name: material?.name ?? '',
+    });
     const description = el('input', {
       class: 'input input--wide',
       value: material?.description ?? '',
@@ -214,23 +222,28 @@ export class MaterialsPanel {
         el('option', { value: c.id, selected: c.id === material?.category }, c.name),
       ),
     );
-    return el(
+    const form = el(
       'form',
       {
         class: 'subform',
         onsubmit: (event: Event) => {
           event.preventDefault();
-          onSubmit({
-            name: name.value,
-            category: categories.length > 0 ? category.value : (material?.category ?? ''),
-            icon: icon.value,
-            description: description.value,
-          });
+          void saveWithPhoto(icon, { kind: 'material', id }, (image) =>
+            onSubmit(
+              {
+                name: name.value,
+                category: categories.length > 0 ? category.value : (material?.category ?? ''),
+                icon: image,
+                description: description.value,
+              },
+              id,
+            ),
+          );
         },
       },
       field(t.common.name, name),
       categories.length > 0 && field(t.common.category, category),
-      field(t.common.icon, icon),
+      el('div', { class: 'field' }, el('span', {}, t.common.icon), icon.element),
       field(t.common.description, description),
       ...extra,
       el(
@@ -243,6 +256,8 @@ export class MaterialsPanel {
         ),
       ),
     );
+    icon.listenOn(form);
+    return form;
   }
 
   private categoriesCard(currentId: string | null, isCurrentEmpty: boolean): HTMLElement {

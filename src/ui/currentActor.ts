@@ -7,7 +7,9 @@ import type { MasterAccess } from './MasterSession';
  * logins, this becomes the signed-in user's character and ignores the choice.
  */
 export function actingCharacter(command: GameCommand): string | undefined {
-  return command.type === 'deposit' ? command.characterId : undefined;
+  if (command.type === 'deposit') return command.characterId;
+  if (command.type === 'set_image' && command.target.kind === 'character') return command.target.id;
+  return undefined;
 }
 
 /** Who runs a command from this device: the only place the UI decides the actor. */

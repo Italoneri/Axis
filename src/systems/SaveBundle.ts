@@ -1,12 +1,17 @@
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { imagePath, type ImageRef, type ImageVariant } from '../persistence/ArchiveImageStore';
+import type { GameState } from '../model/schema';
 import type { Archive } from './Archive';
+import { fileRef, uploadsOf, type UploadRef } from './GameImages';
 
-// A save with archive images is a .zip: save.json (the same JSON as a plain
-// save) plus the image files under images/. Saves without images stay .json.
+// A save with images is a .zip: save.json (the same JSON as a plain save),
+// the archive images under images/ and the photos sent in game under
+// game-images/. Saves without any stay .json.
 
 export const SAVE_ENTRY = 'save.json';
 const IMAGES_DIR = 'images/';
+const PHOTOS_DIR = 'game-images/';
+const BUNDLE_DIRS = [IMAGES_DIR, PHOTOS_DIR];
 
 export function bundleImagePath(ref: ImageRef, variant: ImageVariant): string {
   return `${IMAGES_DIR}${imagePath(ref, variant)}`;
@@ -26,6 +31,18 @@ export function archiveImageFiles(archive: Archive): { ref: ImageRef; variant: I
 
 export function hasArchiveImages(archive: Archive): boolean {
   return archive.notes.some((note) => note.images.length > 0);
+}
+
+/** `game-images/<kind>/<id>/<image>.webp`, and `.thumb.webp`. */
+export function bundlePhotoPath(ref: UploadRef, variant: ImageVariant): string {
+  return `${PHOTOS_DIR}${imagePath(fileRef(ref), variant)}`;
+}
+
+/** Every photo file the game refers to, both variants. */
+export function photoFiles(state: GameState): { ref: UploadRef; variant: ImageVariant }[] {
+  return uploadsOf(state).flatMap((ref) =>
+    (['full', 'thumb'] as const).map((variant) => ({ ref, variant })),
+  );
 }
 
 /** The images are already compressed, so the zip only stores them. */
@@ -60,7 +77,9 @@ export function readBundle(bytes: Uint8Array): BundleRead {
   const save = entries[SAVE_ENTRY];
   if (!save) return { ok: false, error: `zip: ${SAVE_ENTRY} is missing` };
   const files = new Map(
-    Object.entries(entries).filter(([path]) => path.startsWith(IMAGES_DIR) && !path.endsWith('/')),
+    Object.entries(entries).filter(
+      ([path]) => BUNDLE_DIRS.some((dir) => path.startsWith(dir)) && !path.endsWith('/'),
+    ),
   );
   return { ok: true, saveText: strFromU8(save), files };
 }

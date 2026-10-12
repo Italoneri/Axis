@@ -37,6 +37,12 @@ const SAMPLE: readonly GameCommand[] = [
     wage: 0.35,
   },
   { type: 'npc_set_home', npcId: 'npc_parity', slotId: 'outer_1' },
+  {
+    type: 'set_image',
+    target: { kind: 'npc', id: 'npc_parity' },
+    image: 'upload:npc/npc_parity/img_parity.webp',
+  },
+  { type: 'set_image', target: { kind: 'world', id: 'elves' }, image: 'icon.influence' },
   { type: 'npc_assign_job', npcId: 'npc_parity', slotId: 'outer_2', activityId: 'forjar' },
   {
     type: 'npc_create',

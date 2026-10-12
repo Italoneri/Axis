@@ -4,8 +4,10 @@ import { imageMime } from '../persistence/ArchiveImageStore';
 import {
   archiveImageFiles,
   bundleImagePath,
+  bundlePhotoPath,
   bundleSave,
   hasArchiveImages,
+  photoFiles,
   isZip,
   readBundle,
 } from '../systems/SaveBundle';
@@ -18,7 +20,7 @@ type Notify = (msg: string, tone?: 'error') => void;
 
 /**
  * Export/import of the game; the Arquivo de registros travels in the same
- * file. With archive images the save is a .zip (save.json plus the images).
+ * file. With archive images or photos the save is a .zip (save.json plus the images).
  */
 export function createSaveControls(
   store: GameStore,
@@ -53,17 +55,28 @@ export function createSaveControls(
 async function exportSave(store: GameStore, archive: ArchiveStore, notify: Notify): Promise<void> {
   const text = serializeSave(store.current, archive.stored);
   const name = `axis-save-dia-${store.current.day}`;
-  if (!hasArchiveImages(archive.stored)) return downloadText(`${name}.json`, text);
+  const photos = photoFiles(store.current);
+  if (!hasArchiveImages(archive.stored) && photos.length === 0) {
+    return downloadText(`${name}.json`, text);
+  }
 
   const files = new Map<string, Uint8Array>();
   let missing = 0;
-  for (const { ref, variant } of archiveImageFiles(archive.stored)) {
-    const blob = await archive.readImage(ref.noteId, ref.image, variant).catch((error: unknown) => {
-      console.warn('[save] could not read an archive image', error);
+  const add = async (path: string, read: () => Promise<Blob | null>) => {
+    const blob = await read().catch((error: unknown) => {
+      console.warn('[save] could not read an image', path, error);
       return null;
     });
-    if (blob) files.set(bundleImagePath(ref, variant), new Uint8Array(await blob.arrayBuffer()));
+    if (blob) files.set(path, new Uint8Array(await blob.arrayBuffer()));
     else missing += 1;
+  };
+  for (const { ref, variant } of archiveImageFiles(archive.stored)) {
+    await add(bundleImagePath(ref, variant), () =>
+      archive.readImage(ref.noteId, ref.image, variant),
+    );
+  }
+  for (const { ref, variant } of photos) {
+    await add(bundlePhotoPath(ref, variant), () => store.images.read(ref, variant));
   }
   downloadBlob(`${name}.zip`, new Blob([bundleSave(text, files)], { type: 'application/zip' }));
   if (missing > 0) notify(t.save.imagesMissing(missing), 'error');
@@ -90,6 +103,11 @@ async function importSave(
   if (!parsed.ok) return notify(t.save.invalid(parsed.error), 'error');
   if (!records.ok) return notify(t.save.invalid(records.error), 'error');
   if (!window.confirm(t.save.confirmImport)) return;
+  // The files first: once the state lands, its photos are looked up (and the old ones removed).
+  await store.images.restore(parsed.state, (ref, variant) => {
+    const data = bundle.files.get(bundlePhotoPath(ref, variant));
+    return data && new Blob([data.slice()], { type: imageMime(ref.format) });
+  });
   store.replace(parsed.state);
   const imageFiles: ImageFileSource = (ref, variant) => {
     const data = bundle.files.get(bundleImagePath(ref, variant));

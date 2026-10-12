@@ -9,6 +9,8 @@ import {
 } from '../persistence/ArchiveImageStore';
 
 export const ARCHIVE_IMAGE_BUCKET = 'archive-images';
+/** Photos of characters, NPCs, materials and worlds (see src/systems/GameImages.ts). */
+export const GAME_IMAGE_BUCKET = 'game-images';
 /** Signed URLs are short-lived; one is reused until a minute before it expires. */
 export const SIGNED_URL_SECONDS = 600;
 const RENEW_BEFORE_MS = 60_000;
@@ -25,9 +27,10 @@ export interface ImageBucket {
 }
 
 /**
- * Online image files, in a private bucket at game_id/note_id/image_id: the
- * Storage policies apply the note's rules, so players never get the files of
- * the master's notes, not even a URL.
+ * Online image files, in a private bucket under the game id. Archive images
+ * sit at game_id/note_id/image_id, where the Storage policies apply the note's
+ * rules (players never get the files of the master's notes, not even a URL);
+ * game photos at game_id/kind/record_id/image_id.
  */
 export class SupabaseImageStore implements ArchiveImageStore {
   private readonly urls = new Map<string, { url: string; expiresAt: number }>();

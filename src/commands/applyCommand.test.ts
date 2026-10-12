@@ -151,6 +151,11 @@ const validCommands: Record<CommandType, GameCommand> = {
     type: 'archive_log',
     change: { target: 'topic', action: 'created', title: 'Pets' },
   },
+  set_image: {
+    type: 'set_image',
+    target: { kind: 'character', id: 'thorin' },
+    image: 'upload:character/thorin/img_1.webp',
+  },
   mission_create: { type: 'mission_create', id: 'mission_1', ...missionFields },
   mission_update: { type: 'mission_update', missionId: 'contrato', ...missionFields },
   mission_remove: { type: 'mission_remove', missionId: 'contrato' },
@@ -286,6 +291,7 @@ describe('applyCommand permissions', () => {
     'mission_remove',
     'mission_take_party',
     'mission_send_npcs',
+    'set_image',
   ]);
   const masterOnly = Object.values(validCommands).filter((c) => !playerCommands.has(c.type));
 
@@ -312,10 +318,81 @@ describe('applyCommand permissions', () => {
     expect(run(validCommands.deposit, anonymous)).toEqual({ ok: false, error: 'forbidden' });
   });
 
+  it.each([
+    { name: 'another character', kind: 'character', id: 'lyra' },
+    { name: 'an NPC', kind: 'npc', id: 'bianca' },
+    { name: 'a material', kind: 'material', id: 'iron' },
+    { name: 'a world', kind: 'world', id: 'human' },
+  ] as const)('refuses a player the photo of $name', ({ kind, id }) => {
+    const command = {
+      type: 'set_image',
+      target: { kind, id },
+      image: `upload:${kind}/${id}/img_1.webp`,
+    };
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
+
+  it('lets a player clear the photo of their own character', () => {
+    const command = { type: 'set_image', target: { kind: 'character', id: 'thorin' } };
+    expect(run(command, thorinPlayer).ok).toBe(true);
+  });
+
   it('checks permission before touching the state', () => {
     const state = makeState();
     const result = applyCommand(state, testCatalog, validCommands.advance_days, thorinPlayer);
     expect(result).toEqual({ ok: false, error: 'forbidden' });
+  });
+});
+
+describe('applyCommand set_image', () => {
+  const setImage = (kind: 'character' | 'npc' | 'material' | 'world', id: string, image?: string) =>
+    ({
+      type: 'set_image',
+      target: { kind, id },
+      ...(image === undefined ? {} : { image }),
+    }) as const;
+
+  it.each([
+    { kind: 'npc', id: 'bianca', read: (s: GameState) => s.npcs[0]?.portrait },
+    { kind: 'material', id: 'iron', read: (s: GameState) => s.materials.items[0]?.icon },
+    { kind: 'world', id: 'human', read: (s: GameState) => s.worldIcons?.human },
+    { kind: 'character', id: 'thorin', read: (s: GameState) => s.characters[0]?.portrait },
+  ] as const)('lets the master set and clear the photo of a $kind', ({ kind, id, read }) => {
+    const image = `upload:${kind}/${id}/img_1.webp`;
+    const set = run(setImage(kind, id, image));
+    if (!set.ok) throw new Error(set.error);
+    expect(read(set.state)).toBe(image);
+    expect(gameStateSchema.safeParse(set.state).success).toBe(true);
+
+    const cleared = run(setImage(kind, id), master, set.state);
+    if (!cleared.ok) throw new Error(cleared.error);
+    expect(read(cleared.state)).toBeUndefined();
+  });
+
+  it('keeps asset keys and URLs working', () => {
+    const result = run(setImage('npc', 'bianca', 'https://example.com/bianca.png'));
+    expect(result.ok && result.state.npcs[0]?.portrait).toBe('https://example.com/bianca.png');
+  });
+
+  it.each([
+    { name: 'of another record', image: 'upload:character/lyra/img_1.webp' },
+    { name: 'of another kind', image: 'upload:npc/thorin/img_1.webp' },
+    { name: 'malformed', image: 'upload:character/thorin/../x.webp' },
+  ])('refuses an upload $name', ({ image }) => {
+    expect(run(setImage('character', 'thorin', image), thorinPlayer)).toEqual({
+      ok: false,
+      error: 'invalid_command',
+    });
+  });
+
+  it('reports an unknown record as not_found', () => {
+    expect(run(setImage('npc', 'ghost'))).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it('keeps the same state when the photo does not change', () => {
+    const state = richState();
+    const result = run(setImage('npc', 'tomas'), master, state);
+    expect(result.ok && result.state).toBe(state);
   });
 });
 

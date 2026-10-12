@@ -8,6 +8,8 @@ import {
 } from './ArchiveImageStore';
 
 export const IMAGE_DB_NAME = 'axis-base-builder:archive-images';
+/** The photos sent in game keep their own database, beside the archive's. */
+export const PHOTO_DB_NAME = 'axis-base-builder:game-images';
 const OBJECT_STORE = 'files';
 
 /** The few operations the offline image store needs from IndexedDB; in memory for tests. */

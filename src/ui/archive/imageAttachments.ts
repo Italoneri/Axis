@@ -192,7 +192,7 @@ function captionInput(value: string): HTMLInputElement {
 }
 
 /** Drag and drop onto the editor, and Ctrl+V of a copied image (a Discord print). */
-function listenForFiles(target: HTMLElement, onFiles: (files: File[]) => void): void {
+export function listenForFiles(target: HTMLElement, onFiles: (files: File[]) => void): void {
   const hasFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') ?? false;
   target.addEventListener('dragover', (event) => {
     if (!hasFiles(event)) return;
