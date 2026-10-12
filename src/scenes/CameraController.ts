@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { startedOnCanvas } from './pointerGesture';
 
 const DRAG_THRESHOLD_PX = 6;
 const WHEEL_ZOOM_SPEED = 0.0015;
@@ -65,7 +66,7 @@ export class CameraController {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (!pointer.isDown) return;
+    if (!pointer.isDown || !startedOnCanvas(pointer, this.camera.scene.game.canvas)) return;
     if (!this.dragged && pointer.getDistance() < DRAG_THRESHOLD_PX) return;
     this.dragged = true;
     const zoom = this.camera.zoom;

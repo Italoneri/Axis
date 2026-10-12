@@ -9,6 +9,7 @@ import type { GameState, PlacedBuilding } from '../model/schema';
 import type { GameStore, StateChange } from '../store';
 import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
+import { isCanvasGesture } from './pointerGesture';
 import { SlotView } from './SlotView';
 
 const BACKGROUND = '#2b2a2c';
@@ -76,8 +77,9 @@ export class BaseScene extends Phaser.Scene {
     // A click on bare map (not a pan) dismisses the panel.
     this.input.on(
       'pointerup',
-      (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-        if (!camera.wasDragging && over.length === 0) this.selection.close();
+      (pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+        const isMapClick = isCanvasGesture(pointer, this.game.canvas) && !camera.wasDragging;
+        if (isMapClick && over.length === 0) this.selection.close();
       },
     );
 
