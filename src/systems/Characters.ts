@@ -12,6 +12,36 @@ export interface CharacterFields {
 }
 
 export function addCharacter(state: GameState, fields: CharacterFields & { id: string }): Outcome {
+  return createCharacter(state, fields, 'character_added');
+}
+
+/** Online: a player creating their own character when they join (see the `join_game` action). */
+export function joinWithNewCharacter(
+  state: GameState,
+  fields: CharacterFields & { id: string },
+): Outcome {
+  return createCharacter(state, fields, 'character_joined');
+}
+
+/**
+ * Who plays a character lives outside the game (the players table); taking or
+ * losing a player only writes it to the log, so the whole table sees it.
+ */
+export function logPlayerChange(
+  state: GameState,
+  id: string,
+  kind: 'character_claimed' | 'character_released',
+): Outcome {
+  const character = state.characters.find((c) => c.id === id);
+  if (!character) return fail('not_found');
+  return ok(withLog(state, { day: state.day, kind, name: character.name }));
+}
+
+function createCharacter(
+  state: GameState,
+  fields: CharacterFields & { id: string },
+  kind: 'character_added' | 'character_joined',
+): Outcome {
   const error = idError(fields.id, state.characters) ?? nameError(fields.name, state.characters);
   if (error) return fail(error);
   const character: Character = { ...cleanFields(fields), id: fields.id };
@@ -25,7 +55,7 @@ export function addCharacter(state: GameState, fields: CharacterFields & { id: s
           characters: { ...state.wallets.characters, [character.id]: {} },
         },
       },
-      { day: state.day, kind: 'character_added', name: character.name },
+      { day: state.day, kind, name: character.name },
     ),
   );
 }

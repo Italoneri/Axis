@@ -488,7 +488,14 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     ...entryBase,
-    kind: z.enum(['character_added', 'character_removed']),
+    kind: z.enum([
+      'character_added',
+      'character_removed',
+      // Online: a player joined with a new character, took an existing one, or was unlinked.
+      'character_joined',
+      'character_claimed',
+      'character_released',
+    ]),
     name: z.string(),
   }),
   z.object({ ...entryBase, kind: z.literal('research_ready'), title: z.string() }),

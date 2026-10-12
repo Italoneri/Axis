@@ -740,6 +740,12 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return `${entry.name} entrou no grupo`;
     case 'character_removed':
       return `${entry.name} saiu do grupo`;
+    case 'character_joined':
+      return `${entry.name} entrou na Axis`;
+    case 'character_claimed':
+      return `Um jogador assumiu ${entry.name}`;
+    case 'character_released':
+      return `${masterActor(entry)} desligou o jogador de ${entry.name}`;
     case 'research_ready':
       return `Pesquisa '${entry.title}' chegou a 100% e está pronta para concluir`;
     case 'npc_added':

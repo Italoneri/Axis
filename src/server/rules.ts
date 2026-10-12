@@ -69,13 +69,28 @@ const SAMPLE: readonly GameCommand[] = [
   },
 ];
 
+/** Run the way the game function links and unlinks players. */
+const MEMBERSHIP_SAMPLE: readonly GameCommand[] = [
+  { type: 'character_join', id: 'char_parity', name: 'Paridade', color: '#336699' },
+  { type: 'character_release', characterId: 'char_parity' },
+  { type: 'character_claim', characterId: 'char_parity' },
+];
+
 /**
  * Runs a fixed list of commands on a fresh game and returns the final state as
  * JSON. `npm run parity` compares its output in Node and in Deno.
  */
 export function paritySample(): string {
-  const ctx = { actor: { role: 'master' } } as const;
-  const final = SAMPLE.reduce((state, command) => {
+  const master = { actor: { role: 'master' } } as const;
+  const joining = {
+    actor: { role: 'player', characterId: 'char_parity' },
+    membership: true,
+  } as const;
+  const steps = [
+    ...SAMPLE.map((command) => ({ command, ctx: master })),
+    ...MEMBERSHIP_SAMPLE.map((command) => ({ command, ctx: joining })),
+  ];
+  const final = steps.reduce((state, { command, ctx }) => {
     const outcome = applyCommand(state, serverCatalog, command, ctx);
     if (!outcome.ok) throw new Error(`parity sample: ${command.type} refused (${outcome.error})`);
     return outcome.state;

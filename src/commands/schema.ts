@@ -107,6 +107,10 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   command('add_character', { id: newRecordId, ...characterFields }),
   command('update_character', { characterId: ref, ...characterFields }),
   command('remove_character', { characterId: ref }),
+  // Online membership: only the server runs these, while it links or unlinks a player.
+  command('character_join', { id: newRecordId, ...characterFields }),
+  command('character_claim', { characterId: ref }),
+  command('character_release', { characterId: ref }),
   // NPCs
   command('npc_create', { id: newRecordId, ...npcFields }),
   command('npc_update', { npcId: ref, ...npcFields, status: npcStatusSchema }),
@@ -146,4 +150,9 @@ export type Actor = { role: 'master' } | { role: 'player'; characterId?: string 
 
 export interface CommandContext {
   actor: Actor;
+  /**
+   * Set only by the game function while it links or unlinks a player: the
+   * membership commands need it, so no client can send them as a plain command.
+   */
+  membership?: true;
 }

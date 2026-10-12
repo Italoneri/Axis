@@ -135,6 +135,9 @@ const validCommands: Record<CommandType, GameCommand> = {
     color: '#112233',
   },
   remove_character: { type: 'remove_character', characterId: 'thorin' },
+  character_join: { type: 'character_join', id: 'char_new', name: 'Lyra', color: '#6a8fd4' },
+  character_claim: { type: 'character_claim', characterId: 'thorin' },
+  character_release: { type: 'character_release', characterId: 'thorin' },
   npc_create: { type: 'npc_create', id: 'npc_1', ...npcFields, name: 'Lia' },
   npc_update: { type: 'npc_update', npcId: 'bianca', ...npcFields, status: 'ferido' },
   npc_remove: { type: 'npc_remove', npcId: 'bianca' },
@@ -173,6 +176,17 @@ function run(command: unknown, ctx: CommandContext = master, state = richState()
   return applyCommand(state, testCatalog, command, ctx);
 }
 
+/** How the game function links and unlinks players. */
+const joining: CommandContext = {
+  actor: { role: 'player', characterId: 'char_new' },
+  membership: true,
+};
+const membershipCommands = new Set<CommandType>([
+  'character_join',
+  'character_claim',
+  'character_release',
+]);
+
 describe('applyCommand', () => {
   it.each(Object.values(validCommands))(
     'applies $type into a state that passes the schema',
@@ -182,7 +196,8 @@ describe('applyCommand', () => {
         command.type === 'remove_character'
           ? { ...richState(), wallets: { camp: { gold: 100 }, characters: { thorin: {} } } }
           : richState();
-      const result = run(command, master, state);
+      const ctx = membershipCommands.has(command.type) ? joining : master;
+      const result = run(command, ctx, state);
       if (!result.ok) throw new Error(`${command.type}: ${result.error}`);
       expect(result.state).not.toBe(state);
       expect(gameStateSchema.safeParse(result.state).success).toBe(true);
@@ -293,7 +308,10 @@ describe('applyCommand permissions', () => {
     'mission_send_npcs',
     'set_image',
   ]);
-  const masterOnly = Object.values(validCommands).filter((c) => !playerCommands.has(c.type));
+  const masterOnly = Object.values(validCommands).filter(
+    (c) => !playerCommands.has(c.type) && !membershipCommands.has(c.type),
+  );
+  const membership = Object.values(validCommands).filter((c) => membershipCommands.has(c.type));
 
   it.each(masterOnly)('refuses $type from a player', (command) => {
     expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
@@ -305,6 +323,11 @@ describe('applyCommand permissions', () => {
       expect(run(command, thorinPlayer).ok).toBe(true);
     },
   );
+
+  it.each(membership)('refuses $type sent as a plain command, even by the master', (command) => {
+    expect(run(command, master)).toEqual({ ok: false, error: 'forbidden' });
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
 
   it('refuses a home where the slot offers no housing', () => {
     const command = { type: 'npc_set_home', npcId: 'tomas', slotId: 'outer_n' };
@@ -341,6 +364,37 @@ describe('applyCommand permissions', () => {
     const state = makeState();
     const result = applyCommand(state, testCatalog, validCommands.advance_days, thorinPlayer);
     expect(result).toEqual({ ok: false, error: 'forbidden' });
+  });
+});
+
+describe('applyCommand membership', () => {
+  it('creates the joining character with an empty wallet and logs the arrival', () => {
+    const result = run(validCommands.character_join, joining);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.characters.at(-1)).toMatchObject({ id: 'char_new', name: 'Lyra' });
+    expect(result.state.wallets.characters['char_new']).toEqual({});
+    expect(result.logged).toMatchObject([{ kind: 'character_joined', name: 'Lyra' }]);
+  });
+
+  it('refuses a new character with the name of one already at the table', () => {
+    const command = { ...validCommands.character_join, name: 'Thorin' };
+    expect(run(command, joining)).toEqual({ ok: false, error: 'duplicate_name' });
+  });
+
+  it.each([
+    { type: 'character_claim', kind: 'character_claimed' },
+    { type: 'character_release', kind: 'character_released' },
+  ] as const)('logs $type without touching the character', ({ type, kind }) => {
+    const state = richState();
+    const result = run({ type, characterId: 'thorin' }, joining, state);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.characters).toEqual(state.characters);
+    expect(result.logged).toMatchObject([{ kind, name: 'Thorin' }]);
+  });
+
+  it('refuses to claim a character that does not exist', () => {
+    const command = { type: 'character_claim', characterId: 'ghost' };
+    expect(run(command, joining)).toEqual({ ok: false, error: 'not_found' });
   });
 });
 

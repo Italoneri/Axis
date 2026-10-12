@@ -3,6 +3,8 @@ import type { GameState, LogEntry } from '../model/schema';
 import { startBuild, startUpgrade, type BlockReason } from '../systems/BuildSystem';
 import {
   addCharacter,
+  joinWithNewCharacter,
+  logPlayerChange,
   removeCharacter,
   updateCharacter,
   type CharacterFields,
@@ -142,6 +144,13 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'set_image',
 ]);
 
+/** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
+const MEMBERSHIP_COMMANDS: ReadonlySet<CommandType> = new Set([
+  'character_join',
+  'character_claim',
+  'character_release',
+]);
+
 /**
  * The single entry point for changing the game: validates the untrusted
  * command, checks who may run it, then delegates to the pure systems. Pure,
@@ -180,7 +189,8 @@ export function actorName(state: GameState, { actor }: CommandContext): string |
 }
 
 /** Whether `ctx` may run `command` at all, before any rule looks at the game. */
-export function isAllowed(command: GameCommand, { actor }: CommandContext): boolean {
+export function isAllowed(command: GameCommand, { actor, membership }: CommandContext): boolean {
+  if (MEMBERSHIP_COMMANDS.has(command.type)) return membership === true;
   if (actor.role === 'master') return true;
   if (!PLAYER_COMMANDS.has(command.type)) return false;
   // A player only acts for their own character: their coins, their photo.
@@ -306,6 +316,12 @@ const handlers: Handlers = {
   update_character: (command, { state }) =>
     resources(updateCharacter(state, command.characterId, characterFields(command))),
   remove_character: ({ characterId }, { state }) => resources(removeCharacter(state, characterId)),
+  character_join: (command, { state }) =>
+    resources(joinWithNewCharacter(state, { ...characterFields(command), id: command.id })),
+  character_claim: ({ characterId }, { state }) =>
+    resources(logPlayerChange(state, characterId, 'character_claimed')),
+  character_release: ({ characterId }, { state }) =>
+    resources(logPlayerChange(state, characterId, 'character_released')),
 
   npc_create: (command, { state, catalog }) =>
     npcs(addNpc(state, catalog, { ...npcFields(command), id: command.id })),
