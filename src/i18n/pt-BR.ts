@@ -544,6 +544,8 @@ export const t = {
       count === 0 ? 'Escolha ao menos um NPC' : `Enviar ${count} ${count === 1 ? 'NPC' : 'NPCs'}`,
     npcSplit: (commission: number, each: string, camp: string) =>
       `Se der certo: ${each} para cada NPC e ${camp} para o Acampamento (comissão de ${commission}%).`,
+    expectedReturn: (days: number, deadline: number) =>
+      `Retorno previsto em ${days} ${days === 1 ? 'dia' : 'dias'} (prazo da missão: ${deadline})`,
     worksAt: (place: string) => `trabalha em ${place}`,
     noPost: 'sem posto',
     unavailable: 'indisponível',

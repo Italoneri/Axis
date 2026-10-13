@@ -344,8 +344,8 @@ const handlers: Handlers = {
     missions(updateMission(state, catalog, command.missionId, missionFields(command))),
   mission_remove: ({ missionId }, { state }) => missions(removeMission(state, missionId)),
   mission_take_party: ({ missionId }, { state }) => missions(takeMissionAsParty(state, missionId)),
-  mission_send_npcs: ({ missionId, npcIds }, { state }) =>
-    missions(sendNpcsOnMission(state, missionId, npcIds)),
+  mission_send_npcs: ({ missionId, npcIds }, { state, catalog }) =>
+    missions(sendNpcsOnMission(state, catalog, { missionId, npcIds })),
   mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
 

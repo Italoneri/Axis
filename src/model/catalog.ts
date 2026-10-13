@@ -8,6 +8,7 @@ import {
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
+  MAX_ATTRIBUTE,
   MAX_SKILL,
   missionsConfigSchema,
   npcsConfigSchema,
@@ -183,6 +184,11 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ),
     ...duplicates('attribute', catalog.attributes),
     ...jobProblems(catalog),
+    ...heroTableProblems(
+      'missions.json: attributePointsAbove10',
+      catalog.missions.attributePointsAbove10,
+      { from: 11, to: MAX_ATTRIBUTE, above: 10 },
+    ),
     ...heroTableProblems('npcs.json: skillTenthsAbove10', catalog.npcs.skillTenthsAbove10, {
       from: 11,
       to: MAX_SKILL,

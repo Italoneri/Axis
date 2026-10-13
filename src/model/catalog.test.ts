@@ -162,6 +162,19 @@ describe('parseCatalog', () => {
     expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(/skillTenthsAbove10/);
   });
 
+  it('refuses an attribute points table that skips a level or stops growing', () => {
+    const { attributePointsAbove10: table } = rawGameData.missions;
+    const missing = {
+      ...rawGameData.missions,
+      attributePointsAbove10: { ...table, 20: undefined },
+    };
+    expect(() => parseCatalog({ ...rawGameData, missions: missing })).toThrow();
+    const flat = { ...rawGameData.missions, attributePointsAbove10: { ...table, 12: 13 } };
+    expect(() => parseCatalog({ ...rawGameData, missions: flat })).toThrow(
+      /attributePointsAbove10 must grow/,
+    );
+  });
+
   it('needs post openings for every ring a building with posts accepts, at each level', () => {
     const npcs = { ...rawGameData.npcs, postSlots: { outer: [3, 6] } };
     expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(

@@ -192,6 +192,18 @@ export const missionsConfigSchema = z.object({
     minLevel: z.number().int().positive(),
     percent: z.number().int().min(0).max(1000),
   }),
+  /** Mission points of an attribute above 10; up to 10 a level is worth itself. */
+  attributePointsAbove10: z.record(z.string(), z.number().int().positive()),
+  /**
+   * NPC missions take `ceil(days × k / (k + m × team points))` days, at least
+   * `minDays` and at most `maxSlowdown` × the mission's days.
+   */
+  teamSpeed: z.object({
+    k: z.number().int().positive(),
+    m: z.number().int().positive(),
+    minDays: z.number().int().positive(),
+    maxSlowdown: z.number().int().min(1),
+  }),
 });
 
 // ---------- Dynamic records: seeded from src/data, then edited by the master in game ----------
