@@ -22,6 +22,9 @@ npm run dev          # http://localhost:5173
 | `npm run lint` / `npm run format` | ESLint / Prettier                              |
 | `npm run build`                   | Checagem de tipos + build estático em `dist/`  |
 | `npm run gen:placeholders`        | Gera os PNGs placeholder que ainda não existem |
+| `npm run lpc:setup`               | Clona o gerador LPC em `vendor/` (fora do git) |
+| `npm run lpc:build -- <nome>`     | Gera o sprite de um NPC pela receita           |
+| `npm run lpc:items -- <busca>`    | Lista peças, variantes e cores do gerador LPC  |
 
 ## Como jogar
 
@@ -161,6 +164,18 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
 
 - **Save:** versão 7. Saves da versão 4 ganham `npcs: []` ao carregar; os da versão 6 ganham `missions: []`. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
+
+### Sprites dos NPCs
+
+Os NPCs que andam no mapa usam personagens do [Universal LPC Spritesheet Character Generator](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/). Cada personagem fica em `art-sources/npcs/<nome>/`, com a **receita** `character.json` (o mesmo JSON que o site exporta) e o que o site exportaria: `walk.png`, `idle.png`, as animações extras `run`, `sit`, `hurt` (o último quadro serve para "dormindo"), `slash`, `thrust`, `spellcast`, `watering` e `emote`, mais `credits.csv`, `credits.txt`, `metadata.json` e uma `preview.png` (as 4 direções do walk em 2×). Só `walk` e `idle` vão para `public/`, pelo `npm run import:npcs`; as extras esperam até o jogo usá-las.
+
+- **Setup (uma vez por máquina):** `npm run lpc:setup` clona o gerador em `vendor/lpc-generator/` (fora do git do jogo: `vendor/` está no `.gitignore`), instala as dependências dele e confere se o Google Chrome abre. O clone é raso e esparso: definições e código agora, spritesheets só as que alguma receita usa. Fica com uns 410 MB, quase tudo `node_modules` do gerador. Rodar de novo atualiza o gerador.
+- **Criar por receita:** coloque a receita em `art-sources/npcs/<nome>/character.json` e rode `npm run lpc:build -- <nome>` (ou `-- --all`). O script abre a própria página do gerador num Chrome invisível, faz **Import from Clipboard (JSON)** e **ZIP: Split by animation**, então a composição e as cores são as do site (a `aventureira` sai idêntica pixel a pixel à exportada pelo site, guardada em `aventureira/_site/`). Arquivos que não mudaram ficam intactos, e no fim ele roda o `import:npcs`. Uma peça, variante ou cor que não existe para o build antes de abrir o navegador, dizendo qual é e quais opções existem.
+- **Catálogo:** `npm run lpc:items -- <busca> [--body female]` lista as peças com a chave em `selections`, variantes, cores, tipos de corpo e animações (ex.: `lpc:items -- hair long --body female`, `lpc:items -- apron`). Confira se a peça tem `walk` e `idle`: sem elas, a peça some nessa animação.
+- **Pedir por descrição:** peça ao Claude, por exemplo, "crie a sprite da Bianca: maga, cabelo ruivo longo, túnica roxa, sem escudo, com cajado". Ele monta o `character.json` só com peças conferidas no `lpc:items`, roda o `lpc:build` e mostra a `preview.png`. NPCs civis vêm **sem escudo nem armas**, a não ser que você peça (compare `aventureira` com `aventureira_civil`).
+- **Ligar ao NPC:** em `src/data/npc_sprites.json`, `{ "<npcId>": "<nome>" }`. O id está no save exportado (`"npcs": [{ "id": "npc_ab12", "name": "Bianca", … }]`). NPC sem entrada recebe um sprite sorteado pelo id, sempre o mesmo.
+- **Créditos (obrigatório):** a arte LPC é CC-BY-SA, GPL ou OGA-BY, e todas pedem crédito aos autores. O `credits.csv` sai das definições do gerador; o `lpc:build` recusa camada sem autor ou licença, o `import:npcs` leva tudo para a tela **Créditos** e o `npm test` confere que nenhuma linha ficou sem autor e licença.
+- **Publicar:** só quando houver sprite novo importado, e basta um build novo do site; não precisa de `deploy:functions` nem `db push`.
 
 ## Fotos no jogo
 
@@ -382,11 +397,13 @@ src/
   data/              buildings.json, layout.json, theme.json, credits.json, assets.json,
                      currencies.json e os seeds
                      wallets.json, materials.json, research.json, influence.json
-scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno
+scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno,
+                     import:npcs e lpc/ (sprites dos NPCs pelo gerador LPC)
 public/assets/       textures/, buildings/, icons/
 docs/map-reference/  imagem e scripts de referência do mapa
 supabase/            config, migrations SQL (tabelas + RLS), testes pgTAP e Edge Functions
-art-sources/         originais das texturas (fora do git)
+art-sources/         originais das texturas (fora do git) e npcs/ (receitas e sprites LPC)
+vendor/              gerador LPC clonado pelo lpc:setup (fora do git)
 ```
 
 ## Como adicionar uma estrutura nova
