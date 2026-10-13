@@ -203,7 +203,7 @@ async function start(): Promise<void> {
   mountTopBar(
     requireElement('topbar'),
     requireElement('popover'),
-    { store, session, act, memory, archive },
+    { store, session, act, memory, archive, spriteOverrides },
     {
       notify,
       toggleDrawer: () => drawer.toggle(),

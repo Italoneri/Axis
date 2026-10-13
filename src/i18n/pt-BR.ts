@@ -336,6 +336,11 @@ export const t = {
     wageText: (coins: string) => `Salário: ${coins}/dia`,
     noWage: 'Sem salário',
     status: 'Situação',
+    sprite: 'Aparência no mapa',
+    spriteAutomatic: 'Automática',
+    spriteHidden: 'Não aparece no mapa',
+    spriteMissing: (name: string) => `${name} (sprite indisponível)`,
+    spriteMissingHint: 'Essa sprite saiu do projeto: no mapa, o NPC usa a automática.',
     attributes: 'Atributos',
     attributesHint:
       'Força, Destreza e Poder Mágico, de -10 a 20. Só aparecem aqui; aceleram as missões da Guilda.',

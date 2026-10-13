@@ -29,12 +29,24 @@ export function sheetKeys(name: string): SpriteSheets {
   return { walk: `${NPC_SHEET_PREFIX}${name}.walk`, idle: `${NPC_SHEET_PREFIX}${name}.idle` };
 }
 
-/** Sprite names with a walk sheet, sorted so every browser draws from the same list. */
+/**
+ * Sprite names with a walk sheet, sorted so every browser draws from the same list.
+ * `none` is reserved for "not on the map".
+ */
 export function spriteNames(assets: AssetManifest): string[] {
   const names = Object.keys(assets.images)
     .filter(isNpcSheetKey)
     .map((key) => key.slice(NPC_SHEET_PREFIX.length).replace(/\.[^.]+$/, ''));
-  return [...new Set(names)].filter((name) => sheetKeys(name).walk in assets.images).sort();
+  return [...new Set(names)]
+    .filter((name) => name !== NPC_HIDDEN_SPRITE && sheetKeys(name).walk in assets.images)
+    .sort();
+}
+
+/** "aventureira_civil" reads "Aventureira (civil)": the first word is the name, the rest a variant. */
+export function spriteLabel(name: string): string {
+  const [first = '', ...variant] = name.split(/[_-]+/).filter(Boolean);
+  const title = first.charAt(0).toUpperCase() + first.slice(1);
+  return variant.length > 0 ? `${title} (${variant.join(' ')})` : title;
 }
 
 export type SpriteChoice = Pick<Npc, 'id' | 'sprite'>;

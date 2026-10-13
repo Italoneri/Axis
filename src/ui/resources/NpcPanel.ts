@@ -21,6 +21,8 @@ import { findPost, housingList, isHeroSkill, skillOf, type NpcFields } from '../
 import { el } from '../dom';
 import { photoField, saveWithPhoto } from '../photos/photoField';
 import { moveOutButton } from '../SlotNpcs';
+import type { SpriteOverrides } from '../../map/npcSprites';
+import { spriteField, spriteThumb, type SpriteSource } from './npcSpriteField';
 import { buildingLabel, formatCount, formatGold, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
@@ -49,7 +51,11 @@ export class NpcPanel {
   private createdId: string | null = null;
   private redraw: () => void = () => undefined;
 
-  constructor(private readonly deps: PanelDeps) {}
+  constructor(private readonly deps: PanelDeps & { spriteOverrides: SpriteOverrides }) {}
+
+  private get sprites(): SpriteSource {
+    return { catalog: this.deps.store.catalog, overrides: this.deps.spriteOverrides };
+  }
 
   get menuItem(): ResourceMenuItem {
     return {
@@ -127,6 +133,7 @@ export class NpcPanel {
         'div',
         { class: 'card__head' },
         thumb(store, { image: npc.portrait, name: npc.name }, 'md'),
+        spriteThumb(this.sprites, npc),
         el(
           'div',
           {},
@@ -289,6 +296,7 @@ export class NpcPanel {
     const title = input(npc?.title);
     const portrait = photoField({ source: store, current: npc?.portrait, name: npc?.name ?? '' });
     const description = input(npc?.description);
+    const sprite = spriteField(this.sprites, npc ?? { id });
     const wage = wageInputs(catalog, npc?.wage);
     const status = selectInput({
       label: t.npcs.status,
@@ -317,6 +325,7 @@ export class NpcPanel {
         ),
         attributes: attributes.read(),
         wage: wageValue > 0 ? wageValue : undefined,
+        sprite: sprite.read(),
       };
     };
     const form = el(
@@ -333,6 +342,7 @@ export class NpcPanel {
       field(t.common.name, name),
       field(t.npcs.titleField, title),
       el('div', { class: 'field' }, el('span', {}, t.npcs.portrait), portrait.element),
+      sprite.element,
       field(t.common.description, description),
       el('div', { class: 'field' }, el('span', {}, t.npcs.wage), wage.element, wage.preview),
       npc && field(t.npcs.status, status),

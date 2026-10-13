@@ -8,6 +8,7 @@ import {
   sheetKeys,
   isMissingSprite,
   spriteFor,
+  spriteLabel,
   spriteNames,
   spriteOverridesSchema,
   usedColumns,
@@ -23,6 +24,20 @@ describe('spriteNames', () => {
       manifest(['npc.zeca.walk', 'npc.zeca.idle', 'npc.ana.walk', 'npc.solo.idle', 'icon.gold']),
     );
     expect(names).toEqual(['ana', 'zeca']);
+  });
+
+  it('leaves out a sprite named like "not on the map"', () => {
+    expect(spriteNames(manifest(['npc.none.walk', 'npc.ana.walk']))).toEqual(['ana']);
+  });
+});
+
+describe('spriteLabel', () => {
+  it.each([
+    ['aventureira', 'Aventureira'],
+    ['aventureira_civil', 'Aventureira (civil)'],
+    ['guarda_da-noite', 'Guarda (da noite)'],
+  ])('reads %s as %s', (name, label) => {
+    expect(spriteLabel(name)).toBe(label);
   });
 });
 

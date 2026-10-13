@@ -10,6 +10,7 @@ import { ResearchPanel } from './resources/ResearchPanel';
 import { createSaveControls } from './SaveControls';
 import type { ArchiveStore } from '../archiveStore';
 import type { PanelDeps } from './widgets';
+import type { SpriteOverrides } from '../map/npcSprites';
 
 export interface TopBarActions {
   notify: (msg: string, tone?: 'error') => void;
@@ -28,7 +29,7 @@ const FIT_STEPS = ['is-compact', 'is-collapsed', 'is-tight', 'is-scrolling'] as 
 export function mountTopBar(
   root: HTMLElement,
   popover: HTMLElement,
-  deps: PanelDeps & { archive: ArchiveStore },
+  deps: PanelDeps & { archive: ArchiveStore; spriteOverrides: SpriteOverrides },
   actions: TopBarActions,
 ): void {
   const { store, session } = deps;
