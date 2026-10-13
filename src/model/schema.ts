@@ -405,6 +405,8 @@ const buildingEventSchema = z.object({
   buildingId: z.string(),
   level: z.number().int().positive(),
   paid: paidSchema.optional(),
+  /** Why a `building_dropped` went; entries from before only had missing slots. */
+  reason: z.enum(['missing_slot', 'unknown_building']).optional(),
 });
 
 const signedBag = z.record(z.string(), z.number().int());

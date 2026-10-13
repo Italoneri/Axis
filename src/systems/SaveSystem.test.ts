@@ -81,13 +81,6 @@ describe('parseSave', () => {
     { name: 'malformed JSON', text: '{oops', error: /invalid JSON/ },
     { name: 'wrong shape', text: '{"version":4}', error: /day/ },
     {
-      name: 'unknown building',
-      text: JSON.stringify(
-        makeState({ slots: { core: { buildingId: 'castle', level: 1, status: 'done' } } }),
-      ),
-      error: /unknown building "castle"/,
-    },
-    {
       name: 'unknown currency',
       text: JSON.stringify(
         makeState({ wallets: { camp: { ruby: 1 }, characters: { thorin: {} } } }),
@@ -122,10 +115,87 @@ describe('parseSave', () => {
       state: {
         ...save,
         slots: { outer_n: kept },
-        log: [{ day: 4, kind: 'building_dropped', buildingId: 'forge', level: 2 }],
+        log: [
+          {
+            day: 4,
+            kind: 'building_dropped',
+            buildingId: 'forge',
+            level: 2,
+            reason: 'missing_slot',
+          },
+        ],
       },
     });
     vi.restoreAllMocks();
+  });
+
+  it('drops a building taken out of the game (a Torre de Vigia) and loads the rest', () => {
+    const kept = { buildingId: 'forge', level: 1, status: 'done' } as const;
+    const save = makeState({
+      day: 6,
+      slots: { outer_n: kept, outer_e: { buildingId: 'watchtower', level: 2, status: 'done' } },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const parsed = parseSave(JSON.stringify(save), testCatalog);
+    expect(parsed).toEqual({
+      ok: true,
+      state: {
+        ...save,
+        slots: { outer_n: kept },
+        log: [
+          {
+            day: 6,
+            kind: 'building_dropped',
+            buildingId: 'watchtower',
+            level: 2,
+            reason: 'unknown_building',
+          },
+        ],
+      },
+    });
+    expect(warn).toHaveBeenCalledOnce();
+    vi.restoreAllMocks();
+
+    // Exporting and importing the loaded game gives it back as it is.
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parseSave(serializeState(parsed.state), testCatalog)).toEqual(parsed);
+  });
+
+  it('keeps a save without unknown buildings exactly as it was', () => {
+    const save = makeState({
+      slots: { outer_n: { buildingId: 'forge', level: 1, status: 'done' } },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(parseSave(JSON.stringify(save), testCatalog)).toEqual({ ok: true, state: save });
+    expect(warn).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('frees the NPCs that worked in a dropped building', () => {
+    const save = makeState({
+      slots: {
+        outer_n: { buildingId: 'study_station', level: 1, status: 'done' },
+        outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+      },
+      npcs: [
+        npc({
+          id: 'lia',
+          name: 'Lia',
+          home: 'outer_e',
+          job: { slotId: 'outer_n', activityId: 'estudar', carry: 0 },
+          status: 'trabalhando',
+        }),
+      ],
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const parsed = parseSave(JSON.stringify(save), testCatalog);
+    vi.restoreAllMocks();
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.npcs[0]).toMatchObject({
+      home: 'outer_e',
+      job: null,
+      status: 'disponivel',
+    });
   });
 
   // Negative skills only widened the fields: v5 saves from before them stay valid as they are.
