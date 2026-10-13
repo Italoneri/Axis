@@ -152,6 +152,16 @@ describe('parseCatalog', () => {
     );
   });
 
+  it.each([
+    { name: 'a missing level', table: { 11: 26, 12: 35, 13: 46, 14: 61 } },
+    { name: 'an extra level', table: { 11: 26, 12: 35, 13: 46, 14: 61, 15: 80, 16: 99 } },
+    { name: 'a level that does not grow', table: { 11: 26, 12: 35, 13: 35, 14: 61, 15: 80 } },
+    { name: '11 not above 10 (20 tenths)', table: { 11: 20, 12: 35, 13: 46, 14: 61, 15: 80 } },
+  ])('refuses a hero yield table with $name', ({ table }) => {
+    const npcs = { ...rawGameData.npcs, skillTenthsAbove10: table };
+    expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(/skillTenthsAbove10/);
+  });
+
   it('needs post openings for every ring a building with posts accepts, at each level', () => {
     const npcs = { ...rawGameData.npcs, postSlots: { outer: [3, 6] } };
     expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(

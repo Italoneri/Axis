@@ -30,7 +30,10 @@ export const costSchema = z.object({
 
 /** Skill score of an NPC: 0 still works, at the base rate. */
 /** Negative levels hinder the post: the NPC works against it. */
-export const skillLevelSchema = z.number().int().min(-10).max(10);
+/** Work skills: up to 10 the yield grows steadily, 11–15 are hero levels (`skillTenthsAbove10`). */
+export const MIN_SKILL = -10;
+export const MAX_SKILL = 15;
+export const skillLevelSchema = z.number().int().min(MIN_SKILL).max(MAX_SKILL);
 
 export const skillDefSchema = z.object({
   id: z.string().min(1),
@@ -81,6 +84,8 @@ export const buildingLevelSchema = z.object({
 export const npcsConfigSchema = z.object({
   /** A negative skill yields `base × skill / negativeDivisor`. */
   negativeDivisor: z.number().positive(),
+  /** Yield in tenths of the base for skills 11–15; 10 yields 20 tenths. Integers, so server and client agree. */
+  skillTenthsAbove10: z.record(z.string(), z.number().int().positive()),
   /** The only buildings whose levels may offer `housing`. */
   housingBuildings: z.array(z.string().min(1)).min(1),
   /** Openings of every building post by slot type, per level in force (index 0 = level 1). */

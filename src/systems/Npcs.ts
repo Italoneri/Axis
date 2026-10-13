@@ -1,6 +1,7 @@
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import type {
   BuildingLevel,
+  NpcsConfig,
   GameState,
   JobDef,
   LogEntry,
@@ -43,20 +44,30 @@ export interface JobOrder {
   researchId?: string | undefined;
 }
 
+/** What `yieldTenths` reads from npcs.json. */
+export type YieldTable = Pick<NpcsConfig, 'negativeDivisor' | 'skillTenthsAbove10'>;
+
 /**
- * Yield in tenths, kept integer so daily sums stay exact: `base × (1 + skill / 10)`,
- * or `base × skill / negativeDivisor` for a negative skill, which works against the post.
+ * Yield in tenths, kept integer so daily sums stay exact: `base × (1 + skill / 10)`
+ * up to 10, then the hero table (15 yields 4× what 10 does), or
+ * `base × skill / negativeDivisor` for a negative skill, which works against the post.
  */
-export function yieldTenths(base: number, skill: number, negativeDivisor: number): number {
-  if (skill < 0) return Math.round((base * skill * 10) / negativeDivisor);
-  return Math.round(base * (10 + skill));
+export function yieldTenths(base: number, skill: number, table: YieldTable): number {
+  if (skill < 0) return Math.round((base * skill * 10) / table.negativeDivisor);
+  const heroTenths = skill > 10 ? table.skillTenthsAbove10[String(skill)] : undefined;
+  return Math.round(base * (heroTenths ?? 10 + skill));
+}
+
+/** Hero levels yield explosively more; the UI marks them. */
+export function isHeroSkill(level: number): boolean {
+  return level > 10;
 }
 
 /** What this NPC adds to the post each day, in tenths; bonus posts have no amount. */
 export function postYieldTenths(catalog: Catalog, post: Post, npc: Npc): number {
   const { effect, skill } = post.job;
   if (effect.type === 'bonus') return 0;
-  return yieldTenths(effect.perDay, skillOf(npc, skill), catalog.npcs.negativeDivisor);
+  return yieldTenths(effect.perDay, skillOf(npc, skill), catalog.npcs);
 }
 
 export function skillOf(npc: Npc, skillId: string): number {

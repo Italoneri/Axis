@@ -227,13 +227,13 @@ describe('applyCommand', () => {
       },
     },
     {
-      name: 'skill above 10',
+      name: 'skill above 15',
       input: {
         type: 'npc_update',
         npcId: 'bianca',
         ...npcFields,
         status: 'disponivel',
-        skills: { smithing: 11 },
+        skills: { smithing: 16 },
       },
     },
   ])('refuses a malformed command: $name', ({ input }) => {

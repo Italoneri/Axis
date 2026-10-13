@@ -160,6 +160,7 @@ export const testCatalog = parseCatalog({
   },
   npcs: {
     negativeDivisor: 5,
+    skillTenthsAbove10: { 11: 26, 12: 35, 13: 46, 14: 61, 15: 80 },
     housingBuildings: ['barracks'],
     postSlots: { core: [1, 1], outer: [1, 2] },
     construction: {

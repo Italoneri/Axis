@@ -1355,6 +1355,17 @@ details > summary {
   background: var(--danger);
 }
 
+/* Skills above 10 ("nível herói") yield explosively more: a warmer, brighter gold. */
+.npc-skill-bar__fill.is-hero {
+  background: linear-gradient(to right, var(--gold), var(--gold-soft));
+  box-shadow: 0 0 6px rgba(243, 227, 166, 0.45);
+}
+
+.is-hero {
+  color: var(--gold-soft);
+  font-weight: 700;
+}
+
 .npc-skill-inputs {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

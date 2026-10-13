@@ -9,108 +9,51 @@
     "count": 8,
     "rotation": 0,
     "width": 0.046,
-    "angles": [
-      0,
-      45,
-      90,
-      135,
-      180,
-      225,
-      270,
-      315
-    ],
+    "angles": [0, 45, 90, 135, 180, 225, 270, 315],
     "prisms": [
       {
         "id": "roxo",
         "name": "Roxo",
-        "rgb": [
-          128,
-          52,
-          200
-        ]
+        "rgb": [128, 52, 200]
       },
       {
         "id": "verde",
         "name": "Verde",
-        "rgb": [
-          40,
-          170,
-          80
-        ]
+        "rgb": [40, 170, 80]
       },
       {
         "id": "branco",
         "name": "Branco",
-        "rgb": [
-          225,
-          230,
-          240
-        ],
-        "glow": [
-          220,
-          235,
-          255
-        ],
-        "edge": [
-          255,
-          255,
-          255
-        ]
+        "rgb": [225, 230, 240],
+        "glow": [220, 235, 255],
+        "edge": [255, 255, 255]
       },
       {
         "id": "laranja",
         "name": "Laranja",
-        "rgb": [
-          240,
-          120,
-          30
-        ]
+        "rgb": [240, 120, 30]
       },
       {
         "id": "azul",
         "name": "Azul",
-        "rgb": [
-          40,
-          90,
-          220
-        ]
+        "rgb": [40, 90, 220]
       },
       {
         "id": "preto",
         "name": "Preto",
-        "rgb": [
-          30,
-          26,
-          36
-        ],
-        "glow": [
-          120,
-          90,
-          160
-        ],
-        "edge": [
-          170,
-          150,
-          200
-        ]
+        "rgb": [30, 26, 36],
+        "glow": [120, 90, 160],
+        "edge": [170, 150, 200]
       },
       {
         "id": "vermelho",
         "name": "Vermelho",
-        "rgb": [
-          205,
-          35,
-          40
-        ]
+        "rgb": [205, 35, 40]
       },
       {
         "id": "amarelo",
         "name": "Amarelo",
-        "rgb": [
-          245,
-          205,
-          40
-        ]
+        "rgb": [245, 205, 40]
       }
     ],
     "note": "Prismas na ordem dos ângulos: a partir do Norte, sentido horário."

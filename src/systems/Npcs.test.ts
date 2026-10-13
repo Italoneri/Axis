@@ -64,8 +64,20 @@ describe('yieldTenths', () => {
     { base: 1.5, skill: -10, tenths: -30 },
     { base: 1.5, skill: 0, tenths: 15 },
     { base: 1.5, skill: 10, tenths: 30 },
+    { base: 1, skill: 11, tenths: 26 },
+    { base: 1, skill: 12, tenths: 35 },
+    { base: 1, skill: 13, tenths: 46 },
+    { base: 1, skill: 14, tenths: 61 },
+    { base: 1, skill: 15, tenths: 80 },
+    { base: 1.5, skill: 13, tenths: 69 },
   ])('turns base $base at skill $skill into $tenths tenths', ({ base, skill, tenths }) => {
-    expect(yieldTenths(base, skill, 5)).toBe(tenths);
+    expect(yieldTenths(base, skill, gameData.npcs)).toBe(tenths);
+  });
+
+  it('makes skill 15 yield 4× what skill 10 does (10 iron become 40)', () => {
+    const base = 5;
+    expect(yieldTenths(base, 15, gameData.npcs)).toBe(4 * yieldTenths(base, 10, gameData.npcs));
+    expect(yieldTenths(base, 10, gameData.npcs)).toBe(100);
   });
 });
 

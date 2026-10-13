@@ -6,6 +6,7 @@ import {
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
+  MAX_SKILL,
   missionsConfigSchema,
   npcsConfigSchema,
   researchBookSchema,
@@ -167,6 +168,11 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('world', catalog.worlds),
     ...duplicates('skill', catalog.skills),
     ...jobProblems(catalog),
+    ...heroTableProblems('npcs.json: skillTenthsAbove10', catalog.npcs.skillTenthsAbove10, {
+      from: 11,
+      to: MAX_SKILL,
+      above: 20,
+    }),
     ...housingProblems(catalog),
     ...postSlotProblems(catalog),
     ...layoutProblems(catalog),
@@ -209,6 +215,26 @@ function menuProblems(
 }
 
 /** Posts must use known skills, and activity ids identify a post within a level. */
+/**
+ * An "explosive" table: one entry per level from `from` to `to`, each above
+ * the one before, the first above what the linear rule gives at 10 (`above`).
+ */
+export function heroTableProblems(
+  owner: string,
+  table: Readonly<Record<string, number>>,
+  { from, to, above }: { from: number; to: number; above: number },
+): string[] {
+  const levels = Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
+  const extra = Object.keys(table).filter((key) => !levels.includes(key));
+  const missing = levels.filter((level) => table[level] === undefined);
+  if (extra.length > 0 || missing.length > 0) {
+    return [`${owner} needs exactly the levels ${from} to ${to}`];
+  }
+  const values = levels.map((level) => table[level] ?? 0);
+  const isGrowing = values.every((value, i) => value > (i === 0 ? above : (values[i - 1] ?? 0)));
+  return isGrowing ? [] : [`${owner} must grow at every level, starting above ${above}`];
+}
+
 function jobProblems({ buildings, skills, npcs }: Catalog): string[] {
   const skillIds = new Set(skills.map((s) => s.id));
   const constructionActivity = npcs.construction.activity;

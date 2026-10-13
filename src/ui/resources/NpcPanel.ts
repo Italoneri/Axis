@@ -1,7 +1,7 @@
 import { newId } from '../../commands/newId';
 import { t } from '../../i18n/pt-BR';
 import { goldInBronze, type Catalog } from '../../model/catalog';
-import type { GameState, Npc, NpcStatus } from '../../model/schema';
+import { MAX_SKILL, MIN_SKILL, type GameState, type Npc, type NpcStatus } from '../../model/schema';
 import {
   bronzeToGold,
   fromBronze,
@@ -9,7 +9,7 @@ import {
   toBronze,
   type CoinBag,
 } from '../../systems/Coins';
-import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
+import { findPost, housingList, isHeroSkill, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
 import { photoField, saveWithPhoto } from '../photos/photoField';
 import { moveOutButton } from '../SlotNpcs';
@@ -30,8 +30,6 @@ import {
 const SKILL_KEY = 'npcs.skill';
 const IDLE_KEY = 'npcs.idle';
 const ALL = 'all';
-const MAX_SKILL = 10;
-const MIN_SKILL = -10;
 const STATUSES: readonly NpcStatus[] = ['disponivel', 'ferido', 'em_missao'];
 
 /** NPCs: cards with skills, home and job; players move them, the master edits them. */
@@ -165,11 +163,7 @@ export class NpcPanel {
           { class: 'npc-skill', title: skill.description },
           el('span', { class: 'npc-skill__name' }, `${skill.icon} ${skill.name}`),
           skillBar(level),
-          el(
-            'span',
-            { class: `npc-skill__value${level < 0 ? ' is-negative' : ''}` },
-            String(level),
-          ),
+          el('span', { class: `npc-skill__value${valueTone(level)}` }, String(level)),
         );
       }),
     );
@@ -371,7 +365,12 @@ function clampSkill(value: number): number {
   return Math.min(MAX_SKILL, Math.max(MIN_SKILL, Math.round(value)));
 }
 
-/** Grows right from the middle in gold, or left in red for a skill that hinders. */
+function valueTone(level: number): string {
+  if (level < 0) return ' is-negative';
+  return isHeroSkill(level) ? ' is-hero' : '';
+}
+
+/** Grows right from the middle in gold (brighter at hero levels), or left in red for a skill that hinders. */
 function skillBar(level: number): HTMLElement {
   const isNegative = level < 0;
   const width = (Math.min(MAX_SKILL, Math.abs(level)) / MAX_SKILL) * 50;
@@ -385,7 +384,7 @@ function skillBar(level: number): HTMLElement {
       'aria-valuenow': String(level),
     },
     el('div', {
-      class: `npc-skill-bar__fill${isNegative ? ' is-negative' : ''}`,
+      class: `npc-skill-bar__fill${valueTone(level)}`,
       style: `${isNegative ? 'right' : 'left'}: 50%; width: ${width}%`,
     }),
   );
