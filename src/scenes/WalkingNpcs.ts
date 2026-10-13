@@ -23,8 +23,8 @@ import type { WalkingNpcsSetting } from '../ui/walkingNpcsSetting';
 import type { CameraController } from './CameraController';
 import { isCanvasGesture, isOverCanvas } from './pointerGesture';
 
-/** A person stands about a third as tall as an outer building is deep. */
-const PERSON_HEIGHT_PER_OUTER_DEPTH = 1 / 3;
+/** A person stands about a fifth as tall as an outer building is deep. */
+const PERSON_HEIGHT_PER_OUTER_DEPTH = 1 / 5;
 /** Height of an LPC body inside its 64 px frame, and where its feet rest. */
 const LPC_BODY_PX = 52;
 const LPC_FEET_Y = 61 / NPC_FRAME_SIZE;
