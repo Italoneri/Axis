@@ -1180,6 +1180,21 @@ details > summary {
   font-style: italic;
 }
 
+.credits__layers {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  list-style: none;
+  font-size: 0.82rem;
+}
+
+.credits__layers li {
+  display: grid;
+  gap: 1px;
+}
+
 /* Online: login and "create a game" cards, shown before the map is mounted. */
 .gate {
   position: fixed;

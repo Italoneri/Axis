@@ -62,6 +62,8 @@
     "menu.cogumelos_caverna": "assets/menu/cogumelos_caverna.jpg",
     "menu.frango_batatas": "assets/menu/frango_batatas.jpg",
     "menu.cozido_cordeiro": "assets/menu/cozido_cordeiro.jpg",
-    "menu.banquete_taverneiro": "assets/menu/banquete_taverneiro.jpg"
+    "menu.banquete_taverneiro": "assets/menu/banquete_taverneiro.jpg",
+    "npc.aventureira.walk": "assets/npcs/aventureira/walk.png",
+    "npc.aventureira.idle": "assets/npcs/aventureira/idle.png"
   }
 }

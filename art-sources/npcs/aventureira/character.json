@@ -1,0 +1,689 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "subId": null,
+      "variant": "",
+      "recolor": "light",
+      "name": "Body Color (light)"
+    },
+    "head": {
+      "itemId": "heads_human_elderly_small",
+      "subId": null,
+      "variant": "",
+      "recolor": "light",
+      "name": "Human Elderly Small (light)"
+    },
+    "expression": {
+      "itemId": "face_neutral",
+      "subId": null,
+      "variant": "",
+      "recolor": "light",
+      "name": "Neutral (light)"
+    },
+    "shield": {
+      "itemId": "shield_two_engrailed",
+      "subId": null,
+      "variant": "two_engrailed",
+      "recolor": "",
+      "name": "Two engrailed shield (two_engrailed)"
+    },
+    "shield_paint": {
+      "itemId": "shield_heater_paint",
+      "subId": null,
+      "variant": "",
+      "recolor": "maroon",
+      "name": "Heater Shield Paint (maroon)"
+    },
+    "vest": {
+      "itemId": "dress_bodice",
+      "subId": null,
+      "variant": "blue",
+      "recolor": "",
+      "name": "Bodice (blue)"
+    },
+    "jacket": {
+      "itemId": "torso_jacket_tabard",
+      "subId": null,
+      "variant": "orange",
+      "recolor": "",
+      "name": "Tabard (orange)"
+    },
+    "legs": {
+      "itemId": "legs_cuffed",
+      "subId": null,
+      "variant": "",
+      "recolor": "rose",
+      "name": "Cuffed Pants (rose)"
+    },
+    "hair": {
+      "itemId": "hair_princess",
+      "subId": null,
+      "variant": "",
+      "recolor": "gold",
+      "name": "Princess (gold)"
+    },
+    "shoes": {
+      "itemId": "feet_boots_basic",
+      "subId": null,
+      "variant": "",
+      "recolor": "pink",
+      "name": "Basic Boots (pink)"
+    }
+  },
+  "selectedAnimation": "walk",
+  "showTransparencyGrid": true,
+  "applyTransparencyMask": false,
+  "matchBodyColorEnabled": true,
+  "compactDisplay": false,
+  "enabledLicenses": {
+    "CC0": true,
+    "CC-BY-SA": true,
+    "CC-BY": true,
+    "OGA-BY": true,
+    "GPL": true
+  },
+  "enabledAnimations": {
+    "spellcast": false,
+    "thrust": false,
+    "walk": false,
+    "slash": false,
+    "shoot": false,
+    "hurt": false,
+    "climb": false,
+    "idle": false,
+    "jump": false,
+    "sit": false,
+    "emote": false,
+    "run": false,
+    "watering": false,
+    "combat": false,
+    "1h_slash": false,
+    "1h_backslash": false,
+    "1h_halfslash": false
+  },
+  "url": "https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/#sex=female&body=Body_Color_light&head=Human_Elderly_Small_light&expression=Neutral_light&shield=Two_engrailed_shield_two_engrailed&shield_paint=Heater_Shield_Paint_maroon&vest=Bodice_blue&jacket=Tabard_orange&legs=Cuffed_Pants_rose&hair=Princess_gold&shoes=Basic_Boots_pink",
+  "layers": [
+    {
+      "itemId": "shield_two_engrailed",
+      "name": "Two engrailed shield (two_engrailed)",
+      "variant": "two_engrailed",
+      "recolors": null,
+      "zPos": 2,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "shield/two_engrailed/paint/bg/spellcast/two_engrailed.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt"
+      ]
+    },
+    {
+      "itemId": "shield_heater_paint",
+      "name": "Heater Shield Paint (maroon)",
+      "variant": "",
+      "recolors": {
+        "shield_paint": "maroon"
+      },
+      "zPos": 3,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "shield/heater/original/paint/bg/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "hair_princess",
+      "name": "Princess (gold)",
+      "variant": "",
+      "recolors": {
+        "hair": "gold"
+      },
+      "zPos": 9,
+      "layerNum": 2,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "hair/princess/adult/bg/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "body",
+      "name": "Body Color (light)",
+      "variant": "",
+      "recolors": {
+        "body": "light"
+      },
+      "zPos": 10,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "body/bodies/female/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "legs_cuffed",
+      "name": "Cuffed Pants (rose)",
+      "variant": "",
+      "recolors": {
+        "legs": "rose"
+      },
+      "zPos": 20,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "legs/cuffed/thin/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "feet_boots_basic",
+      "name": "Basic Boots (pink)",
+      "variant": "",
+      "recolors": {
+        "shoes": "pink"
+      },
+      "zPos": 25,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "feet/boots/basic/thin/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "dress_bodice",
+      "name": "Bodice (blue)",
+      "variant": "blue",
+      "recolors": null,
+      "zPos": 45,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "dress/bodice/female/spellcast/blue.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "idle"
+      ]
+    },
+    {
+      "itemId": "torso_jacket_tabard",
+      "name": "Tabard (orange)",
+      "variant": "orange",
+      "recolors": null,
+      "zPos": 55,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "torso/jacket/tabard/female/spellcast/orange.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt"
+      ]
+    },
+    {
+      "itemId": "heads_human_elderly_small",
+      "name": "Human Elderly Small (light)",
+      "variant": "",
+      "recolors": {
+        "head": "light"
+      },
+      "zPos": 100,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "head/heads/human/elderly_small/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "face_neutral",
+      "name": "Neutral (light)",
+      "variant": "",
+      "recolors": {
+        "expression": "light"
+      },
+      "zPos": 101,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "head/faces/elderly/neutral/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "shield_two_engrailed",
+      "name": "Two engrailed shield (two_engrailed)",
+      "variant": "two_engrailed",
+      "recolors": null,
+      "zPos": 110,
+      "layerNum": 2,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "shield/two_engrailed/paint/fg/female/spellcast/two_engrailed.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt"
+      ]
+    },
+    {
+      "itemId": "shield_heater_paint",
+      "name": "Heater Shield Paint (maroon)",
+      "variant": "",
+      "recolors": {
+        "shield_paint": "maroon"
+      },
+      "zPos": 111,
+      "layerNum": 2,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "shield/heater/original/paint/fg/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    },
+    {
+      "itemId": "hair_princess",
+      "name": "Princess (gold)",
+      "variant": "",
+      "recolors": {
+        "hair": "gold"
+      },
+      "zPos": 120,
+      "layerNum": 1,
+      "yPos": 0,
+      "needsRecolor": false,
+      "source": {
+        "kind": "catalog",
+        "spritePath": "hair/princess/adult/fg/spellcast.png"
+      },
+      "supportedAnimations": [
+        "spellcast",
+        "thrust",
+        "walk",
+        "slash",
+        "shoot",
+        "hurt",
+        "climb",
+        "idle",
+        "jump",
+        "sit",
+        "emote",
+        "run",
+        "combat_idle",
+        "backslash",
+        "halfslash"
+      ]
+    }
+  ],
+  "credits": [
+    {
+      "fileName": "body/bodies/female/walk.png",
+      "file": "body/bodies/female",
+      "notes": "see details at https://opengameart.org/content/lpc-character-bases",
+      "authors": [
+        "Benjamin K. Smith (BenCreating)",
+        "bluecarrot16",
+        "TheraHedwig",
+        "Evert",
+        "MuffinElZangano",
+        "Durrani",
+        "Pierre Vigier (pvigier)",
+        "ElizaWy",
+        "Matthew Krohn (makrohn)",
+        "Johannes Sjölund (wulax)",
+        "Stephen Challener (Redshrike)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0",
+        "CC-BY-SA 3.0",
+        "GPL 3.0"
+      ],
+      "urls": [
+        "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+        "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+        "https://opengameart.org/content/lpc-ladies",
+        "https://opengameart.org/content/lpc-7-womens-shirts",
+        "https://opengameart.org/content/lpc-jump-expanded",
+        "https://opengameart.org/content/lpc-be-seated",
+        "https://opengameart.org/content/lpc-revised-character-basics",
+        "https://gitlab.com/vagabondgame/lpc-characters",
+        "https://opengameart.org/content/lpc-male-jumping-animation-by-durrani",
+        "https://opengameart.org/content/lpc-runcycle-and-diagonal-walkcycle"
+      ]
+    },
+    {
+      "fileName": "head/heads/human/elderly_small/walk.png",
+      "file": "head/heads/human/elderly_small",
+      "notes": "original head by Redshrike, elderly & reduced size head by ElizaWy",
+      "authors": [
+        "ElizaWy",
+        "Stephen Challener (Redshrike)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0",
+        "CC-BY"
+      ],
+      "urls": []
+    },
+    {
+      "fileName": "head/faces/elderly/neutral/walk.png",
+      "file": "head/faces",
+      "notes": "Original by Redshrike, Expressions by ElizaWy, mapped to all frames by JaidynReiman",
+      "authors": [
+        "JaidynReiman",
+        "ElizaWy",
+        "Stephen Challener (Redshrike)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0"
+      ],
+      "urls": [
+        "https://github.com/ElizaWy/LPC/tree/main/Characters/Head",
+        "https://opengameart.org/content/ulpc-expanded-expressions"
+      ]
+    },
+    {
+      "fileName": "shield/two_engrailed/paint/bg/walk/two_engrailed.png",
+      "file": "shield/two_engrailed",
+      "notes": "",
+      "authors": [
+        "bluecarrot16",
+        "Sander Frenken (castelonia)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0"
+      ],
+      "urls": [
+        "https://opengameart.org/content/lpc-shields"
+      ]
+    },
+    {
+      "fileName": "shield/heater/original/paint/bg/walk.png",
+      "file": "shield/heater/original/paint",
+      "notes": "original by ElizaWy, extended to all animation frames and v3 character base by bluecarrot16, expanded by JaidynReiman",
+      "authors": [
+        "bluecarrot16",
+        "ElizaWy",
+        "JaidynReiman"
+      ],
+      "licenses": [
+        "OGA-BY 3.0"
+      ],
+      "urls": [
+        "https://github.com/ElizaWy/LPC/tree/main/Characters/Props/Shield%2001%20-%20Heater%20Shield",
+        "https://opengameart.org/content/lpc-expanded-sit-run-jump-more"
+      ]
+    },
+    {
+      "fileName": "dress/bodice/female/walk/blue.png",
+      "file": "dress/bodice",
+      "notes": "original princess.xcf by Sharm, extended to all poses by makrohn, edited to v3 bases and animation cleanup by bluecarrot16",
+      "authors": [
+        "bluecarrot16",
+        "Matthew Krohn (makrohn)",
+        "Lanea Zimmerman (Sharm)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0",
+        "CC-BY-SA 3.0",
+        "GPL 3.0"
+      ],
+      "urls": [
+        "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+        "https://opengameart.org/content/lpc-dress-in-combat-poses",
+        "http://opengameart.org/content/lpc-clothing-updates"
+      ]
+    },
+    {
+      "fileName": "torso/jacket/tabard/female/walk/orange.png",
+      "file": "torso/jacket/tabard",
+      "notes": "original by wulax, edited to v3 base by bluecarrot16",
+      "authors": [
+        "bluecarrot16",
+        "Johannes Sjölund (wulax)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0",
+        "CC-BY-SA 3.0",
+        "GPL 3.0"
+      ],
+      "urls": [
+        "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+        "http://opengameart.org/content/lpc-clothing-updates"
+      ]
+    },
+    {
+      "fileName": "legs/cuffed/thin/walk.png",
+      "file": "legs/cuffed",
+      "notes": "Original bases by Redshrike, thrust/shoot bases by Wulax, original cuffed pants by ElizaWy, climb/jump/run/sit/emotes/revised combat by JaidynReiman",
+      "authors": [
+        "ElizaWy",
+        "JaidynReiman",
+        "Johannes Sjölund (wulax)",
+        "Stephen Challener (Redshrike)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0"
+      ],
+      "urls": [
+        "https://github.com/ElizaWy/LPC/tree/main/Characters/Clothing",
+        "https://opengameart.org/content/lpc-expanded-sit-run-jump-more",
+        "https://opengameart.org/content/lpc-expanded-pants"
+      ]
+    },
+    {
+      "fileName": "hair/princess/adult/fg/walk.png",
+      "file": "hair/princess",
+      "notes": "",
+      "authors": [
+        "JaidynReiman",
+        "Lanea Zimmerman (Sharm)"
+      ],
+      "licenses": [
+        "OGA-BY 3.0",
+        "CC-BY-SA 3.0",
+        "GPL 3.0"
+      ],
+      "urls": [
+        "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+        "https://opengameart.org/content/lpc-expanded-hair"
+      ]
+    },
+    {
+      "fileName": "feet/boots/basic/thin/walk.png",
+      "file": "feet/boots/basic",
+      "notes": "original by Nila122, edited for male and v3 bases by bluecarrot16, Jump/Sit/Emote/Run/Revised Combat by JaidynReiman",
+      "authors": [
+        "JaidynReiman",
+        "bluecarrot16",
+        "Nila122"
+      ],
+      "licenses": [
+        "OGA-BY 3.0",
+        "CC-BY-SA 3.0",
+        "GPL 2.0",
+        "GPL 3.0"
+      ],
+      "urls": [
+        "https://opengameart.org/content/lpc-clothes-and-hair",
+        "https://opengameart.org/content/lpc-expanded-socks-shoes"
+      ]
+    }
+  ]
+}
