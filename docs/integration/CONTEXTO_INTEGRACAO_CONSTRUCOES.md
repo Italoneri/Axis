@@ -26,8 +26,7 @@ Documento de passagem para um chat cujo trabalho é **receber os zips de arte da
 | Enfermaria | `infirmary` | middle, outer | placeholder |
 | Biblioteca | `library` | middle | placeholder |
 | Santuário | `sanctuary` | middle | placeholder |
-| Estação de Estudo | `study_station` | middle, outer | placeholder |
-| Arsenal, Torre de Vigia, Quartel | `armory`, `watchtower`, `barracks` | outer | placeholder |
+| Arsenal, Quartel | `armory`, `barracks` | outer | placeholder |
 
 ### Transição do anel intermediário
 

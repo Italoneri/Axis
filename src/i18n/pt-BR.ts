@@ -419,7 +419,7 @@ export const t = {
       concluida: 'Concluída',
     } satisfies Record<ResearchStatus, string>,
     empty: 'Nenhuma pesquisa aqui.',
-    buildStationHint: 'Construa a Estação de Estudo para ver os detalhes.',
+    buildStationHint: 'Construa a Biblioteca para ver os detalhes no Arquivo de Pesquisas.',
     archiveTitle: 'Arquivo de Pesquisas',
     allStatuses: 'Todos os status',
     allCategories: 'Todas as categorias',
@@ -1022,7 +1022,10 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_completed: `Concluída: ${what}`,
     building_forced: `${masterActor(entry)} definiu ${what}`,
     building_removed: `${masterActor(entry)} removeu ${what}`,
-    building_dropped: `${what} removida: o espaço não existe mais no mapa`,
+    building_dropped:
+      entry.kind === 'building_dropped' && entry.reason === 'unknown_building'
+        ? `${what} removida: a construção não existe mais no jogo`
+        : `${what} removida: o espaço não existe mais no mapa`,
   };
   return actions[entry.kind] + paid;
 }

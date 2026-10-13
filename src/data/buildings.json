@@ -171,7 +171,7 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 30, "iron": 20, "aetherium": 5 } },
         "buildTime": 3,
-        "effect": "Vantagem em testes de História e Arcanismo para pesquisas feitas na Axis.",
+        "effect": "Vantagem em testes de História e Arcanismo para pesquisas feitas na Axis. Libera o Arquivo de Pesquisas com a ficha completa de cada estudo.",
         "jobs": [
           {
             "activity": "pesquisar",
@@ -303,33 +303,6 @@
     ]
   },
   {
-    "id": "watchtower",
-    "name": "Torre de Vigia",
-    "description": "Um posto elevado junto à muralha, de onde se vê cada entrada da Axis.",
-    "icon": "icon.watchtower",
-    "sprite": "building.watchtower",
-    "allowedSlots": ["outer"],
-    "levels": [
-      {
-        "cost": { "coins": 100, "materials": { "wood": 54, "iron": 36 } },
-        "buildTime": 2,
-        "effect": "A Axis não pode ser surpreendida."
-      },
-      {
-        "cost": { "coins": 250, "materials": { "wood": 108, "iron": 72 } },
-        "buildTime": 4,
-        "effect": "O mestre avisa com 1 dia de antecedência sobre ameaças que se aproximam da Axis.",
-        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
-      },
-      {
-        "cost": { "coins": 600, "materials": { "wood": 192, "iron": 128, "aetherium": 20 } },
-        "buildTime": 7,
-        "effect": "Vantagem em iniciativa em combates dentro da Axis.",
-        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
-      }
-    ]
-  },
-  {
     "id": "barracks",
     "name": "Alojamento",
     "description": "Camas, baús e uma lareira comunal para o grupo e seus aliados.",
@@ -434,57 +407,6 @@
             "name": "Destilar",
             "skill": "alchemy",
             "effect": { "type": "produce", "material": "aetherium", "perDay": 2 }
-          }
-        ],
-        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
-      }
-    ]
-  },
-  {
-    "id": "study_station",
-    "name": "Estação de Estudo",
-    "description": "Mesas, estantes e lousas onde o grupo organiza suas pesquisas.",
-    "icon": "icon.study_station",
-    "sprite": "building.study_station",
-    "allowedSlots": ["middle", "outer"],
-    "levels": [
-      {
-        "cost": { "coins": 120, "materials": { "wood": 50, "iron": 10 } },
-        "buildTime": 2,
-        "effect": "Libera o Arquivo de Pesquisas com a ficha completa de cada estudo.",
-        "jobs": [
-          {
-            "activity": "estudar",
-            "name": "Estudar",
-            "skill": "research",
-            "effect": { "type": "research", "perDay": 1 }
-          }
-        ]
-      },
-      {
-        "cost": { "coins": 300, "materials": { "wood": 100, "iron": 30, "aetherium": 10 } },
-        "buildTime": 4,
-        "effect": "Pesquisas em andamento avançam 10% mais rápido.",
-        "jobs": [
-          {
-            "activity": "estudar",
-            "name": "Estudar",
-            "skill": "research",
-            "effect": { "type": "research", "perDay": 2 }
-          }
-        ],
-        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
-      },
-      {
-        "cost": { "coins": 700, "materials": { "wood": 180, "mithril": 5, "aetherium": 30 } },
-        "buildTime": 7,
-        "effect": "Uma vez por sessão, um personagem pode consultar o Arquivo para ter vantagem num teste de conhecimento.",
-        "jobs": [
-          {
-            "activity": "estudar",
-            "name": "Estudar",
-            "skill": "research",
-            "effect": { "type": "research", "perDay": 2 }
           }
         ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]

@@ -95,7 +95,7 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 - O seed fica em `src/data/research.json`: `categories` e `entries`. Cada pesquisa tem `id`, `title`, `category`, `status` (`em_andamento` com `progress` de 0 a 100, ou `concluida` com `completedOnDay` opcional), `startedOnDay?`, `owner?` (texto livre), `description`, `notes` e `cost?`. O custo é só informativo e nunca é descontado.
 - A barra mostra "X concluídas · Y em andamento". O painel tem as abas **Em andamento** e **Concluídas**.
 - **Mestre:** **Nova pesquisa** (inclusive pesquisas antigas, já concluídas), **Editar**, **Concluir** (marca como concluída no dia atual), **Remover** e as categorias.
-- **Estação de Estudo:** depois de construída, o painel lateral dela ganha o **Arquivo de Pesquisas**, com as fichas completas, filtro por status e categoria e busca por título. Antes disso, o painel da barra mostra a lista resumida com uma dica.
+- **Biblioteca:** depois de construída (nv. 1), o painel lateral dela ganha o **Arquivo de Pesquisas**, com as fichas completas, filtro por status e categoria e busca por título. Antes disso, o painel da barra mostra a lista resumida com uma dica.
 
 ### Influência
 
@@ -134,7 +134,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   ]
   ```
 
-  Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. A Estação de Estudo, que vai nos dois anéis, segue o espaço onde está. Reduzir o nível libera quem sobra.
+  Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. Reduzir o nível libera quem sobra.
 
   Moradia só no Alojamento (6/14/14 por nível): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras.
 

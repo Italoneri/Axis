@@ -14,7 +14,7 @@ import { findMaterial } from '../systems/Materials';
 import type { ArchiveStore } from '../archiveStore';
 import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
 import { missionTab } from '../systems/Missions';
-import { STUDY_STATION_ID } from '../systems/Research';
+import { RESEARCH_ARCHIVE_BUILDING_ID } from '../systems/Research';
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
 import { el, replaceKeepingScroll } from './dom';
@@ -297,10 +297,10 @@ export class SlotPanel {
     );
   }
 
-  /** The study station shows every research in full once it has been built. */
+  /** The Biblioteca shows every research in full once it has been built. */
   private extraSections(placed: PlacedBuilding, state: GameState): HTMLElement[] {
     if (activeLevel(placed) < 1) return [];
-    if (placed.buildingId === STUDY_STATION_ID) {
+    if (placed.buildingId === RESEARCH_ARCHIVE_BUILDING_ID) {
       return [this.researchArchive.render(this.store.catalog, state)];
     }
     if (placed.buildingId === TAVERN_BUILDING_ID) return [this.menuSection()];

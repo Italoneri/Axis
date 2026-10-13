@@ -19,7 +19,7 @@ Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **mor
 
 - `src/data/attributes.json`: `{ attributes: [{ id, name, icon, description }] }` com os três atributos de aventura, `strength` (Força), `dexterity` (Destreza) e `magic` (Poder Mágico). O `parseCatalog` exige exatamente esses três ids.
 - `src/data/npcs.json`: o divisor das habilidades negativas, a tabela dos níveis herói (`skillTenthsAbove10`), as construções que podem ter moradia e o posto de **obra**, que existe em qualquer construção em andamento (primeira obra ou melhoria): `{ "negativeDivisor": 5, "housingBuildings": ["barracks"], "postSlots": { "outer": [3, 6, 8], "middle": [2, 4, 6] }, "construction": { activity, name, skill, slots, effect: { type: "construction", perDay } } }`. O `parseCatalog` recusa `housing` em construção fora de `housingBuildings`, para a moradia não voltar sem querer a outras construções.
-- **Vagas por anel (`postSlots`):** todo posto de construção tem as vagas do tipo do espaço (`layout.json`) no nível em vigor: anel externo (`outer`) 3/6/8, anel interno (`middle`) 2/4/6. A Estação de Estudo, que vai nos dois anéis, segue o espaço onde está. O posto de obra mantém as próprias vagas (2) em qualquer anel. O `parseCatalog` exige `postSlots` para cada tipo de espaço aceito por uma construção com postos, cobrindo todos os níveis dela.
+- **Vagas por anel (`postSlots`):** todo posto de construção tem as vagas do tipo do espaço (`layout.json`) no nível em vigor: anel externo (`outer`) 3/6/8, anel interno (`middle`) 2/4/6. O posto de obra mantém as próprias vagas (2) em qualquer anel. O `parseCatalog` exige `postSlots` para cada tipo de espaço aceito por uma construção com postos, cobrindo todos os níveis dela.
 
 ### Tipos de efeito
 
@@ -55,7 +55,6 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 | Taverna            | —       | Cozinhar (Gastronomia) | por anel | bonus (texto e penalidade) |
 | Forja              | —       | Forjar (Ferraria)      | por anel | produce Ferro 1/2/3        |
 | Biblioteca         | —       | Pesquisar (Pesquisa)   | por anel | research 1/1/2             |
-| Estação de Estudo  | —       | Estudar (Pesquisa)     | por anel | research 1/2/2             |
 | Arquivo            | —       | Catalogar (Pesquisa)   | por anel | research 1                 |
 | Enfermaria         | —       | Tratar (Medicina)      | por anel | bonus (texto e penalidade) |
 | Santuário          | —       | Cuidar (Medicina)      | por anel | bonus (texto e penalidade) |

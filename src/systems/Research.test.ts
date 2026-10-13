@@ -118,15 +118,15 @@ describe('queries', () => {
     expect(researchCounts({ categories: [], entries })).toEqual({ done: 1, inProgress: 1 });
   });
 
-  it('opens the archive only once the study station is finished', () => {
+  it('opens the archive only once the Biblioteca is finished (level 1)', () => {
     const building: PlacedBuilding = {
-      buildingId: 'study_station',
+      buildingId: 'library',
       level: 1,
       status: 'building',
       startedOnDay: 1,
       completesOnDay: 3,
     };
-    const done: PlacedBuilding = { buildingId: 'study_station', level: 1, status: 'done' };
+    const done: PlacedBuilding = { buildingId: 'library', level: 1, status: 'done' };
     expect(hasResearchArchive(makeState({ slots: { a: building } }))).toBe(false);
     expect(hasResearchArchive(makeState({ slots: { a: done } }))).toBe(true);
   });

@@ -68,6 +68,15 @@ describe('shipped game data', () => {
   });
 });
 
+describe('removed buildings', () => {
+  it.each(['study_station', 'watchtower'])('leaves no trace of %s in the shipped data', (id) => {
+    const catalog = parseCatalog(rawGameData);
+    expect(catalog.buildings.map((b) => b.id)).not.toContain(id);
+    expect(Object.keys(catalog.assets.images).filter((key) => key.includes(id))).toEqual([]);
+    expect(JSON.stringify(rawGameData)).not.toContain(id);
+  });
+});
+
 describe('parseCatalog', () => {
   it('lists broken references', () => {
     const [first] = rawGameData.buildings;

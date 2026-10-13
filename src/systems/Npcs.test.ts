@@ -411,8 +411,6 @@ describe('post openings by ring (shipped data)', () => {
   it.each([
     { ring: 'outer', slotId: 'outer_1', buildingId: 'forge', perLevel: [3, 6, 8] },
     { ring: 'middle', slotId: 'mid_1', buildingId: 'library', perLevel: [2, 4, 6] },
-    { ring: 'outer', slotId: 'outer_1', buildingId: 'study_station', perLevel: [3, 6, 8] },
-    { ring: 'middle', slotId: 'mid_1', buildingId: 'study_station', perLevel: [2, 4, 6] },
   ])('gives $buildingId on the $ring ring $perLevel', ({ slotId, buildingId, perLevel }) => {
     expect([1, 2, 3].map((level) => openings(slotId, buildingId, level))).toEqual(
       perLevel.map((slots) => [slots]),
