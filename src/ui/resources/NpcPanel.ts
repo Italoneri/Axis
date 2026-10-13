@@ -21,7 +21,7 @@ import { findPost, housingList, isHeroSkill, skillOf, type NpcFields } from '../
 import { el } from '../dom';
 import { photoField, saveWithPhoto } from '../photos/photoField';
 import { moveOutButton } from '../SlotNpcs';
-import { formatCount, formatGold, formatWage } from '../format';
+import { buildingLabel, formatCount, formatGold, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
   button,
@@ -179,7 +179,6 @@ export class NpcPanel {
 
   private homeRow(npc: Npc): HTMLElement {
     const { store, act } = this.deps;
-    const ctxName = (id: string) => store.catalog.buildings.find((b) => b.id === id)?.name ?? id;
     const homes = housingList(store.current, store.catalog);
     const select = selectInput({
       label: t.npcs.home,
@@ -188,7 +187,11 @@ export class NpcPanel {
         { value: '', label: t.npcs.noHome },
         ...homes.map((h) => ({
           value: h.slotId,
-          label: t.npcs.homeOption(ctxName(h.buildingId), h.residents, h.capacity),
+          label: t.npcs.homeOption(
+            buildingLabel(store.catalog, h.buildingId, h.slotId),
+            h.residents,
+            h.capacity,
+          ),
           disabled: h.residents >= h.capacity && h.slotId !== npc.home,
         })),
       ],

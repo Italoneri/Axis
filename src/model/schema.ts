@@ -143,6 +143,8 @@ export const buildingDefSchema = z.object({
   icon: z.string(),
   sprite: z.string(),
   allowedSlots: z.array(slotTypeSchema).min(1),
+  /** How many may stand in the Axis at once, each on its own slot; 1 when unset. */
+  maxCount: z.number().int().min(1).max(8).optional(),
   levels: z.array(buildingLevelSchema).min(1),
   requires: z.array(requirementSchema).optional(),
   fx: z.array(buildingFxSchema).optional(),
@@ -404,6 +406,8 @@ const buildingEventSchema = z.object({
   ]),
   buildingId: z.string(),
   level: z.number().int().positive(),
+  /** Which copy, for buildings that may stand more than once; missing on older entries. */
+  slotId: z.string().optional(),
   paid: paidSchema.optional(),
   /** Why a `building_dropped` went; entries from before only had missing slots. */
   reason: z.enum(['missing_slot', 'unknown_building']).optional(),
@@ -547,6 +551,8 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     kind: z.literal('npc_home_set'),
     npc: z.string(),
     place: z.string().optional(),
+    /** The home's slot, to tell copies of a building apart; missing on older entries. */
+    slotId: z.string().optional(),
   }),
   /** Moved by the game, not by a player: its old home stopped housing NPCs. */
   z.object({

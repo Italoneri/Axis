@@ -175,7 +175,13 @@ export class InfoDrawer {
             'div',
             {},
             el('h3', { class: 'card__name' }, bonus.name),
-            el('p', { class: 'card__sub' }, t.level(bonus.level)),
+            el(
+              'p',
+              { class: 'card__sub' },
+              bonus.count > 1
+                ? `${t.level(bonus.level)} ${t.drawer.copies(bonus.count, bonus.name)}`
+                : t.level(bonus.level),
+            ),
           ),
         ),
         el('ul', { class: 'effects' }, ...bonus.effects.map((effect) => el('li', {}, effect))),

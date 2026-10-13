@@ -3,6 +3,7 @@ import { archiveAction, jobEffectText, logEntryText, t, type TextContext } from 
 
 const ctx: TextContext = {
   building: (id) => id,
+  buildingAt: (id, slotId) => (slotId ? `${id}@${slotId}` : id),
   material: (id) => id,
   coins: () => '',
   gold: () => '',

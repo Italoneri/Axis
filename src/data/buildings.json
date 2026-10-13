@@ -309,6 +309,7 @@
     "icon": "icon.barracks",
     "sprite": "building.barracks",
     "allowedSlots": ["outer"],
+    "maxCount": 4,
     "fx": [
       { "type": "smoke", "x": 0.5, "y": 0.06, "color": "#8a8580" },
       { "type": "glow", "x": 0.5, "y": 0.078, "color": "#ff7a1a", "radius": 0.05, "maxLevel": 1 },

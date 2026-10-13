@@ -29,6 +29,7 @@ const SAMPLE: readonly GameCommand[] = [
   { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { silver: -3 } },
   { type: 'force_building', slotId: 'outer_1', buildingId: 'barracks', level: 1 },
   { type: 'force_building', slotId: 'outer_2', buildingId: 'forge', level: 2 },
+  { type: 'force_building', slotId: 'outer_4', buildingId: 'barracks', level: 2 },
   {
     type: 'npc_create',
     id: 'npc_parity',

@@ -28,7 +28,9 @@ export type ActionError =
   | 'mission_closed'
   /** Only NPCs available or working can leave on a mission. */
   | 'npc_unavailable'
-  | 'empty_reward';
+  | 'empty_reward'
+  /** Forcing one more copy than the building's `maxCount` (say, a 5th Alojamento). */
+  | 'building_limit';
 
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 

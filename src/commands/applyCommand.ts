@@ -1,6 +1,6 @@
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import type { GameState, LogEntry } from '../model/schema';
-import { startBuild, startUpgrade, type BlockReason } from '../systems/BuildSystem';
+import { hasRoomFor, startBuild, startUpgrade, type BlockReason } from '../systems/BuildSystem';
 import {
   addCharacter,
   joinWithNewCharacter,
@@ -108,6 +108,7 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   mission_closed: true,
   npc_unavailable: true,
   empty_reward: true,
+  building_limit: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -264,6 +265,9 @@ const handlers: Handlers = {
     const def = findBuilding(catalog, order.buildingId);
     if (!findSlot(catalog, order.slotId) || !def) return NOT_FOUND;
     if (order.level > def.levels.length) return { ok: false, error: 'invalid_command' };
+    // Changing the level of a copy is fine; adding one past the limit is not.
+    const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
+    if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
     return { ok: true, state: forceBuilding(state, catalog, order), change };
   },

@@ -221,6 +221,7 @@ export function setNpcHome(
     withLog(replaceNpc(state, { ...npc, home: slotId }), {
       ...entry(state, 'npc_home_set', npc.name),
       place,
+      slotId,
     }),
   );
 }

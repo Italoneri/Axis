@@ -7,6 +7,8 @@ import {
   checkBuild,
   checkUpgrade,
   costInBronze,
+  maxCountOf,
+  placedCount,
   type BuildCheck,
 } from '../systems/BuildSystem';
 import { toBronze } from '../systems/Coins';
@@ -18,7 +20,7 @@ import { RESEARCH_ARCHIVE_BUILDING_ID } from '../systems/Research';
 import { constructionProgress } from '../systems/TimeSystem';
 import type { GameStore } from '../store';
 import { el, replaceKeepingScroll } from './dom';
-import { formatGold, textContext } from './format';
+import { buildingLabel, formatGold, textContext } from './format';
 import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
@@ -82,7 +84,9 @@ export class SlotPanel {
     const state = this.store.current;
     const placed = state.slots[slot.id];
     const placedDef = placed && findBuilding(this.store.catalog, placed.buildingId);
-    const title = placedDef ? placedDef.name : t.panel.emptySlot(t.slotTypes[slot.type]);
+    const title = placedDef
+      ? buildingLabel(this.store.catalog, placedDef.id, slot.id)
+      : t.panel.emptySlot(t.slotTypes[slot.type]);
     const body =
       placed && placedDef
         ? [
@@ -129,6 +133,12 @@ export class SlotPanel {
         'article',
         { class: check.ok ? 'card' : 'card card--blocked' },
         this.cardHead(def, def.description),
+        maxCountOf(def) > 1 &&
+          el(
+            'p',
+            { class: 'card__sub' },
+            t.panel.copies(placedCount(state, def.id), maxCountOf(def)),
+          ),
         levelDef && this.levelStats(levelDef, state),
         this.reasonList(check),
         el(

@@ -24,7 +24,7 @@ export function forceBuilding(state: GameState, catalog: Catalog, order: ForceOr
   return {
     ...state,
     slots: { ...state.slots, [slotId]: { buildingId, level, status: 'done' } },
-    log: [...state.log, { day: state.day, kind: 'building_forced', buildingId, level }],
+    log: [...state.log, { day: state.day, kind: 'building_forced', buildingId, level, slotId }],
   };
 }
 
@@ -41,6 +41,7 @@ export function removeBuilding(state: GameState, slotId: string): GameState {
         day: state.day,
         kind: 'building_removed',
         buildingId: placed.buildingId,
+        slotId,
         level: Math.max(1, activeLevel(placed)),
       },
     ],

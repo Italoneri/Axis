@@ -65,11 +65,12 @@ function completeConstructions(state: GameState): { state: GameState; slotIds: s
       { buildingId, level, status: 'done' },
     ]),
   );
-  const completionLog = due.map(({ completesOnDay, buildingId, level }): LogEntry => ({
+  const completionLog = due.map(({ completesOnDay, buildingId, level, slotId }): LogEntry => ({
     day: completesOnDay,
     kind: 'build_completed',
     buildingId,
     level,
+    slotId,
   }));
   return {
     state: {

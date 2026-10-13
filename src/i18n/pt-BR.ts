@@ -56,6 +56,7 @@ export const t = {
   panel: {
     close: 'Fechar',
     emptySlot: (type: string) => `${type} — espaço livre`,
+    copies: (built: number, max: number) => `${built} de ${max} construídos`,
     chooseBuilding: 'Escolha uma estrutura para erguer aqui.',
     noOptions: 'Nenhuma estrutura pode ser construída neste espaço.',
     cost: 'Custo',
@@ -88,6 +89,7 @@ export const t = {
   drawer: {
     open: 'Registro e bônus',
     close: 'Fechar',
+    copies: (count: number, name: string) => `(${count} ${name}s)`,
     bonusesTab: 'Bônus ativos',
     logTab: 'Registro',
     masterTab: 'Mestre',
@@ -316,7 +318,7 @@ export const t = {
     home: 'Moradia',
     noHome: 'Sem moradia',
     homeOption: (building: string, used: number, capacity: number) =>
-      `${building} (${used}/${capacity})`,
+      `${building} (${used}/${capacity}${used >= capacity ? ', lotado' : ''})`,
     job: 'Trabalho',
     noJob: 'Sem trabalho',
     jobAt: (activity: string, building: string) => `${activity} em ${building}`,
@@ -707,6 +709,7 @@ export const t = {
     insufficient_coins: 'Não há moedas suficientes nessa carteira.',
     nothing_to_move: 'Informe ao menos uma moeda.',
     nothing_changed: 'Nada mudou: não há o que remover.',
+    building_limit: 'Limite de cópias dessa construção atingido. Remova uma antes de forçar outra.',
     same_wallet: 'Escolha carteiras diferentes.',
     character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
     no_home: 'O NPC precisa de moradia antes de trabalhar.',
@@ -728,6 +731,8 @@ export const t = {
 /** Lookups and formatters the texts need; built from the catalog and current state in ui/format.ts. */
 export interface TextContext {
   building: (id: string) => string;
+  /** "Alojamento II" for a copy of a building that may stand more than once; the name otherwise. */
+  buildingAt: (id: string, slotId: string | undefined) => string;
   material: (id: string) => string;
   /** "3 Platina e 12 Ouro". */
   coins: (bag: Readonly<Record<string, number>>) => string;
@@ -742,7 +747,9 @@ export function blockReasonText(reason: BlockReason, ctx: TextContext): string {
     case 'slot_occupied':
       return 'Este espaço já está ocupado.';
     case 'already_built':
-      return 'Já existe na Axis.';
+      return reason.maxCount === 1
+        ? 'Já existe na Axis.'
+        : `Limite de ${reason.maxCount} ${ctx.building(reason.buildingId)}s na Axis.`;
     case 'under_construction':
       return 'Aguarde a construção atual terminar.';
     case 'max_level':
@@ -970,7 +977,7 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
       return `${who}${entry.npc} deixou o posto de trabalho`;
     case 'npc_home_set':
       return entry.place
-        ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
+        ? `${who}${entry.npc} passou a morar em ${ctx.buildingAt(entry.place, entry.slotId)}`
         : `${who}${entry.npc} deixou a moradia`;
     case 'npc_moved':
       return `${entry.npc} mudou-se de ${ctx.building(entry.from)} para ${ctx.building(entry.place)}`;
@@ -1013,7 +1020,7 @@ function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: Text
 type BuildingEntry = Extract<LogEntry, { buildingId: string }>;
 
 function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
-  const what = `${ctx.building(entry.buildingId)} nv. ${entry.level}`;
+  const what = `${ctx.buildingAt(entry.buildingId, entry.slotId)} nv. ${entry.level}`;
   const who = entry.actor ? `${entry.actor} ` : '';
   const paid = entry.paid ? ` (${paidText(entry.paid, ctx)})` : '';
   const actions: Record<BuildingEntry['kind'], string> = {
