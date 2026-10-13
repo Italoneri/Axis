@@ -253,6 +253,12 @@ export const t = {
     prismPulseSeconds: 'Duração da pulsação (s)',
     export: 'Exportar theme.json',
     reset: 'Restaurar padrão',
+    walkingNpcsSection: 'NPCs no mapa',
+    walkingNpcs: 'NPCs andando',
+    walkingNpcsHint:
+      'Protótipo só visual: os NPCs aparecem ao aproximar o zoom. A escolha fica salva neste aparelho.',
+    walkingNpcsReducedMotion:
+      'Desligados porque o sistema pede menos movimento (prefers-reduced-motion).',
     previewSection: 'Pré-visualizar construção',
     previewHint:
       'Mostra uma construção num espaço só na tela, sem mudar o jogo. Some ao limpar ou recarregar a página.',
@@ -263,6 +269,10 @@ export const t = {
     previewClear: 'Limpar pré-visualização',
     timings: (size: number, analysisMs: number, renderMs: number) =>
       `Mapa ${size}px · análise das texturas ${Math.round(analysisMs)} ms · pintura ${Math.round(renderMs)} ms`,
+  },
+
+  walkingNpcs: {
+    clicked: (name: string, title: string) => (title ? `${name} · ${title}` : name),
   },
 
   credits: {
