@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { t } from '../i18n/pt-BR';
 import type { LiveMap } from '../map/liveMap';
+import { isNpcSheetKey, NPC_FRAME_SIZE } from '../map/npcSprites';
 import type { AssetManifest } from '../model/schema';
 import { MENU_IMAGE_PREFIX } from '../systems/TavernMenu';
 
@@ -33,7 +34,14 @@ export class PreloadScene extends Phaser.Scene {
       ([key]) => !key.startsWith(MENU_IMAGE_PREFIX),
     );
     for (const [key, path] of mapImages) {
-      this.load.image(key, path);
+      if (isNpcSheetKey(key)) {
+        this.load.spritesheet(key, path, {
+          frameWidth: NPC_FRAME_SIZE,
+          frameHeight: NPC_FRAME_SIZE,
+        });
+      } else {
+        this.load.image(key, path);
+      }
     }
   }
 

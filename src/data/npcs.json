@@ -1,5 +1,6 @@
 {
   "negativeDivisor": 5,
+  "skillTenthsAbove10": { "11": 26, "12": 35, "13": 46, "14": 61, "15": 80 },
   "housingBuildings": ["barracks"],
   "postSlots": { "outer": [3, 6, 8], "middle": [2, 4, 6] },
   "construction": {

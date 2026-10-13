@@ -2,10 +2,14 @@ import { z } from 'zod';
 import { angleRangesOverlap } from '../map/geometry';
 import { layoutSchema, type MapLayout, type SlotDef } from '../map/layout';
 import {
+  ATTRIBUTE_IDS,
   assetManifestSchema,
+  attributeDefSchema,
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
+  MAX_ATTRIBUTE,
+  MAX_SKILL,
   missionsConfigSchema,
   npcsConfigSchema,
   researchBookSchema,
@@ -14,6 +18,7 @@ import {
   walletsSeedSchema,
   worldsFileSchema,
   type AssetManifest,
+  type AttributeDef,
   type BuildingDef,
   type CurrencyDef,
   type JobDef,
@@ -49,6 +54,8 @@ export interface Catalog {
   readonly seed: Seed;
   /** NPC skills, in display order. */
   readonly skills: readonly SkillDef[];
+  /** Adventure attributes (Força, Destreza, Poder Mágico), in display order. */
+  readonly attributes: readonly AttributeDef[];
   readonly npcs: NpcsConfig;
   /** How mission rewards are shared out. */
   readonly missions: MissionsConfig;
@@ -72,6 +79,7 @@ export interface RawCatalog {
   research: unknown;
   influence: unknown;
   skills: unknown;
+  attributes: unknown;
   npcs: unknown;
   missions: unknown;
   /** Display only, so the server catalog leaves it out. */
@@ -97,6 +105,11 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     },
     skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
       .skills,
+    attributes: parseFile(
+      'attributes.json',
+      z.object({ attributes: z.array(attributeDefSchema) }),
+      raw.attributes,
+    ).attributes,
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
     missions: parseFile('missions.json', missionsConfigSchema, raw.missions),
     tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
@@ -166,7 +179,21 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('slot', catalog.layout.slots),
     ...duplicates('world', catalog.worlds),
     ...duplicates('skill', catalog.skills),
+    ...ATTRIBUTE_IDS.filter((id) => !catalog.attributes.some((a) => a.id === id)).map(
+      (id) => `attributes.json: attribute "${id}" is missing`,
+    ),
+    ...duplicates('attribute', catalog.attributes),
     ...jobProblems(catalog),
+    ...heroTableProblems(
+      'missions.json: attributePointsAbove10',
+      catalog.missions.attributePointsAbove10,
+      { from: 11, to: MAX_ATTRIBUTE, above: 10 },
+    ),
+    ...heroTableProblems('npcs.json: skillTenthsAbove10', catalog.npcs.skillTenthsAbove10, {
+      from: 11,
+      to: MAX_SKILL,
+      above: 20,
+    }),
     ...housingProblems(catalog),
     ...postSlotProblems(catalog),
     ...layoutProblems(catalog),
@@ -209,6 +236,26 @@ function menuProblems(
 }
 
 /** Posts must use known skills, and activity ids identify a post within a level. */
+/**
+ * An "explosive" table: one entry per level from `from` to `to`, each above
+ * the one before, the first above what the linear rule gives at 10 (`above`).
+ */
+export function heroTableProblems(
+  owner: string,
+  table: Readonly<Record<string, number>>,
+  { from, to, above }: { from: number; to: number; above: number },
+): string[] {
+  const levels = Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
+  const extra = Object.keys(table).filter((key) => !levels.includes(key));
+  const missing = levels.filter((level) => table[level] === undefined);
+  if (extra.length > 0 || missing.length > 0) {
+    return [`${owner} needs exactly the levels ${from} to ${to}`];
+  }
+  const values = levels.map((level) => table[level] ?? 0);
+  const isGrowing = values.every((value, i) => value > (i === 0 ? above : (values[i - 1] ?? 0)));
+  return isGrowing ? [] : [`${owner} must grow at every level, starting above ${above}`];
+}
+
 function jobProblems({ buildings, skills, npcs }: Catalog): string[] {
   const skillIds = new Set(skills.map((s) => s.id));
   const constructionActivity = npcs.construction.activity;

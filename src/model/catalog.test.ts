@@ -68,6 +68,15 @@ describe('shipped game data', () => {
   });
 });
 
+describe('removed buildings', () => {
+  it.each(['study_station', 'watchtower'])('leaves no trace of %s in the shipped data', (id) => {
+    const catalog = parseCatalog(rawGameData);
+    expect(catalog.buildings.map((b) => b.id)).not.toContain(id);
+    expect(Object.keys(catalog.assets.images).filter((key) => key.includes(id))).toEqual([]);
+    expect(JSON.stringify(rawGameData)).not.toContain(id);
+  });
+});
+
 describe('parseCatalog', () => {
   it('lists broken references', () => {
     const [first] = rawGameData.buildings;
@@ -149,6 +158,29 @@ describe('parseCatalog', () => {
     const npcs = { ...rawGameData.npcs, housingBuildings: ['barracks', 'nowhere'] };
     expect(() => parseCatalog({ ...rawGameData, buildings, npcs })).toThrow(
       /unknown building "nowhere"[\s\S]*tavern: housing is only allowed/,
+    );
+  });
+
+  it.each([
+    { name: 'a missing level', table: { 11: 26, 12: 35, 13: 46, 14: 61 } },
+    { name: 'an extra level', table: { 11: 26, 12: 35, 13: 46, 14: 61, 15: 80, 16: 99 } },
+    { name: 'a level that does not grow', table: { 11: 26, 12: 35, 13: 35, 14: 61, 15: 80 } },
+    { name: '11 not above 10 (20 tenths)', table: { 11: 20, 12: 35, 13: 46, 14: 61, 15: 80 } },
+  ])('refuses a hero yield table with $name', ({ table }) => {
+    const npcs = { ...rawGameData.npcs, skillTenthsAbove10: table };
+    expect(() => parseCatalog({ ...rawGameData, npcs })).toThrow(/skillTenthsAbove10/);
+  });
+
+  it('refuses an attribute points table that skips a level or stops growing', () => {
+    const { attributePointsAbove10: table } = rawGameData.missions;
+    const missing = {
+      ...rawGameData.missions,
+      attributePointsAbove10: { ...table, 20: undefined },
+    };
+    expect(() => parseCatalog({ ...rawGameData, missions: missing })).toThrow();
+    const flat = { ...rawGameData.missions, attributePointsAbove10: { ...table, 12: 13 } };
+    expect(() => parseCatalog({ ...rawGameData, missions: flat })).toThrow(
+      /attributePointsAbove10 must grow/,
     );
   });
 

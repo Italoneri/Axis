@@ -1,6 +1,6 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState, JobEffect } from '../model/schema';
-import { builtLevel } from './BuildSystem';
+import { activeLevel, builtLevel } from './BuildSystem';
 import { findPost, isOnDuty, postYieldTenths, skillOf } from './Npcs';
 
 export interface ActiveBonus {
@@ -9,6 +9,8 @@ export interface ActiveBonus {
   level: number;
   /** Effects of every level reached so far: level bonuses accumulate. */
   effects: string[];
+  /** Copies in force (Alojamentos): their effects still count once, at the highest level. */
+  count: number;
 }
 
 /** Bonuses currently in force, in catalog order, for players to consult during the session. */
@@ -17,7 +19,10 @@ export function activeBonuses(state: GameState, catalog: Catalog): ActiveBonus[]
     const level = builtLevel(state, def.id);
     if (level === 0) return [];
     const effects = def.levels.slice(0, level).map((l) => l.effect);
-    return [{ buildingId: def.id, name: def.name, level, effects }];
+    const count = Object.values(state.slots).filter(
+      (placed) => placed.buildingId === def.id && activeLevel(placed) >= 1,
+    ).length;
+    return [{ buildingId: def.id, name: def.name, level, effects, count }];
   });
 }
 

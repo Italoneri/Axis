@@ -15,7 +15,8 @@ import { campShortfall, CAMP, setWallet, type CoinShortfall } from './Wallets';
 export type BlockReason =
   | { kind: 'wrong_slot_type' }
   | { kind: 'slot_occupied' }
-  | { kind: 'already_built' }
+  /** As many as `maxCount` already stand (or are being built) in the Axis. */
+  | { kind: 'already_built'; buildingId: string; maxCount: number }
   | { kind: 'under_construction' }
   | { kind: 'max_level' }
   | { kind: 'missing_requirement'; requirement: Requirement }
@@ -38,6 +39,39 @@ export function activeLevel(placed: PlacedBuilding): number {
   return placed.status === 'done' ? placed.level : placed.level - 1;
 }
 
+/** How many copies of a building may stand in the Axis at once. */
+export function maxCountOf(def: Pick<BuildingDef, 'maxCount'>): number {
+  return def.maxCount ?? 1;
+}
+
+/** Copies of a building in the Axis, finished or under construction. */
+export function placedCount(state: GameState, buildingId: string): number {
+  return Object.values(state.slots).filter((placed) => placed.buildingId === buildingId).length;
+}
+
+/** Whether one more copy of `def` fits under its limit. */
+export function hasRoomFor(state: GameState, def: BuildingDef): boolean {
+  return placedCount(state, def.id) < maxCountOf(def);
+}
+
+/**
+ * The stable number of a copy: the position of its slot among every slot the
+ * building may use, in layout order. It never changes when another copy is
+ * built or removed. Undefined for buildings that exist once.
+ */
+export function copyNumber(
+  catalog: Catalog,
+  buildingId: string,
+  slotId: string,
+): number | undefined {
+  const def = findBuilding(catalog, buildingId);
+  if (!def || maxCountOf(def) === 1) return undefined;
+  const index = catalog.layout.slots
+    .filter((slot) => def.allowedSlots.includes(slot.type))
+    .findIndex((slot) => slot.id === slotId);
+  return index < 0 ? undefined : index + 1;
+}
+
 /** Highest active level of a building anywhere in the base (0 when absent). */
 export function builtLevel(state: GameState, buildingId: string): number {
   return Object.values(state.slots)
@@ -53,8 +87,10 @@ export function checkBuild(state: GameState, catalog: Catalog, order: BuildOrder
   const placementReasons: BlockReason[] = [
     ...(def.allowedSlots.includes(slot.type) ? [] : [{ kind: 'wrong_slot_type' } as const]),
     ...(state.slots[slot.id] ? [{ kind: 'slot_occupied' } as const] : []),
-    // Each structure exists once in the base, so bonuses never stack.
-    ...(isPlacedAnywhere(state, def.id) ? [{ kind: 'already_built' } as const] : []),
+    // Most structures exist once; a few (the Alojamento) up to `maxCount`. Bonuses never stack.
+    ...(hasRoomFor(state, def)
+      ? []
+      : [{ kind: 'already_built', buildingId: def.id, maxCount: maxCountOf(def) } as const]),
   ];
   return checkLevel(state, catalog, { def, level: 1 }, placementReasons);
 }
@@ -123,10 +159,6 @@ function checkLevel(
   return reasons.length > 0 ? { ok: false, reasons } : { ok: true, level, levelDef };
 }
 
-function isPlacedAnywhere(state: GameState, buildingId: string): boolean {
-  return Object.values(state.slots).some((placed) => placed.buildingId === buildingId);
-}
-
 function beginConstruction(
   state: GameState,
   catalog: Catalog,
@@ -147,8 +179,10 @@ function beginConstruction(
       };
   const paid = charge(state, catalog, levelDef.cost);
   const entries = [
-    { day: state.day, kind, buildingId, level, paid: paid.receipt },
-    ...(isInstant ? [{ day: state.day, kind: 'build_completed' as const, buildingId, level }] : []),
+    { day: state.day, kind, buildingId, level, slotId, paid: paid.receipt },
+    ...(isInstant
+      ? [{ day: state.day, kind: 'build_completed' as const, buildingId, level, slotId }]
+      : []),
   ];
   return {
     ...paid.state,

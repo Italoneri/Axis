@@ -5,6 +5,7 @@ import type { GameStore } from '../../store';
 import { toBronze } from '../../systems/Coins';
 import {
   canGoOnMission,
+  expectedMissionDays,
   expectedPayout,
   guildBonusPercent,
   splitReward,
@@ -299,6 +300,15 @@ export class MissionFocus {
         { class: 'mission-npcs' },
         ...state.npcs.map((npc) => this.npcOption(state, catalog, npc, picked)),
       ),
+      ...(picked.size > 0
+        ? [
+            returnLine(
+              catalog,
+              mission,
+              state.npcs.filter((n) => picked.has(n.id)),
+            ),
+          ]
+        : []),
       el(
         'p',
         { class: 'card__sub' },
@@ -414,6 +424,12 @@ export class MissionFocus {
     this.mode = mode;
     this.render();
   }
+}
+
+/** Only the outcome: the attributes and points behind it stay hidden from the table. */
+function returnLine(catalog: Catalog, mission: Mission, team: readonly Npc[]): HTMLElement {
+  const days = expectedMissionDays(catalog, mission, team);
+  return el('p', { class: 'mission-return' }, t.missions.expectedReturn(days, mission.days));
 }
 
 function teamNames(state: GameState, npcIds: readonly string[]): string[] {

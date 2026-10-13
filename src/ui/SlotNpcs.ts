@@ -4,6 +4,7 @@ import type { GameState, Npc } from '../model/schema';
 import {
   findPost,
   housingCapacity,
+  isHeroSkill,
   postsAt,
   residentsOf,
   skillOf,
@@ -96,7 +97,7 @@ function postCard(store: GameStore, post: Post, ctx: TextContext): HTMLElement {
             { class: 'row row--wrap' },
             el(
               'span',
-              { class: hinders(post, npc) ? 'is-negative' : undefined },
+              { class: previewTone(post, npc) },
               t.npcs.preview(npc.name, preview(catalog, post, npc, ctx)),
             ),
             button(t.npcs.unassign, () => store.dispatch({ type: 'npc_unassign', npcId: npc.id })),
@@ -161,7 +162,7 @@ function candidateLabel(store: GameStore, post: Post, npc: Npc, ctx: TextContext
   const away = npc.status === 'ferido' || npc.status === 'em_missao';
   const workplace = npc.job && state.slots[npc.job.slotId]?.buildingId;
   return [
-    `${npc.name} (${skillOf(npc, post.job.skill)})`,
+    skillLabel(npc.name, skillOf(npc, post.job.skill)),
     preview(catalog, post, npc, ctx) + (hinders(post, npc) ? ` ${t.npcs.hinders}` : ''),
     workplace && t.npcs.currentPost(ctx.building(workplace)),
     away && t.npcs.statuses[npc.status],
@@ -172,6 +173,16 @@ function candidateLabel(store: GameStore, post: Post, npc: Npc, ctx: TextContext
 
 function preview(catalog: Catalog, post: Post, npc: Npc, ctx: TextContext): string {
   return jobEffectText(post.job.effect, postYieldTenths(catalog, post, npc), ctx);
+}
+
+/** "Bia (12 ★)": the star flags a hero level, since select options cannot be styled. */
+function skillLabel(name: string, level: number): string {
+  return `${name} (${level}${isHeroSkill(level) ? ' ★' : ''})`;
+}
+
+function previewTone(post: Post, npc: Npc): string | undefined {
+  if (hinders(post, npc)) return 'is-negative';
+  return isHeroSkill(skillOf(npc, post.job.skill)) ? 'is-hero' : undefined;
 }
 
 function hinders(post: Post, npc: Npc): boolean {

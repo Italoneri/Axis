@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { toBronze } from './Coins';
 import {
   adjustCoins,
   CAMP,
   campShortfall,
   consolidateWallet,
   depositToCamp,
+  giveCoins,
   groupBronze,
+  takeCoins,
   transferCoins,
 } from './Wallets';
 import { makeState, testCatalog } from './testFixtures';
@@ -70,20 +73,82 @@ describe('transferCoins', () => {
   });
 });
 
-describe('adjustCoins', () => {
-  it('gives and takes coins without going below zero, logging what changed', () => {
-    const result = adjustCoins(makeState(), thorin, { gold: -10, silver: 4 });
+describe('takeCoins', () => {
+  const withCamp = (camp: Record<string, number>) =>
+    makeState({ day: 9, wallets: { camp, characters: { thorin: {} } } });
+  const campBronze = (state: ReturnType<typeof makeState>) =>
+    toBronze(state.wallets.camp, testCatalog.currencies);
+
+  it('removes 5 Ouro + 50 Prata (10 PO) from a wallet of emeralds and platinum, with change', () => {
+    const state = withCamp({ emerald: 1, platinum: 2 });
+    const result = takeCoins(state, testCatalog, CAMP, { gold: 5, silver: 50 });
     if (!result.ok) throw new Error(result.error);
-    expect(result.state.wallets.characters['thorin']).toEqual({ silver: 4 });
-    expect(result.state.log.at(-1)).toMatchObject({
-      wallet: 'Thorin',
-      delta: { gold: -5, silver: 4 },
+    expect(campBronze(result.state)).toBe(campBronze(state) - 1000);
+    expect(result.state.wallets.camp).toEqual({ emerald: 1, platinum: 1 });
+  });
+
+  it('breaks the smallest coin that covers the rest and gives the change back', () => {
+    const state = withCamp({ emerald: 1 });
+    const result = takeCoins(state, testCatalog, CAMP, { gold: 5, silver: 50 });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.wallets.camp).toEqual({ platinum: 9 });
+    expect(result.state.log.at(-1)).toEqual({
+      day: 9,
+      kind: 'coins_adjusted',
+      delta: { emerald: -1, platinum: 9 },
+      valueBronze: -1000,
     });
   });
 
-  it('returns the same state when nothing changes', () => {
-    const state = makeState();
-    expect(adjustCoins(state, thorin, { platinum: -1 })).toEqual({ ok: true, state });
+  it('spends the exact coins when the wallet has them, without needless change', () => {
+    const state = withCamp({ platinum: 3, gold: 5, silver: 50 });
+    const result = takeCoins(state, testCatalog, CAMP, { gold: 5, silver: 50 });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.wallets.camp).toEqual({ platinum: 3 });
+    expect(result.state.log.at(-1)).toMatchObject({ delta: { gold: -5, silver: -50 } });
+  });
+
+  it('refuses more than the wallet is worth and leaves the state alone', () => {
+    const state = withCamp({ gold: 9, silver: 9 });
+    expect(takeCoins(state, testCatalog, CAMP, { gold: 10 })).toEqual({
+      ok: false,
+      error: 'insufficient_coins',
+    });
+  });
+
+  it('refuses an empty amount instead of doing nothing silently', () => {
+    expect(takeCoins(withCamp({ gold: 1 }), testCatalog, CAMP, {})).toEqual({
+      ok: false,
+      error: 'nothing_to_move',
+    });
+  });
+});
+
+describe('giveCoins', () => {
+  it('adds the same coins and logs the value', () => {
+    const result = giveCoins(makeState({ day: 3 }), testCatalog, thorin, { gold: 2, silver: 4 });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.wallets.characters['thorin']).toEqual({ gold: 7, silver: 4 });
+    expect(result.state.log.at(-1)).toEqual({
+      day: 3,
+      kind: 'coins_adjusted',
+      wallet: 'Thorin',
+      delta: { gold: 2, silver: 4 },
+      valueBronze: 240,
+    });
+  });
+});
+
+describe('adjustCoins (pages opened before take_coins)', () => {
+  it('gives a delta that only adds', () => {
+    const result = adjustCoins(makeState(), testCatalog, thorin, { gold: 1 });
+    expect(result.ok && result.state.wallets.characters['thorin']).toEqual({ gold: 6 });
+  });
+
+  it('takes the whole value of a delta that only removes, with change', () => {
+    const state = makeState({ wallets: { camp: { platinum: 1 }, characters: { thorin: {} } } });
+    const result = adjustCoins(state, testCatalog, CAMP, { gold: -5, silver: -50 });
+    expect(result.ok && result.state.wallets.camp).toEqual({});
   });
 });
 

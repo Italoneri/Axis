@@ -22,6 +22,9 @@ npm run dev          # http://localhost:5173
 | `npm run lint` / `npm run format` | ESLint / Prettier                              |
 | `npm run build`                   | Checagem de tipos + build estático em `dist/`  |
 | `npm run gen:placeholders`        | Gera os PNGs placeholder que ainda não existem |
+| `npm run lpc:setup`               | Clona o gerador LPC em `vendor/` (fora do git) |
+| `npm run lpc:build -- <nome>`     | Gera o sprite de um NPC pela receita           |
+| `npm run lpc:items -- <busca>`    | Lista peças, variantes e cores do gerador LPC  |
 
 ## Como jogar
 
@@ -52,7 +55,11 @@ Todas as ações do mestre vão para o registro de eventos.
 
 ### Regras
 
-- Cada estrutura existe **uma vez** na Axis (os bônus não acumulam).
+- Cada estrutura existe **uma vez** na Axis (os bônus não acumulam), exceto o **Alojamento**, que pode ter **até 4**, em espaços diferentes. O limite é o campo opcional `maxCount` do `buildings.json` (padrão 1, de 1 a 8), e os que estão em obra também contam. No limite, o motivo do bloqueio é "Limite de 4 Alojamentos na Axis"; nas únicas, continua "Já existe na Axis". O painel do espaço vazio mostra "2 de 4 construídos".
+  - Cada Alojamento é independente: tem o próprio nível, a própria melhoria e a própria obra, e cada um paga o custo cheio.
+  - Os efeitos de texto não acumulam: em Bônus ativos o Alojamento aparece uma vez, no maior nível entre eles, com "(3 Alojamentos)". Requisitos e outras checagens também olham o maior nível.
+  - Cada cópia tem um nome estável, "Alojamento I" a "Alojamento XIV", pela posição do espaço entre os espaços do anel externo, na ordem do layout. O nome não muda quando outro Alojamento é construído ou removido. Ele aparece no título do painel, no seletor de moradia e no log de obra, melhoria, conclusão, remoção e mudança de moradia.
+  - O mestre pode forçar até o limite. Forçar um Alojamento novo além de 4 é recusado ("Limite de cópias…"); remova um antes. Forçar outro nível num Alojamento que já existe continua livre. Assim o servidor nunca guarda mais cópias do que as regras aceitam.
 - O custo é cobrado ao **iniciar** a construção. O bônus só vale quando ela termina.
 - Durante uma melhoria, o efeito do nível anterior continua ativo.
 - O **Coração da Axis** (espaço central) libera os níveis mais altos: nível 2 das outras estruturas exige o Coração nv. 1, e nível 3 exige o Coração nv. 2.
@@ -95,7 +102,7 @@ Os valores iniciais ficam em JSON em `src/data/` (o _seed_). Tudo o que o mestre
 - O seed fica em `src/data/research.json`: `categories` e `entries`. Cada pesquisa tem `id`, `title`, `category`, `status` (`em_andamento` com `progress` de 0 a 100, ou `concluida` com `completedOnDay` opcional), `startedOnDay?`, `owner?` (texto livre), `description`, `notes` e `cost?`. O custo é só informativo e nunca é descontado.
 - A barra mostra "X concluídas · Y em andamento". O painel tem as abas **Em andamento** e **Concluídas**.
 - **Mestre:** **Nova pesquisa** (inclusive pesquisas antigas, já concluídas), **Editar**, **Concluir** (marca como concluída no dia atual), **Remover** e as categorias.
-- **Estação de Estudo:** depois de construída, o painel lateral dela ganha o **Arquivo de Pesquisas**, com as fichas completas, filtro por status e categoria e busca por título. Antes disso, o painel da barra mostra a lista resumida com uma dica.
+- **Biblioteca:** depois de construída (nv. 1), o painel lateral dela ganha o **Arquivo de Pesquisas**, com as fichas completas, filtro por status e categoria e busca por título. Antes disso, o painel da barra mostra a lista resumida com uma dica.
 
 ### Influência
 
@@ -122,7 +129,8 @@ Toda alteração de recurso, seja do mestre, de um depósito ou de uma construç
 
 Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.md`.
 
-- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de -10 a 10 em cada uma; negativo atrapalha o posto.
+- **Habilidades** em `src/data/skills.json` (`id`, `name`, `icon`, `description`): Construção, Ferraria, Gastronomia, Pesquisa, Medicina e Alquimia. Cada NPC tem de -10 a 15 em cada uma; negativo atrapalha o posto, e de 11 a 15 é "nível herói", com crescimento explosivo.
+- **Atributos de aventura** em `src/data/attributes.json`: Força, Destreza e Poder Mágico, de -10 a 20 (ausente vale 0). Só o mestre os vê, na seção "Atributos" do **Novo NPC** / **Editar**; ficam ocultos no card, na lista e no quadro de missões. Servem para acelerar as missões da Guilda.
 - **Moradia e postos** ficam por nível no `buildings.json`:
 
   ```json
@@ -133,15 +141,15 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   ]
   ```
 
-  Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. A Estação de Estudo, que vai nos dois anéis, segue o espaço onde está. Reduzir o nível libera quem sobra.
+  Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. Reduzir o nível libera quem sobra.
 
-  Moradia só no Alojamento (6/14/14 por nível): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras.
+  Moradia só no Alojamento (6/14/14 por nível, **por Alojamento**): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras. Com até 4 Alojamentos, a capacidade soma: 4 Alojamentos nv. 2 abrigam 56 NPCs. O seletor de moradia mostra cada um pelo nome, "Alojamento I (3/14) · Alojamento II (14/14, lotado)", e remover um Alojamento libera só os moradores dele.
 
   Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos, com um `penalty` opcional para quando alguém atrapalha). O posto **Construir**, que aparece em toda obra em andamento, e o divisor das habilidades negativas (`negativeDivisor`) ficam em `src/data/npcs.json`.
 
-- **Rendimento:** `base × (1 + habilidade / 10)`, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). A fração se acumula no posto, e o NPC entrega unidades inteiras.
+- **Rendimento:** `base × (1 + habilidade / 10)` até 10, mostrado com uma casa decimal ("Gus: +3,4 Ferro por dia"). De 11 a 15 vale a tabela `skillTenthsAbove10` de `src/data/npcs.json` (em décimos da base: 26, 35, 46, 61, 80), então 15 rende 4× o que 10 rende: se com 10 a Forja dá 10 Ferros, com 15 dá 40. Nível herói aparece em dourado claro no card do posto e com ★ no seletor. A fração se acumula no posto, e o NPC entrega unidades inteiras.
 - **Habilidade negativa:** rende `base × habilidade / 5` e atrapalha: consome material (sem passar de 0), faz a pesquisa regredir (sem passar de 0%), atrasa a obra ou troca o bônus pela penalidade. Aparece em vermelho, com "⚠ atrapalha" no seletor do posto. Vários NPCs no mesmo posto contam separados, então um bom e um ruim se compensam.
-- **Quem faz o quê:** só o mestre cria (bloco **Novo NPC**, no topo do painel, sempre fechado), edita (habilidades, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
+- **Quem faz o quê:** só o mestre cria (bloco **Novo NPC**, no topo do painel, sempre fechado), edita (habilidades, atributos, salário, situação) e remove NPCs. Jogadores e mestre escolhem moradia e designam ou dispensam trabalho, pelo botão **NPCs** na barra e pelo painel de cada construção.
 - **Regras:**
   - Trabalho exige moradia. Para tirar alguém de casa, use **Retirar** no card "Moradores" da construção ou **Retirar da moradia** no card do NPC; se ele trabalha, um segundo clique confirma que também deixa o posto.
   - Um trabalho por vez.
@@ -156,6 +164,18 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
   Pesquisas param em 100% com o aviso "pronta para concluir"; quem conclui é o mestre. Feridos e NPCs em missão mantêm casa e posto, mas não trabalham nem recebem.
 
 - **Save:** versão 7. Saves da versão 4 ganham `npcs: []` ao carregar; os da versão 6 ganham `missions: []`. Nos da versão 5, quem morava na Taverna ou na Torre dos Magos muda para um Alojamento com vaga, mantendo o posto (fica no log); quem não couber perde a moradia e o posto. Online o estado continua no mesmo jsonb e passa pela mesma migração.
+
+### Sprites dos NPCs
+
+Os NPCs que andam no mapa usam personagens do [Universal LPC Spritesheet Character Generator](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/). Cada personagem fica em `art-sources/npcs/<nome>/`, com a **receita** `character.json` (o mesmo JSON que o site exporta) e o que o site exportaria: `walk.png`, `idle.png`, as animações extras `run`, `sit`, `hurt` (o último quadro serve para "dormindo"), `slash`, `thrust`, `spellcast`, `watering` e `emote`, mais `credits.csv`, `credits.txt`, `metadata.json` e uma `preview.png` (as 4 direções do walk em 2×). Só `walk` e `idle` vão para `public/`, pelo `npm run import:npcs`; as extras esperam até o jogo usá-las.
+
+- **Setup (uma vez por máquina):** `npm run lpc:setup` clona o gerador em `vendor/lpc-generator/` (fora do git do jogo: `vendor/` está no `.gitignore`), instala as dependências dele e confere se o Google Chrome abre. O clone é raso e esparso: definições e código agora, spritesheets só as que alguma receita usa. Fica com uns 410 MB, quase tudo `node_modules` do gerador. Rodar de novo atualiza o gerador.
+- **Criar por receita:** coloque a receita em `art-sources/npcs/<nome>/character.json` e rode `npm run lpc:build -- <nome>` (ou `-- --all`). O script abre a própria página do gerador num Chrome invisível, faz **Import from Clipboard (JSON)** e **ZIP: Split by animation**, então a composição e as cores são as do site (a `aventureira` sai idêntica pixel a pixel à exportada pelo site, guardada em `aventureira/_site/`). Arquivos que não mudaram ficam intactos, e no fim ele roda o `import:npcs`. Uma peça, variante ou cor que não existe para o build antes de abrir o navegador, dizendo qual é e quais opções existem.
+- **Catálogo:** `npm run lpc:items -- <busca> [--body female]` lista as peças com a chave em `selections`, variantes, cores, tipos de corpo e animações (ex.: `lpc:items -- hair long --body female`, `lpc:items -- apron`). Confira se a peça tem `walk` e `idle`: sem elas, a peça some nessa animação.
+- **Pedir por descrição:** peça ao Claude, por exemplo, "crie a sprite da Bianca: maga, cabelo ruivo longo, túnica roxa, sem escudo, com cajado". Ele monta o `character.json` só com peças conferidas no `lpc:items`, roda o `lpc:build` e mostra a `preview.png`. NPCs civis vêm **sem escudo nem armas**, a não ser que você peça (compare `aventureira` com `aventureira_civil`).
+- **Ligar ao NPC:** em `src/data/npc_sprites.json`, `{ "<npcId>": "<nome>" }`. O id está no save exportado (`"npcs": [{ "id": "npc_ab12", "name": "Bianca", … }]`). NPC sem entrada recebe um sprite sorteado pelo id, sempre o mesmo.
+- **Créditos (obrigatório):** a arte LPC é CC-BY-SA, GPL ou OGA-BY, e todas pedem crédito aos autores. O `credits.csv` sai das definições do gerador; o `lpc:build` recusa camada sem autor ou licença, o `import:npcs` leva tudo para a tela **Créditos** e o `npm test` confere que nenhuma linha ficou sem autor e licença.
+- **Publicar:** só quando houver sprite novo importado, e basta um build novo do site; não precisa de `deploy:functions` nem `db push`.
 
 ## Fotos no jogo
 
@@ -240,13 +260,14 @@ O **Salão da Guilda** tem um **quadro de missões** onde mestre e jogadores pen
 - **Primeiro plano:** clicar num pergaminho o traz para o centro com o quadro escurecido, mostrando o texto completo (mesmo markdown do Arquivo) e as ações. Fecha com Esc, no X ou clicando fora.
 - **Nova missão** (aba Abertas): título, solicitante, local, descrição, recompensa (nos campos de moeda), tempo esperado em dias e dificuldade. Registra quem criou e o dia. Limites: título até 120 caracteres, descrição até 4.000, de 1 a 365 dias, recompensa maior que zero. Qualquer um edita ou remove uma missão **aberta**.
 - **"O grupo vai":** a missão fica em andamento. Quando o grupo voltar, o mestre marca **Concluída** (o Acampamento recebe 100%) ou **Falhou** (ninguém recebe).
-- **"Enviar NPCs":** escolha um ou mais NPCs `disponivel` ou `trabalhando` (a lista mostra habilidades, status e posto). Eles ficam `em_missao`, mantêm casa e posto, mas não trabalham nem recebem. Ao avançar os dias até o retorno (dia da saída + tempo esperado), a missão passa para **Aguardando o mestre**, com log. O mestre decide:
+- **"Enviar NPCs":** escolha um ou mais NPCs `disponivel` ou `trabalhando` (a lista mostra habilidades, status e posto). Ao marcar, o primeiro plano mostra só o resultado: "Retorno previsto em 4 dias (prazo da missão: 10)". Eles ficam `em_missao`, mantêm casa e posto, mas não trabalham nem recebem. Ao avançar os dias até o retorno, a missão passa para **Aguardando o mestre**, com log.
+  - **Tempo:** os atributos da equipe aceleram a missão. Cada atributo vale o próprio nível até 10 e, acima disso, a tabela `attributePointsAbove10` (15 vale 40, 20 vale 160); somam-se os três atributos de todos os enviados. Dias = `ceil(prazo × 160 / (160 + 3 × pontos))`, no mínimo 1 e no máximo o dobro do prazo (pontos negativos atrasam). Numa missão de 10 dias, 4 NPCs com 7/7/6 voltam em 4 dias e uma deusa 20/20/20 em 1. O tempo é fixado na saída: editar atributos depois não muda a missão. Missões do grupo não mudam. O mestre decide:
   - **Sucesso:** 80% para os NPCs, divididos igualmente em bronze e somados ao `earnings` de cada um ("Ganhou 1,6 PO em missões" no card), e 20% de comissão para o Acampamento. O resto da divisão vai para o Acampamento, então nenhuma moeda se perde (2 PO com 3 NPCs: 0,53 PO para cada e 0,41 PO para o Acampamento).
   - **Falha:** ninguém recebe, e o mestre marca quem voltou ferido.
   - Depois, cada NPC volta a `trabalhando` (se tem posto) ou `disponivel`, menos os feridos.
 - **Guilda nv. 2:** as recompensas pagam 10% a mais nos dois modos enquanto o nível em vigor for ≥ 2 (o primeiro plano mostra o valor).
 - **NPC removido em missão:** sai da equipe; se ninguém sobrar, a missão volta para Abertas, com log.
-- **Configuração:** `src/data/missions.json` define a comissão (`campCommissionPercent`) e o bônus da Guilda (`guildBonus`: construção, nível mínimo e percentual).
+- **Configuração:** `src/data/missions.json` define a comissão (`campCommissionPercent`), o bônus da Guilda (`guildBonus`: construção, nível mínimo e percentual), os pontos dos atributos acima de 10 (`attributePointsAbove10`) e a fórmula do tempo (`teamSpeed`: `k`, `m`, `minDays`, `maxSlowdown`).
 - **Regras:** tudo passa pelo `applyCommand` (`mission_create`, `mission_update`, `mission_remove`, `mission_take_party` e `mission_send_npcs` para jogador e mestre; `mission_resolve` só para o mestre), sem sorteio: servidor e cliente chegam ao mesmo resultado. As missões ficam no `GameState` (`missions`).
 - **Publicar a mudança online:** `npm run deploy:functions`. Não há migração SQL: o save migra ao carregar.
 
@@ -376,11 +397,13 @@ src/
   data/              buildings.json, layout.json, theme.json, credits.json, assets.json,
                      currencies.json e os seeds
                      wallets.json, materials.json, research.json, influence.json
-scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno
+scripts/             gerador de placeholders, bundle das Edge Functions, paridade Node/Deno,
+                     import:npcs e lpc/ (sprites dos NPCs pelo gerador LPC)
 public/assets/       textures/, buildings/, icons/
 docs/map-reference/  imagem e scripts de referência do mapa
 supabase/            config, migrations SQL (tabelas + RLS), testes pgTAP e Edge Functions
-art-sources/         originais das texturas (fora do git)
+art-sources/         originais das texturas (fora do git) e npcs/ (receitas e sprites LPC)
+vendor/              gerador LPC clonado pelo lpc:setup (fora do git)
 ```
 
 ## Como adicionar uma estrutura nova

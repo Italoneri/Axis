@@ -30,7 +30,10 @@ export const costSchema = z.object({
 
 /** Skill score of an NPC: 0 still works, at the base rate. */
 /** Negative levels hinder the post: the NPC works against it. */
-export const skillLevelSchema = z.number().int().min(-10).max(10);
+/** Work skills: up to 10 the yield grows steadily, 11–15 are hero levels (`skillTenthsAbove10`). */
+export const MIN_SKILL = -10;
+export const MAX_SKILL = 15;
+export const skillLevelSchema = z.number().int().min(MIN_SKILL).max(MAX_SKILL);
 
 export const skillDefSchema = z.object({
   id: z.string().min(1),
@@ -39,6 +42,16 @@ export const skillDefSchema = z.object({
   icon: z.string(),
   description: z.string(),
 });
+
+/** Adventure attributes (combat, missions); work skills stay separate and capped at 15. */
+export const ATTRIBUTE_IDS = ['strength', 'dexterity', 'magic'] as const;
+export const MIN_ATTRIBUTE = -10;
+export const MAX_ATTRIBUTE = 20;
+export const attributeLevelSchema = z.number().int().min(MIN_ATTRIBUTE).max(MAX_ATTRIBUTE);
+export const attributeIdSchema = z.enum(ATTRIBUTE_IDS);
+/** A missing attribute counts as 0, so saves from before attributes stay valid. */
+export const npcAttributesSchema = z.partialRecord(attributeIdSchema, attributeLevelSchema);
+export const attributeDefSchema = skillDefSchema.extend({ id: attributeIdSchema });
 
 /** Base amount per day; the worker's skill scales it (see `yieldTenths`). */
 const perDay = z.number().positive();
@@ -81,6 +94,8 @@ export const buildingLevelSchema = z.object({
 export const npcsConfigSchema = z.object({
   /** A negative skill yields `base × skill / negativeDivisor`. */
   negativeDivisor: z.number().positive(),
+  /** Yield in tenths of the base for skills 11–15; 10 yields 20 tenths. Integers, so server and client agree. */
+  skillTenthsAbove10: z.record(z.string(), z.number().int().positive()),
   /** The only buildings whose levels may offer `housing`. */
   housingBuildings: z.array(z.string().min(1)).min(1),
   /** Openings of every building post by slot type, per level in force (index 0 = level 1). */
@@ -128,6 +143,8 @@ export const buildingDefSchema = z.object({
   icon: z.string(),
   sprite: z.string(),
   allowedSlots: z.array(slotTypeSchema).min(1),
+  /** How many may stand in the Axis at once, each on its own slot; 1 when unset. */
+  maxCount: z.number().int().min(1).max(8).optional(),
   levels: z.array(buildingLevelSchema).min(1),
   requires: z.array(requirementSchema).optional(),
   fx: z.array(buildingFxSchema).optional(),
@@ -176,6 +193,18 @@ export const missionsConfigSchema = z.object({
     building: z.string().min(1),
     minLevel: z.number().int().positive(),
     percent: z.number().int().min(0).max(1000),
+  }),
+  /** Mission points of an attribute above 10; up to 10 a level is worth itself. */
+  attributePointsAbove10: z.record(z.string(), z.number().int().positive()),
+  /**
+   * NPC missions take `ceil(days × k / (k + m × team points))` days, at least
+   * `minDays` and at most `maxSlowdown` × the mission's days.
+   */
+  teamSpeed: z.object({
+    k: z.number().int().positive(),
+    m: z.number().int().positive(),
+    minDays: z.number().int().positive(),
+    maxSlowdown: z.number().int().min(1),
   }),
 });
 
@@ -242,6 +271,15 @@ export const npcJobSchema = z.object({
   carry: z.number().int().min(-9).max(9),
 });
 
+/** Sprite value that keeps an NPC off the map, so it cannot be a sprite's name. */
+export const NPC_HIDDEN_SPRITE = 'none';
+/**
+ * Look on the map: a sprite name (`npc.<name>.walk` in assets.json) or
+ * `NPC_HIDDEN_SPRITE`. Not checked against the assets: the server does not
+ * know them, and a sprite that is gone falls back to the automatic pick.
+ */
+export const npcSpriteSchema = z.string().regex(/^[\w-]+$/);
+
 export const npcSchema = z.object({
   id: z.string().min(1),
   name: displayName,
@@ -251,6 +289,8 @@ export const npcSchema = z.object({
   description: z.string(),
   /** Score per skill id; a missing skill counts as 0. */
   skills: z.record(z.string(), skillLevelSchema),
+  /** Strength, dexterity and magic; only the master sees them, in the edit form. */
+  attributes: npcAttributesSchema.optional(),
   /** Slot of the building the NPC lives in. */
   home: z.string().nullable(),
   job: npcJobSchema.nullable(),
@@ -260,6 +300,8 @@ export const npcSchema = z.object({
   wage: z.number().nonnegative().optional(),
   /** Bronze earned in missions so far; NPCs have no wallet. */
   earnings: positiveInt.optional(),
+  /** Chosen look on the map; missing means the automatic pick. */
+  sprite: npcSpriteSchema.optional(),
 });
 
 export const MISSION_TITLE_LIMIT = 120;
@@ -375,7 +417,11 @@ const buildingEventSchema = z.object({
   ]),
   buildingId: z.string(),
   level: z.number().int().positive(),
+  /** Which copy, for buildings that may stand more than once; missing on older entries. */
+  slotId: z.string().optional(),
   paid: paidSchema.optional(),
+  /** Why a `building_dropped` went; entries from before only had missing slots. */
+  reason: z.enum(['missing_slot', 'unknown_building']).optional(),
 });
 
 const signedBag = z.record(z.string(), z.number().int());
@@ -438,7 +484,10 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     ...entryBase,
     kind: z.literal('coins_adjusted'),
     wallet: walletLabel,
+    /** Coins that came in (+) or left (−), change included. */
     delta: signedBag,
+    /** Value added or removed; missing on entries from before "Remover" paid with change. */
+    valueBronze: z.number().int().optional(),
   }),
   z.object({
     ...entryBase,
@@ -459,6 +508,8 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     kind: z.literal('material_adjusted'),
     material: z.string(),
     delta: z.number().int(),
+    /** Set when a removal stopped at zero: what the master asked for. */
+    requested: z.number().int().optional(),
   }),
   z.object({
     ...entryBase,
@@ -511,6 +562,8 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     kind: z.literal('npc_home_set'),
     npc: z.string(),
     place: z.string().optional(),
+    /** The home's slot, to tell copies of a building apart; missing on older entries. */
+    slotId: z.string().optional(),
   }),
   /** Moved by the game, not by a player: its old home stopped housing NPCs. */
   z.object({
@@ -623,6 +676,9 @@ export type SkillDef = z.infer<typeof skillDefSchema>;
 export type JobEffect = z.infer<typeof jobEffectSchema>;
 export type JobDef = z.infer<typeof jobDefSchema>;
 export type NpcsConfig = z.infer<typeof npcsConfigSchema>;
+export type AttributeId = z.infer<typeof attributeIdSchema>;
+export type AttributeDef = z.infer<typeof attributeDefSchema>;
+export type NpcAttributes = z.infer<typeof npcAttributesSchema>;
 export type BuildingFx = z.infer<typeof buildingFxSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;

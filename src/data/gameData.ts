@@ -2,6 +2,7 @@ import buildingArtFiles from 'virtual:building-art';
 import { withBuildingArt } from '../map/buildingArt';
 import { parseCatalog } from '../model/catalog';
 import assets from './assets.json';
+import attributes from './attributes.json';
 import buildings from './buildings.json';
 import currencies from './currencies.json';
 import influence from './influence.json';
@@ -24,6 +25,7 @@ export const rawGameData = {
   research,
   influence,
   skills,
+  attributes,
   npcs,
   missions,
   tavernMenu,

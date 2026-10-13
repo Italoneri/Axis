@@ -1,7 +1,15 @@
 import { newId } from '../../commands/newId';
 import { t } from '../../i18n/pt-BR';
 import { goldInBronze, type Catalog } from '../../model/catalog';
-import type { GameState, Npc, NpcStatus } from '../../model/schema';
+import {
+  MAX_ATTRIBUTE,
+  MAX_SKILL,
+  MIN_ATTRIBUTE,
+  MIN_SKILL,
+  type GameState,
+  type Npc,
+  type NpcStatus,
+} from '../../model/schema';
 import {
   bronzeToGold,
   fromBronze,
@@ -9,11 +17,13 @@ import {
   toBronze,
   type CoinBag,
 } from '../../systems/Coins';
-import { findPost, housingList, skillOf, type NpcFields } from '../../systems/Npcs';
+import { findPost, housingList, isHeroSkill, skillOf, type NpcFields } from '../../systems/Npcs';
 import { el } from '../dom';
 import { photoField, saveWithPhoto } from '../photos/photoField';
 import { moveOutButton } from '../SlotNpcs';
-import { formatCount, formatGold, formatWage } from '../format';
+import type { SpriteOverrides } from '../../map/npcSprites';
+import { spriteField, spriteThumb, type SpriteSource } from './npcSpriteField';
+import { buildingLabel, formatCount, formatGold, formatWage } from '../format';
 import type { ResourceMenuItem } from '../ResourceMenu';
 import {
   button,
@@ -30,8 +40,6 @@ import {
 const SKILL_KEY = 'npcs.skill';
 const IDLE_KEY = 'npcs.idle';
 const ALL = 'all';
-const MAX_SKILL = 10;
-const MIN_SKILL = -10;
 const STATUSES: readonly NpcStatus[] = ['disponivel', 'ferido', 'em_missao'];
 
 /** NPCs: cards with skills, home and job; players move them, the master edits them. */
@@ -43,7 +51,11 @@ export class NpcPanel {
   private createdId: string | null = null;
   private redraw: () => void = () => undefined;
 
-  constructor(private readonly deps: PanelDeps) {}
+  constructor(private readonly deps: PanelDeps & { spriteOverrides: SpriteOverrides }) {}
+
+  private get sprites(): SpriteSource {
+    return { catalog: this.deps.store.catalog, overrides: this.deps.spriteOverrides };
+  }
 
   get menuItem(): ResourceMenuItem {
     return {
@@ -121,6 +133,7 @@ export class NpcPanel {
         'div',
         { class: 'card__head' },
         thumb(store, { image: npc.portrait, name: npc.name }, 'md'),
+        spriteThumb(this.sprites, npc),
         el(
           'div',
           {},
@@ -165,11 +178,7 @@ export class NpcPanel {
           { class: 'npc-skill', title: skill.description },
           el('span', { class: 'npc-skill__name' }, `${skill.icon} ${skill.name}`),
           skillBar(level),
-          el(
-            'span',
-            { class: `npc-skill__value${level < 0 ? ' is-negative' : ''}` },
-            String(level),
-          ),
+          el('span', { class: `npc-skill__value${valueTone(level)}` }, String(level)),
         );
       }),
     );
@@ -177,7 +186,6 @@ export class NpcPanel {
 
   private homeRow(npc: Npc): HTMLElement {
     const { store, act } = this.deps;
-    const ctxName = (id: string) => store.catalog.buildings.find((b) => b.id === id)?.name ?? id;
     const homes = housingList(store.current, store.catalog);
     const select = selectInput({
       label: t.npcs.home,
@@ -186,7 +194,11 @@ export class NpcPanel {
         { value: '', label: t.npcs.noHome },
         ...homes.map((h) => ({
           value: h.slotId,
-          label: t.npcs.homeOption(ctxName(h.buildingId), h.residents, h.capacity),
+          label: t.npcs.homeOption(
+            buildingLabel(store.catalog, h.buildingId, h.slotId),
+            h.residents,
+            h.capacity,
+          ),
           disabled: h.residents >= h.capacity && h.slotId !== npc.home,
         })),
       ],
@@ -284,6 +296,7 @@ export class NpcPanel {
     const title = input(npc?.title);
     const portrait = photoField({ source: store, current: npc?.portrait, name: npc?.name ?? '' });
     const description = input(npc?.description);
+    const sprite = spriteField(this.sprites, npc ?? { id });
     const wage = wageInputs(catalog, npc?.wage);
     const status = selectInput({
       label: t.npcs.status,
@@ -299,6 +312,7 @@ export class NpcPanel {
         label: skill.name,
       }),
     }));
+    const attributes = attributeInputs(catalog, npc);
     const read = (image: string): NpcFields => {
       const wageValue = wage.read();
       return {
@@ -309,7 +323,9 @@ export class NpcPanel {
         skills: Object.fromEntries(
           levels.map(({ skill, input }) => [skill.id, clampSkill(Number(input.value))]),
         ),
+        attributes: attributes.read(),
         wage: wageValue > 0 ? wageValue : undefined,
+        sprite: sprite.read(),
       };
     };
     const form = el(
@@ -326,6 +342,7 @@ export class NpcPanel {
       field(t.common.name, name),
       field(t.npcs.titleField, title),
       el('div', { class: 'field' }, el('span', {}, t.npcs.portrait), portrait.element),
+      sprite.element,
       field(t.common.description, description),
       el('div', { class: 'field' }, el('span', {}, t.npcs.wage), wage.element, wage.preview),
       npc && field(t.npcs.status, status),
@@ -334,6 +351,7 @@ export class NpcPanel {
         { class: 'npc-skill-inputs' },
         ...levels.map(({ skill, input }) => field(`${skill.icon} ${skill.name}`, input)),
       ),
+      attributes.element,
       el(
         'div',
         { class: 'row row--end' },
@@ -367,11 +385,55 @@ function wageInputs(catalog: Catalog, wage: number | undefined) {
 }
 
 function clampSkill(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(MAX_SKILL, Math.max(MIN_SKILL, Math.round(value)));
+  return clampLevel(value, MIN_SKILL, MAX_SKILL);
 }
 
-/** Grows right from the middle in gold, or left in red for a skill that hinders. */
+function clampLevel(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/**
+ * Força, Destreza and Poder Mágico: the master's eyes only. They are shown
+ * nowhere else (cards, lists, the mission picker); they only speed up missions.
+ */
+function attributeInputs(catalog: Catalog, npc: Npc | undefined) {
+  const inputs = catalog.attributes.map((attribute) => ({
+    attribute,
+    input: numberInput({
+      min: MIN_ATTRIBUTE,
+      max: MAX_ATTRIBUTE,
+      value: npc?.attributes?.[attribute.id] ?? 0,
+      label: attribute.name,
+    }),
+  }));
+  const element = el(
+    'fieldset',
+    { class: 'npc-attributes' },
+    el('legend', { class: 'section-title' }, t.npcs.attributes),
+    el('p', { class: 'panel__hint' }, t.npcs.attributesHint),
+    el(
+      'div',
+      { class: 'npc-skill-inputs' },
+      ...inputs.map(({ attribute, input }) => field(`${attribute.icon} ${attribute.name}`, input)),
+    ),
+  );
+  const read = () =>
+    Object.fromEntries(
+      inputs.map(({ attribute, input }) => [
+        attribute.id,
+        clampLevel(Number(input.value), MIN_ATTRIBUTE, MAX_ATTRIBUTE),
+      ]),
+    );
+  return { element, read };
+}
+
+function valueTone(level: number): string {
+  if (level < 0) return ' is-negative';
+  return isHeroSkill(level) ? ' is-hero' : '';
+}
+
+/** Grows right from the middle in gold (brighter at hero levels), or left in red for a skill that hinders. */
 function skillBar(level: number): HTMLElement {
   const isNegative = level < 0;
   const width = (Math.min(MAX_SKILL, Math.abs(level)) / MAX_SKILL) * 50;
@@ -385,7 +447,7 @@ function skillBar(level: number): HTMLElement {
       'aria-valuenow': String(level),
     },
     el('div', {
-      class: `npc-skill-bar__fill${isNegative ? ' is-negative' : ''}`,
+      class: `npc-skill-bar__fill${valueTone(level)}`,
       style: `${isNegative ? 'right' : 'left'}: 50%; width: ${width}%`,
     }),
   );

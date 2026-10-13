@@ -158,8 +158,16 @@ export const testCatalog = parseCatalog({
       { id: 'research', name: 'Pesquisa', icon: 'r', description: '' },
     ],
   },
+  attributes: {
+    attributes: [
+      { id: 'strength', name: 'Força', icon: 'f', description: '' },
+      { id: 'dexterity', name: 'Destreza', icon: 'd', description: '' },
+      { id: 'magic', name: 'Poder Mágico', icon: 'm', description: '' },
+    ],
+  },
   npcs: {
     negativeDivisor: 5,
+    skillTenthsAbove10: { 11: 26, 12: 35, 13: 46, 14: 61, 15: 80 },
     housingBuildings: ['barracks'],
     postSlots: { core: [1, 1], outer: [1, 2] },
     construction: {
@@ -173,6 +181,19 @@ export const testCatalog = parseCatalog({
   missions: {
     campCommissionPercent: 20,
     guildBonus: { building: 'guild', minLevel: 2, percent: 10 },
+    attributePointsAbove10: {
+      11: 13,
+      12: 17,
+      13: 23,
+      14: 30,
+      15: 40,
+      16: 53,
+      17: 70,
+      18: 92,
+      19: 121,
+      20: 160,
+    },
+    teamSpeed: { k: 160, m: 3, minDays: 1, maxSlowdown: 2 },
   },
   ...seed,
 });

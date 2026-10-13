@@ -12,8 +12,8 @@ describe('activeBonuses', () => {
       },
     });
     expect(activeBonuses(state, testCatalog)).toEqual([
-      { buildingId: 'heart', name: 'Coração', level: 1, effects: ['h1'] },
-      { buildingId: 'forge', name: 'Forja', level: 2, effects: ['f1', 'f2'] },
+      { buildingId: 'heart', name: 'Coração', level: 1, effects: ['h1'], count: 1 },
+      { buildingId: 'forge', name: 'Forja', level: 2, effects: ['f1', 'f2'], count: 1 },
     ]);
   });
 
@@ -37,7 +37,7 @@ describe('activeBonuses', () => {
       },
     });
     expect(activeBonuses(state, testCatalog)).toEqual([
-      { buildingId: 'heart', name: 'Coração', level: 1, effects: ['h1'] },
+      { buildingId: 'heart', name: 'Coração', level: 1, effects: ['h1'], count: 1 },
     ]);
   });
 });

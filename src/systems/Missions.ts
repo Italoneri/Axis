@@ -1,13 +1,15 @@
 import type { Catalog } from '../model/catalog';
-import type {
-  GameState,
-  LogEntry,
-  Mission,
-  MissionDifficulty,
-  MissionProgress,
-  MissionResult,
-  MissionStatus,
-  Npc,
+import {
+  ATTRIBUTE_IDS,
+  type GameState,
+  type LogEntry,
+  type Mission,
+  type MissionDifficulty,
+  type MissionProgress,
+  type MissionResult,
+  type MissionsConfig,
+  type MissionStatus,
+  type Npc,
 } from '../model/schema';
 import { builtLevel } from './BuildSystem';
 import { idError } from './Categories';
@@ -99,6 +101,42 @@ export function expectedPayout(state: GameState, catalog: Catalog, mission: Miss
   });
 }
 
+/** Mission points of one attribute level: the level itself up to 10, the hero table above. */
+export function attributePoints(level: number, config: MissionsConfig): number {
+  if (level <= 10) return level;
+  return config.attributePointsAbove10[String(level)] ?? level;
+}
+
+/** Strength, dexterity and magic of everyone sent, added up: more NPCs, a faster mission. */
+export function teamPoints(team: readonly Npc[], config: MissionsConfig): number {
+  const pointsOf = (npc: Npc) =>
+    ATTRIBUTE_IDS.reduce((sum, id) => sum + attributePoints(npc.attributes?.[id] ?? 0, config), 0);
+  return team.reduce((sum, npc) => sum + pointsOf(npc), 0);
+}
+
+/**
+ * Days an NPC mission takes: `ceil(days × k / (k + m × points))`, in integers
+ * so server and client agree, never under `minDays` and, for a team that
+ * slows things down, never over `maxSlowdown` × the mission's days.
+ */
+export function missionDays(days: number, points: number, config: MissionsConfig): number {
+  const { k, m, minDays, maxSlowdown } = config.teamSpeed;
+  const slowest = days * maxSlowdown;
+  const divisor = k + m * points;
+  if (divisor <= 0) return slowest;
+  const rounded = Math.floor((days * k + divisor - 1) / divisor);
+  return Math.max(minDays, Math.min(slowest, rounded));
+}
+
+/** Days these NPCs would take, for the board's "retorno previsto" line. */
+export function expectedMissionDays(
+  catalog: Catalog,
+  mission: Mission,
+  team: readonly Npc[],
+): number {
+  return missionDays(mission.days, teamPoints(team, catalog.missions), catalog.missions);
+}
+
 /** NPCs that may leave on a mission: at home or at work, never hurt or already away. */
 export function canGoOnMission(npc: Npc): boolean {
   return npc.status === 'disponivel' || npc.status === 'trabalhando';
@@ -163,11 +201,14 @@ export function takeMissionAsParty(state: GameState, id: string): Outcome {
   return ok(withLog(replaceMission(state, next), entry(state, 'mission_taken', next.title)));
 }
 
-/** The NPCs leave today and are due back after the mission's days. */
+/**
+ * The NPCs leave today. Their attributes set the return day now, so editing
+ * them later does not change a mission already under way.
+ */
 export function sendNpcsOnMission(
   state: GameState,
-  id: string,
-  npcIds: readonly string[],
+  catalog: Catalog,
+  { missionId: id, npcIds }: { missionId: string; npcIds: readonly string[] },
 ): Outcome {
   const found = openMission(state, id);
   if (!found.ok) return found;
@@ -181,7 +222,7 @@ export function sendNpcsOnMission(
     status: 'npcs',
     npcIds: ids,
     startedOnDay: state.day,
-    returnsOnDay: state.day + found.mission.days,
+    returnsOnDay: state.day + expectedMissionDays(catalog, found.mission, sent),
   };
   const away = new Set(ids);
   const npcs = state.npcs.map((npc) =>

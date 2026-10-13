@@ -9,6 +9,6 @@ export default defineConfig({
   // Phaser alone is ~1.2 MB minified; splitting it would not reduce what the page needs to load.
   build: { chunkSizeWarningLimit: 1600 },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
   },
 });

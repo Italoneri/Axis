@@ -56,6 +56,7 @@ export const t = {
   panel: {
     close: 'Fechar',
     emptySlot: (type: string) => `${type} — espaço livre`,
+    copies: (built: number, max: number) => `${built} de ${max} construídos`,
     chooseBuilding: 'Escolha uma estrutura para erguer aqui.',
     noOptions: 'Nenhuma estrutura pode ser construída neste espaço.',
     cost: 'Custo',
@@ -88,6 +89,7 @@ export const t = {
   drawer: {
     open: 'Registro e bônus',
     close: 'Fechar',
+    copies: (count: number, name: string) => `(${count} ${name}s)`,
     bonusesTab: 'Bônus ativos',
     logTab: 'Registro',
     masterTab: 'Mestre',
@@ -253,6 +255,12 @@ export const t = {
     prismPulseSeconds: 'Duração da pulsação (s)',
     export: 'Exportar theme.json',
     reset: 'Restaurar padrão',
+    walkingNpcsSection: 'NPCs no mapa',
+    walkingNpcs: 'NPCs andando',
+    walkingNpcsHint:
+      'Protótipo só visual: os NPCs aparecem ao aproximar o zoom. A escolha fica salva neste aparelho.',
+    walkingNpcsReducedMotion:
+      'Desligados porque o sistema pede menos movimento (prefers-reduced-motion).',
     previewSection: 'Pré-visualizar construção',
     previewHint:
       'Mostra uma construção num espaço só na tela, sem mudar o jogo. Some ao limpar ou recarregar a página.',
@@ -265,10 +273,17 @@ export const t = {
       `Mapa ${size}px · análise das texturas ${Math.round(analysisMs)} ms · pintura ${Math.round(renderMs)} ms`,
   },
 
+  walkingNpcs: {
+    clicked: (name: string, title: string) => (title ? `${name} · ${title}` : name),
+  },
+
   credits: {
     open: 'Créditos',
     title: 'Créditos',
     textures: 'Texturas do mapa',
+    sprites: 'Personagens (LPC)',
+    authors: (authors: string) => `Autores: ${authors}`,
+    link: (n: number) => `fonte ${n}`,
     license: (license: string) => `Licença: ${license}`,
     by: (author: string) => `Autor: ${author}`,
     authorMissing: 'Autor: (a preencher em src/data/credits.json)',
@@ -303,7 +318,7 @@ export const t = {
     home: 'Moradia',
     noHome: 'Sem moradia',
     homeOption: (building: string, used: number, capacity: number) =>
-      `${building} (${used}/${capacity})`,
+      `${building} (${used}/${capacity}${used >= capacity ? ', lotado' : ''})`,
     job: 'Trabalho',
     noJob: 'Sem trabalho',
     jobAt: (activity: string, building: string) => `${activity} em ${building}`,
@@ -321,6 +336,14 @@ export const t = {
     wageText: (coins: string) => `Salário: ${coins}/dia`,
     noWage: 'Sem salário',
     status: 'Situação',
+    sprite: 'Aparência no mapa',
+    spriteAutomatic: 'Automática',
+    spriteHidden: 'Não aparece no mapa',
+    spriteMissing: (name: string) => `${name} (sprite indisponível)`,
+    spriteMissingHint: 'Essa sprite saiu do projeto: no mapa, o NPC usa a automática.',
+    attributes: 'Atributos',
+    attributesHint:
+      'Força, Destreza e Poder Mágico, de -10 a 20. Só aparecem aqui; aceleram as missões da Guilda.',
     statuses: {
       disponivel: 'Disponível',
       trabalhando: 'Trabalhando',
@@ -367,6 +390,8 @@ export const t = {
     adjustTotal: 'Valor do ajuste',
     give: 'Dar',
     take: 'Remover',
+    takeHint: 'Remover cobra o valor total, quebrando moedas maiores e devolvendo o troco.',
+    takeShort: (wallet: string, balance: string) => `${wallet} tem só ${balance}.`,
     consolidate: 'Consolidar',
     transferTitle: 'Transferir entre carteiras',
     transfer: 'Transferir',
@@ -401,7 +426,7 @@ export const t = {
       concluida: 'Concluída',
     } satisfies Record<ResearchStatus, string>,
     empty: 'Nenhuma pesquisa aqui.',
-    buildStationHint: 'Construa a Estação de Estudo para ver os detalhes.',
+    buildStationHint: 'Construa a Biblioteca para ver os detalhes no Arquivo de Pesquisas.',
     archiveTitle: 'Arquivo de Pesquisas',
     allStatuses: 'Todos os status',
     allCategories: 'Todas as categorias',
@@ -528,6 +553,8 @@ export const t = {
       count === 0 ? 'Escolha ao menos um NPC' : `Enviar ${count} ${count === 1 ? 'NPC' : 'NPCs'}`,
     npcSplit: (commission: number, each: string, camp: string) =>
       `Se der certo: ${each} para cada NPC e ${camp} para o Acampamento (comissão de ${commission}%).`,
+    expectedReturn: (days: number, deadline: number) =>
+      `Retorno previsto em ${days} ${days === 1 ? 'dia' : 'dias'} (prazo da missão: ${deadline})`,
     worksAt: (place: string) => `trabalha em ${place}`,
     noPost: 'sem posto',
     unavailable: 'indisponível',
@@ -686,6 +713,8 @@ export const t = {
     category_not_empty: 'A categoria ainda tem itens. Mova-os ou remova-os antes.',
     insufficient_coins: 'Não há moedas suficientes nessa carteira.',
     nothing_to_move: 'Informe ao menos uma moeda.',
+    nothing_changed: 'Nada mudou: não há o que remover.',
+    building_limit: 'Limite de cópias dessa construção atingido. Remova uma antes de forçar outra.',
     same_wallet: 'Escolha carteiras diferentes.',
     character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
     no_home: 'O NPC precisa de moradia antes de trabalhar.',
@@ -707,6 +736,8 @@ export const t = {
 /** Lookups and formatters the texts need; built from the catalog and current state in ui/format.ts. */
 export interface TextContext {
   building: (id: string) => string;
+  /** "Alojamento II" for a copy of a building that may stand more than once; the name otherwise. */
+  buildingAt: (id: string, slotId: string | undefined) => string;
   material: (id: string) => string;
   /** "3 Platina e 12 Ouro". */
   coins: (bag: Readonly<Record<string, number>>) => string;
@@ -721,7 +752,9 @@ export function blockReasonText(reason: BlockReason, ctx: TextContext): string {
     case 'slot_occupied':
       return 'Este espaço já está ocupado.';
     case 'already_built':
-      return 'Já existe na Axis.';
+      return reason.maxCount === 1
+        ? 'Já existe na Axis.'
+        : `Limite de ${reason.maxCount} ${ctx.building(reason.buildingId)}s na Axis.`;
     case 'under_construction':
       return 'Aguarde a construção atual terminar.';
     case 'max_level':
@@ -762,17 +795,21 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'building_dropped':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
-      return `${masterActor(entry)} ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
+      return coinsAdjustedText(entry, ctx);
     case 'coins_deposited':
       return `${entry.character} depositou ${ctx.coins(entry.coins)} no Acampamento`;
     case 'coins_transferred':
       return `${masterActor(entry)} transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
     case 'coins_consolidated':
       return `${masterActor(entry)} consolidou as moedas ${walletOf(entry.wallet)}`;
-    case 'material_adjusted':
-      return entry.delta > 0
-        ? `${masterActor(entry)} adicionou ${entry.delta} ${entry.material}`
-        : `${masterActor(entry)} removeu ${-entry.delta} ${entry.material}`;
+    case 'material_adjusted': {
+      if (entry.delta > 0)
+        return `${masterActor(entry)} adicionou ${entry.delta} ${entry.material}`;
+      const removed = `${masterActor(entry)} removeu ${-entry.delta} ${entry.material}`;
+      return entry.requested === undefined
+        ? removed
+        : `${removed} (pedido: ${-entry.requested}; só havia ${-entry.delta})`;
+    }
     case 'material_added':
       return `${masterActor(entry)} cadastrou o material ${entry.material}`;
     case 'material_removed':
@@ -945,7 +982,7 @@ function npcAction(entry: NpcEntry, ctx: TextContext): string {
       return `${who}${entry.npc} deixou o posto de trabalho`;
     case 'npc_home_set':
       return entry.place
-        ? `${who}${entry.npc} passou a morar em ${ctx.building(entry.place)}`
+        ? `${who}${entry.npc} passou a morar em ${ctx.buildingAt(entry.place, entry.slotId)}`
         : `${who}${entry.npc} deixou a moradia`;
     case 'npc_moved':
       return `${entry.npc} mudou-se de ${ctx.building(entry.from)} para ${ctx.building(entry.place)}`;
@@ -988,7 +1025,7 @@ function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: Text
 type BuildingEntry = Extract<LogEntry, { buildingId: string }>;
 
 function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
-  const what = `${ctx.building(entry.buildingId)} nv. ${entry.level}`;
+  const what = `${ctx.buildingAt(entry.buildingId, entry.slotId)} nv. ${entry.level}`;
   const who = entry.actor ? `${entry.actor} ` : '';
   const paid = entry.paid ? ` (${paidText(entry.paid, ctx)})` : '';
   const actions: Record<BuildingEntry['kind'], string> = {
@@ -997,7 +1034,10 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_completed: `Concluída: ${what}`,
     building_forced: `${masterActor(entry)} definiu ${what}`,
     building_removed: `${masterActor(entry)} removeu ${what}`,
-    building_dropped: `${what} removida: o espaço não existe mais no mapa`,
+    building_dropped:
+      entry.kind === 'building_dropped' && entry.reason === 'unknown_building'
+        ? `${what} removida: a construção não existe mais no jogo`
+        : `${what} removida: o espaço não existe mais no mapa`,
   };
   return actions[entry.kind] + paid;
 }
@@ -1015,6 +1055,21 @@ function paidText(
 /** Wallet labels in the log: a character name, or absent for the Acampamento. */
 const walletName = (label: string | undefined) => label ?? 'o Acampamento';
 const walletOf = (label: string | undefined) => (label ? `de ${label}` : 'do Acampamento');
+
+/** "Mestre removeu 10 PO do Acampamento (−1 Platina, +9 Ouro)": the value first, then the coins. */
+function coinsAdjustedText(
+  entry: Extract<LogEntry, { kind: 'coins_adjusted' }>,
+  ctx: TextContext,
+): string {
+  const coins = signedList(entry.delta, ctx);
+  const value = entry.valueBronze;
+  if (value === undefined) {
+    return `${masterActor(entry)} ajustou as moedas ${walletOf(entry.wallet)}: ${coins}`;
+  }
+  const verb = value < 0 ? 'removeu' : 'adicionou';
+  const where = value < 0 ? walletOf(entry.wallet) : `a ${walletName(entry.wallet)}`;
+  return `${masterActor(entry)} ${verb} ${ctx.gold(Math.abs(value))} ${where} (${coins})`;
+}
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {
   return Object.entries(delta)

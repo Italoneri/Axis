@@ -56,8 +56,20 @@ describe('adjustMaterial', () => {
     if (!result.ok) throw new Error(result.error);
     expect(result.state.materials.items[0]?.quantity).toBe(0);
     expect(result.state.log).toEqual([
-      { day: 14, kind: 'material_adjusted', material: 'Ferro', delta: -4 },
+      { day: 14, kind: 'material_adjusted', material: 'Ferro', delta: -4, requested: -10 },
     ]);
+  });
+
+  it('logs no request when the removal fits the stock', () => {
+    const result = adjustMaterial(withIron(4), 'iron', -3);
+    expect(result.ok && result.state.log.at(-1)).not.toHaveProperty('requested');
+  });
+
+  it('refuses an adjustment that changes nothing', () => {
+    expect(adjustMaterial(withIron(0), 'iron', -2)).toEqual({
+      ok: false,
+      error: 'nothing_changed',
+    });
   });
 });
 

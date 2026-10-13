@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "subId": null,
+      "variant": "",
+      "recolor": "light",
+      "name": "Body Color (light)"
+    },
+    "head": {
+      "itemId": "heads_human_elderly_small",
+      "subId": null,
+      "variant": "",
+      "recolor": "light",
+      "name": "Human Elderly Small (light)"
+    },
+    "expression": {
+      "itemId": "face_neutral",
+      "subId": null,
+      "variant": "",
+      "recolor": "light",
+      "name": "Neutral (light)"
+    },
+    "vest": {
+      "itemId": "dress_bodice",
+      "subId": null,
+      "variant": "blue",
+      "recolor": "",
+      "name": "Bodice (blue)"
+    },
+    "jacket": {
+      "itemId": "torso_jacket_tabard",
+      "subId": null,
+      "variant": "orange",
+      "recolor": "",
+      "name": "Tabard (orange)"
+    },
+    "legs": {
+      "itemId": "legs_cuffed",
+      "subId": null,
+      "variant": "",
+      "recolor": "rose",
+      "name": "Cuffed Pants (rose)"
+    },
+    "hair": {
+      "itemId": "hair_princess",
+      "subId": null,
+      "variant": "",
+      "recolor": "gold",
+      "name": "Princess (gold)"
+    },
+    "shoes": {
+      "itemId": "feet_boots_basic",
+      "subId": null,
+      "variant": "",
+      "recolor": "pink",
+      "name": "Basic Boots (pink)"
+    }
+  }
+}

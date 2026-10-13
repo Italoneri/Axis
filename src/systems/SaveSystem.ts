@@ -95,7 +95,7 @@ export function parseState(json: unknown, catalog: Catalog): ParseResult {
   }
 
   const upgraded = upgradeWithCatalog(result.data, catalog, migrated.from);
-  const dropped = settleNpcs(dropMissingSlots(upgraded, catalog), catalog);
+  const dropped = settleNpcs(dropUnusableBuildings(upgraded, catalog), catalog);
   const state = { ...dropped, log: trimLog(dropped.log) };
   const problems = referenceProblems(state, catalog);
   if (problems.length > 0) return { ok: false, error: problems.join('; '), outdated: false };
@@ -164,31 +164,45 @@ export function migrateSave(
   return { ok: true, json: save, from: version };
 }
 
-/** Buildings on slots the layout no longer has (say, fewer mid_N) are removed and logged. */
-function dropMissingSlots(state: GameState, catalog: Catalog): GameState {
-  const isKnown = ([slotId]: [string, unknown]) => findSlot(catalog, slotId) !== undefined;
+/**
+ * Buildings on slots the layout no longer has (say, fewer mid_N) or that the
+ * catalog no longer has (a building taken out of the game) are removed and
+ * logged, so the rest of the save still loads.
+ */
+function dropUnusableBuildings(state: GameState, catalog: Catalog): GameState {
   const entries = Object.entries(state.slots);
-  const missing = entries.filter((entry) => !isKnown(entry));
-  if (missing.length === 0) return state;
+  const reasonFor = ([slotId, placed]: (typeof entries)[number]): DropReason | null => {
+    if (!findSlot(catalog, slotId)) return 'missing_slot';
+    return findBuilding(catalog, placed.buildingId) ? null : 'unknown_building';
+  };
+  const dropped = entries.flatMap((entry) => {
+    const reason = reasonFor(entry);
+    return reason ? [{ slotId: entry[0], placed: entry[1], reason }] : [];
+  });
+  if (dropped.length === 0) return state;
 
   console.warn(
-    '[save] dropping buildings on slots missing from the layout',
-    missing.map(([slotId]) => slotId),
+    '[save] dropping buildings the map or the catalog no longer has',
+    dropped.map(({ slotId, placed, reason }) => `${slotId}: ${placed.buildingId} (${reason})`),
   );
+  const gone = new Set(dropped.map(({ slotId }) => slotId));
   return {
     ...state,
-    slots: Object.fromEntries(entries.filter(isKnown)),
+    slots: Object.fromEntries(entries.filter(([slotId]) => !gone.has(slotId))),
     log: [
       ...state.log,
-      ...missing.map(([, placed]) => ({
+      ...dropped.map(({ placed, reason }) => ({
         day: state.day,
         kind: 'building_dropped' as const,
         buildingId: placed.buildingId,
         level: placed.level,
+        reason,
       })),
     ],
   };
 }
+
+type DropReason = 'missing_slot' | 'unknown_building';
 
 /** Loads the saved game, falling back to a fresh one when nothing usable is stored. */
 export function loadState(storage: Storage, catalog: Catalog): GameState {
@@ -224,9 +238,6 @@ function referenceProblems(state: GameState, catalog: Catalog): string[] {
   const wallets = [state.wallets.camp, ...Object.values(state.wallets.characters)];
 
   return [
-    ...Object.values(state.slots)
-      .filter((placed) => !findBuilding(catalog, placed.buildingId))
-      .map((placed) => `unknown building "${placed.buildingId}"`),
     ...wallets
       .flatMap((wallet) => Object.keys(wallet))
       .filter((id) => !currencyIds.has(id))

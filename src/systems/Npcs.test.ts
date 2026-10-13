@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands/applyCommand';
-import type { GameState } from '../model/schema';
+import { npcSchema, type GameState } from '../model/schema';
 import {
   addNpc,
   assignNpcJob,
@@ -64,8 +64,20 @@ describe('yieldTenths', () => {
     { base: 1.5, skill: -10, tenths: -30 },
     { base: 1.5, skill: 0, tenths: 15 },
     { base: 1.5, skill: 10, tenths: 30 },
+    { base: 1, skill: 11, tenths: 26 },
+    { base: 1, skill: 12, tenths: 35 },
+    { base: 1, skill: 13, tenths: 46 },
+    { base: 1, skill: 14, tenths: 61 },
+    { base: 1, skill: 15, tenths: 80 },
+    { base: 1.5, skill: 13, tenths: 69 },
   ])('turns base $base at skill $skill into $tenths tenths', ({ base, skill, tenths }) => {
-    expect(yieldTenths(base, skill, 5)).toBe(tenths);
+    expect(yieldTenths(base, skill, gameData.npcs)).toBe(tenths);
+  });
+
+  it('makes skill 15 yield 4× what skill 10 does (10 iron become 40)', () => {
+    const base = 5;
+    expect(yieldTenths(base, 15, gameData.npcs)).toBe(4 * yieldTenths(base, 10, gameData.npcs));
+    expect(yieldTenths(base, 10, gameData.npcs)).toBe(100);
   });
 });
 
@@ -269,6 +281,59 @@ describe('addNpc and updateNpc', () => {
     });
   });
 
+  it('stores attributes on create and edit, dropping the zeros', () => {
+    const attributes = { strength: 7, dexterity: 0, magic: -3 };
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', attributes }));
+    expect(added.npcs.find((n) => n.id === 'lia')?.attributes).toEqual({ strength: 7, magic: -3 });
+
+    const edit = { ...fields, attributes: { magic: 20 }, status: 'disponivel' as const };
+    const edited = expectOk(updateNpc(added, testCatalog, 'lia', edit));
+    expect(edited.npcs.find((n) => n.id === 'lia')?.attributes).toEqual({ magic: 20 });
+
+    const cleared = { ...fields, attributes: { strength: 0 }, status: 'disponivel' as const };
+    const none = expectOk(updateNpc(edited, testCatalog, 'lia', cleared));
+    expect(none.npcs.find((n) => n.id === 'lia')).not.toHaveProperty('attributes');
+  });
+
+  it('keeps the attributes when an older client edits without them', () => {
+    const attributes = { strength: 12 };
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', attributes }));
+    const edited = expectOk(
+      updateNpc(added, testCatalog, 'lia', { ...fields, title: 'Sábia', status: 'disponivel' }),
+    );
+    expect(edited.npcs.find((n) => n.id === 'lia')?.attributes).toEqual({ strength: 12 });
+  });
+
+  it('accepts saved NPCs from before attributes', () => {
+    const saved = npc({ id: 'old', name: 'Velho' });
+    expect(saved).not.toHaveProperty('attributes');
+    expect(npcSchema.safeParse(saved).success).toBe(true);
+  });
+
+  it('stores the chosen sprite, keeps it on an edit without one and clears it with null', () => {
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', sprite: 'none' }));
+    const lia = (state: GameState) => state.npcs.find((n) => n.id === 'lia');
+    expect(lia(added)?.sprite).toBe('none');
+
+    const edit = { ...fields, status: 'disponivel' as const };
+    const kept = expectOk(updateNpc(added, testCatalog, 'lia', edit));
+    expect(lia(kept)?.sprite).toBe('none');
+
+    const chosen = expectOk(
+      updateNpc(kept, testCatalog, 'lia', { ...edit, sprite: 'aventureira' }),
+    );
+    expect(lia(chosen)?.sprite).toBe('aventureira');
+
+    const automatic = expectOk(updateNpc(chosen, testCatalog, 'lia', { ...edit, sprite: null }));
+    expect(lia(automatic)).not.toHaveProperty('sprite');
+  });
+
+  it('accepts saved NPCs from before the sprite choice', () => {
+    const saved = npc({ id: 'old', name: 'Velho' });
+    expect(saved).not.toHaveProperty('sprite');
+    expect(npcSchema.safeParse(saved).success).toBe(true);
+  });
+
   it.each([
     { name: 'new skills', skills: { smithing: -2 }, carry: 0 },
     { name: 'the same skills', skills: { smithing: 10 }, carry: -4 },
@@ -370,8 +435,6 @@ describe('post openings by ring (shipped data)', () => {
   it.each([
     { ring: 'outer', slotId: 'outer_1', buildingId: 'forge', perLevel: [3, 6, 8] },
     { ring: 'middle', slotId: 'mid_1', buildingId: 'library', perLevel: [2, 4, 6] },
-    { ring: 'outer', slotId: 'outer_1', buildingId: 'study_station', perLevel: [3, 6, 8] },
-    { ring: 'middle', slotId: 'mid_1', buildingId: 'study_station', perLevel: [2, 4, 6] },
   ])('gives $buildingId on the $ring ring $perLevel', ({ slotId, buildingId, perLevel }) => {
     expect([1, 2, 3].map((level) => openings(slotId, buildingId, level))).toEqual(
       perLevel.map((slots) => [slots]),

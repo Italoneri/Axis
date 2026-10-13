@@ -50,6 +50,11 @@ export class CameraController {
     return this.dragged;
   }
 
+  /** Current zoom as a multiple of the "whole map" zoom: 1 when fully zoomed out. */
+  get zoomFactor(): number {
+    return this.camera.zoom / this.minZoom;
+  }
+
   /** Glides until the world point is inside the useful area, e.g. a slot opened behind the panel. */
   reveal(x: number, y: number): void {
     const area = this.usefulWorldArea();

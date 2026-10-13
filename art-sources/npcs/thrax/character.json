@@ -1,0 +1,132 @@
+{
+  "version": 2,
+  "bodyType": "male",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "subId": null,
+      "variant": "",
+      "recolor": "green",
+      "name": "body"
+    },
+    "head": {
+      "itemId": "heads_human_male",
+      "subId": null,
+      "variant": "",
+      "recolor": "green",
+      "name": "heads_human_male"
+    },
+    "eyes": {
+      "itemId": "heads_human_male",
+      "subId": 1,
+      "variant": "",
+      "recolor": "orange",
+      "name": "heads_human_male"
+    },
+    "expression": {
+      "itemId": "face_neutral",
+      "subId": null,
+      "variant": "",
+      "recolor": "green",
+      "name": "face_neutral"
+    },
+    "ears": {
+      "itemId": "head_ears_elven",
+      "subId": null,
+      "variant": "",
+      "recolor": "green",
+      "name": "head_ears_elven"
+    },
+    "hair": {
+      "itemId": "hair_long_messy2",
+      "subId": null,
+      "variant": "",
+      "recolor": "red",
+      "name": "hair_long_messy2"
+    },
+    "hairextl": {
+      "itemId": "hairext_xlong_braidl",
+      "subId": null,
+      "variant": "",
+      "recolor": "red",
+      "name": "hairext_xlong_braidl"
+    },
+    "hairextr": {
+      "itemId": "hairext_xlong_braidr",
+      "subId": null,
+      "variant": "",
+      "recolor": "red",
+      "name": "hairext_xlong_braidr"
+    },
+    "earring_left": {
+      "itemId": "facial_earring_left",
+      "subId": null,
+      "variant": "gray",
+      "recolor": "",
+      "name": "facial_earring_left"
+    },
+    "earring_right": {
+      "itemId": "facial_earring_right",
+      "subId": null,
+      "variant": "gray",
+      "recolor": "",
+      "name": "facial_earring_right"
+    },
+    "clothes": {
+      "itemId": "torso_clothes_longsleeve",
+      "subId": null,
+      "variant": "",
+      "recolor": "charcoal",
+      "name": "torso_clothes_longsleeve"
+    },
+    "armour": {
+      "itemId": "torso_armour_leather",
+      "subId": null,
+      "variant": "",
+      "recolor": "black",
+      "name": "torso_armour_leather"
+    },
+    "leather_armor_belt": {
+      "itemId": "torso_armour_leather",
+      "subId": 1,
+      "variant": "",
+      "recolor": "iron",
+      "name": "torso_armour_leather"
+    },
+    "shoulders": {
+      "itemId": "shoulders_mantal",
+      "subId": null,
+      "variant": "",
+      "recolor": "white",
+      "name": "shoulders_mantal"
+    },
+    "arms": {
+      "itemId": "arms_armour",
+      "subId": null,
+      "variant": "",
+      "recolor": "iron",
+      "name": "arms_armour"
+    },
+    "necklace": {
+      "itemId": "neck_necklace_chain",
+      "subId": null,
+      "variant": "brass",
+      "recolor": "",
+      "name": "neck_necklace_chain"
+    },
+    "legs": {
+      "itemId": "legs_pants",
+      "subId": null,
+      "variant": "",
+      "recolor": "charcoal",
+      "name": "legs_pants"
+    },
+    "shoes": {
+      "itemId": "feet_boots_basic",
+      "subId": null,
+      "variant": "",
+      "recolor": "brown",
+      "name": "feet_boots_basic"
+    }
+  }
+}

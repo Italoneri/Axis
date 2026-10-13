@@ -40,9 +40,7 @@ Documento de passagem para continuar a arte das construções em outro chat. Est
 | `infirmary` | Enfermaria | middle, outer | a fazer |
 | `library` | Biblioteca | middle | a fazer |
 | `sanctuary` | Santuário | middle | a fazer |
-| `study_station` | Estação de Estudo | middle, outer | a fazer |
 | `armory` | Arsenal | outer | a fazer |
-| `watchtower` | Torre de Vigia | outer | a fazer |
 | `barracks` | Quartel | outer | a fazer |
 
 O Ítalo vai criar **mais construções para o anel intermediário**. Os efeitos de nível e os custos ficam no `src/data/buildings.json`. Construção nova = arte + uma entrada nova nesse arquivo.
@@ -186,5 +184,5 @@ Um zip contendo:
 
 **Próximas sugeridas:**
 - Para o anel intermediário (v4): Biblioteca, Santuário e as construções novas que o Ítalo vai inventar.
-- Para a muralha: Arsenal, Quartel e Torre de Vigia.
+- Para a muralha: Arsenal e Quartel.
 - Por último, o Coração da Axis.

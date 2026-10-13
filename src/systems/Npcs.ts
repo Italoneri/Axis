@@ -1,14 +1,17 @@
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import type {
   BuildingLevel,
+  NpcsConfig,
   GameState,
   JobDef,
   LogEntry,
   Npc,
+  NpcAttributes,
   NpcJob,
   NpcReleaseReason,
   NpcStatus,
 } from '../model/schema';
+import { ATTRIBUTE_IDS } from '../model/schema';
 import { activeLevel } from './BuildSystem';
 import { idError, nameError } from './Categories';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
@@ -32,7 +35,11 @@ export interface NpcFields {
   portrait?: string | undefined;
   description: string;
   skills: Readonly<Record<string, number>>;
+  /** Left out by clients that predate attributes: an edit then keeps the current ones. */
+  attributes?: NpcAttributes | undefined;
   wage?: number | undefined;
+  /** `null` is the automatic pick; left out (older clients), an edit keeps the current one. */
+  sprite?: string | null | undefined;
 }
 
 export type NpcEdit = NpcFields & { status: NpcStatus };
@@ -43,20 +50,30 @@ export interface JobOrder {
   researchId?: string | undefined;
 }
 
+/** What `yieldTenths` reads from npcs.json. */
+export type YieldTable = Pick<NpcsConfig, 'negativeDivisor' | 'skillTenthsAbove10'>;
+
 /**
- * Yield in tenths, kept integer so daily sums stay exact: `base × (1 + skill / 10)`,
- * or `base × skill / negativeDivisor` for a negative skill, which works against the post.
+ * Yield in tenths, kept integer so daily sums stay exact: `base × (1 + skill / 10)`
+ * up to 10, then the hero table (15 yields 4× what 10 does), or
+ * `base × skill / negativeDivisor` for a negative skill, which works against the post.
  */
-export function yieldTenths(base: number, skill: number, negativeDivisor: number): number {
-  if (skill < 0) return Math.round((base * skill * 10) / negativeDivisor);
-  return Math.round(base * (10 + skill));
+export function yieldTenths(base: number, skill: number, table: YieldTable): number {
+  if (skill < 0) return Math.round((base * skill * 10) / table.negativeDivisor);
+  const heroTenths = skill > 10 ? table.skillTenthsAbove10[String(skill)] : undefined;
+  return Math.round(base * (heroTenths ?? 10 + skill));
+}
+
+/** Hero levels yield explosively more; the UI marks them. */
+export function isHeroSkill(level: number): boolean {
+  return level > 10;
 }
 
 /** What this NPC adds to the post each day, in tenths; bonus posts have no amount. */
 export function postYieldTenths(catalog: Catalog, post: Post, npc: Npc): number {
   const { effect, skill } = post.job;
   if (effect.type === 'bonus') return 0;
-  return yieldTenths(effect.perDay, skillOf(npc, skill), catalog.npcs.negativeDivisor);
+  return yieldTenths(effect.perDay, skillOf(npc, skill), catalog.npcs);
 }
 
 export function skillOf(npc: Npc, skillId: string): number {
@@ -155,7 +172,11 @@ export function updateNpc(state: GameState, catalog: Catalog, id: string, edit: 
   if (!npc) return fail('not_found');
   const error = fieldsError(state, catalog, edit, id);
   if (error) return fail(error);
-  const fields = cleanFields(edit);
+  const fields = cleanFields({
+    ...edit,
+    attributes: edit.attributes ?? npc.attributes,
+    sprite: edit.sprite === undefined ? npc.sprite : edit.sprite,
+  });
   // New skills mean a new yield: the leftover tenths of the old one are dropped.
   const job =
     npc.job && !sameSkills(npc.skills, fields.skills) ? { ...npc.job, carry: 0 } : npc.job;
@@ -206,6 +227,7 @@ export function setNpcHome(
     withLog(replaceNpc(state, { ...npc, home: slotId }), {
       ...entry(state, 'npc_home_set', npc.name),
       place,
+      slotId,
     }),
   );
 }
@@ -409,14 +431,32 @@ function fieldsError(
 function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'status' | 'earnings'> {
   const portrait = fields.portrait?.trim();
   const wage = fields.wage && fields.wage > 0 ? fields.wage : undefined;
+  const attributes = cleanAttributes(fields.attributes ?? {});
+  const { sprite } = fields;
   return {
     name: fields.name.trim(),
     title: fields.title.trim(),
     ...(portrait ? { portrait } : {}),
     description: fields.description,
-    skills: Object.fromEntries(Object.entries(fields.skills).filter(([, level]) => level !== 0)),
+    skills: nonZero(fields.skills),
+    ...(Object.keys(attributes).length > 0 ? { attributes } : {}),
     ...(wage ? { wage } : {}),
+    ...(sprite ? { sprite } : {}),
   };
+}
+
+/** Zero is the default, so it is not stored. */
+function nonZero(levels: Readonly<Record<string, number>>): Record<string, number> {
+  return Object.fromEntries(Object.entries(levels).filter(([, level]) => level !== 0));
+}
+
+function cleanAttributes(attributes: NpcAttributes): NpcAttributes {
+  return Object.fromEntries(
+    ATTRIBUTE_IDS.flatMap((id) => {
+      const level = attributes[id] ?? 0;
+      return level === 0 ? [] : [[id, level]];
+    }),
+  );
 }
 
 function sameSkills(a: Npc['skills'], b: Npc['skills']): boolean {

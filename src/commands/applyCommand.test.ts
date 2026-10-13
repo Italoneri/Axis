@@ -81,6 +81,7 @@ const npcFields = {
   title: 'Maga',
   description: '',
   skills: { research: 7 },
+  attributes: { strength: 7, dexterity: 7, magic: 6 },
   wage: 0.5,
 };
 
@@ -91,7 +92,13 @@ const validCommands: Record<CommandType, GameCommand> = {
   advance_days: { type: 'advance_days', days: 2 },
   force_building: { type: 'force_building', slotId: 'outer_s', buildingId: 'armory', level: 1 },
   remove_building: { type: 'remove_building', slotId: 'outer_n' },
-  adjust_coins: { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { gold: -10, silver: 3 } },
+  adjust_coins: {
+    type: 'adjust_coins',
+    wallet: { kind: 'camp' },
+    delta: { gold: -10, silver: -3 },
+  },
+  give_coins: { type: 'give_coins', wallet: { kind: 'camp' }, coins: { gold: 2 } },
+  take_coins: { type: 'take_coins', wallet: { kind: 'camp' }, coins: { gold: 5, silver: 50 } },
   deposit: { type: 'deposit', characterId: 'thorin', coins: { gold: 2 } },
   transfer_coins: {
     type: 'transfer_coins',
@@ -227,13 +234,49 @@ describe('applyCommand', () => {
       },
     },
     {
-      name: 'skill above 10',
+      name: 'an old-format adjustment that adds and removes at once',
+      input: { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { gold: -5, silver: 3 } },
+    },
+    {
+      name: 'attribute below -10',
+      input: { type: 'npc_create', id: 'npc_x', ...npcFields, attributes: { strength: -11 } },
+    },
+    {
+      name: 'attribute above 20',
       input: {
         type: 'npc_update',
         npcId: 'bianca',
         ...npcFields,
         status: 'disponivel',
-        skills: { smithing: 11 },
+        attributes: { magic: 21 },
+      },
+    },
+    {
+      name: 'unknown attribute',
+      input: { type: 'npc_create', id: 'npc_x', ...npcFields, attributes: { charisma: 5 } },
+    },
+    {
+      name: 'sprite with a path',
+      input: { type: 'npc_create', id: 'npc_x', ...npcFields, sprite: '../aventureira' },
+    },
+    {
+      name: 'empty sprite',
+      input: {
+        type: 'npc_update',
+        npcId: 'bianca',
+        ...npcFields,
+        status: 'disponivel',
+        sprite: '',
+      },
+    },
+    {
+      name: 'skill above 15',
+      input: {
+        type: 'npc_update',
+        npcId: 'bianca',
+        ...npcFields,
+        status: 'disponivel',
+        skills: { smithing: 16 },
       },
     },
   ])('refuses a malformed command: $name', ({ input }) => {
@@ -289,6 +332,20 @@ describe('applyCommand', () => {
     expect(run(validCommands.build)).toMatchObject({
       change: { kind: 'construction_started', slotId: 'outer_s' },
     });
+  });
+
+  it.each([
+    { name: 'without a sprite', sprite: {}, stored: undefined },
+    { name: 'with a sprite', sprite: { sprite: 'aventureira_civil' }, stored: 'aventureira_civil' },
+    { name: 'hidden from the map', sprite: { sprite: 'none' }, stored: 'none' },
+    { name: 'back to automatic', sprite: { sprite: null }, stored: undefined },
+  ])('creates and edits an NPC $name', ({ sprite, stored }) => {
+    const created = run({ ...validCommands.npc_create, ...sprite });
+    if (!created.ok) throw new Error(created.error);
+    expect(created.state.npcs.find((n) => n.id === 'npc_1')?.sprite).toBe(stored);
+    const edited = run({ ...validCommands.npc_update, ...sprite });
+    if (!edited.ok) throw new Error(edited.error);
+    expect(edited.state.npcs.find((n) => n.id === 'bianca')?.sprite).toBe(stored);
   });
 });
 

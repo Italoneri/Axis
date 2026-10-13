@@ -17,6 +17,7 @@ describe('forceBuilding', () => {
       kind: 'building_forced',
       buildingId: 'forge',
       level: 2,
+      slotId: 'outer_n',
     });
   });
 

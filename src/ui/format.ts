@@ -1,6 +1,7 @@
 import { listText, t, type TextContext } from '../i18n/pt-BR';
 import { findBuilding, goldInBronze, type Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
+import { copyNumber } from '../systems/BuildSystem';
 import { consolidate, fromBronze, goldToBronze, type CoinBag } from '../systems/Coins';
 import { findMaterial } from '../systems/Materials';
 
@@ -24,10 +25,32 @@ export function formatCount(n: number): string {
 export function textContext(catalog: Catalog, state: GameState): TextContext {
   return {
     building: (id) => findBuilding(catalog, id)?.name ?? id,
+    buildingAt: (id, slotId) => buildingLabel(catalog, id, slotId),
     material: (id) => findMaterial(state.materials, id)?.name ?? id,
     gold: (bronze) => formatGold(catalog, bronze),
     coins: (bag: CoinBag) => formatCoins(catalog, bag),
   };
+}
+
+/** "Alojamento II": copies get a stable roman number (see `copyNumber`); unique buildings just their name. */
+export function buildingLabel(catalog: Catalog, buildingId: string, slotId?: string): string {
+  const name = findBuilding(catalog, buildingId)?.name ?? buildingId;
+  const number = slotId === undefined ? undefined : copyNumber(catalog, buildingId, slotId);
+  return number === undefined ? name : `${name} ${toRoman(number)}`;
+}
+
+const ROMAN: readonly [number, string][] = [
+  [10, 'X'],
+  [9, 'IX'],
+  [5, 'V'],
+  [4, 'IV'],
+  [1, 'I'],
+];
+
+/** Small numbers only (the layout has a few dozen slots). */
+export function toRoman(n: number): string {
+  const [entry] = ROMAN.filter(([value]) => value <= n);
+  return entry ? entry[1] + toRoman(n - entry[0]) : '';
 }
 
 /** "1 Prata e 2 Bronze", biggest coins first. */

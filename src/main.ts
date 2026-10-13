@@ -34,6 +34,8 @@ import './ui/ui.css';
 import { MenuWindow } from './ui/menu/MenuWindow';
 import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
+import { WalkingNpcsSetting } from './ui/walkingNpcsSetting';
+import { spriteOverridesSchema } from './map/npcSprites';
 import type { Act } from './ui/widgets';
 
 type Notify = (message: string, tone?: 'error') => void;
@@ -108,10 +110,11 @@ async function start(): Promise<void> {
   const notify: Notify = (message, tone) => showToast(toasts, message, tone);
 
   // Loaded dynamically so a mistake in src/data/*.json shows up on screen instead of a blank page.
-  const [{ gameData }, theme, credits] = await Promise.all([
+  const [{ gameData }, theme, credits, spriteOverrides] = await Promise.all([
     import('./data/gameData'),
     import('./data/theme.json').then((m) => parseTheme(m.default)),
     import('./data/credits.json').then((m) => parseCredits(m.default)),
+    import('./data/npc_sprites.json').then((m) => spriteOverridesSchema.parse(m.default)),
   ]);
   const mode = await openMode(gameData, notify);
   if (!mode) return;
@@ -176,11 +179,15 @@ async function start(): Promise<void> {
   const liveMap = new LiveMap(gameData.layout, new ThemeStore(theme), mapResolution());
   const act: Act = (command) => store.dispatch(command) === null;
   const preview = new BuildingPreview();
+  const walkingNpcs = new WalkingNpcsSetting(
+    memory,
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   const drawer = new InfoDrawer(
     requireElement('drawer'),
     store,
     session,
-    { liveMap, preview },
+    { liveMap, preview, walkingNpcs },
     act,
     { ...mode.drawerExtras(store), openArchive, openMenu },
   );
@@ -196,7 +203,7 @@ async function start(): Promise<void> {
   mountTopBar(
     requireElement('topbar'),
     requireElement('popover'),
-    { store, session, act, memory, archive },
+    { store, session, act, memory, archive, spriteOverrides },
     {
       notify,
       toggleDrawer: () => drawer.toggle(),
@@ -222,7 +229,11 @@ async function start(): Promise<void> {
     scene: [
       new BootScene(),
       new PreloadScene(gameData.assets, liveMap),
-      new BaseScene(store, panel, liveMap, preview),
+      new BaseScene(store, panel, liveMap, preview, {
+        setting: walkingNpcs,
+        overrides: spriteOverrides,
+        onClick: (npc) => notify(t.walkingNpcs.clicked(npc.name, npc.title)),
+      }),
     ],
   });
 }

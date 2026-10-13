@@ -1,12 +1,10 @@
 import { jobEffectText, logEntryText, t, type TextContext } from '../i18n/pt-BR';
-import type { BuildingPreview } from '../map/buildingPreview';
-import type { LiveMap } from '../map/liveMap';
 import type { GameStore } from '../store';
 import { activeBonuses, activePostEffects, type PostEffect } from '../systems/BonusSystem';
 import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
 import type { MasterAccess } from './MasterSession';
-import { renderMapVisual } from './MapVisualPanel';
+import { renderMapVisual, type MapTools } from './MapVisualPanel';
 import { renderMasterTools } from './MasterTools';
 import type { Act } from './widgets';
 
@@ -41,7 +39,7 @@ export class InfoDrawer {
     private readonly root: HTMLElement,
     private readonly store: GameStore,
     private readonly session: MasterAccess,
-    private readonly map: { liveMap: LiveMap; preview: BuildingPreview },
+    private readonly map: MapTools,
     private readonly act: Act,
     private readonly extras: DrawerExtras = {},
   ) {
@@ -138,8 +136,7 @@ export class InfoDrawer {
       });
       return [...tools, ...this.panelsOf(tab).map((panel) => panel.element)];
     }
-    if (tab === 'map')
-      return renderMapVisual(this.map.liveMap, this.store.catalog, this.map.preview);
+    if (tab === 'map') return renderMapVisual(this.map, this.store.catalog);
     if (tab === 'log') {
       const log = this.renderLog();
       return this.extras.history ? [...log, this.extras.history.element] : log;
@@ -178,7 +175,13 @@ export class InfoDrawer {
             'div',
             {},
             el('h3', { class: 'card__name' }, bonus.name),
-            el('p', { class: 'card__sub' }, t.level(bonus.level)),
+            el(
+              'p',
+              { class: 'card__sub' },
+              bonus.count > 1
+                ? `${t.level(bonus.level)} ${t.drawer.copies(bonus.count, bonus.name)}`
+                : t.level(bonus.level),
+            ),
           ),
         ),
         el('ul', { class: 'effects' }, ...bonus.effects.map((effect) => el('li', {}, effect))),

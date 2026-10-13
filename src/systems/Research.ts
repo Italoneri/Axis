@@ -17,8 +17,8 @@ import {
 } from './Categories';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
 
-/** Building whose side panel shows the full research archive once built. */
-export const STUDY_STATION_ID = 'study_station';
+/** Building whose side panel shows the full research archive once built (level 1). */
+export const RESEARCH_ARCHIVE_BUILDING_ID = 'library';
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 export type ResearchDraft = DistributiveOmit<Research, 'id'>;
@@ -30,7 +30,7 @@ export interface ResearchFilter {
 }
 
 export function hasResearchArchive(state: GameState): boolean {
-  return builtLevel(state, STUDY_STATION_ID) >= 1;
+  return builtLevel(state, RESEARCH_ARCHIVE_BUILDING_ID) >= 1;
 }
 
 export function researchCounts(book: ResearchBook): { done: number; inProgress: number } {

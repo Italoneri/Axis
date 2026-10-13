@@ -1,0 +1,111 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "subId": null,
+      "variant": "",
+      "recolor": "bronze",
+      "name": "body"
+    },
+    "head": {
+      "itemId": "heads_human_female",
+      "subId": null,
+      "variant": "",
+      "recolor": "bronze",
+      "name": "heads_human_female"
+    },
+    "eyes": {
+      "itemId": "heads_human_female",
+      "subId": 1,
+      "variant": "",
+      "recolor": "green",
+      "name": "heads_human_female"
+    },
+    "expression": {
+      "itemId": "face_neutral",
+      "subId": null,
+      "variant": "",
+      "recolor": "bronze",
+      "name": "face_neutral"
+    },
+    "ears": {
+      "itemId": "head_ears_elven",
+      "subId": null,
+      "variant": "",
+      "recolor": "bronze",
+      "name": "head_ears_elven"
+    },
+    "hair": {
+      "itemId": "hair_xlong",
+      "subId": null,
+      "variant": "",
+      "recolor": "white",
+      "name": "hair_xlong"
+    },
+    "dress": {
+      "itemId": "dress_slit",
+      "subId": null,
+      "variant": "maroon",
+      "recolor": "",
+      "name": "dress_slit"
+    },
+    "sleeves": {
+      "itemId": "torso_clothes_longsleeves",
+      "subId": null,
+      "variant": "",
+      "recolor": "maroon",
+      "name": "torso_clothes_longsleeves"
+    },
+    "bracers": {
+      "itemId": "arms_bracers",
+      "subId": null,
+      "variant": "",
+      "recolor": "gold",
+      "name": "arms_bracers"
+    },
+    "shoulders": {
+      "itemId": "shoulders_epaulets",
+      "subId": null,
+      "variant": "",
+      "recolor": "yellow",
+      "name": "shoulders_epaulets"
+    },
+    "necklace": {
+      "itemId": "neck_necklace_simple",
+      "subId": null,
+      "variant": "gold",
+      "recolor": "",
+      "name": "neck_necklace_simple"
+    },
+    "earring_left": {
+      "itemId": "facial_earring_left",
+      "subId": null,
+      "variant": "yellow",
+      "recolor": "",
+      "name": "facial_earring_left"
+    },
+    "earring_right": {
+      "itemId": "facial_earring_right",
+      "subId": null,
+      "variant": "yellow",
+      "recolor": "",
+      "name": "facial_earring_right"
+    },
+    "shoes": {
+      "itemId": "feet_boots_basic",
+      "subId": null,
+      "variant": "",
+      "recolor": "maroon",
+      "name": "feet_boots_basic"
+    },
+    "weapon": {
+      "itemId": "weapon_sword_arming",
+      "subId": null,
+      "variant": "gold",
+      "recolor": "",
+      "name": "weapon_sword_arming"
+    }
+  }
+}

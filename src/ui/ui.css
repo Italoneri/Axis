@@ -1180,6 +1180,21 @@ details > summary {
   font-style: italic;
 }
 
+.credits__layers {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  list-style: none;
+  font-size: 0.82rem;
+}
+
+.credits__layers li {
+  display: grid;
+  gap: 1px;
+}
+
 /* Online: login and "create a game" cards, shown before the map is mounted. */
 .gate {
   position: fixed;
@@ -1338,6 +1353,148 @@ details > summary {
 
 .npc-skill-bar__fill.is-negative {
   background: var(--danger);
+}
+
+/* Skills above 10 ("nível herói") yield explosively more: a warmer, brighter gold. */
+.npc-skill-bar__fill.is-hero {
+  background: linear-gradient(to right, var(--gold), var(--gold-soft));
+  box-shadow: 0 0 6px rgba(243, 227, 166, 0.45);
+}
+
+.is-hero {
+  color: var(--gold-soft);
+  font-weight: 700;
+}
+
+.mission-return {
+  margin: 0;
+  color: var(--gold-soft);
+  font-weight: 600;
+}
+
+.npc-attributes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.npc-attributes legend {
+  padding: 0;
+}
+
+/* ---------- NPC look on the map (one 64 px frame of an LPC walk sheet) ---------- */
+
+.sprite-picker {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.sprite-picker legend {
+  padding: 0;
+}
+
+.sprite-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.sprite-option {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  cursor: pointer;
+  text-align: center;
+}
+
+.sprite-option:has(:checked) {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+.sprite-option:has(:focus-visible) {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 2px;
+}
+
+.sprite-option__radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sprite-option__name {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.npc-sprite {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+}
+
+.npc-sprite--small {
+  width: 48px;
+  height: 48px;
+}
+
+.npc-sprite--empty {
+  font-size: 28px;
+  color: var(--muted);
+}
+
+/* Row 3 of the sheet faces the viewer; column 0 is the standing frame. */
+.npc-sprite__sheet {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  background-repeat: no-repeat;
+  background-position: 0 -128px;
+  image-rendering: pixelated;
+}
+
+/* Scaled from its corner: a centered 64 px frame would overflow the 48 px box to one side. */
+.npc-sprite--small .npc-sprite__sheet {
+  align-self: start;
+  justify-self: start;
+  transform: scale(0.75);
+  transform-origin: 0 0;
+}
+
+/* Columns 1–8 are the walk cycle, at the map's 8 frames per second. */
+.npc-sprite__sheet--walking {
+  animation: npc-walk 1s steps(8) infinite;
+}
+
+@keyframes npc-walk {
+  from {
+    background-position: -64px -128px;
+  }
+  to {
+    background-position: -576px -128px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .npc-sprite__sheet--walking {
+    animation: none;
+  }
 }
 
 .npc-skill-inputs {

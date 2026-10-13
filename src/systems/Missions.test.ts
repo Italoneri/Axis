@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands/applyCommand';
 import type { CommandContext } from '../commands/schema';
-import { gameStateSchema, type GameState, type Mission, type Npc } from '../model/schema';
+import {
+  gameStateSchema,
+  type GameState,
+  type Mission,
+  type Npc,
+  type NpcAttributes,
+} from '../model/schema';
 import { toBronze } from './Coins';
 import {
   addMission,
+  attributePoints,
   expectedPayout,
   guildBonusPercent,
+  missionDays,
   resolveMission,
   sendNpcsOnMission,
   splitReward,
+  teamPoints,
 } from './Missions';
 import { advanceDays } from './TimeSystem';
 import { makeState, mission, npc, testCatalog } from './testFixtures';
@@ -61,7 +70,7 @@ function sendAndResolve(
   resolution: { result: 'sucesso' | 'falha'; injuredNpcIds?: string[] },
   state = board(),
 ): GameState {
-  const sent = ok(sendNpcsOnMission(state, 'caca', npcIds));
+  const sent = ok(sendNpcsOnMission(state, testCatalog, { missionId: 'caca', npcIds }));
   const back = advanceDays(sent, testCatalog, 3).state;
   return ok(
     resolveMission(back, testCatalog, {
@@ -149,7 +158,9 @@ describe('missions with the group', () => {
 
 describe('missions with NPCs', () => {
   it('sends available and working NPCs away, keeping home and post', () => {
-    const sent = ok(sendNpcsOnMission(board(), 'caca', ['bia', 'caio']));
+    const sent = ok(
+      sendNpcsOnMission(board(), testCatalog, { missionId: 'caca', npcIds: ['bia', 'caio'] }),
+    );
     expect(npcOf(sent, 'bia')).toMatchObject({
       status: 'em_missao',
       home: 'outer_e',
@@ -165,16 +176,22 @@ describe('missions with NPCs', () => {
   });
 
   it('refuses hurt NPCs and NPCs already away', () => {
-    expect(sendNpcsOnMission(board(), 'caca', ['eli'])).toEqual({
-      ok: false,
-      error: 'npc_unavailable',
-    });
+    expect(sendNpcsOnMission(board(), testCatalog, { missionId: 'caca', npcIds: ['eli'] })).toEqual(
+      {
+        ok: false,
+        error: 'npc_unavailable',
+      },
+    );
     const away = board({ npcs: [{ ...caio, status: 'em_missao' }] });
-    expect(sendNpcsOnMission(away, 'caca', ['caio'])).toMatchObject({ error: 'npc_unavailable' });
+    expect(
+      sendNpcsOnMission(away, testCatalog, { missionId: 'caca', npcIds: ['caio'] }),
+    ).toMatchObject({ error: 'npc_unavailable' });
   });
 
   it('waits for the master on the return day, not before', () => {
-    const sent = ok(sendNpcsOnMission(board(), 'caca', ['caio']));
+    const sent = ok(
+      sendNpcsOnMission(board(), testCatalog, { missionId: 'caca', npcIds: ['caio'] }),
+    );
     const early = advanceDays(sent, testCatalog, 2).state;
     expect(missionOf(early)?.progress.status).toBe('npcs');
     const back = advanceDays(sent, testCatalog, 5).state;
@@ -185,7 +202,9 @@ describe('missions with NPCs', () => {
   });
 
   it('does not let the master resolve before the NPCs are back', () => {
-    const sent = ok(sendNpcsOnMission(board(), 'caca', ['caio']));
+    const sent = ok(
+      sendNpcsOnMission(board(), testCatalog, { missionId: 'caca', npcIds: ['caio'] }),
+    );
     const early = resolveMission(sent, testCatalog, {
       missionId: 'caca',
       result: 'sucesso',
@@ -236,7 +255,12 @@ describe('missions with NPCs', () => {
   });
 
   it('shows the expected payout with the team that left', () => {
-    const sent = ok(sendNpcsOnMission(board(), 'caca', ['bia', 'caio', 'duda']));
+    const sent = ok(
+      sendNpcsOnMission(board(), testCatalog, {
+        missionId: 'caca',
+        npcIds: ['bia', 'caio', 'duda'],
+      }),
+    );
     const sentMission = missionOf(sent);
     if (!sentMission) throw new Error('mission missing');
     expect(expectedPayout(sent, testCatalog, sentMission)).toEqual({
@@ -384,3 +408,90 @@ function run(state: GameState, command: unknown, ctx: CommandContext = master): 
   if (!result.ok) throw new Error(result.error);
   return result.state;
 }
+
+describe('mission days from the team attributes', () => {
+  const { missions: config } = testCatalog;
+  const adventurer = (id: string, attributes: NpcAttributes) => npc({ id, name: id, attributes });
+  const twenty = (id: string) => adventurer(id, { strength: 7, dexterity: 7, magic: 6 });
+  const daysFor = (team: Npc[]) => missionDays(10, teamPoints(team, config), config);
+
+  it.each([
+    { name: 'nobody with attributes', team: [npc({ id: 'a', name: 'A' })], points: 0, days: 10 },
+    { name: '1 NPC with 20 points', team: [twenty('a')], points: 20, days: 8 },
+    { name: '2 NPCs like that', team: [twenty('a'), twenty('b')], points: 40, days: 6 },
+    { name: '3 NPCs like that', team: ['a', 'b', 'c'].map(twenty), points: 60, days: 5 },
+    { name: '4 NPCs like that', team: ['a', 'b', 'c', 'd'].map(twenty), points: 80, days: 4 },
+    {
+      name: 'a hero 15/15/15',
+      team: [adventurer('h', { strength: 15, dexterity: 15, magic: 15 })],
+      points: 120,
+      days: 4,
+    },
+    {
+      name: 'a goddess 20/20/20',
+      team: [adventurer('g', { strength: 20, dexterity: 20, magic: 20 })],
+      points: 480,
+      days: 1,
+    },
+    {
+      name: 'an NPC -10/-10/-10 (twice the deadline at most)',
+      team: [adventurer('w', { strength: -10, dexterity: -10, magic: -10 })],
+      points: -30,
+      days: 20,
+    },
+  ])('a 10-day mission with $name takes $days days', ({ team, points, days }) => {
+    expect(teamPoints(team, config)).toBe(points);
+    expect(daysFor(team)).toBe(days);
+  });
+
+  it('counts levels up to 10 as themselves and the table above', () => {
+    expect([-10, 0, 7, 10].map((level) => attributePoints(level, config))).toEqual([-10, 0, 7, 10]);
+    expect([11, 15, 20].map((level) => attributePoints(level, config))).toEqual([13, 40, 160]);
+  });
+
+  it('rounds up, never goes under 1 day and never divides by zero or less', () => {
+    expect(missionDays(3, 20, config)).toBe(3); // 480 / 220 = 2.18 → 3
+    expect(missionDays(1, 480, config)).toBe(1);
+    expect(missionDays(1, 10_000, config)).toBe(1);
+    expect(missionDays(10, -54, config)).toBe(20); // divisor 160 − 162 < 0
+    expect(missionDays(10, -160 / 3, config)).toBe(20);
+  });
+
+  it('sets the return day on leaving; editing attributes later does not move it', () => {
+    const fast = { ...caio, attributes: { strength: 20, dexterity: 20, magic: 20 } };
+    const state = board({ npcs: [bia, fast, duda, ferido] });
+    const sent = ok(sendNpcsOnMission(state, testCatalog, { missionId: 'caca', npcIds: ['caio'] }));
+    expect(missionOf(sent)?.progress).toMatchObject({ startedOnDay: 5, returnsOnDay: 6 });
+
+    const edited = applyCommand(
+      sent,
+      testCatalog,
+      {
+        type: 'npc_update',
+        npcId: 'caio',
+        name: 'Caio',
+        title: '',
+        description: '',
+        skills: {},
+        attributes: { strength: -10, dexterity: -10, magic: -10 },
+        status: 'em_missao',
+      },
+      master,
+    );
+    if (!edited.ok) throw new Error(edited.error);
+    expect(missionOf(edited.state)?.progress).toMatchObject({ returnsOnDay: 6 });
+  });
+
+  it('leaves missions the group takes as they were', () => {
+    const fast = { ...caio, attributes: { strength: 20, dexterity: 20, magic: 20 } };
+    const state = board({ npcs: [bia, fast, duda, ferido] });
+    const taken = applyCommand(
+      state,
+      testCatalog,
+      { type: 'mission_take_party', missionId: 'caca' },
+      master,
+    );
+    if (!taken.ok) throw new Error(taken.error);
+    expect(missionOf(taken.state)?.progress).toEqual({ status: 'grupo', startedOnDay: 5 });
+  });
+});

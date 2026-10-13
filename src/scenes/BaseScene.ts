@@ -3,22 +3,29 @@ import { availableArtFiles } from '../map/buildingArt';
 import type { BuildingPreview } from '../map/buildingPreview';
 import { slotBounds } from '../map/geometry';
 import { Gates, type GateState } from '../map/gates';
+import type { SlotDef } from '../map/layout';
 import { MAP_TEXTURE, type LiveMap } from '../map/liveMap';
+import { spriteNames, type SpriteOverrides } from '../map/npcSprites';
+import { buildWalkGraph } from '../map/walkGraph';
 import { MAP_TEXTURE_KEYS, textureImage } from '../map/textures';
 import { findBuilding } from '../model/catalog';
-import type { GameState, PlacedBuilding } from '../model/schema';
+import type { GameState, Npc, PlacedBuilding } from '../model/schema';
 import type { GameStore, StateChange } from '../store';
 import { FxBudget } from './BuildingFx';
 import { CameraController } from './CameraController';
 import { coveredInsets, type Insets } from './cameraMath';
 import { isCanvasGesture } from './pointerGesture';
 import { SlotView } from './SlotView';
+import type { WalkingNpcsSetting } from '../ui/walkingNpcsSetting';
+import { WalkingNpcs } from './WalkingNpcs';
 
 const BACKGROUND = '#2b2a2c';
 /** Served by the Vite dev server from the project root; not part of the build. */
 const REFERENCE_URL = '/docs/map-reference/axis_preview.jpg';
 const REFERENCE_KEY = 'map.reference';
 const REFERENCE_DEPTH = 100;
+/** Outer building depth when the layout has no outer arc, as in layout.json v4. */
+const FALLBACK_OUTER_DEPTH = 0.082;
 
 export interface SlotSelection {
   open(slotId: string): void;
@@ -26,16 +33,25 @@ export interface SlotSelection {
   onSelectionChange(listener: (slotId: string | null) => void): void;
 }
 
+/** The walking NPCs prototype: its switch, pinned sprites and what a click on an NPC does. */
+export interface WalkingNpcsDeps {
+  readonly setting: WalkingNpcsSetting;
+  readonly overrides: SpriteOverrides;
+  readonly onClick: (npc: Npc) => void;
+}
+
 /** The generated Axis map with its gates and slots. Reads state from the store and reports clicks. */
 export class BaseScene extends Phaser.Scene {
   private readonly slotViews = new Map<string, SlotView>();
   private gates: Gates | undefined;
+  private walkingNpcs: WalkingNpcs | undefined;
 
   constructor(
     private readonly store: GameStore,
     private readonly selection: SlotSelection,
     private readonly liveMap: LiveMap,
     private readonly preview: BuildingPreview,
+    private readonly walking: WalkingNpcsDeps,
   ) {
     super('Base');
   }
@@ -76,6 +92,15 @@ export class BaseScene extends Phaser.Scene {
       this.slotViews.set(slot.id, view);
     }
 
+    this.walkingNpcs = new WalkingNpcs(this, {
+      graph: buildWalkGraph(layout),
+      mapSize: size,
+      outerDepth: outerDepthOf(layout.slots),
+      sprites: spriteNames(this.store.catalog.assets),
+      camera,
+      ...this.walking,
+    });
+
     // A click on bare map (not a pan) dismisses the panel.
     this.input.on(
       'pointerup',
@@ -98,8 +123,10 @@ export class BaseScene extends Phaser.Scene {
     });
 
     this.render(this.store.current);
+    this.walkingNpcs.sync(this.store.current);
     const unsubscribe = this.store.subscribe((state, change) => {
       this.render(state);
+      this.walkingNpcs?.sync(state);
       this.animate(state, change);
     });
     const stopPreview = this.preview.subscribe(() => this.render(this.store.current));
@@ -108,7 +135,12 @@ export class BaseScene extends Phaser.Scene {
       stopPreview();
       stopTheme();
       stopReference();
+      this.walkingNpcs?.destroy();
     });
+  }
+
+  override update(): void {
+    this.walkingNpcs?.update();
   }
 
   /** The canvas hidden behind the slot panel and the drawer (both `.panel` elements). */
@@ -169,4 +201,12 @@ export class BaseScene extends Phaser.Scene {
       change.completedSlotIds.forEach((slotId) => this.slotViews.get(slotId)?.playCompleted());
     }
   }
+}
+
+/** How deep the outer buildings are: the yardstick for the size of a person. */
+function outerDepthOf(slots: readonly SlotDef[]): number {
+  const outer = slots.find((slot) => slot.shape === 'arc' && slot.type === 'outer');
+  return outer?.shape === 'arc'
+    ? outer.arc.outerRadius - outer.arc.innerRadius
+    : FALLBACK_OUTER_DEPTH;
 }

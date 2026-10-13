@@ -1,0 +1,22 @@
+{
+  "attributes": [
+    {
+      "id": "strength",
+      "name": "Força",
+      "icon": "💪",
+      "description": "Músculo e resistência em combate e nas viagens."
+    },
+    {
+      "id": "dexterity",
+      "name": "Destreza",
+      "icon": "🏹",
+      "description": "Agilidade, pontaria e furtividade."
+    },
+    {
+      "id": "magic",
+      "name": "Poder Mágico",
+      "icon": "✨",
+      "description": "Força dos feitiços e da conexão com o arcano."
+    }
+  ]
+}

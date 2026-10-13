@@ -1,6 +1,6 @@
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import type { GameState, LogEntry } from '../model/schema';
-import { startBuild, startUpgrade, type BlockReason } from '../systems/BuildSystem';
+import { hasRoomFor, startBuild, startUpgrade, type BlockReason } from '../systems/BuildSystem';
 import {
   addCharacter,
   joinWithNewCharacter,
@@ -53,7 +53,14 @@ import {
 } from '../systems/Missions';
 import { isUploadFor, looksLikeUpload, setImage } from '../systems/GameImages';
 import { advanceDays } from '../systems/TimeSystem';
-import { adjustCoins, consolidateWallet, depositToCamp, transferCoins } from '../systems/Wallets';
+import {
+  adjustCoins,
+  consolidateWallet,
+  depositToCamp,
+  giveCoins,
+  takeCoins,
+  transferCoins,
+} from '../systems/Wallets';
 import {
   gameCommandSchema,
   type CommandContext,
@@ -89,6 +96,7 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   category_not_empty: true,
   insufficient_coins: true,
   nothing_to_move: true,
+  nothing_changed: true,
   same_wallet: true,
   character_has_coins: true,
   no_home: true,
@@ -100,6 +108,7 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   mission_closed: true,
   npc_unavailable: true,
   empty_reward: true,
+  building_limit: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -256,6 +265,9 @@ const handlers: Handlers = {
     const def = findBuilding(catalog, order.buildingId);
     if (!findSlot(catalog, order.slotId) || !def) return NOT_FOUND;
     if (order.level > def.levels.length) return { ok: false, error: 'invalid_command' };
+    // Changing the level of a copy is fine; adding one past the limit is not.
+    const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
+    if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
     return { ok: true, state: forceBuilding(state, catalog, order), change };
   },
@@ -268,7 +280,12 @@ const handlers: Handlers = {
     };
   },
 
-  adjust_coins: ({ wallet, delta }, { state }) => resources(adjustCoins(state, wallet, delta)),
+  adjust_coins: ({ wallet, delta }, { state, catalog }) =>
+    resources(adjustCoins(state, catalog, wallet, delta)),
+  give_coins: ({ wallet, coins }, { state, catalog }) =>
+    resources(giveCoins(state, catalog, wallet, coins)),
+  take_coins: ({ wallet, coins }, { state, catalog }) =>
+    resources(takeCoins(state, catalog, wallet, coins)),
   deposit: ({ characterId, coins }, { state }) =>
     resources(depositToCamp(state, characterId, coins)),
   transfer_coins: ({ from, to, coins }, { state }) =>
@@ -344,8 +361,8 @@ const handlers: Handlers = {
     missions(updateMission(state, catalog, command.missionId, missionFields(command))),
   mission_remove: ({ missionId }, { state }) => missions(removeMission(state, missionId)),
   mission_take_party: ({ missionId }, { state }) => missions(takeMissionAsParty(state, missionId)),
-  mission_send_npcs: ({ missionId, npcIds }, { state }) =>
-    missions(sendNpcsOnMission(state, missionId, npcIds)),
+  mission_send_npcs: ({ missionId, npcIds }, { state, catalog }) =>
+    missions(sendNpcsOnMission(state, catalog, { missionId, npcIds })),
   mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
 
@@ -365,8 +382,17 @@ function materialFields({ name, category, icon, description }: MaterialFields): 
   return { name, category, icon, description };
 }
 
-function npcFields({ name, title, portrait, description, skills, wage }: NpcFields): NpcFields {
-  return { name, title, portrait, description, skills, wage };
+function npcFields({
+  name,
+  title,
+  portrait,
+  description,
+  skills,
+  attributes,
+  wage,
+  sprite,
+}: NpcFields): NpcFields {
+  return { name, title, portrait, description, skills, attributes, wage, sprite };
 }
 
 function missionFields({

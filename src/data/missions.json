@@ -1,4 +1,17 @@
 {
   "campCommissionPercent": 20,
-  "guildBonus": { "building": "guild", "minLevel": 2, "percent": 10 }
+  "guildBonus": { "building": "guild", "minLevel": 2, "percent": 10 },
+  "attributePointsAbove10": {
+    "11": 13,
+    "12": 17,
+    "13": 23,
+    "14": 30,
+    "15": 40,
+    "16": 53,
+    "17": 70,
+    "18": 92,
+    "19": 121,
+    "20": 160
+  },
+  "teamSpeed": { "k": 160, "m": 3, "minDays": 1, "maxSlowdown": 2 }
 }

@@ -5,6 +5,7 @@ import { serializeTheme, type MapTheme, type NumericThemeKey, type ThemeStore } 
 import { findBuilding, type Catalog } from '../model/catalog';
 import { el } from './dom';
 import { downloadText } from './download';
+import type { WalkingNpcsSetting } from './walkingNpcsSetting';
 import { field, section } from './widgets';
 
 interface Slider {
@@ -50,14 +51,20 @@ const GROUPS: { title: string; sliders: Slider[]; withGoldColor?: boolean }[] = 
   },
 ];
 
+/** What the "Visual do mapa" tab adjusts. */
+export interface MapTools {
+  readonly liveMap: LiveMap;
+  readonly preview: BuildingPreview;
+  readonly walkingNpcs: WalkingNpcsSetting;
+}
+
 /**
  * Content of the master's "Visual do mapa" drawer tab. Inputs update the theme
  * in place (the drawer is not re-rendered), so a slider keeps its drag.
  */
 export function renderMapVisual(
-  liveMap: LiveMap,
+  { liveMap, preview, walkingNpcs }: MapTools,
   catalog: Catalog,
-  preview: BuildingPreview,
 ): HTMLElement[] {
   const { theme } = liveMap;
   const dirty = el('p', { class: 'notice', hidden: !theme.isDirty }, t.mapVisual.edited);
@@ -67,6 +74,7 @@ export function renderMapVisual(
     timingsLine(liveMap),
     dirty,
     ...(import.meta.env.DEV ? [referenceField(liveMap)] : []),
+    walkingNpcsSection(walkingNpcs),
     previewSection(catalog, preview),
     ...GROUPS.map((group) =>
       section(
@@ -94,6 +102,17 @@ export function renderMapVisual(
       ),
     ),
   ];
+}
+
+function walkingNpcsSection(setting: WalkingNpcsSetting): HTMLElement {
+  const box = el('input', { type: 'checkbox', checked: setting.isChosen });
+  box.addEventListener('change', () => setting.choose(box.checked));
+  return section(
+    t.mapVisual.walkingNpcsSection,
+    el('label', { class: 'row' }, box, t.mapVisual.walkingNpcs),
+    el('p', { class: 'panel__hint' }, t.mapVisual.walkingNpcsHint),
+    setting.isReducedMotion && el('p', { class: 'notice' }, t.mapVisual.walkingNpcsReducedMotion),
+  );
 }
 
 /**
