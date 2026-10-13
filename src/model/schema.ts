@@ -271,6 +271,15 @@ export const npcJobSchema = z.object({
   carry: z.number().int().min(-9).max(9),
 });
 
+/** Sprite value that keeps an NPC off the map, so it cannot be a sprite's name. */
+export const NPC_HIDDEN_SPRITE = 'none';
+/**
+ * Look on the map: a sprite name (`npc.<name>.walk` in assets.json) or
+ * `NPC_HIDDEN_SPRITE`. Not checked against the assets: the server does not
+ * know them, and a sprite that is gone falls back to the automatic pick.
+ */
+export const npcSpriteSchema = z.string().regex(/^[\w-]+$/);
+
 export const npcSchema = z.object({
   id: z.string().min(1),
   name: displayName,
@@ -291,6 +300,8 @@ export const npcSchema = z.object({
   wage: z.number().nonnegative().optional(),
   /** Bronze earned in missions so far; NPCs have no wallet. */
   earnings: positiveInt.optional(),
+  /** Chosen look on the map; missing means the automatic pick. */
+  sprite: npcSpriteSchema.optional(),
 });
 
 export const MISSION_TITLE_LIMIT = 120;

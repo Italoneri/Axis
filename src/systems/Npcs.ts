@@ -38,6 +38,8 @@ export interface NpcFields {
   /** Left out by clients that predate attributes: an edit then keeps the current ones. */
   attributes?: NpcAttributes | undefined;
   wage?: number | undefined;
+  /** `null` is the automatic pick; left out (older clients), an edit keeps the current one. */
+  sprite?: string | null | undefined;
 }
 
 export type NpcEdit = NpcFields & { status: NpcStatus };
@@ -170,7 +172,11 @@ export function updateNpc(state: GameState, catalog: Catalog, id: string, edit: 
   if (!npc) return fail('not_found');
   const error = fieldsError(state, catalog, edit, id);
   if (error) return fail(error);
-  const fields = cleanFields({ ...edit, attributes: edit.attributes ?? npc.attributes });
+  const fields = cleanFields({
+    ...edit,
+    attributes: edit.attributes ?? npc.attributes,
+    sprite: edit.sprite === undefined ? npc.sprite : edit.sprite,
+  });
   // New skills mean a new yield: the leftover tenths of the old one are dropped.
   const job =
     npc.job && !sameSkills(npc.skills, fields.skills) ? { ...npc.job, carry: 0 } : npc.job;
@@ -426,6 +432,7 @@ function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'stat
   const portrait = fields.portrait?.trim();
   const wage = fields.wage && fields.wage > 0 ? fields.wage : undefined;
   const attributes = cleanAttributes(fields.attributes ?? {});
+  const { sprite } = fields;
   return {
     name: fields.name.trim(),
     title: fields.title.trim(),
@@ -434,6 +441,7 @@ function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'stat
     skills: nonZero(fields.skills),
     ...(Object.keys(attributes).length > 0 ? { attributes } : {}),
     ...(wage ? { wage } : {}),
+    ...(sprite ? { sprite } : {}),
   };
 }
 

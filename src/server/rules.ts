@@ -38,6 +38,7 @@ const SAMPLE: readonly GameCommand[] = [
     description: '',
     skills: { smithing: 13 },
     wage: 0.35,
+    sprite: 'aventureira',
   },
   { type: 'npc_set_home', npcId: 'npc_parity', slotId: 'outer_1' },
   {
@@ -55,6 +56,17 @@ const SAMPLE: readonly GameCommand[] = [
     description: '',
     skills: { smithing: -7 },
     attributes: { strength: 13, dexterity: 7, magic: -2 },
+    sprite: 'none',
+  },
+  // An edit without `sprite` (an older client) keeps the chosen one.
+  {
+    type: 'npc_update',
+    npcId: 'npc_parity_clumsy',
+    name: 'Tobias',
+    title: 'Aprendiz desastrado',
+    description: '',
+    skills: { smithing: -7 },
+    status: 'disponivel',
   },
   { type: 'npc_set_home', npcId: 'npc_parity_clumsy', slotId: 'outer_1' },
   { type: 'npc_assign_job', npcId: 'npc_parity_clumsy', slotId: 'outer_2', activityId: 'forjar' },

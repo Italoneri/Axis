@@ -390,8 +390,9 @@ function npcFields({
   skills,
   attributes,
   wage,
+  sprite,
 }: NpcFields): NpcFields {
-  return { name, title, portrait, description, skills, attributes, wage };
+  return { name, title, portrait, description, skills, attributes, wage, sprite };
 }
 
 function missionFields({

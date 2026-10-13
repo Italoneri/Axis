@@ -256,6 +256,20 @@ describe('applyCommand', () => {
       input: { type: 'npc_create', id: 'npc_x', ...npcFields, attributes: { charisma: 5 } },
     },
     {
+      name: 'sprite with a path',
+      input: { type: 'npc_create', id: 'npc_x', ...npcFields, sprite: '../aventureira' },
+    },
+    {
+      name: 'empty sprite',
+      input: {
+        type: 'npc_update',
+        npcId: 'bianca',
+        ...npcFields,
+        status: 'disponivel',
+        sprite: '',
+      },
+    },
+    {
       name: 'skill above 15',
       input: {
         type: 'npc_update',
@@ -318,6 +332,20 @@ describe('applyCommand', () => {
     expect(run(validCommands.build)).toMatchObject({
       change: { kind: 'construction_started', slotId: 'outer_s' },
     });
+  });
+
+  it.each([
+    { name: 'without a sprite', sprite: {}, stored: undefined },
+    { name: 'with a sprite', sprite: { sprite: 'aventureira_civil' }, stored: 'aventureira_civil' },
+    { name: 'hidden from the map', sprite: { sprite: 'none' }, stored: 'none' },
+    { name: 'back to automatic', sprite: { sprite: null }, stored: undefined },
+  ])('creates and edits an NPC $name', ({ sprite, stored }) => {
+    const created = run({ ...validCommands.npc_create, ...sprite });
+    if (!created.ok) throw new Error(created.error);
+    expect(created.state.npcs.find((n) => n.id === 'npc_1')?.sprite).toBe(stored);
+    const edited = run({ ...validCommands.npc_update, ...sprite });
+    if (!edited.ok) throw new Error(edited.error);
+    expect(edited.state.npcs.find((n) => n.id === 'bianca')?.sprite).toBe(stored);
   });
 });
 

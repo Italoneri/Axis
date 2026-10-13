@@ -310,6 +310,28 @@ describe('addNpc and updateNpc', () => {
     expect(npcSchema.safeParse(saved).success).toBe(true);
   });
 
+  it('stores the chosen sprite, keeps it on an edit without one and clears it with null', () => {
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', sprite: 'none' }));
+    const lia = (state: GameState) => state.npcs.find((n) => n.id === 'lia');
+    expect(lia(added)?.sprite).toBe('none');
+
+    const edit = { ...fields, status: 'disponivel' as const };
+    const kept = expectOk(updateNpc(added, testCatalog, 'lia', edit));
+    expect(lia(kept)?.sprite).toBe('none');
+
+    const chosen = expectOk(updateNpc(kept, testCatalog, 'lia', { ...edit, sprite: 'aventureira' }));
+    expect(lia(chosen)?.sprite).toBe('aventureira');
+
+    const automatic = expectOk(updateNpc(chosen, testCatalog, 'lia', { ...edit, sprite: null }));
+    expect(lia(automatic)).not.toHaveProperty('sprite');
+  });
+
+  it('accepts saved NPCs from before the sprite choice', () => {
+    const saved = npc({ id: 'old', name: 'Velho' });
+    expect(saved).not.toHaveProperty('sprite');
+    expect(npcSchema.safeParse(saved).success).toBe(true);
+  });
+
   it.each([
     { name: 'new skills', skills: { smithing: -2 }, carry: 0 },
     { name: 'the same skills', skills: { smithing: 10 }, carry: -4 },

@@ -7,6 +7,7 @@ import {
   MISSION_TITLE_LIMIT,
   missionDifficultySchema,
   missionResultSchema,
+  npcSpriteSchema,
   npcStatusSchema,
   researchSchema,
   npcAttributesSchema,
@@ -55,6 +56,8 @@ const npcFields = {
   skills: z.record(z.string(), skillLevelSchema),
   attributes: npcAttributesSchema.optional(),
   wage: z.number().nonnegative().optional(),
+  /** `null` goes back to the automatic pick; left out, an edit keeps the current one. */
+  sprite: npcSpriteSchema.nullable().optional(),
 };
 
 const missionFields = {
