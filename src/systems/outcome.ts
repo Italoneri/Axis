@@ -9,6 +9,8 @@ export type ActionError =
   | 'category_not_empty'
   | 'insufficient_coins'
   | 'nothing_to_move'
+  /** An adjustment that would leave everything as it is (removing from an empty stock). */
+  | 'nothing_changed'
   | 'same_wallet'
   | 'character_has_coins'
   /** NPCs: work needs a home. */

@@ -25,6 +25,8 @@ const SAMPLE: readonly GameCommand[] = [
   { type: 'advance_days', days: 3 },
   { type: 'add_material_category', id: 'matcat_parity', name: 'Paridade' },
   { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { gold: 7 } },
+  { type: 'take_coins', wallet: { kind: 'camp' }, coins: { gold: 5, silver: 55 } },
+  { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { silver: -3 } },
   { type: 'force_building', slotId: 'outer_1', buildingId: 'barracks', level: 1 },
   { type: 'force_building', slotId: 'outer_2', buildingId: 'forge', level: 2 },
   {

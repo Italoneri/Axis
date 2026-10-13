@@ -5,12 +5,12 @@ import {
   consolidate,
   hasCoins,
   isEmptyBag,
+  pay,
   removeCoins,
   toBronze,
   type CoinBag,
 } from './Coins';
 import { fail, ok, withLog, type Outcome } from './outcome';
-import { applyResourceDelta } from './ResourceSystem';
 
 // Group wallets: one per character plus the Acampamento. Only the Acampamento
 // pays for structures; characters deposit into it, and only the master moves
@@ -52,19 +52,83 @@ export function campShortfall(
   return { missingBronze, personalBronze: personalBronze(state, catalog) };
 }
 
-/** Master: gives (positive) or takes (negative) coins, never below zero; logs what changed. */
-export function adjustCoins(state: GameState, ref: WalletRef, delta: AmountBag): Outcome {
+/**
+ * Master's "Ajustar" in the format clients sent before `take_coins`: a delta
+ * that only adds gives those coins, one that only removes takes its whole
+ * value (`takeCoins`). Mixed signs never pass the command schema.
+ */
+export function adjustCoins(
+  state: GameState,
+  catalog: Catalog,
+  ref: WalletRef,
+  delta: AmountBag,
+): Outcome {
+  const isTaking = Object.values(delta).some((amount) => amount < 0);
+  if (!isTaking) return giveCoins(state, catalog, ref, delta);
+  const taken = Object.fromEntries(Object.entries(delta).map(([id, n]) => [id, -n]));
+  return takeCoins(state, catalog, ref, taken);
+}
+
+/** Master: adds these coins to the wallet. */
+export function giveCoins(
+  state: GameState,
+  catalog: Catalog,
+  ref: WalletRef,
+  coins: CoinBag,
+): Outcome {
   const wallet = walletOf(state, ref);
   if (!wallet) return fail('not_found');
-  const { resources, applied } = applyResourceDelta(wallet, delta);
-  if (Object.keys(applied).length === 0) return ok(state);
+  const valueBronze = toBronze(coins, catalog.currencies);
+  if (valueBronze === 0) return fail('nothing_to_move');
   return ok(
-    withLog(setWallet(state, ref, dropZeros(resources)), {
-      day: state.day,
-      kind: 'coins_adjusted',
-      wallet: walletLabel(state, ref),
-      delta: applied,
-    }),
+    logAdjustment(setWallet(state, ref, addCoins(wallet, coins)), ref, valueBronze, wallet),
+  );
+}
+
+/**
+ * Master: removes the value of these coins, not the coins themselves: like a
+ * construction, it pays from whatever the wallet holds and takes the change
+ * back (5 Ouro + 50 Prata out of a wallet of Platina removes 10 PO). Refuses
+ * when the wallet is worth less, leaving it untouched.
+ */
+export function takeCoins(
+  state: GameState,
+  catalog: Catalog,
+  ref: WalletRef,
+  coins: CoinBag,
+): Outcome {
+  const wallet = walletOf(state, ref);
+  if (!wallet) return fail('not_found');
+  const valueBronze = toBronze(coins, catalog.currencies);
+  if (valueBronze === 0) return fail('nothing_to_move');
+  const payment = pay(wallet, valueBronze, catalog.currencies);
+  if (!payment.ok) return fail('insufficient_coins');
+  return ok(logAdjustment(setWallet(state, ref, payment.wallet), ref, -valueBronze, wallet));
+}
+
+/** Logs what really changed: the value and each coin, change included. */
+function logAdjustment(
+  state: GameState,
+  ref: WalletRef,
+  valueBronze: number,
+  before: CoinBag,
+): GameState {
+  const after = walletOf(state, ref) ?? {};
+  return withLog(state, {
+    day: state.day,
+    kind: 'coins_adjusted',
+    wallet: walletLabel(state, ref),
+    delta: coinChanges(before, after),
+    valueBronze,
+  });
+}
+
+function coinChanges(before: CoinBag, after: CoinBag): AmountBag {
+  const ids = [...new Set([...Object.keys(before), ...Object.keys(after)])];
+  return Object.fromEntries(
+    ids
+      .map((id) => [id, (after[id] ?? 0) - (before[id] ?? 0)] as const)
+      .filter(([, change]) => change !== 0),
   );
 }
 
@@ -155,8 +219,4 @@ function sameWallet(a: WalletRef, b: WalletRef): boolean {
 function sameBag(a: CoinBag, b: CoinBag): boolean {
   const ids = new Set([...Object.keys(a), ...Object.keys(b)]);
   return [...ids].every((id) => (a[id] ?? 0) === (b[id] ?? 0));
-}
-
-function dropZeros(bag: AmountBag): CoinBag {
-  return Object.fromEntries(Object.entries(bag).filter(([, n]) => n > 0));
 }

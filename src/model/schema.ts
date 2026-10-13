@@ -467,7 +467,10 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     ...entryBase,
     kind: z.literal('coins_adjusted'),
     wallet: walletLabel,
+    /** Coins that came in (+) or left (−), change included. */
     delta: signedBag,
+    /** Value added or removed; missing on entries from before "Remover" paid with change. */
+    valueBronze: z.number().int().optional(),
   }),
   z.object({
     ...entryBase,
@@ -488,6 +491,8 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     kind: z.literal('material_adjusted'),
     material: z.string(),
     delta: z.number().int(),
+    /** Set when a removal stopped at zero: what the master asked for. */
+    requested: z.number().int().optional(),
   }),
   z.object({
     ...entryBase,

@@ -103,6 +103,13 @@ export class GoldPanel {
     ];
   }
 
+  /** "O Acampamento" or the character's name, to start a sentence. */
+  private walletName(ref: WalletRef): string {
+    if (ref.kind === 'camp') return `O ${t.gold.camp}`;
+    const character = this.store.current.characters.find((c) => c.id === ref.characterId);
+    return character?.name ?? ref.characterId;
+  }
+
   private walletCard(
     state: GameState,
     ref: WalletRef,
@@ -244,22 +251,29 @@ export class GoldPanel {
       onInput: (coins) =>
         (total.textContent = formatGold(catalog, toBronze(coins, catalog.currencies))),
     });
-    const apply = (sign: 1 | -1) => {
-      const delta = Object.fromEntries(
-        Object.entries(inputs.read()).map(([id, n]) => [id, sign * n]),
-      );
-      this.act({ type: 'adjust_coins', wallet: ref, delta });
+    const shortfall = el('p', { class: 'notice', hidden: true });
+    const give = () => this.act({ type: 'give_coins', wallet: ref, coins: inputs.read() });
+    // Removing takes the value with change; say up front when the wallet is worth less.
+    const take = () => {
+      const coins = inputs.read();
+      const balance = toBronze(walletOf(this.store.current, ref) ?? {}, catalog.currencies);
+      const isShort = toBronze(coins, catalog.currencies) > balance;
+      shortfall.hidden = !isShort;
+      shortfall.textContent = t.gold.takeShort(this.walletName(ref), formatGold(catalog, balance));
+      if (!isShort) this.act({ type: 'take_coins', wallet: ref, coins });
     };
     return el(
       'div',
       { class: 'subform card--master' },
       inputs.element,
       el('p', { class: 'coin-total' }, el('span', {}, t.gold.adjustTotal), total),
+      el('p', { class: 'panel__hint' }, t.gold.takeHint),
+      shortfall,
       el(
         'div',
         { class: 'row row--end' },
-        button(t.gold.take, () => apply(-1)),
-        button(t.gold.give, () => apply(1), { primary: true }),
+        button(t.gold.take, take),
+        button(t.gold.give, give, { primary: true }),
       ),
     );
   }

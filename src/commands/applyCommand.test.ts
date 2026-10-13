@@ -92,7 +92,13 @@ const validCommands: Record<CommandType, GameCommand> = {
   advance_days: { type: 'advance_days', days: 2 },
   force_building: { type: 'force_building', slotId: 'outer_s', buildingId: 'armory', level: 1 },
   remove_building: { type: 'remove_building', slotId: 'outer_n' },
-  adjust_coins: { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { gold: -10, silver: 3 } },
+  adjust_coins: {
+    type: 'adjust_coins',
+    wallet: { kind: 'camp' },
+    delta: { gold: -10, silver: -3 },
+  },
+  give_coins: { type: 'give_coins', wallet: { kind: 'camp' }, coins: { gold: 2 } },
+  take_coins: { type: 'take_coins', wallet: { kind: 'camp' }, coins: { gold: 5, silver: 50 } },
   deposit: { type: 'deposit', characterId: 'thorin', coins: { gold: 2 } },
   transfer_coins: {
     type: 'transfer_coins',
@@ -226,6 +232,10 @@ describe('applyCommand', () => {
         name: 'X',
         skills: { smithing: -11 },
       },
+    },
+    {
+      name: 'an old-format adjustment that adds and removes at once',
+      input: { type: 'adjust_coins', wallet: { kind: 'camp' }, delta: { gold: -5, silver: 3 } },
     },
     {
       name: 'attribute below -10',

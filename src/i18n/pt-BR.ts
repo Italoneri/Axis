@@ -383,6 +383,8 @@ export const t = {
     adjustTotal: 'Valor do ajuste',
     give: 'Dar',
     take: 'Remover',
+    takeHint: 'Remover cobra o valor total, quebrando moedas maiores e devolvendo o troco.',
+    takeShort: (wallet: string, balance: string) => `${wallet} tem só ${balance}.`,
     consolidate: 'Consolidar',
     transferTitle: 'Transferir entre carteiras',
     transfer: 'Transferir',
@@ -704,6 +706,7 @@ export const t = {
     category_not_empty: 'A categoria ainda tem itens. Mova-os ou remova-os antes.',
     insufficient_coins: 'Não há moedas suficientes nessa carteira.',
     nothing_to_move: 'Informe ao menos uma moeda.',
+    nothing_changed: 'Nada mudou: não há o que remover.',
     same_wallet: 'Escolha carteiras diferentes.',
     character_has_coins: 'Este personagem ainda tem moedas. Transfira-as antes de remover.',
     no_home: 'O NPC precisa de moradia antes de trabalhar.',
@@ -780,17 +783,21 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'building_dropped':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
-      return `${masterActor(entry)} ajustou as moedas ${walletOf(entry.wallet)}: ${signedList(entry.delta, ctx)}`;
+      return coinsAdjustedText(entry, ctx);
     case 'coins_deposited':
       return `${entry.character} depositou ${ctx.coins(entry.coins)} no Acampamento`;
     case 'coins_transferred':
       return `${masterActor(entry)} transferiu ${ctx.coins(entry.coins)} ${walletOf(entry.from)} para ${walletName(entry.to)}`;
     case 'coins_consolidated':
       return `${masterActor(entry)} consolidou as moedas ${walletOf(entry.wallet)}`;
-    case 'material_adjusted':
-      return entry.delta > 0
-        ? `${masterActor(entry)} adicionou ${entry.delta} ${entry.material}`
-        : `${masterActor(entry)} removeu ${-entry.delta} ${entry.material}`;
+    case 'material_adjusted': {
+      if (entry.delta > 0)
+        return `${masterActor(entry)} adicionou ${entry.delta} ${entry.material}`;
+      const removed = `${masterActor(entry)} removeu ${-entry.delta} ${entry.material}`;
+      return entry.requested === undefined
+        ? removed
+        : `${removed} (pedido: ${-entry.requested}; só havia ${-entry.delta})`;
+    }
     case 'material_added':
       return `${masterActor(entry)} cadastrou o material ${entry.material}`;
     case 'material_removed':
@@ -1033,6 +1040,21 @@ function paidText(
 /** Wallet labels in the log: a character name, or absent for the Acampamento. */
 const walletName = (label: string | undefined) => label ?? 'o Acampamento';
 const walletOf = (label: string | undefined) => (label ? `de ${label}` : 'do Acampamento');
+
+/** "Mestre removeu 10 PO do Acampamento (−1 Platina, +9 Ouro)": the value first, then the coins. */
+function coinsAdjustedText(
+  entry: Extract<LogEntry, { kind: 'coins_adjusted' }>,
+  ctx: TextContext,
+): string {
+  const coins = signedList(entry.delta, ctx);
+  const value = entry.valueBronze;
+  if (value === undefined) {
+    return `${masterActor(entry)} ajustou as moedas ${walletOf(entry.wallet)}: ${coins}`;
+  }
+  const verb = value < 0 ? 'removeu' : 'adicionou';
+  const where = value < 0 ? walletOf(entry.wallet) : `a ${walletName(entry.wallet)}`;
+  return `${masterActor(entry)} ${verb} ${ctx.gold(Math.abs(value))} ${where} (${coins})`;
+}
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {
   return Object.entries(delta)

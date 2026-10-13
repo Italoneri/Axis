@@ -100,14 +100,19 @@ export function removeMaterial(state: GameState, id: string): Outcome {
   );
 }
 
-/** Adds (positive) or removes (negative) units, never below zero; logs what changed. */
+/**
+ * Adds (positive) or removes (negative) units, never below zero. Refuses an
+ * adjustment that changes nothing; a removal cut short at zero logs what was
+ * asked, so the toast says so instead of staying silent.
+ */
 export function adjustMaterial(state: GameState, id: string, delta: number): Outcome {
   const { materials } = state;
   const material = findMaterial(materials, id);
   if (!material) return fail('not_found');
-  const quantity = Math.max(0, material.quantity + Math.trunc(delta));
+  const requested = Math.trunc(delta);
+  const quantity = Math.max(0, material.quantity + requested);
   const applied = quantity - material.quantity;
-  if (applied === 0) return ok(state);
+  if (applied === 0) return fail('nothing_changed');
   const items = materials.items.map((m) => (m.id === id ? { ...m, quantity } : m));
   return ok(
     withLog(setMaterials(state, { ...materials, items }), {
@@ -115,6 +120,7 @@ export function adjustMaterial(state: GameState, id: string, delta: number): Out
       kind: 'material_adjusted',
       material: material.name,
       delta: applied,
+      ...(applied === requested ? {} : { requested }),
     }),
   );
 }
