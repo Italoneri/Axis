@@ -19,7 +19,8 @@
     "deploy:functions": "npm run build:functions && supabase functions deploy game",
     "import:npcs": "tsx scripts/import-npc-sprites.ts",
     "lpc:setup": "tsx scripts/lpc/setup.ts",
-    "lpc:build": "tsx scripts/lpc/build.ts"
+    "lpc:build": "tsx scripts/lpc/build.ts",
+    "lpc:items": "tsx scripts/lpc/items.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

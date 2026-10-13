@@ -60,6 +60,8 @@
     "menu.cozido_cordeiro": "assets/menu/cozido_cordeiro.jpg",
     "menu.banquete_taverneiro": "assets/menu/banquete_taverneiro.jpg",
     "npc.aventureira.walk": "assets/npcs/aventureira/walk.png",
-    "npc.aventureira.idle": "assets/npcs/aventureira/idle.png"
+    "npc.aventureira.idle": "assets/npcs/aventureira/idle.png",
+    "npc.aventureira_civil.walk": "assets/npcs/aventureira_civil/walk.png",
+    "npc.aventureira_civil.idle": "assets/npcs/aventureira_civil/idle.png"
   }
 }

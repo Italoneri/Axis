@@ -158,3 +158,19 @@ export async function loadCatalog(): Promise<Catalog> {
   );
   return { bodyTypes: BODY_TYPES, items };
 }
+
+/** Items matching every term (id, name, selection key or category), for a body type if given. */
+export function searchItems(
+  catalog: Catalog,
+  terms: readonly string[],
+  bodyType?: string,
+): CatalogItem[] {
+  const wanted = terms.map((term) => term.toLowerCase());
+  return [...catalog.items.values()]
+    .filter((item) => bodyType === undefined || item.bodyTypes.includes(bodyType))
+    .filter((item) => {
+      const text = [item.id, item.name, item.typeName, ...item.category].join(' ').toLowerCase();
+      return wanted.every((term) => text.includes(term));
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
