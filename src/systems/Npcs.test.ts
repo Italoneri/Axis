@@ -319,7 +319,9 @@ describe('addNpc and updateNpc', () => {
     const kept = expectOk(updateNpc(added, testCatalog, 'lia', edit));
     expect(lia(kept)?.sprite).toBe('none');
 
-    const chosen = expectOk(updateNpc(kept, testCatalog, 'lia', { ...edit, sprite: 'aventureira' }));
+    const chosen = expectOk(
+      updateNpc(kept, testCatalog, 'lia', { ...edit, sprite: 'aventureira' }),
+    );
     expect(lia(chosen)?.sprite).toBe('aventureira');
 
     const automatic = expectOk(updateNpc(chosen, testCatalog, 'lia', { ...edit, sprite: null }));
