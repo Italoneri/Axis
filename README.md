@@ -52,7 +52,11 @@ Todas as ações do mestre vão para o registro de eventos.
 
 ### Regras
 
-- Cada estrutura existe **uma vez** na Axis (os bônus não acumulam).
+- Cada estrutura existe **uma vez** na Axis (os bônus não acumulam), exceto o **Alojamento**, que pode ter **até 4**, em espaços diferentes. O limite é o campo opcional `maxCount` do `buildings.json` (padrão 1, de 1 a 8), e os que estão em obra também contam. No limite, o motivo do bloqueio é "Limite de 4 Alojamentos na Axis"; nas únicas, continua "Já existe na Axis". O painel do espaço vazio mostra "2 de 4 construídos".
+  - Cada Alojamento é independente: tem o próprio nível, a própria melhoria e a própria obra, e cada um paga o custo cheio.
+  - Os efeitos de texto não acumulam: em Bônus ativos o Alojamento aparece uma vez, no maior nível entre eles, com "(3 Alojamentos)". Requisitos e outras checagens também olham o maior nível.
+  - Cada cópia tem um nome estável, "Alojamento I" a "Alojamento XIV", pela posição do espaço entre os espaços do anel externo, na ordem do layout. O nome não muda quando outro Alojamento é construído ou removido. Ele aparece no título do painel, no seletor de moradia e no log de obra, melhoria, conclusão, remoção e mudança de moradia.
+  - O mestre pode forçar até o limite. Forçar um Alojamento novo além de 4 é recusado ("Limite de cópias…"); remova um antes. Forçar outro nível num Alojamento que já existe continua livre. Assim o servidor nunca guarda mais cópias do que as regras aceitam.
 - O custo é cobrado ao **iniciar** a construção. O bônus só vale quando ela termina.
 - Durante uma melhoria, o efeito do nível anterior continua ativo.
 - O **Coração da Axis** (espaço central) libera os níveis mais altos: nível 2 das outras estruturas exige o Coração nv. 1, e nível 3 exige o Coração nv. 2.
@@ -136,7 +140,7 @@ Moradores e trabalhadores da Axis. O design completo está em `docs/plans/NPCS.m
 
   Vagas por posto vêm do anel do espaço, pelo nível em vigor (`postSlots` em `src/data/npcs.json`): anel externo 3/6/8, anel interno 2/4/6. Reduzir o nível libera quem sobra.
 
-  Moradia só no Alojamento (6/14/14 por nível): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras.
+  Moradia só no Alojamento (6/14/14 por nível, **por Alojamento**): `housingBuildings` em `src/data/npcs.json` lista as construções que podem ter `housing`, e o catálogo recusa as outras. Com até 4 Alojamentos, a capacidade soma: 4 Alojamentos nv. 2 abrigam 56 NPCs. O seletor de moradia mostra cada um pelo nome, "Alojamento I (3/14) · Alojamento II (14/14, lotado)", e remover um Alojamento libera só os moradores dele.
 
   Efeitos: `produce` (material por dia), `research` (pontos na pesquisa escolhida), `construction` (dias a menos na obra) e `bonus` (texto nos Bônus ativos, com um `penalty` opcional para quando alguém atrapalha). O posto **Construir**, que aparece em toda obra em andamento, e o divisor das habilidades negativas (`negativeDivisor`) ficam em `src/data/npcs.json`.
 

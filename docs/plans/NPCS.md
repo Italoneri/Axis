@@ -50,7 +50,7 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 
 | Construção         | Moradia | Posto (habilidade)     | Vagas    | Efeito (base)              |
 | ------------------ | ------- | ---------------------- | -------- | -------------------------- |
-| Alojamento         | 6/14/14 | —                      | —        | —                          |
+| Alojamento (até 4) | 6/14/14 | —                      | —        | —                          |
 | Torre dos Magos    | —       | Estudar (Pesquisa)     | por anel | research 1/1/2             |
 | Taverna            | —       | Cozinhar (Gastronomia) | por anel | bonus (texto e penalidade) |
 | Forja              | —       | Forjar (Ferraria)      | por anel | produce Ferro 1/2/3        |
@@ -81,6 +81,8 @@ npc = {
 - Migração 4 → 5 acrescenta `npcs: []`. As habilidades negativas não mudaram a versão: os campos só ficaram mais permissivos (habilidade, `carry` e `amount` do log com sinal), então saves v5 antigos continuam válidos. Online o estado continua sendo o mesmo jsonb da tabela `games`, sem mudança de tabela.
 
 ## Regras
+
+- **Até 4 Alojamentos** (`maxCount: 4` no `buildings.json`; as outras construções têm 1). A capacidade vale por Alojamento e soma (4 × 14 = 56 no nv. 2). `housingList` e `npc_set_home` trabalham por espaço; remover um Alojamento libera só os moradores dele (`settleNpcs`). Cada cópia tem um nome estável, "Alojamento I" a "XIV", pela posição do espaço no layout entre os espaços do anel externo (`copyNumber`). O nome aparece no seletor de moradia ("Alojamento II (14/14, lotado)"), no painel e no log (`slotId` opcional nas entradas de construção e em `npc_home_set`; as entradas antigas continuam válidas).
 
 - **Trabalho exige moradia.** Ficar sem moradia (por comando ou desalojado) também libera o posto.
 - **Capacidade, postos e vagas vêm do nível em vigor (`activeLevel`).** As vagas também dependem do anel do espaço (`postSlots`). Durante uma **melhoria** a construção continua funcionando no nível atual: ninguém é desalojado nem dispensado, nem no Alojamento. Na **primeira obra** a construção ainda não existe, então não tem moradia nem postos (só o posto de obra).
