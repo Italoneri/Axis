@@ -334,6 +334,9 @@ export const t = {
     wageText: (coins: string) => `Salário: ${coins}/dia`,
     noWage: 'Sem salário',
     status: 'Situação',
+    attributes: 'Atributos',
+    attributesHint:
+      'Força, Destreza e Poder Mágico, de -10 a 20. Só aparecem aqui; aceleram as missões da Guilda.',
     statuses: {
       disponivel: 'Disponível',
       trabalhando: 'Trabalhando',

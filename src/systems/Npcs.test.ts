@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands/applyCommand';
-import type { GameState } from '../model/schema';
+import { npcSchema, type GameState } from '../model/schema';
 import {
   addNpc,
   assignNpcJob,
@@ -279,6 +279,35 @@ describe('addNpc and updateNpc', () => {
       smithing: -4,
       construction: 2,
     });
+  });
+
+  it('stores attributes on create and edit, dropping the zeros', () => {
+    const attributes = { strength: 7, dexterity: 0, magic: -3 };
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', attributes }));
+    expect(added.npcs.find((n) => n.id === 'lia')?.attributes).toEqual({ strength: 7, magic: -3 });
+
+    const edit = { ...fields, attributes: { magic: 20 }, status: 'disponivel' as const };
+    const edited = expectOk(updateNpc(added, testCatalog, 'lia', edit));
+    expect(edited.npcs.find((n) => n.id === 'lia')?.attributes).toEqual({ magic: 20 });
+
+    const cleared = { ...fields, attributes: { strength: 0 }, status: 'disponivel' as const };
+    const none = expectOk(updateNpc(edited, testCatalog, 'lia', cleared));
+    expect(none.npcs.find((n) => n.id === 'lia')).not.toHaveProperty('attributes');
+  });
+
+  it('keeps the attributes when an older client edits without them', () => {
+    const attributes = { strength: 12 };
+    const added = expectOk(addNpc(base(), testCatalog, { ...fields, id: 'lia', attributes }));
+    const edited = expectOk(
+      updateNpc(added, testCatalog, 'lia', { ...fields, title: 'Sábia', status: 'disponivel' }),
+    );
+    expect(edited.npcs.find((n) => n.id === 'lia')?.attributes).toEqual({ strength: 12 });
+  });
+
+  it('accepts saved NPCs from before attributes', () => {
+    const saved = npc({ id: 'old', name: 'Velho' });
+    expect(saved).not.toHaveProperty('attributes');
+    expect(npcSchema.safeParse(saved).success).toBe(true);
   });
 
   it.each([

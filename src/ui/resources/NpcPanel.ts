@@ -1,7 +1,15 @@
 import { newId } from '../../commands/newId';
 import { t } from '../../i18n/pt-BR';
 import { goldInBronze, type Catalog } from '../../model/catalog';
-import { MAX_SKILL, MIN_SKILL, type GameState, type Npc, type NpcStatus } from '../../model/schema';
+import {
+  MAX_ATTRIBUTE,
+  MAX_SKILL,
+  MIN_ATTRIBUTE,
+  MIN_SKILL,
+  type GameState,
+  type Npc,
+  type NpcStatus,
+} from '../../model/schema';
 import {
   bronzeToGold,
   fromBronze,
@@ -293,6 +301,7 @@ export class NpcPanel {
         label: skill.name,
       }),
     }));
+    const attributes = attributeInputs(catalog, npc);
     const read = (image: string): NpcFields => {
       const wageValue = wage.read();
       return {
@@ -303,6 +312,7 @@ export class NpcPanel {
         skills: Object.fromEntries(
           levels.map(({ skill, input }) => [skill.id, clampSkill(Number(input.value))]),
         ),
+        attributes: attributes.read(),
         wage: wageValue > 0 ? wageValue : undefined,
       };
     };
@@ -328,6 +338,7 @@ export class NpcPanel {
         { class: 'npc-skill-inputs' },
         ...levels.map(({ skill, input }) => field(`${skill.icon} ${skill.name}`, input)),
       ),
+      attributes.element,
       el(
         'div',
         { class: 'row row--end' },
@@ -361,8 +372,47 @@ function wageInputs(catalog: Catalog, wage: number | undefined) {
 }
 
 function clampSkill(value: number): number {
+  return clampLevel(value, MIN_SKILL, MAX_SKILL);
+}
+
+function clampLevel(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.min(MAX_SKILL, Math.max(MIN_SKILL, Math.round(value)));
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/**
+ * Força, Destreza and Poder Mágico: the master's eyes only. They are shown
+ * nowhere else (cards, lists, the mission picker); they only speed up missions.
+ */
+function attributeInputs(catalog: Catalog, npc: Npc | undefined) {
+  const inputs = catalog.attributes.map((attribute) => ({
+    attribute,
+    input: numberInput({
+      min: MIN_ATTRIBUTE,
+      max: MAX_ATTRIBUTE,
+      value: npc?.attributes?.[attribute.id] ?? 0,
+      label: attribute.name,
+    }),
+  }));
+  const element = el(
+    'fieldset',
+    { class: 'npc-attributes' },
+    el('legend', { class: 'section-title' }, t.npcs.attributes),
+    el('p', { class: 'panel__hint' }, t.npcs.attributesHint),
+    el(
+      'div',
+      { class: 'npc-skill-inputs' },
+      ...inputs.map(({ attribute, input }) => field(`${attribute.icon} ${attribute.name}`, input)),
+    ),
+  );
+  const read = () =>
+    Object.fromEntries(
+      inputs.map(({ attribute, input }) => [
+        attribute.id,
+        clampLevel(Number(input.value), MIN_ATTRIBUTE, MAX_ATTRIBUTE),
+      ]),
+    );
+  return { element, read };
 }
 
 function valueTone(level: number): string {

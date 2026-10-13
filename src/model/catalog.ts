@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { angleRangesOverlap } from '../map/geometry';
 import { layoutSchema, type MapLayout, type SlotDef } from '../map/layout';
 import {
+  ATTRIBUTE_IDS,
   assetManifestSchema,
+  attributeDefSchema,
   buildingDefSchema,
   currencyDefSchema,
   materialsSchema,
@@ -15,6 +17,7 @@ import {
   walletsSeedSchema,
   worldsFileSchema,
   type AssetManifest,
+  type AttributeDef,
   type BuildingDef,
   type CurrencyDef,
   type JobDef,
@@ -50,6 +53,8 @@ export interface Catalog {
   readonly seed: Seed;
   /** NPC skills, in display order. */
   readonly skills: readonly SkillDef[];
+  /** Adventure attributes (Força, Destreza, Poder Mágico), in display order. */
+  readonly attributes: readonly AttributeDef[];
   readonly npcs: NpcsConfig;
   /** How mission rewards are shared out. */
   readonly missions: MissionsConfig;
@@ -73,6 +78,7 @@ export interface RawCatalog {
   research: unknown;
   influence: unknown;
   skills: unknown;
+  attributes: unknown;
   npcs: unknown;
   missions: unknown;
   /** Display only, so the server catalog leaves it out. */
@@ -98,6 +104,11 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     },
     skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
       .skills,
+    attributes: parseFile(
+      'attributes.json',
+      z.object({ attributes: z.array(attributeDefSchema) }),
+      raw.attributes,
+    ).attributes,
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
     missions: parseFile('missions.json', missionsConfigSchema, raw.missions),
     tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
@@ -167,6 +178,10 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...duplicates('slot', catalog.layout.slots),
     ...duplicates('world', catalog.worlds),
     ...duplicates('skill', catalog.skills),
+    ...ATTRIBUTE_IDS.filter((id) => !catalog.attributes.some((a) => a.id === id)).map(
+      (id) => `attributes.json: attribute "${id}" is missing`,
+    ),
+    ...duplicates('attribute', catalog.attributes),
     ...jobProblems(catalog),
     ...heroTableProblems('npcs.json: skillTenthsAbove10', catalog.npcs.skillTenthsAbove10, {
       from: 11,

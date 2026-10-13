@@ -365,8 +365,16 @@ function materialFields({ name, category, icon, description }: MaterialFields): 
   return { name, category, icon, description };
 }
 
-function npcFields({ name, title, portrait, description, skills, wage }: NpcFields): NpcFields {
-  return { name, title, portrait, description, skills, wage };
+function npcFields({
+  name,
+  title,
+  portrait,
+  description,
+  skills,
+  attributes,
+  wage,
+}: NpcFields): NpcFields {
+  return { name, title, portrait, description, skills, attributes, wage };
 }
 
 function missionFields({

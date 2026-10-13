@@ -1366,6 +1366,19 @@ details > summary {
   font-weight: 700;
 }
 
+.npc-attributes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.npc-attributes legend {
+  padding: 0;
+}
+
 .npc-skill-inputs {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

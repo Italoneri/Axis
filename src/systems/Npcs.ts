@@ -6,10 +6,12 @@ import type {
   JobDef,
   LogEntry,
   Npc,
+  NpcAttributes,
   NpcJob,
   NpcReleaseReason,
   NpcStatus,
 } from '../model/schema';
+import { ATTRIBUTE_IDS } from '../model/schema';
 import { activeLevel } from './BuildSystem';
 import { idError, nameError } from './Categories';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
@@ -33,6 +35,8 @@ export interface NpcFields {
   portrait?: string | undefined;
   description: string;
   skills: Readonly<Record<string, number>>;
+  /** Left out by clients that predate attributes: an edit then keeps the current ones. */
+  attributes?: NpcAttributes | undefined;
   wage?: number | undefined;
 }
 
@@ -166,7 +170,7 @@ export function updateNpc(state: GameState, catalog: Catalog, id: string, edit: 
   if (!npc) return fail('not_found');
   const error = fieldsError(state, catalog, edit, id);
   if (error) return fail(error);
-  const fields = cleanFields(edit);
+  const fields = cleanFields({ ...edit, attributes: edit.attributes ?? npc.attributes });
   // New skills mean a new yield: the leftover tenths of the old one are dropped.
   const job =
     npc.job && !sameSkills(npc.skills, fields.skills) ? { ...npc.job, carry: 0 } : npc.job;
@@ -420,14 +424,30 @@ function fieldsError(
 function cleanFields(fields: NpcFields): Omit<Npc, 'id' | 'home' | 'job' | 'status' | 'earnings'> {
   const portrait = fields.portrait?.trim();
   const wage = fields.wage && fields.wage > 0 ? fields.wage : undefined;
+  const attributes = cleanAttributes(fields.attributes ?? {});
   return {
     name: fields.name.trim(),
     title: fields.title.trim(),
     ...(portrait ? { portrait } : {}),
     description: fields.description,
-    skills: Object.fromEntries(Object.entries(fields.skills).filter(([, level]) => level !== 0)),
+    skills: nonZero(fields.skills),
+    ...(Object.keys(attributes).length > 0 ? { attributes } : {}),
     ...(wage ? { wage } : {}),
   };
+}
+
+/** Zero is the default, so it is not stored. */
+function nonZero(levels: Readonly<Record<string, number>>): Record<string, number> {
+  return Object.fromEntries(Object.entries(levels).filter(([, level]) => level !== 0));
+}
+
+function cleanAttributes(attributes: NpcAttributes): NpcAttributes {
+  return Object.fromEntries(
+    ATTRIBUTE_IDS.flatMap((id) => {
+      const level = attributes[id] ?? 0;
+      return level === 0 ? [] : [[id, level]];
+    }),
+  );
 }
 
 function sameSkills(a: Npc['skills'], b: Npc['skills']): boolean {

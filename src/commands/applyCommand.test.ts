@@ -81,6 +81,7 @@ const npcFields = {
   title: 'Maga',
   description: '',
   skills: { research: 7 },
+  attributes: { strength: 7, dexterity: 7, magic: 6 },
   wage: 0.5,
 };
 
@@ -225,6 +226,24 @@ describe('applyCommand', () => {
         name: 'X',
         skills: { smithing: -11 },
       },
+    },
+    {
+      name: 'attribute below -10',
+      input: { type: 'npc_create', id: 'npc_x', ...npcFields, attributes: { strength: -11 } },
+    },
+    {
+      name: 'attribute above 20',
+      input: {
+        type: 'npc_update',
+        npcId: 'bianca',
+        ...npcFields,
+        status: 'disponivel',
+        attributes: { magic: 21 },
+      },
+    },
+    {
+      name: 'unknown attribute',
+      input: { type: 'npc_create', id: 'npc_x', ...npcFields, attributes: { charisma: 5 } },
     },
     {
       name: 'skill above 15',

@@ -9,6 +9,7 @@ import {
   missionResultSchema,
   npcStatusSchema,
   researchSchema,
+  npcAttributesSchema,
   skillLevelSchema,
 } from '../model/schema';
 import { IMAGE_KINDS } from '../systems/GameImages';
@@ -47,6 +48,7 @@ const npcFields = {
   portrait: optionalText,
   description: z.string(),
   skills: z.record(z.string(), skillLevelSchema),
+  attributes: npcAttributesSchema.optional(),
   wage: z.number().nonnegative().optional(),
 };
 

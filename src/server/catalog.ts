@@ -1,4 +1,5 @@
 import assets from '../data/assets.json';
+import attributes from '../data/attributes.json';
 import buildings from '../data/buildings.json';
 import currencies from '../data/currencies.json';
 import influence from '../data/influence.json';
@@ -26,6 +27,7 @@ export const serverCatalog = parseCatalog({
   research,
   influence,
   skills,
+  attributes,
   npcs,
   missions,
 });

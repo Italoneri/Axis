@@ -43,6 +43,16 @@ export const skillDefSchema = z.object({
   description: z.string(),
 });
 
+/** Adventure attributes (combat, missions); work skills stay separate and capped at 15. */
+export const ATTRIBUTE_IDS = ['strength', 'dexterity', 'magic'] as const;
+export const MIN_ATTRIBUTE = -10;
+export const MAX_ATTRIBUTE = 20;
+export const attributeLevelSchema = z.number().int().min(MIN_ATTRIBUTE).max(MAX_ATTRIBUTE);
+export const attributeIdSchema = z.enum(ATTRIBUTE_IDS);
+/** A missing attribute counts as 0, so saves from before attributes stay valid. */
+export const npcAttributesSchema = z.partialRecord(attributeIdSchema, attributeLevelSchema);
+export const attributeDefSchema = skillDefSchema.extend({ id: attributeIdSchema });
+
 /** Base amount per day; the worker's skill scales it (see `yieldTenths`). */
 const perDay = z.number().positive();
 
@@ -256,6 +266,8 @@ export const npcSchema = z.object({
   description: z.string(),
   /** Score per skill id; a missing skill counts as 0. */
   skills: z.record(z.string(), skillLevelSchema),
+  /** Strength, dexterity and magic; only the master sees them, in the edit form. */
+  attributes: npcAttributesSchema.optional(),
   /** Slot of the building the NPC lives in. */
   home: z.string().nullable(),
   job: npcJobSchema.nullable(),
@@ -628,6 +640,9 @@ export type SkillDef = z.infer<typeof skillDefSchema>;
 export type JobEffect = z.infer<typeof jobEffectSchema>;
 export type JobDef = z.infer<typeof jobDefSchema>;
 export type NpcsConfig = z.infer<typeof npcsConfigSchema>;
+export type AttributeId = z.infer<typeof attributeIdSchema>;
+export type AttributeDef = z.infer<typeof attributeDefSchema>;
+export type NpcAttributes = z.infer<typeof npcAttributesSchema>;
 export type BuildingFx = z.infer<typeof buildingFxSchema>;
 export type BuildingDef = z.infer<typeof buildingDefSchema>;
 export type CurrencyDef = z.infer<typeof currencyDefSchema>;

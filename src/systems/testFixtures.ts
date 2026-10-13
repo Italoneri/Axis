@@ -158,6 +158,13 @@ export const testCatalog = parseCatalog({
       { id: 'research', name: 'Pesquisa', icon: 'r', description: '' },
     ],
   },
+  attributes: {
+    attributes: [
+      { id: 'strength', name: 'Força', icon: 'f', description: '' },
+      { id: 'dexterity', name: 'Destreza', icon: 'd', description: '' },
+      { id: 'magic', name: 'Poder Mágico', icon: 'm', description: '' },
+    ],
+  },
   npcs: {
     negativeDivisor: 5,
     skillTenthsAbove10: { 11: 26, 12: 35, 13: 46, 14: 61, 15: 80 },
