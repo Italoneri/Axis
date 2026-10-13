@@ -17,7 +17,8 @@
     "parity": "tsx scripts/check-parity.ts",
     "check:functions": "npm run build:functions && deno check supabase/functions/game/index.ts",
     "deploy:functions": "npm run build:functions && supabase functions deploy game",
-    "import:npcs": "tsx scripts/import-npc-sprites.ts"
+    "import:npcs": "tsx scripts/import-npc-sprites.ts",
+    "lpc:setup": "tsx scripts/lpc/setup.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
@@ -34,6 +35,7 @@
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
+    "playwright-core": "^1.62.1",
     "prettier": "^3.9.9",
     "supabase": "^2.120.0",
     "tsx": "^4.23.15",
