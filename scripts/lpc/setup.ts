@@ -96,4 +96,9 @@ async function main(): Promise<void> {
   reportSize();
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  console.error(`[lpc] ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+}

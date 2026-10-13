@@ -1,5 +1,4 @@
 {
-  "exportTimestamp": "2026-10-13T06-34-33",
   "bodyType": "female",
   "standardAnimations": {
     "exported": [
@@ -28,27 +27,5 @@
     "failed": []
   },
   "frameSize": 64,
-  "frameCounts": {},
-  "performance": {
-    "exportKind": "splitAnimations",
-    "totalMs": 5279.2,
-    "phasesMs": {
-      "render_composite_extractAnimationFromCanvas": 2.4,
-      "pngEncode": 5266.6,
-      "zipFile": 4.2,
-      "staticFiles": 2.3
-    },
-    "counters": {
-      "pngEncodeCount": 17,
-      "totalPngBytes": 438928,
-      "drawAndSliceCount": 0,
-      "zipFileEntryCount": 17,
-      "renderExtractAnimationFromCanvasCalls": 17,
-      "renderSingleItemCalls": 0,
-      "renderSingleItemAnimationCalls": 0,
-      "extractFramesFromAnimationBatchCount": 0,
-      "renderSliceCanvasForCustomAnimCalls": 0
-    },
-    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
-  }
+  "frameCounts": {}
 }
