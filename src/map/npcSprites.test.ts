@@ -6,6 +6,7 @@ import { parseCredits } from '../ui/Credits';
 import {
   facingFor,
   sheetKeys,
+  isMissingSprite,
   spriteFor,
   spriteNames,
   spriteOverridesSchema,
@@ -27,23 +28,49 @@ describe('spriteNames', () => {
 
 describe('spriteFor', () => {
   const names = ['ana', 'bia', 'zeca'];
+  const automatic = (id: string) => spriteFor({ id }, names, {});
 
   it('picks the same sprite for the same id every time', () => {
-    expect(spriteFor('npc_42', names, {})).toBe(spriteFor('npc_42', names, {}));
+    expect(automatic('npc_42')).toBe(automatic('npc_42'));
   });
 
   it('spreads ids over every sprite', () => {
-    const picked = new Set(Array.from({ length: 60 }, (_, i) => spriteFor(`npc_${i}`, names, {})));
+    const picked = new Set(Array.from({ length: 60 }, (_, i) => automatic(`npc_${i}`)));
     expect(picked).toEqual(new Set(names));
   });
 
-  it('honors a pinned sprite that exists and ignores one that does not', () => {
-    expect(spriteFor('npc_1', names, { npc_1: 'bia' })).toBe('bia');
-    expect(spriteFor('npc_1', names, { npc_1: 'gone' })).toBe(spriteFor('npc_1', names, {}));
+  it.each([
+    { name: 'the choice over the pin', sprite: 'zeca', pin: 'bia', expected: 'zeca' },
+    { name: 'the pin without a choice', sprite: undefined, pin: 'bia', expected: 'bia' },
+    { name: 'the pin over a choice that is gone', sprite: 'gone', pin: 'bia', expected: 'bia' },
+  ])('prefers $name', ({ sprite, pin, expected }) => {
+    const npc = sprite === undefined ? { id: 'npc_1' } : { id: 'npc_1', sprite };
+    expect(spriteFor(npc, names, { npc_1: pin })).toBe(expected);
+  });
+
+  it('falls back to the automatic pick when the choice and the pin are gone', () => {
+    expect(spriteFor({ id: 'npc_1', sprite: 'gone' }, names, { npc_1: 'lost' })).toBe(
+      automatic('npc_1'),
+    );
+  });
+
+  it('keeps an NPC hidden from the map off it, even with a pin', () => {
+    expect(spriteFor({ id: 'npc_1', sprite: 'none' }, names, { npc_1: 'bia' })).toBeUndefined();
   });
 
   it('returns undefined when there is no sprite', () => {
-    expect(spriteFor('npc_1', [], {})).toBeUndefined();
+    expect(spriteFor({ id: 'npc_1' }, [], {})).toBeUndefined();
+  });
+});
+
+describe('isMissingSprite', () => {
+  it.each([
+    { sprite: undefined, missing: false },
+    { sprite: 'none', missing: false },
+    { sprite: 'ana', missing: false },
+    { sprite: 'gone', missing: true },
+  ])('is $missing for $sprite', ({ sprite, missing }) => {
+    expect(isMissingSprite(sprite, ['ana'])).toBe(missing);
   });
 });
 

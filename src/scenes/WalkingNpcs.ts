@@ -39,6 +39,7 @@ const MAX_WALKERS = { small: 30, large: 60 };
 const SMALL_SCREEN_PX = 640;
 /** A pose further than this from the last frame was a jump (a new job, for instance): fade it in. */
 const JUMP_SECONDS = 2;
+/** Also how long a walker leaving the map takes to fade out. */
 const JUMP_FADE_MS = 500;
 const LABEL_FONT_PX = 14;
 const LABEL_GAP_PX = 4;
@@ -117,14 +118,17 @@ export class WalkingNpcs {
       Object.entries(state.slots).map(([slotId, placed]) => [slotId, placed.buildingId]),
     );
     const shown = state.npcs
-      .map((npc) => ({ npc, intent: intentFor(npc, this.options.graph, slotBuildings) }))
-      .filter(({ intent }) => intent.kind !== 'hidden')
+      .flatMap((npc) => {
+        const intent = intentFor(npc, this.options.graph, slotBuildings);
+        const look = intent.kind === 'hidden' ? undefined : this.lookFor(npc);
+        return look ? [{ npc, intent, look }] : [];
+      })
       .slice(0, this.maxWalkers);
     const ids = new Set(shown.map(({ npc }) => npc.id));
     this.walkers.forEach((walker, id) => {
-      if (!ids.has(id)) this.remove(walker, id);
+      if (!ids.has(id)) this.leave(walker, id);
     });
-    shown.forEach(({ npc, intent }) => this.place(npc, intent));
+    shown.forEach(({ npc, intent, look }) => this.place(npc, intent, look));
   }
 
   /** Called every frame by the scene. */
@@ -142,19 +146,19 @@ export class WalkingNpcs {
     this.label.destroy();
   }
 
-  private place(npc: Npc, intent: WalkIntent): void {
+  private place(npc: Npc, intent: WalkIntent, look: Look): void {
     const intentKey = JSON.stringify(intent);
     const existing = this.walkers.get(npc.id);
     if (existing) {
       existing.npc = npc;
+      // A new sprite is drawn from the next frame on, at the same spot of the same route.
+      existing.look = look;
       if (existing.intentKey === intentKey) return;
       existing.intent = intent;
       existing.intentKey = intentKey;
       existing.schedule = undefined;
       return;
     }
-    const look = this.lookFor(npc.id);
-    if (!look) return;
     const shadow = this.scene.add
       .ellipse(
         0,
@@ -222,6 +226,23 @@ export class WalkingNpcs {
     this.walkers.delete(id);
   }
 
+  /** Fades out a walker that left the map (off on a mission, or hidden by the master). */
+  private leave(walker: Walker, id: string): void {
+    if (!walker.body.visible) return this.remove(walker, id);
+    if (this.hovered === walker) this.hover(null);
+    this.walkers.delete(id);
+    walker.body.disableInteractive();
+    this.scene.tweens.add({
+      targets: [walker.body, walker.shadow],
+      alpha: 0,
+      duration: JUMP_FADE_MS,
+      onComplete: () => {
+        walker.body.destroy();
+        walker.shadow.destroy();
+      },
+    });
+  }
+
   private draw(walker: Walker, seconds: number, zoomAlpha: number): void {
     const pose = this.poseOf(walker, seconds);
     if (!pose) return this.hide(walker);
@@ -269,8 +290,8 @@ export class WalkingNpcs {
     return { key: walk.key, frame: row * walk.columns };
   }
 
-  private lookFor(npcId: string): Look | undefined {
-    const name = spriteFor(npcId, this.options.sprites, this.options.overrides);
+  private lookFor(npc: Npc): Look | undefined {
+    const name = spriteFor(npc, this.options.sprites, this.options.overrides);
     if (!name) return undefined;
     const keys = sheetKeys(name);
     const walk = this.sheet(keys.walk);

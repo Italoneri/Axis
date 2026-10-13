@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AssetManifest } from '../model/schema';
+import { NPC_HIDDEN_SPRITE, type AssetManifest, type Npc } from '../model/schema';
 import { hashString } from './random';
 
 // Walking NPCs use sheets exported by the Universal LPC Spritesheet Generator,
@@ -37,15 +37,28 @@ export function spriteNames(assets: AssetManifest): string[] {
   return [...new Set(names)].filter((name) => sheetKeys(name).walk in assets.images).sort();
 }
 
-/** The pinned sprite (npc_sprites.json) when it exists, otherwise one picked by the id's hash. */
+export type SpriteChoice = Pick<Npc, 'id' | 'sprite'>;
+
+/**
+ * The sprite chosen in game, then the one pinned in npc_sprites.json, then one
+ * picked by the id's hash; a choice or pin whose sprite is gone is skipped.
+ * Undefined for an NPC kept off the map (or when there is no sprite at all).
+ */
 export function spriteFor(
-  npcId: string,
+  npc: SpriteChoice,
   names: readonly string[],
   overrides: SpriteOverrides,
 ): string | undefined {
-  const pinned = overrides[npcId];
-  if (pinned !== undefined && names.includes(pinned)) return pinned;
-  return names[hashString(npcId) % names.length];
+  if (npc.sprite === NPC_HIDDEN_SPRITE) return undefined;
+  const preferred = [npc.sprite, overrides[npc.id]].find(
+    (name) => name !== undefined && names.includes(name),
+  );
+  return preferred ?? names[hashString(npc.id) % names.length];
+}
+
+/** A sprite was chosen but is no longer in the project (the map uses the automatic pick). */
+export function isMissingSprite(sprite: string | undefined, names: readonly string[]): boolean {
+  return sprite !== undefined && sprite !== NPC_HIDDEN_SPRITE && !names.includes(sprite);
 }
 
 /** Columns up to the last one holding a drawn frame in any row; the rest of the sheet is padding. */
