@@ -5,6 +5,10 @@
  * authors and licenses (from credits.csv) to credits.json. A new folder joins
  * the walking NPCs after running this again; no code changes.
  *
+ * Sprites drawn in code live in art-sources/custom-sprites/<name>/ (gerar.py
+ * plus the walk.png and idle.png it writes). They are our own art, so they need
+ * no credits, and they win over an LPC export with the same name.
+ *
  *   npm run import:npcs
  */
 import {
@@ -20,6 +24,7 @@ import { parseCsv } from './lpc/csv';
 
 const ROOT = join(import.meta.dirname, '..');
 const SOURCE_DIR = join(ROOT, 'art-sources/npcs');
+const CUSTOM_DIR = join(ROOT, 'art-sources/custom-sprites');
 const PUBLIC_DIR = join(ROOT, 'public/assets/npcs');
 const ASSETS_FILE = join(ROOT, 'src/data/assets.json');
 const CREDITS_FILE = join(ROOT, 'src/data/credits.json');
@@ -45,19 +50,20 @@ interface SpriteCredit {
   layers: SpriteLayer[];
 }
 
-function spriteNames(): string[] {
-  return readdirSync(SOURCE_DIR, { withFileTypes: true })
+function spriteNames(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && SPRITE_NAME.test(entry.name))
-    .filter((entry) => existsSync(join(SOURCE_DIR, entry.name, 'walk.png')))
+    .filter((entry) => existsSync(join(dir, entry.name, 'walk.png')))
     .map((entry) => entry.name)
     .sort();
 }
 
 /** Copies the sheets the game uses and returns their asset keys and public paths. */
-function copySheets(name: string): [string, string][] {
+function copySheets(name: string, dir: string): [string, string][] {
   mkdirSync(join(PUBLIC_DIR, name), { recursive: true });
   return SHEETS.flatMap((sheet) => {
-    const from = join(SOURCE_DIR, name, `${sheet}.png`);
+    const from = join(dir, name, `${sheet}.png`);
     if (!existsSync(from)) return [];
     copyFileSync(from, join(PUBLIC_DIR, name, `${sheet}.png`));
     return [[`npc.${name}.${sheet}`, `assets/npcs/${name}/${sheet}.png`]];
@@ -103,16 +109,20 @@ function writeJson(file: string, value: unknown): void {
 }
 
 function main(): void {
-  const names = spriteNames();
+  const custom = spriteNames(CUSTOM_DIR);
+  const lpc = spriteNames(SOURCE_DIR).filter((name) => !custom.includes(name));
+  const names = [...lpc, ...custom].sort();
   const assets = readJson(ASSETS_FILE);
   const registered =
     typeof assets.images === 'object' && assets.images !== null ? assets.images : {};
   const images = Object.entries(registered).filter(([key]) => !key.startsWith('npc.'));
-  const sheets = names.flatMap(copySheets);
+  const sheets = names.flatMap((name) =>
+    copySheets(name, custom.includes(name) ? CUSTOM_DIR : SOURCE_DIR),
+  );
   writeJson(ASSETS_FILE, { ...assets, images: Object.fromEntries([...images, ...sheets]) });
 
   const credits = readJson(CREDITS_FILE);
-  writeJson(CREDITS_FILE, { ...credits, sprites: names.map(spriteCredit) });
+  writeJson(CREDITS_FILE, { ...credits, sprites: lpc.map(spriteCredit) });
   console.info(`[npcs] ${names.length} sprite(s): ${names.join(', ') || '(none)'}`);
 }
 

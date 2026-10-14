@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "recolor": "lpcr.porcelain"
+    },
+    "head": {
+      "itemId": "heads_human_female",
+      "recolor": "lpcr.porcelain"
+    },
+    "eyes": {
+      "itemId": "heads_human_female",
+      "subId": 1,
+      "recolor": "red"
+    },
+    "expression": {
+      "itemId": "face_neutral",
+      "recolor": "lpcr.porcelain"
+    },
+    "hair": {
+      "itemId": "hair_xlong",
+      "recolor": "white"
+    },
+    "dress": {
+      "itemId": "dress_slit",
+      "variant": "black"
+    },
+    "gloves": {
+      "itemId": "arms_gloves",
+      "recolor": "black"
+    },
+    "ring": {
+      "itemId": "arms_hands_ring_stud",
+      "recolor": "red"
+    },
+    "necklace": {
+      "itemId": "neck_necklace",
+      "variant": "iron"
+    },
+    "shoes": {
+      "itemId": "feet_shoes_basic",
+      "recolor": "black"
+    }
+  }
+}

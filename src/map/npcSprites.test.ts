@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import assets from '../data/assets.json';
 import credits from '../data/credits.json';
@@ -119,16 +120,21 @@ describe('registered sprites', () => {
     expect(names.length).toBeGreaterThan(0);
   });
 
-  it('credits every registered sprite (LPC licenses require attribution)', () => {
+  it('credits every LPC sprite (LPC licenses require attribution)', () => {
     const credited = new Map(parseCredits(credits).sprites.map((c) => [c.id, c]));
-    names.forEach((name) => {
-      const credit = credited.get(name);
-      expect(credit, name).toBeDefined();
-      credit?.layers.forEach((layer) => {
-        expect(layer.authors.length, `${name} ${layer.part}`).toBeGreaterThan(0);
-        expect(layer.licenses.length, `${name} ${layer.part}`).toBeGreaterThan(0);
+    // Sprites drawn in code are our own art and need no credits.
+    const drawnInCode = (name: string) =>
+      existsSync(new URL(`../../art-sources/custom-sprites/${name}/walk.png`, import.meta.url));
+    names
+      .filter((name) => !drawnInCode(name))
+      .forEach((name) => {
+        const credit = credited.get(name);
+        expect(credit, name).toBeDefined();
+        credit?.layers.forEach((layer) => {
+          expect(layer.authors.length, `${name} ${layer.part}`).toBeGreaterThan(0);
+          expect(layer.licenses.length, `${name} ${layer.part}`).toBeGreaterThan(0);
+        });
       });
-    });
   });
 
   it('registers a walk sheet for every sprite and pins only known sprites', () => {

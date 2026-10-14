@@ -59,6 +59,8 @@
     "menu.frango_batatas": "assets/menu/frango_batatas.jpg",
     "menu.cozido_cordeiro": "assets/menu/cozido_cordeiro.jpg",
     "menu.banquete_taverneiro": "assets/menu/banquete_taverneiro.jpg",
+    "npc.alice.walk": "assets/npcs/alice/walk.png",
+    "npc.alice.idle": "assets/npcs/alice/idle.png",
     "npc.amelia.walk": "assets/npcs/amelia/walk.png",
     "npc.amelia.idle": "assets/npcs/amelia/idle.png",
     "npc.aventureira.walk": "assets/npcs/aventureira/walk.png",
@@ -71,11 +73,21 @@
     "npc.bianca.idle": "assets/npcs/bianca/idle.png",
     "npc.bigodes.walk": "assets/npcs/bigodes/walk.png",
     "npc.bigodes.idle": "assets/npcs/bigodes/idle.png",
+    "npc.douglas.walk": "assets/npcs/douglas/walk.png",
+    "npc.douglas.idle": "assets/npcs/douglas/idle.png",
+    "npc.elara.walk": "assets/npcs/elara/walk.png",
+    "npc.elara.idle": "assets/npcs/elara/idle.png",
     "npc.empregada.walk": "assets/npcs/empregada/walk.png",
     "npc.empregada.idle": "assets/npcs/empregada/idle.png",
     "npc.raposa.walk": "assets/npcs/raposa/walk.png",
     "npc.raposa.idle": "assets/npcs/raposa/idle.png",
+    "npc.selena.walk": "assets/npcs/selena/walk.png",
+    "npc.selena.idle": "assets/npcs/selena/idle.png",
     "npc.thrax.walk": "assets/npcs/thrax/walk.png",
-    "npc.thrax.idle": "assets/npcs/thrax/idle.png"
+    "npc.thrax.idle": "assets/npcs/thrax/idle.png",
+    "npc.tu.walk": "assets/npcs/tu/walk.png",
+    "npc.tu.idle": "assets/npcs/tu/idle.png",
+    "npc.vany.walk": "assets/npcs/vany/walk.png",
+    "npc.vany.idle": "assets/npcs/vany/idle.png"
   }
 }
