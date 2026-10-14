@@ -14,6 +14,8 @@ import {
 import { toBronze } from '../systems/Coins';
 import { findMaterial } from '../systems/Materials';
 import type { ArchiveStore } from '../archiveStore';
+import type { DepotStore } from '../depotStore';
+import { DEPOT_BUILDING_ID, depotCounts } from '../systems/Depot';
 import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
 import { missionTab } from '../systems/Missions';
 import { RESEARCH_ARCHIVE_BUILDING_ID } from '../systems/Research';
@@ -35,6 +37,12 @@ export interface BuildingWindows {
   missions: () => void;
 }
 
+/** The Arsenal's depot: its store (for the counts) and its window. */
+export interface DepotAccess {
+  store: DepotStore;
+  open: () => void;
+}
+
 /** Side panel (bottom sheet on phones) showing what can be built in, or is built on, a slot. */
 export class SlotPanel {
   private slotId: string | null = null;
@@ -48,9 +56,11 @@ export class SlotPanel {
     private readonly session: MasterAccess,
     private readonly archive: { store: ArchiveStore; open: () => void },
     private readonly windows: BuildingWindows,
+    private readonly depot: DepotAccess,
   ) {
     store.subscribe(() => this.render());
     archive.store.subscribe(() => this.render());
+    depot.store.subscribe(() => this.render());
     session.subscribe(() => this.render());
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') this.close();
@@ -315,6 +325,7 @@ export class SlotPanel {
     }
     if (placed.buildingId === TAVERN_BUILDING_ID) return [this.menuSection()];
     if (placed.buildingId === GUILD_BUILDING_ID) return [this.missionsSection(state)];
+    if (placed.buildingId === DEPOT_BUILDING_ID) return [this.depotSection()];
     return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
   }
 
@@ -341,6 +352,19 @@ export class SlotPanel {
       el('h3', { class: 'section-title' }, t.menu.title),
       el('p', { class: 'panel__hint' }, t.menu.panelHint),
       button(t.menu.open, this.windows.menu, { primary: true }),
+    );
+  }
+
+  /** The Arsenal, once built: the way into the depot window. */
+  private depotSection(): HTMLElement {
+    const { sections, items } = depotCounts(this.depot.store.current);
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.depot.title),
+      el('p', { class: 'panel__hint' }, t.depot.panelHint),
+      el('p', {}, t.depot.counts(sections, items)),
+      button(t.depot.open, this.depot.open, { primary: true }),
     );
   }
 

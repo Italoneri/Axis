@@ -471,6 +471,30 @@ export const archiveChangeSchema = z.union([
   z.object({ target: z.literal('image'), action: z.literal('removed'), title: z.string() }),
 ]);
 
+/**
+ * What changed in the group's Depósito (kept outside the state, see
+ * docs/plans/DEPOSITO.md). Private areas are never logged; moving an item into
+ * or out of one reads as stored or taken, without the private section's name.
+ */
+const depotItemBase = { target: z.literal('item'), title: z.string(), quantity: z.number().int() };
+export const depotChangeSchema = z.union([
+  z.object({
+    target: z.literal('section'),
+    action: z.enum(['created', 'edited', 'reordered', 'removed', 'restored']),
+    title: z.string(),
+  }),
+  z.object({
+    ...depotItemBase,
+    action: z.enum(['created', 'edited', 'reordered', 'removed', 'restored']),
+  }),
+  z.object({ ...depotItemBase, action: z.literal('moved'), from: z.string(), to: z.string() }),
+  /** From a private area into the group's section `to`. */
+  z.object({ ...depotItemBase, action: z.literal('stored'), to: z.string() }),
+  /** From the group's section `from` into a private area. */
+  z.object({ ...depotItemBase, action: z.literal('taken'), from: z.string() }),
+  z.object({ target: z.literal('trash'), action: z.literal('emptied') }),
+]);
+
 // Log entries keep display names (not ids) for things the master can rename or delete,
 // so old entries stay readable after the record is gone.
 export const logEntrySchema = z.discriminatedUnion('kind', [
@@ -609,6 +633,7 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     days: z.number().int().positive(),
   }),
   z.object({ ...entryBase, kind: z.literal('archive_changed'), change: archiveChangeSchema }),
+  z.object({ ...entryBase, kind: z.literal('depot_changed'), change: depotChangeSchema }),
   // Missions: titles and names at the time.
   z.object({
     ...entryBase,
@@ -708,5 +733,6 @@ export type NpcReleaseReason = z.infer<typeof npcReleaseReasonSchema>;
 export type WalletsSeed = z.infer<typeof walletsSeedSchema>;
 export type PlacedBuilding = z.infer<typeof placedBuildingSchema>;
 export type ArchiveChange = z.infer<typeof archiveChangeSchema>;
+export type DepotChange = z.infer<typeof depotChangeSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;

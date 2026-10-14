@@ -9,6 +9,7 @@ import { NpcPanel } from './resources/NpcPanel';
 import { ResearchPanel } from './resources/ResearchPanel';
 import { createSaveControls } from './SaveControls';
 import type { ArchiveStore } from '../archiveStore';
+import type { DepotStore } from '../depotStore';
 import type { PanelDeps } from './widgets';
 import type { SpriteOverrides } from '../map/npcSprites';
 
@@ -29,7 +30,11 @@ const FIT_STEPS = ['is-compact', 'is-collapsed', 'is-tight', 'is-scrolling'] as 
 export function mountTopBar(
   root: HTMLElement,
   popover: HTMLElement,
-  deps: PanelDeps & { archive: ArchiveStore; spriteOverrides: SpriteOverrides },
+  deps: PanelDeps & {
+    archive: ArchiveStore;
+    depot: DepotStore;
+    spriteOverrides: SpriteOverrides;
+  },
   actions: TopBarActions,
 ): void {
   const { store, session } = deps;
@@ -49,7 +54,7 @@ export function mountTopBar(
       el('button', { class: 'btn', type: 'button', onclick: actions.openMaster }, t.master.enter),
       el('button', { class: 'btn', type: 'button', onclick: actions.showCredits }, t.credits.open),
     ),
-    createSaveControls(store, deps.archive, actions.notify),
+    createSaveControls(store, deps.archive, deps.depot, actions.notify),
   );
 
   root.append(

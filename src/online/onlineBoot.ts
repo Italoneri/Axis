@@ -23,10 +23,12 @@ import type { OnlineConfig } from './config';
 import {
   createSupabase,
   supabaseArchiveBackend,
+  supabaseDepotBackend,
   supabaseBackend,
   supabaseImageBucket,
 } from './supabase';
 import { SupabaseArchiveRepository } from './SupabaseArchiveRepository';
+import { SupabaseDepotRepository } from './SupabaseDepotRepository';
 import { ARCHIVE_IMAGE_BUCKET, GAME_IMAGE_BUCKET, SupabaseImageStore } from './SupabaseImageStore';
 import type { ArchiveImageStore } from '../persistence/ArchiveImageStore';
 import { SupabaseRepository, type GameBackend } from './SupabaseRepository';
@@ -41,6 +43,7 @@ export interface Membership {
 export interface OnlineGame {
   repository: SupabaseRepository;
   archiveRepository: SupabaseArchiveRepository;
+  depotRepository: SupabaseDepotRepository;
   archiveImages: ArchiveImageStore;
   /** Files of the photos of characters, NPCs, materials and worlds. */
   gamePhotos: ArchiveImageStore;
@@ -117,6 +120,7 @@ export async function bootOnline(
       supabaseArchiveBackend(client),
       membership.gameId,
     ),
+    depotRepository: new SupabaseDepotRepository(supabaseDepotBackend(client), membership.gameId),
     archiveImages: new SupabaseImageStore(
       supabaseImageBucket(client, ARCHIVE_IMAGE_BUCKET),
       membership.gameId,

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
 import { gameStateSchema, SAVE_VERSION, type GameState } from '../model/schema';
 import { parseArchive, type Archive } from './Archive';
+import { parseDepot, type Depot } from './Depot';
 import { initialInfluence } from './Influence';
 import { rehomeNpcs, settleNpcs } from './Npcs';
 import { trimLog } from './outcome';
@@ -43,9 +44,38 @@ export function serializeState(state: GameState): string {
   return JSON.stringify(state, null, 2);
 }
 
-/** The exported file: the game plus, when there is one, the Arquivo de registros beside it. */
-export function serializeSave(state: GameState, archive: Archive | null): string {
-  return JSON.stringify(archive ? { ...state, archive } : state, null, 2);
+/** The exported file: the game plus, when there are, the Arquivo de registros and the Depósito beside it. */
+export function serializeSave(
+  state: GameState,
+  archive: Archive | null,
+  depot: Depot | null = null,
+): string {
+  return JSON.stringify(
+    { ...state, ...(archive ? { archive } : {}), ...(depot ? { depot } : {}) },
+    null,
+    2,
+  );
+}
+
+const saveWithDepotSchema = z.looseObject({ depot: z.unknown().optional() });
+
+/** The depot inside an imported save: null for saves without one. `parseSave` ignores the key. */
+export function parseSaveDepot(
+  text: string,
+): { ok: true; depot: Depot | null } | { ok: false; error: string } {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (error) {
+    return {
+      ok: false,
+      error: `invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  const save = saveWithDepotSchema.safeParse(json);
+  if (!save.success || save.data.depot === undefined) return { ok: true, depot: null };
+  const parsed = parseDepot(save.data.depot);
+  return parsed.ok ? parsed : { ok: false, error: `depot: ${parsed.error}` };
 }
 
 const saveWithArchiveSchema = z.looseObject({ archive: z.unknown().optional() });

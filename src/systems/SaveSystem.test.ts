@@ -5,11 +5,13 @@ import {
   migrateSave,
   parseSave,
   parseSaveArchive,
+  parseSaveDepot,
   serializeSave,
   serializeState,
   STORAGE_KEY,
 } from './SaveSystem';
-import type { Archive } from './Archive';
+import { EMPTY_ARCHIVE, type Archive } from './Archive';
+import type { Depot } from './Depot';
 import { SAVE_VERSION } from '../model/schema';
 import { LOG_LIMIT } from './outcome';
 import { makeState, memoryStorage, npc, testCatalog } from './testFixtures';
@@ -410,5 +412,30 @@ describe('save file with the archive', () => {
   it('refuses an invalid archive', () => {
     const text = JSON.stringify({ ...makeState(), archive: { topics: 'x' } });
     expect(parseSaveArchive(text)).toMatchObject({ ok: false });
+  });
+});
+
+describe('save file with the depot', () => {
+  const depot: Depot = {
+    sections: [
+      { id: 'bau', name: 'Baú', ownerId: 'thorin', order: 0, authorId: 'thorin', deletedAt: null },
+    ],
+    items: [],
+  };
+
+  it('exports and imports the depot beside the game and the archive', () => {
+    const text = serializeSave(makeState({ day: 4 }), EMPTY_ARCHIVE, depot);
+    expect(parseSave(text, testCatalog)).toMatchObject({ ok: true, state: { day: 4 } });
+    expect(parseSaveArchive(text)).toEqual({ ok: true, archive: EMPTY_ARCHIVE });
+    expect(parseSaveDepot(text)).toEqual({ ok: true, depot });
+  });
+
+  it('reads saves without a depot as having none', () => {
+    expect(parseSaveDepot(serializeState(makeState()))).toEqual({ ok: true, depot: null });
+  });
+
+  it('refuses an invalid depot', () => {
+    const text = JSON.stringify({ ...makeState(), depot: { sections: 'x' } });
+    expect(parseSaveDepot(text)).toMatchObject({ ok: false });
   });
 });

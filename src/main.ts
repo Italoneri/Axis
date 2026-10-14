@@ -8,6 +8,10 @@ import { mapResolution } from './map/textures';
 import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
 import { ArchiveStore } from './archiveStore';
+import { DepotStore } from './depotStore';
+import { LocalDepotRepository } from './persistence/LocalDepotRepository';
+import type { DepotRepository } from './persistence/DepotRepository';
+import { DepotWindow } from './ui/depot/DepotWindow';
 import { LocalArchiveRepository } from './persistence/LocalArchiveRepository';
 import type { ArchiveRepository } from './persistence/ArchiveRepository';
 import type { ArchiveImageStore } from './persistence/ArchiveImageStore';
@@ -60,6 +64,7 @@ interface Mode {
   isOnline: boolean;
   repository: GameRepository;
   archiveRepository: ArchiveRepository;
+  depotRepository: DepotRepository;
   archiveImages: ArchiveImageStore;
   gamePhotos: ArchiveImageStore;
   /** Online, the login fixes who writes in the archive; offline the window asks. */
@@ -82,6 +87,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
       isOnline: false,
       repository: new LocalRepository(window.localStorage, catalog, window),
       archiveRepository: new LocalArchiveRepository(window.localStorage, window),
+      depotRepository: new LocalDepotRepository(window.localStorage, window),
       archiveImages: new LocalImageStore(indexedDbBlobTable()),
       gamePhotos: new LocalImageStore(indexedDbBlobTable(PHOTO_DB_NAME)),
       session,
@@ -96,6 +102,7 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
     isOnline: true,
     repository: game.repository,
     archiveRepository: game.archiveRepository,
+    depotRepository: game.depotRepository,
     archiveImages: game.archiveImages,
     gamePhotos: game.gamePhotos,
     archiveActor: game.archiveActor,
@@ -120,7 +127,7 @@ async function start(): Promise<void> {
   if (!mode) return;
   const { repository, session } = mode;
   const memory = new UiMemory(safeLocalStorage());
-  // Offline, the character picked in the archive window writes (and logs) the records.
+  // Offline, the character picked in the archive (or depot) window writes (and logs) the records.
   const archiveViewer = (): Actor => {
     if (mode.archiveActor) return mode.archiveActor;
     if (session.isActive) return { role: 'master' };
@@ -140,7 +147,9 @@ async function start(): Promise<void> {
     repository,
     {
       contextFor: (command) =>
-        command.type === 'archive_log' ? { actor: archiveViewer() } : mode.contextFor(command),
+        command.type === 'archive_log' || command.type === 'depot_log'
+          ? { actor: archiveViewer() }
+          : mode.contextFor(command),
       onRefused: (error) => notify(t.errors[error], 'error'),
       onPersistError: (error) => {
         console.error('[save] could not persist state', error);
@@ -166,6 +175,22 @@ async function start(): Promise<void> {
     notify,
   });
   const openArchive = () => archiveWindow.open();
+  const depot = await DepotStore.open(mode.depotRepository, {
+    viewer: archiveViewer,
+    onLogged: (change) => void store.dispatch({ type: 'depot_log', change }),
+    onRefused: (error) => notify(t.depot.errors[error], 'error'),
+    onPersistError: (error) => {
+      console.error('[depot] could not reach the depot', error);
+      notify(persistFailed, 'error');
+    },
+  });
+  const depotWindow = new DepotWindow({
+    depot,
+    game: store,
+    memory,
+    canPickCharacter: () => !mode.isOnline && !session.isActive,
+  });
+  const openDepot = () => depotWindow.open();
   const menuWindow = new MenuWindow({ game: store, memory });
   const openMenu = () => menuWindow.open();
   hideGate();
@@ -189,7 +214,7 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview, walkingNpcs },
     act,
-    { ...mode.drawerExtras(store), openArchive, openMenu },
+    { ...mode.drawerExtras(store), openArchive, openMenu, openDepot },
   );
   const missionBoard = new MissionBoard({ game: store, session, act, memory });
   const panel = new SlotPanel(
@@ -198,12 +223,13 @@ async function start(): Promise<void> {
     session,
     { store: archive, open: openArchive },
     { menu: openMenu, missions: () => missionBoard.open() },
+    { store: depot, open: openDepot },
   );
 
   mountTopBar(
     requireElement('topbar'),
     requireElement('popover'),
-    { store, session, act, memory, archive, spriteOverrides },
+    { store, session, act, memory, archive, depot, spriteOverrides },
     {
       notify,
       toggleDrawer: () => drawer.toggle(),

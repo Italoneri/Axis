@@ -26,6 +26,8 @@ export interface DrawerExtras {
   openArchive?: (() => void) | undefined;
   /** Likewise for the tavern menu. */
   openMenu?: (() => void) | undefined;
+  /** Likewise for the Depósito (the Arsenal's). */
+  openDepot?: (() => void) | undefined;
 }
 
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
@@ -133,6 +135,7 @@ export class InfoDrawer {
         act: this.act,
         openArchive: this.extras.openArchive,
         openMenu: this.extras.openMenu,
+        openDepot: this.extras.openDepot,
       });
       return [...tools, ...this.panelsOf(tab).map((panel) => panel.element)];
     }

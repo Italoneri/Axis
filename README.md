@@ -214,6 +214,20 @@ Os registros da campanha (relatórios, formulários, anotações sobre personage
 - **Log:** toda ação vira uma entrada com quem fez ("Thorin criou o tópico Pets", "Mestre moveu 'Zolt-Raak' de NPCs para Jogadores"), menos as que envolvem notas `mestre`.
 - **Onde fica:** fora do `GameState`. Offline, em `localStorage` (`axis-base-builder:archive`); online, nas tabelas `archive_topics` e `archive_notes`. **Exportar/Importar save** levam o arquivo junto, na chave `archive`.
 
+## Depósito
+
+O **Depósito** guarda os itens do grupo (equipamentos, poções ou qualquer outra coisa) numa janela no mesmo estilo do Arquivo de registros, com **seções** (como os tópicos) e **itens**. Cada personagem também tem a sua **área privada**. O design está em `docs/plans/DEPOSITO.md`.
+
+- **Onde abrir:** no painel do **Arsenal** construído (nível ≥ 1), o botão **Abrir depósito** mostra a contagem de seções e itens. O mestre também abre pelas ferramentas do mestre, mesmo sem o Arsenal construído.
+- **Janela:** à esquerda, as seções do **Depósito do grupo** e, embaixo, a **área privada**: o jogador vê só a dele ("Minha área privada"); o mestre vê a de cada personagem. À direita, os itens da seção escolhida. A busca procura no nome e nas observações de tudo o que você pode ver. No celular vira duas etapas.
+- **Item:** nome, tipo (⚔️ Equipamento, 🧪 Poção ou 📦 Outro), quantidade (1 a 99.999) e observações (até 2.000 caracteres). Os botões **−** e **+** do cartão retiram ou adicionam uma unidade; para zerar, remova o item.
+- **Quem faz o quê:** no depósito do grupo, todos criam, editam, reordenam, movem e removem qualquer seção ou item. Na área privada, só o dono e o mestre. Para guardar ou retirar algo do depósito do grupo, use **Mover para** no item: a lista mostra as seções do grupo e as da sua área.
+- **Privacidade:** os outros jogadores nunca recebem a área privada de alguém (nem na lista, nem na busca, nem no log). Online, isso é garantido pela RLS do banco; offline, é o mesmo navegador para todos, então a área só fica escondida pela janela (o jogador escolhe o personagem no topo, a mesma escolha do Arquivo).
+- **Lixeira:** remover manda para a lixeira, onde quem vê o item ou a seção pode restaurar. Só o mestre esvazia. Uma seção só sai quando está vazia.
+- **Log:** só o depósito do grupo entra no registro ("Thorin pôs 'Poção de cura' (×3) no depósito"). Mover da área privada para o grupo vira "Thorin guardou 'Escudo' (×1) no depósito, em Armas", e o contrário vira "retirou", sem citar a seção privada.
+- **Onde fica:** fora do `GameState`. Offline, em `localStorage` (`axis-base-builder:depot`); online, nas tabelas `depot_sections` e `depot_items`. **Exportar/Importar save** levam o depósito junto, na chave `depot`.
+- **Publicar a mudança online:** `npx supabase db push` (tabelas e regras de acesso) e `npm run deploy:functions` (o log ganhou as entradas do depósito).
+
 ## Taverna
 
 A **Taverna** tem um **cardápio** com café da manhã, almoço e janta.
@@ -343,6 +357,7 @@ A função `game` (`supabase/functions/game/index.ts`) só liga o bundle ao `sup
 - **RLS:** clientes só **leem**, e só os jogos de que participam. Ninguém grava direto: as escritas passam pela Edge Function, que usa a service role e as funções `commit_game_update` (grava só se a `revision` bater), `create_game` e `accept_invite`.
 - `games` está na publicação do Realtime, que também respeita a RLS.
 - **Arquivo de registros:** `archive_topics` e `archive_notes` são a exceção: membros escrevem direto, e a RLS só deixa o mestre ler e escrever as notas `mestre` (jogador não cria nem transforma uma nota em `mestre`). Um trigger recusa mandar à lixeira um tópico com notas, contando as `mestre` sem revelá-las, e `replace_archive` (só o mestre) restaura o arquivo de um save importado. As duas tabelas estão no Realtime.
+- **Depósito:** `depot_sections` e `depot_items` seguem o mesmo modelo. `owner_id` nulo é o depósito do grupo; com o id de um personagem, é a área privada dele, que a RLS só mostra ao dono (`my_character`) e ao mestre. O item guarda uma cópia do `owner_id` da seção (um trigger confere), uma seção nunca muda de área, outro trigger recusa mandar à lixeira uma seção com itens, e `replace_depot` (só o mestre) restaura o depósito de um save importado. As duas tabelas estão no Realtime.
 - **Entrar e sair:** `join_game` liga o usuário e grava o estado numa transação só, com as mesmas garantias de `accept_invite` (chave `(game_id, user_id)` e índice único por personagem); `unlink_player` nunca remove o mestre. `list_players` (só o mestre) junta `players` com o nome e o e-mail das contas, que os clientes não leem direto.
 - **Verificação:** `supabase/tests/games_rls.test.sql`, `supabase/tests/archive_rls.test.sql` e `supabase/tests/join_links.test.sql` (pgTAP). Com o Docker rodando: `npx supabase start` e depois `npx supabase test db`.
 
@@ -380,6 +395,7 @@ src/
   store.ts           estado atual, envio de comandos e eventos (camada imperativa)
   commands/          comandos serializáveis e applyCommand (regras + permissões)
   archiveStore.ts    Arquivo de registros: envio de comandos e avisos de mudança
+  depotStore.ts      Depósito: o mesmo, para seções e itens
   persistence/       GameRepository e LocalRepository (localStorage); ArchiveRepository e
                      LocalArchiveRepository
   server/            Edge Function: handler, acesso ao banco, catálogo e entrada do bundle

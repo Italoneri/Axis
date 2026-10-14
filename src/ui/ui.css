@@ -2840,3 +2840,39 @@ details > summary {
     font-size: 26px;
   }
 }
+
+/* ---------- Depósito (janela do Arsenal; usa o layout do Arquivo) ---------- */
+
+.depot__area-hint {
+  margin: -4px 0 4px;
+  font-size: 12px;
+}
+
+.depot-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+}
+
+.depot-item__head .archive-note__toggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.depot-item__quantity {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.depot-item__stepper {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.depot-item__notes {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
