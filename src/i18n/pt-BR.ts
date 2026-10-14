@@ -883,6 +883,7 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'building_forced':
     case 'building_removed':
     case 'building_dropped':
+    case 'building_moved':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
       return coinsAdjustedText(entry, ctx);
@@ -1157,12 +1158,18 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_completed: `Concluída: ${what}`,
     building_forced: `${masterActor(entry)} definiu ${what}`,
     building_removed: `${masterActor(entry)} removeu ${what}`,
-    building_dropped:
-      entry.kind === 'building_dropped' && entry.reason === 'unknown_building'
-        ? `${what} removida: a construção não existe mais no jogo`
-        : `${what} removida: o espaço não existe mais no mapa`,
+    building_dropped: droppedText(entry, what),
+    building_moved: `${what} mudou de lugar: o espaço antigo não aceita mais essa construção`,
   };
   return actions[entry.kind] + paid;
+}
+
+function droppedText(entry: BuildingEntry, what: string): string {
+  if (entry.reason === 'unknown_building')
+    return `${what} removida: a construção não existe mais no jogo`;
+  if (entry.reason === 'wrong_slot')
+    return `${what} removida: o espaço não aceita mais essa construção e não havia outro livre`;
+  return `${what} removida: o espaço não existe mais no mapa`;
 }
 
 function paidText(

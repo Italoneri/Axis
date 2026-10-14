@@ -36,11 +36,11 @@ Documento de passagem para continuar a arte das construções em outro chat. Est
 | `forge` | Forja | outer | ✅ nível 1 (`forge.outer.png`). Níveis 2 e 3 opcionais |
 | `hot_springs` | Fontes Termais | outer | ✅ níveis 1, 2 e 3 |
 | `arcane_lab` | Laboratório Arcano | outer | ✅ níveis 1, 2 e 3 (adaptado do formato pequeno para o arco da muralha) |
-| `axis_heart` | Coração da Axis | core | a fazer |
+| `axis_heart` | Coração da Axis | core | ✅ níveis 1, 2 e 3 (512×512) |
 | `infirmary` | Enfermaria | middle, outer | a fazer |
 | `library` | Biblioteca | middle | a fazer |
-| `sanctuary` | Santuário | middle | a fazer |
-| `armory` | Arsenal | outer | a fazer |
+| `sanctuary` | Santuário | middle | ✅ níveis 1, 2 e 3 |
+| `armory` | Depósito | middle | ✅ níveis 1, 2 e 3 (era o Arsenal da muralha; em saves antigos ele é movido para o primeiro espaço middle livre ao carregar) |
 | `barracks` | Quartel | outer | a fazer |
 
 O Ítalo vai criar **mais construções para o anel intermediário**. Os efeitos de nível e os custos ficam no `src/data/buildings.json`. Construção nova = arte + uma entrada nova nesse arquivo.
@@ -184,5 +184,4 @@ Um zip contendo:
 
 **Próximas sugeridas:**
 - Para o anel intermediário (v4): Biblioteca, Santuário e as construções novas que o Ítalo vai inventar.
-- Para a muralha: Arsenal e Quartel.
-- Por último, o Coração da Axis.
+- Para a muralha: Quartel.

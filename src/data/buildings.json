@@ -6,6 +6,120 @@
     "icon": "icon.axis_heart",
     "sprite": "building.axis_heart",
     "allowedSlots": ["core"],
+    "fx": [
+      { "type": "glow", "x": 0.5, "y": 0.5, "color": "#7f94d8", "radius": 0.07, "maxLevel": 1 },
+      { "type": "glow", "x": 0.5, "y": 0.5, "color": "#dfe8ff", "radius": 0.12, "minLevel": 2 },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.07,
+        "color": "#8034c8",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.804,
+        "y": 0.196,
+        "color": "#28aa50",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.93,
+        "y": 0.5,
+        "color": "#dcebff",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.804,
+        "y": 0.804,
+        "color": "#f0781e",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.93,
+        "color": "#285adc",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.196,
+        "y": 0.804,
+        "color": "#785aa0",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.07,
+        "y": 0.5,
+        "color": "#cd2328",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.196,
+        "y": 0.196,
+        "color": "#f5cd28",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      { "type": "glow", "x": 0.5, "y": 0.07, "color": "#8034c8", "radius": 0.065, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.804,
+        "y": 0.196,
+        "color": "#28aa50",
+        "radius": 0.065,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.93, "y": 0.5, "color": "#dcebff", "radius": 0.065, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.804,
+        "y": 0.804,
+        "color": "#f0781e",
+        "radius": 0.065,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.5, "y": 0.93, "color": "#285adc", "radius": 0.065, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.196,
+        "y": 0.804,
+        "color": "#785aa0",
+        "radius": 0.065,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.07, "y": 0.5, "color": "#cd2328", "radius": 0.065, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.196,
+        "y": 0.196,
+        "color": "#f5cd28",
+        "radius": 0.065,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.5, "y": 0.5, "color": "#e2b84a", "radius": 0.26, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.5, "color": "#ffe08a", "minLevel": 3 }
+    ],
     "levels": [
       {
         "cost": { "coins": 300, "materials": { "wood": 60, "iron": 40, "aetherium": 30 } },
@@ -214,10 +328,44 @@
   {
     "id": "armory",
     "name": "Depósito",
-    "description": "Prateleiras, baús e armários onde o grupo guarda armas, armaduras, poções e tudo o mais.",
+    "description": "Prateleiras de armas, frascos de poções e caixotes de suprimentos, tudo catalogado e pronto para a próxima expedição.",
     "icon": "icon.armory",
     "sprite": "building.armory",
-    "allowedSlots": ["outer"],
+    "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.424, "y": 0.751, "color": "#ffb347", "radius": 0.04 },
+      { "type": "glow", "x": 0.576, "y": 0.751, "color": "#ffb347", "radius": 0.04 },
+      {
+        "type": "glow",
+        "x": 0.517,
+        "y": 0.412,
+        "color": "#ffb347",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.695,
+        "y": 0.538,
+        "color": "#7dffa0",
+        "radius": 0.025,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.682,
+        "y": 0.347,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.5, "y": 0.63, "color": "#e2b84a", "radius": 0.06, "minLevel": 3 },
+      { "type": "sparks", "x": 0.319, "y": 0.715, "color": "#ffe08a", "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.056, "color": "#e2b84a", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.74, "y": 0.135, "color": "#7dffa0", "radius": 0.03, "minLevel": 3 },
+      { "type": "glow", "x": 0.87, "y": 0.192, "color": "#b48cff", "radius": 0.03, "minLevel": 3 },
+      { "type": "glow", "x": 0.908, "y": 0.483, "color": "#ffe08a", "radius": 0.03, "minLevel": 3 }
+    ],
     "requires": [{ "building": "forge", "minLevel": 1 }],
     "levels": [
       {
@@ -246,6 +394,75 @@
     "icon": "icon.sanctuary",
     "sprite": "building.sanctuary",
     "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.424, "y": 0.12, "color": "#ffb347", "radius": 0.03 },
+      { "type": "glow", "x": 0.576, "y": 0.12, "color": "#ffb347", "radius": 0.03 },
+      {
+        "type": "glow",
+        "x": 0.343,
+        "y": 0.237,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.657,
+        "y": 0.237,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "maxLevel": 1
+      },
+      { "type": "glow", "x": 0.146, "y": 0.371, "color": "#ffb347", "radius": 0.035 },
+      {
+        "type": "glow",
+        "x": 0.295,
+        "y": 0.224,
+        "color": "#f0aa3c",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.763,
+        "y": 0.244,
+        "color": "#f0aa3c",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.357,
+        "y": 0.221,
+        "color": "#ffb347",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.643,
+        "y": 0.221,
+        "color": "#ffb347",
+        "radius": 0.045,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.238, "y": 0.348, "color": "#ffb347", "radius": 0.03, "minLevel": 2 },
+      { "type": "glow", "x": 0.762, "y": 0.348, "color": "#ffb347", "radius": 0.03, "minLevel": 2 },
+      { "type": "glow", "x": 0.692, "y": 0.79, "color": "#ffb347", "radius": 0.04, "minLevel": 2 },
+      { "type": "glow", "x": 0.295, "y": 0.224, "color": "#f0781e", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.763, "y": 0.244, "color": "#ebc828", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.527, "y": 0.116, "color": "#ffe08a", "radius": 0.06, "minLevel": 3 },
+      { "type": "sparks", "x": 0.527, "y": 0.116, "color": "#ffe08a", "minLevel": 3 },
+      { "type": "glow", "x": 0.135, "y": 0.246, "color": "#ffd36e", "radius": 0.05, "minLevel": 3 },
+      { "type": "glow", "x": 0.865, "y": 0.246, "color": "#ffd36e", "radius": 0.05, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.328, "color": "#e2b84a", "radius": 0.075, "minLevel": 3 },
+      { "type": "smoke", "x": 0.378, "y": 0.339, "color": "#d8cfc0", "minLevel": 3 },
+      { "type": "smoke", "x": 0.622, "y": 0.339, "color": "#d8cfc0", "minLevel": 3 },
+      { "type": "glow", "x": 0.192, "y": 0.505, "color": "#ffc46b", "radius": 0.03, "minLevel": 3 },
+      { "type": "glow", "x": 0.808, "y": 0.505, "color": "#ffc46b", "radius": 0.03, "minLevel": 3 }
+    ],
     "levels": [
       {
         "cost": { "coins": 180, "materials": { "wood": 24, "iron": 16, "aetherium": 10 } },
