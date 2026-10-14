@@ -592,6 +592,164 @@
       ]
     },
     {
+      "id": "bigodes",
+      "work": "Personagem \"bigodes\" (Universal LPC Spritesheet)",
+      "source": "Universal LPC Spritesheet Character Generator",
+      "url": "https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/",
+      "usedFor": "NPCs andando no mapa",
+      "layers": [
+        {
+          "part": "body/bodies/male/walk.png",
+          "notes": "see details at https://opengameart.org/content/lpc-character-bases; 'Thick' Male Revised Run/Climb by JaidynReiman (based on ElizaWy's LPC Revised)",
+          "authors": [
+            "bluecarrot16",
+            "JaidynReiman",
+            "Benjamin K. Smith (BenCreating)",
+            "Evert",
+            "Eliza Wyatt (ElizaWy)",
+            "TheraHedwig",
+            "MuffinElZangano",
+            "Durrani",
+            "Johannes Sjölund (wulax)",
+            "Stephen Challener (Redshrike)"
+          ],
+          "licenses": ["OGA-BY 3.0", "CC-BY-SA 3.0", "GPL 3.0"],
+          "urls": [
+            "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+            "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+            "https://opengameart.org/content/lpc-male-jumping-animation-by-durrani",
+            "https://opengameart.org/content/lpc-runcycle-and-diagonal-walkcycle",
+            "https://opengameart.org/content/lpc-revised-character-basics",
+            "https://opengameart.org/content/lpc-be-seated",
+            "https://opengameart.org/content/lpc-runcycle-for-male-muscular-and-pregnant-character-bases-with-modular-heads",
+            "https://opengameart.org/content/lpc-jump-expanded",
+            "https://opengameart.org/content/lpc-character-bases"
+          ]
+        },
+        {
+          "part": "head/heads/human/male_plump/walk.png",
+          "notes": "original head by Redshrike, plump version by ??",
+          "authors": ["Stephen Challener (Redshrike)", "??"],
+          "licenses": ["CC-BY-SA 3.0", "GPL 3.0"],
+          "urls": [
+            "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+            "https://opengameart.org/content/lpc-folk"
+          ]
+        },
+        {
+          "part": "head/faces/male/anger/walk.png",
+          "notes": "Original by Redshrike, Expressions by ElizaWy, mapped to all frames by JaidynReiman",
+          "authors": ["JaidynReiman", "ElizaWy", "Stephen Challener (Redshrike)"],
+          "licenses": ["OGA-BY 3.0"],
+          "urls": [
+            "https://github.com/ElizaWy/LPC/tree/main/Characters/Head",
+            "https://opengameart.org/content/ulpc-expanded-expressions"
+          ]
+        },
+        {
+          "part": "head/ears/cat/adult/fg/walk.png",
+          "notes": "",
+          "authors": ["JaidynReiman"],
+          "licenses": ["OGA-BY 3.0+", "CC-BY 3.0+", "GPL 3.0"],
+          "urls": ["https://opengameart.org/content/lpc-furry-ears-tails-for-rpg-sprites"]
+        },
+        {
+          "part": "body/tail/cat/adult/fg/walk/fur_grey.png",
+          "notes": "",
+          "authors": ["JaidynReiman"],
+          "licenses": ["OGA-BY 3.0+", "CC-BY 3.0+", "GPL 3.0"],
+          "urls": ["https://opengameart.org/content/lpc-furry-ears-tails-for-rpg-sprites"]
+        },
+        {
+          "part": "beards/beard/winter/male/walk.png",
+          "notes": "",
+          "authors": ["bluecarrot16"],
+          "licenses": ["CC0"],
+          "urls": ["https://opengameart.org/content/lpc-santa"]
+        },
+        {
+          "part": "torso/clothes/longsleeve/longsleeve/male/walk.png",
+          "notes": "original by wulax; tweaks and further recolors by bluecarrot16; cleanup and climb/jump/run/sit/emote/revised combat adapted from LPC Revised by JaidynReiman",
+          "authors": ["JaidynReiman", "Johannes Sjölund (wulax)"],
+          "licenses": ["OGA-BY 3.0", "CC-BY-SA 3.0", "GPL 3.0"],
+          "urls": [
+            "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+            "http://opengameart.org/content/lpc-clothing-updates",
+            "https://opengameart.org/content/lpc-revised-character-basics",
+            "https://github.com/ElizaWy/LPC/tree/main/Characters/Clothing",
+            "https://opengameart.org/content/lpc-expanded-sit-run-jump-more",
+            "https://opengameart.org/content/lpc-expanded-simple-shirts"
+          ]
+        },
+        {
+          "part": "torso/aprons/overalls/male/walk/brown.png",
+          "notes": "original overalls by ElizaWy, extended to all animation frames, adapted from teen to male base, and edited for v3 bases by bluecarrot16; extended to combat animations by JaidynReiman",
+          "authors": ["ElizaWy", "bluecarrot16", "JaidynReiman"],
+          "licenses": ["OGA-BY 3.0", "GPL 3.0"],
+          "urls": [
+            "https://opengameart.org/content/lpc-revised-character-basics",
+            "http://opengameart.org/content/lpc-clothing-updates"
+          ]
+        },
+        {
+          "part": "arms/hands/gloves/male/walk.png",
+          "notes": "metal gloves by wulax, recolors by bigbeargames, adapted to v3 bases by bluecarrot16, added to expanded animations by JaidynReiman",
+          "authors": [
+            "Michael Whitlock (bigbeargames)",
+            "Matthew Krohn (makrohn)",
+            "Johannes Sjölund (wulax)",
+            "bluecarrot16",
+            "JaidynReiman"
+          ],
+          "licenses": ["OGA-BY 3.0", "CC-BY-SA 3.0", "GPL 3.0"],
+          "urls": [
+            "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+            "http://opengameart.org/content/lpc-clothing-updates"
+          ]
+        },
+        {
+          "part": "legs/pants/male/walk.png",
+          "notes": "original male pants by wulax, recolors and edits to v3 base by bluecarrot16, climb/jump/run/sit/emotes/revised combat by JaidynReiman based on ElizaWy's LPC Revised",
+          "authors": [
+            "bluecarrot16",
+            "JaidynReiman",
+            "ElizaWy",
+            "Matthew Krohn (makrohn)",
+            "Johannes Sjölund (wulax)",
+            "Stephen Challener (Redshrike)"
+          ],
+          "licenses": ["OGA-BY 3.0", "GPL 3.0", "CC-BY-SA 3.0"],
+          "urls": [
+            "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+            "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+            "https://opengameart.org/content/lpc-expanded-pants"
+          ]
+        },
+        {
+          "part": "feet/boots/basic/male/walk.png",
+          "notes": "original by Nila122, edited for male and v3 bases by bluecarrot16, Jump/Sit/Emote/Run/Revised Combat by JaidynReiman",
+          "authors": ["JaidynReiman", "bluecarrot16", "Nila122"],
+          "licenses": ["OGA-BY 3.0", "CC-BY-SA 3.0", "GPL 2.0", "GPL 3.0"],
+          "urls": [
+            "https://opengameart.org/content/lpc-clothes-and-hair",
+            "https://opengameart.org/content/lpc-expanded-socks-shoes"
+          ]
+        },
+        {
+          "part": "tools/hammer/male/walk.png",
+          "notes": "original by bluecarrot16, color reduced by JaidynReiman",
+          "authors": [
+            "bluecarrot16",
+            "JaidynReiman",
+            "Pierre Vigier (pvigier)",
+            "Tuomo Untinen (reemax)"
+          ],
+          "licenses": ["OGA-BY-3.0", "CC-BY 4.0", "CC-BY-SA 3.0+", "GPL 2.0+"],
+          "urls": ["https://opengameart.org/content/lpc-hand-tools"]
+        }
+      ]
+    },
+    {
       "id": "thrax",
       "work": "Personagem \"thrax\" (Universal LPC Spritesheet)",
       "source": "Universal LPC Spritesheet Character Generator",
