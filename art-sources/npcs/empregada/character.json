@@ -1,0 +1,71 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "recolor": "light"
+    },
+    "head": {
+      "itemId": "heads_human_female",
+      "recolor": "light"
+    },
+    "eyes": {
+      "itemId": "heads_human_female",
+      "subId": 1,
+      "recolor": "red"
+    },
+    "expression": {
+      "itemId": "face_neutral",
+      "recolor": "light"
+    },
+    "hair": {
+      "itemId": "hair_bangslong",
+      "recolor": "white"
+    },
+    "headcover": {
+      "itemId": "hat_headband_tied",
+      "recolor": "white"
+    },
+    "clothes": {
+      "itemId": "torso_clothes_longsleeve",
+      "recolor": "black"
+    },
+    "legs": {
+      "itemId": "legs_skirts_plain",
+      "recolor": "black"
+    },
+    "apron": {
+      "itemId": "legs_skirt_overskirt",
+      "recolor": "white"
+    },
+    "gloves": {
+      "itemId": "arms_gloves",
+      "recolor": "cloth.black"
+    },
+    "necklace": {
+      "itemId": "neck_necklace_simple",
+      "variant": "silver"
+    },
+    "earring_left": {
+      "itemId": "facial_earring_left",
+      "variant": "red"
+    },
+    "earring_right": {
+      "itemId": "facial_earring_right",
+      "variant": "red"
+    },
+    "socks": {
+      "itemId": "feet_socks_high",
+      "recolor": "white"
+    },
+    "shoes": {
+      "itemId": "feet_shoes_basic",
+      "recolor": "black"
+    },
+    "weapon": {
+      "itemId": "weapon_sword_arming",
+      "variant": "silver"
+    }
+  }
+}
