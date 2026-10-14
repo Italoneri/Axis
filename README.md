@@ -218,7 +218,7 @@ Os registros da campanha (relatórios, formulários, anotações sobre personage
 
 O **Depósito** guarda os itens do grupo (equipamentos, poções ou qualquer outra coisa) numa janela no mesmo estilo do Arquivo de registros, com **seções** (como os tópicos) e **itens**. Cada personagem também tem a sua **área privada**. O design está em `docs/plans/DEPOSITO.md`.
 
-- **Onde abrir:** no painel do **Arsenal** construído (nível ≥ 1), o botão **Abrir depósito** mostra a contagem de seções e itens. O mestre também abre pelas ferramentas do mestre, mesmo sem o Arsenal construído.
+- **Onde abrir:** no painel do **Depósito** construído (nível ≥ 1; era o Arsenal, id `armory`, que foi renomeado), o botão **Abrir depósito** mostra a contagem de seções e itens. O mestre também abre pelas ferramentas do mestre, mesmo sem o Depósito construído.
 - **Janela:** à esquerda, as seções do **Depósito do grupo** e, embaixo, a **área privada**: o jogador vê só a dele ("Minha área privada"); o mestre vê a de cada personagem. À direita, os itens da seção escolhida. A busca procura no nome e nas observações de tudo o que você pode ver. No celular vira duas etapas.
 - **Item:** nome, tipo (⚔️ Equipamento, 🧪 Poção ou 📦 Outro), quantidade (1 a 99.999) e observações (até 2.000 caracteres). Os botões **−** e **+** do cartão retiram ou adicionam uma unidade; para zerar, remova o item.
 - **Quem faz o quê:** no depósito do grupo, todos criam, editam, reordenam, movem e removem qualquer seção ou item. Na área privada, só o dono e o mestre. Para guardar ou retirar algo do depósito do grupo, use **Mover para** no item: a lista mostra as seções do grupo e as da sua área.

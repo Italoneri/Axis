@@ -2841,7 +2841,7 @@ details > summary {
   }
 }
 
-/* ---------- Depósito (janela do Arsenal; usa o layout do Arquivo) ---------- */
+/* ---------- Depósito (usa o layout do Arquivo) ---------- */
 
 .depot__area-hint {
   margin: -4px 0 4px;

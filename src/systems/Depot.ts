@@ -3,7 +3,7 @@ import type { Actor } from '../commands/schema';
 import type { DepotChange } from '../model/schema';
 import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
 
-// Depósito do Arsenal: sections and items kept outside the GameState, like the
+// Depósito: sections and items kept outside the GameState, like the
 // Arquivo (see docs/plans/DEPOSITO.md). A section belongs to the group
 // (`ownerId` null) or to one character's private area (`ownerId` = the
 // character id); its items follow it. Pure rules, the same offline and online.

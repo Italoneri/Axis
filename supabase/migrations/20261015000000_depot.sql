@@ -1,4 +1,4 @@
--- Depósito do Arsenal: sections and items of a game, kept apart from games.state
+-- Depósito: sections and items of a game, kept apart from games.state
 -- (see docs/plans/DEPOSITO.md).
 --
 -- Like the archive, members write here directly: the client runs the same pure

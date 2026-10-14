@@ -37,7 +37,7 @@ export interface BuildingWindows {
   missions: () => void;
 }
 
-/** The Arsenal's depot: its store (for the counts) and its window. */
+/** The Depósito: its store (for the counts) and its window. */
 export interface DepotAccess {
   store: DepotStore;
   open: () => void;
@@ -355,7 +355,7 @@ export class SlotPanel {
     );
   }
 
-  /** The Arsenal, once built: the way into the depot window. */
+  /** The Depósito, once built: the way into its window. */
   private depotSection(): HTMLElement {
     const { sections, items } = depotCounts(this.depot.store.current);
     return el(

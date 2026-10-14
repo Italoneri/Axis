@@ -213,8 +213,8 @@
   },
   {
     "id": "armory",
-    "name": "Arsenal",
-    "description": "Prateleiras de armas polidas e armaduras prontas para a próxima batalha.",
+    "name": "Depósito",
+    "description": "Prateleiras, baús e armários onde o grupo guarda armas, armaduras, poções e tudo o mais.",
     "icon": "icon.armory",
     "sprite": "building.armory",
     "allowedSlots": ["outer"],
@@ -234,7 +234,7 @@
       {
         "cost": { "coins": 850, "materials": { "wood": 210, "iron": 140, "aetherium": 30 } },
         "buildTime": 8,
-        "effect": "Cada personagem pode retirar uma arma +1 do arsenal para usar fora da Axis.",
+        "effect": "Cada personagem pode retirar uma arma +1 do depósito para usar fora da Axis.",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]

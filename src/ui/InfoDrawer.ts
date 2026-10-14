@@ -26,7 +26,7 @@ export interface DrawerExtras {
   openArchive?: (() => void) | undefined;
   /** Likewise for the tavern menu. */
   openMenu?: (() => void) | undefined;
-  /** Likewise for the Depósito (the Arsenal's). */
+  /** Likewise for the Depósito. */
   openDepot?: (() => void) | undefined;
 }
 

@@ -1,10 +1,10 @@
-# Depósito: seções, itens e áreas privadas no Arsenal
+# Depósito: seções, itens e áreas privadas
 
 Objetivo: uma janela no estilo do **Arquivo de registros** para guardar os itens do grupo (equipamentos, poções ou qualquer outro), organizados em **seções**, e uma **área privada** para cada personagem, que só o dono e o mestre veem.
 
 ## Onde abrir
 
-Não existia um prédio "Depósito" no `buildings.json`; o mais próximo é o **Arsenal** (`armory`, anel externo), então a janela abre pelo painel do Arsenal construído (`DEPOT_BUILDING_ID` em `src/systems/Depot.ts`). Trocar o prédio é mudar essa constante. O mestre também abre pelas ferramentas do mestre, mesmo sem o Arsenal.
+A construção que era o **Arsenal** (`armory`, anel externo) foi renomeada para **Depósito** (só o nome e a descrição; o id continua `armory`, então saves antigos seguem valendo). A janela abre pelo painel dela construída (`DEPOT_BUILDING_ID` em `src/systems/Depot.ts`). O mestre também abre pelas ferramentas do mestre, mesmo sem a construção.
 
 ## Onde guardar: fora do `GameState`, como o Arquivo
 
