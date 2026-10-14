@@ -6,9 +6,11 @@ O perfil é desenhado uma vez (virado para a direita) e espelhado.
 
 Uso: python3 draw_selena.py [pasta_de_saida]
 Saída: selena_sheet.png (1x) e selena_sheet_4x.png (nearest neighbor),
-mais selena_breath.png (2 linhas: respiração, opcional).
+selena_breath.png (2 linhas: respiração, opcional) e as folhas do jogo
+walk.png (9 quadros) e idle.png (2 quadros), 832x256, linhas norte, oeste, sul, leste.
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -180,7 +182,7 @@ def bow(f, cx, cy, sway=0):
 
 
 # ---------------------------------------------------------------- frente
-def draw_front(dy=0, sway=0):
+def draw_front(dy=0, sway=0, pe_e=0, pe_d=0, passo=0, braco=0):
     f = Frame()
     d = dy  # respiração: tronco e cabeça sobem 1px
     # cabelo de trás + rabo de cavalo alto (lado direito da tela)
@@ -201,22 +203,25 @@ def draw_front(dy=0, sway=0):
     f.part(back, "hair", strands=wavy_strands(phase=0.6))
 
     # saia (trapézio) com pregas
-    skirt = poly([(26, 46), (38, 46), (43, 59), (21, 59)])
+    # sapatos primeiro: o pé erguido some sob a barra da saia
+    f.part(rect(26, 60 - pe_e, 30, 61 - pe_e), "shoe")
+    f.part(rect(34, 60 - pe_d, 38, 61 - pe_d), "shoe")
+    h = passo // 2  # barra da saia balança com o passo
+    skirt = poly([(26, 46), (38, 46), (43 + h, 59), (21 + h, 59)])
     f.part(skirt, "skirt")
     for x, y0 in ((24, 52), (29, 50), (35, 50), (40, 52)):
         for y in range(y0, 59):
             f.px(x + (1 if y > 55 and x > 32 else 0) - (1 if y > 55 and x < 32 else 0), y, MATS["skirt"][2])
     # sapatos
-    f.part(rect(26, 60, 30, 61), "shoe")
-    f.part(rect(34, 60, 38, 61), "shoe")
 
     # braços (finos) e mãos claras
     for side in (-1, 1):
         cx = 32 + side * 9
-        arm = poly([(cx - 1, 37 + d), (cx + 1, 37 + d), (cx + 1 + side, 45 + d), (cx - 1 + side, 45 + d)])
+        a = d - (braco * side if braco * side > 0 else 0)  # mão que vai à frente sobe 1px
+        arm = poly([(cx - 1, 37 + d), (cx + 1, 37 + d), (cx + 1 + side, 45 + a), (cx - 1 + side, 45 + a)])
         f.part(arm, "skin")
-        f.part(ellipse(cx + side, 46 + d, 1.6, 1.6), "skin")
-        lace_dots(f, cx - 1 + side, cx + 1 + side, 43 + d)  # pulseira de renda
+        f.part(ellipse(cx + side, 46 + a, 1.6, 1.6), "skin")
+        lace_dots(f, cx - 1 + side, cx + 1 + side, 43 + a)  # pulseira de renda
         sleeve = ellipse(cx, 34 + d, 4, 4)
         f.part(sleeve, "blouse")
         lace_dots(f, cx - 3, cx + 3, 38 + d)  # babado do punho 3/4
@@ -249,9 +254,9 @@ def draw_front(dy=0, sway=0):
     f.px(38, 47 + d, C["silver"])
 
     # avental creme em trapézio, barra bordada
-    apron = poly([(28, 47), (36, 47), (39, 57), (25, 57)])
+    apron = poly([(28, 47), (36, 47), (39 + h, 57), (25 + h, 57)])
     f.part(apron, "apron")
-    for x in range(26, 39):
+    for x in range(26 + h, 39 + h):
         f.px(x, 56, C["trim"] if x % 2 else MATS["apron"][2])
     for y in range(49, 56):
         f.px(30, y, MATS["apron"][2])
@@ -304,22 +309,24 @@ def draw_front(dy=0, sway=0):
 
 
 # ---------------------------------------------------------------- costas
-def draw_back(dy=0, sway=0):
+def draw_back(dy=0, sway=0, pe_e=0, pe_d=0, passo=0, braco=0):
     f = Frame()
     d = dy
     # saia e sapatos
-    f.part(poly([(26, 46), (38, 46), (43, 59), (21, 59)]), "skirt")
+    f.part(rect(26, 60 - pe_d, 30, 61 - pe_d), "shoe")
+    f.part(rect(34, 60 - pe_e, 38, 61 - pe_e), "shoe")
+    h = -(passo // 2)
+    f.part(poly([(26, 46), (38, 46), (43 + h, 59), (21 + h, 59)]), "skirt")
     for x in (25, 30, 34, 39):
         for y in range(50, 59):
             f.px(x, y, MATS["skirt"][2])
-    f.part(rect(26, 60, 30, 61), "shoe")
-    f.part(rect(34, 60, 38, 61), "shoe")
     # braços e mangas
     for side in (-1, 1):
         cx = 32 + side * 9
-        f.part(poly([(cx - 1, 37 + d), (cx + 1, 37 + d), (cx + 1 + side, 45 + d), (cx - 1 + side, 45 + d)]), "skin")
-        f.part(ellipse(cx + side, 46 + d, 1.6, 1.6), "skin")
-        lace_dots(f, cx - 1 + side, cx + 1 + side, 43 + d)
+        a = d - (braco * -side if braco * -side > 0 else 0)
+        f.part(poly([(cx - 1, 37 + d), (cx + 1, 37 + d), (cx + 1 + side, 45 + a), (cx - 1 + side, 45 + a)]), "skin")
+        f.part(ellipse(cx + side, 46 + a, 1.6, 1.6), "skin")
+        lace_dots(f, cx - 1 + side, cx + 1 + side, 43 + a)
         f.part(ellipse(cx, 34 + d, 4, 4), "blouse")
         lace_dots(f, cx - 3, cx + 3, 38 + d)
     # blusa nos ombros e espartilho visto de trás
@@ -350,7 +357,7 @@ def draw_back(dy=0, sway=0):
 
 
 # ---------------------------------------------------------------- perfil (virada para a direita)
-def draw_profile_right(dy=0, sway=0):
+def draw_profile_right(dy=0, sway=0, pe_e=0, pe_d=0, passo=0, braco=0):
     f = Frame()
     d = dy
     # rabo de cavalo alto atrás, caindo pelas costas
@@ -361,12 +368,15 @@ def draw_profile_right(dy=0, sway=0):
     )
     f.part(tail, "hair", strands=wavy_strands(phase=1.4))
     # saia triangular vista de lado
-    f.part(poly([(28, 46), (37, 46), (42, 59), (23, 59)]), "skirt")
+    # pés: um à frente e outro atrás, conforme o passo
+    f.part(rect(29 - passo, 60 - pe_d, 33 - passo, 61 - pe_d), "shoe")
+    f.part(rect(32 + passo, 60 - pe_e, 36 + passo, 61 - pe_e), "shoe")
+    f.px(37 + passo, 61 - pe_e, MATS["shoe"][1], "shoe")
+    h = abs(passo) // 2  # saia abre um pouco no meio do passo
+    f.part(poly([(28, 46), (37, 46), (42 + h, 59), (23 - h, 59)]), "skirt")
     for x, y0 in ((27, 51), (33, 50), (38, 52)):
         for y in range(y0, 59):
             f.px(x, y, MATS["skirt"][2])
-    f.part(rect(30, 60, 36, 61), "shoe")
-    f.px(37, 61, MATS["shoe"][1], "shoe")
     # tronco de lado: blusa, espartilho com busto
     f.part(poly([(28, 31 + d), (35, 31 + d), (38, 34 + d), (37, 38 + d), (28, 38 + d)]), "blouse")
     f.part(rect(32, 30 + d, 34, 33 + d), "skin")
@@ -387,9 +397,10 @@ def draw_profile_right(dy=0, sway=0):
     # laço do avental nas costas
     f.part(rect(26, 44 + d, 28, 46 + d), "apron")
     # braço à frente, manga bufante
-    f.part(poly([(32, 37 + d), (34, 37 + d), (36, 45 + d), (34, 45 + d)]), "skin")
-    f.part(ellipse(35, 46 + d, 1.6, 1.6), "skin")
-    lace_dots(f, 34, 36, 43 + d)
+    b = braco
+    f.part(poly([(32, 37 + d), (34, 37 + d), (36 + b, 45 + d), (34 + b, 45 + d)]), "skin")
+    f.part(ellipse(35 + b, 46 + d, 1.6, 1.6), "skin")
+    lace_dots(f, 34 + b, 36 + b, 43 + d)
     f.part(ellipse(32, 34 + d, 4, 4), "blouse")
     lace_dots(f, 29, 35, 38 + d)
     # cabeça de lado: crânio + nariz pequeno
@@ -437,6 +448,42 @@ def sheet(dy=0, sway=0):
     return out
 
 
+# ---------------------------------------------------------------- folhas do jogo (formato LPC)
+def params(anim, i):
+    """Mesmo ciclo da Bigodes: walk com 9 quadros (0 = parado), idle com 2."""
+    if anim == "walk":
+        si = 0 if i == 0 else math.sin(2 * math.pi * (i - 1) / 8)
+        co = 0 if i == 0 else math.cos(2 * math.pi * (i - 1) / 8)
+        return dict(
+            dy=0 if i == 0 else (-1 if abs(co) > 0.7 else 0),
+            sway=round(si),
+            pe_e=max(0, round(1.6 * si)),
+            pe_d=max(0, round(-1.6 * si)),
+            passo=round(2.4 * si),
+            braco=round(-1.2 * si),
+        )
+    return dict(dy=i, sway=i)
+
+
+def game_frame(direction, anim, i):
+    """direction: 0 norte (costas), 1 oeste, 2 sul (frente), 3 leste."""
+    p = params(anim, i)
+    if direction == 0:
+        return draw_back(**p)
+    if direction == 2:
+        return draw_front(**p)
+    right = draw_profile_right(**p)
+    return right if direction == 3 else right.transpose(Image.FLIP_LEFT_RIGHT)
+
+
+def game_sheet(anim, n, width=832):
+    img = Image.new("RGBA", (width, 4 * H), (0, 0, 0, 0))
+    for d in range(4):
+        for i in range(n):
+            img.alpha_composite(game_frame(d, anim, i), (i * W, d * H))
+    return img
+
+
 def main():
     dest = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent
     dest.mkdir(parents=True, exist_ok=True)
@@ -449,6 +496,9 @@ def main():
     breath.paste(sheet(dy=-1, sway=1), (0, H))
     breath.save(dest / "selena_breath.png")
     breath.resize((breath.width * 4, breath.height * 4), Image.NEAREST).save(dest / "selena_breath_4x.png")
+    walk, idle = game_sheet("walk", 9), game_sheet("idle", 2)
+    walk.save(dest / "walk.png")
+    idle.save(dest / "idle.png")
     colors = {tuple(c) for c in np.array(s).reshape(-1, 4) if c[3]}
     print(f"cores: {len(colors)}")
 
