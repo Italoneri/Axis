@@ -29,8 +29,12 @@ MAT = {
     'metal':  [cor('121614'), cor('1E2420'), cor('34403A')],
     'ouro':   [cor('8C8A3A'), cor('8C8A3A'), cor('C9A44A')],
     'gema':   [cor('B6E04A'), cor('B6E04A'), cor('E8FF9A')],
+    # versões mais escuras para o que fica longe da câmera no perfil
+    'couro_longe':  [cor('1A120C'), cor('241810'), cor('3E2A20')],
+    'branco_longe': [cor('7E7E84'), cor('9C9CA0'), cor('CFCFCB')],
+    'luva_longe':   [cor('1A120C'), cor('241810'), cor('3A271D')],
 }
-PELUDOS = {'pelo', 'branco'}
+PELUDOS = {'pelo', 'branco', 'branco_longe'}
 OLHO, BRILHO = cor('C8962E'), cor('F2C14E')
 ROSA = cor('E8A0A8')
 SOBRANCELHA = cor('1E1E22')
@@ -448,100 +452,134 @@ def norte(q, f):
 
 
 def oeste(q, f):
+    """Perfil verdadeiro olhando para a esquerda; o leste é o espelho deste."""
     by, sw, pe_e, pe_d = f['bob'], f['balanco'], f['pe_e'], f['pe_d']
-    passo = f['passo']
+    passo, br = f['passo'], f['braco']
     com_martelo = f['martelo']
-    q.poe(cauda([(42, 51 + by), (46, 49 + by), (48, 46 + by), (49 + sw, 42 + by),
-                 (49 + sw, 39 + by), (48 + sw, 36 + by)]))
-    for dx, lev, tom in ((-passo, pe_d, 'couro'), (passo, pe_e, 'couro')):
+    # cauda: nasce da base das costas e sobe para trás (a base fica sob o tronco)
+    rabo = Peca()
+    for k, (x, y) in enumerate(((38, 52), (41, 51.5), (44, 50.5), (46.5, 48.5), (48 + sw, 46),
+                                (49 + sw, 43), (49.5 + sw, 40.5))):
+        r = 3.4 - 0.25 * k
+        rabo.elipse(x, y + by, r, r, 'pelo')
+    q.poe(rabo)
+    for x, y in ((49, 39), (50, 39), (49, 40), (48, 38)):
+        q.px(x + sw, y + by, MAT['branco'][1] if (x + y) % 2 else MAT['pelo'][2])
+    # braço de trás: quase todo escondido pelo tronco
+    longe = Peca()
+    longe.elipse(23, 47 + by, 2.6, 2.4, 'luva_longe')
+    q.poe(longe)
+    # pernas em passo: a de trás mais escura e 1px mais alta
+    for cx, lev, perna_m, pata_m in ((35 + passo, pe_d + 1, 'couro_longe', 'branco_longe'),
+                                     (29 - passo, pe_e, 'couro', 'branco')):
         perna = Peca()
-        perna.elipse(32 + dx, 54 - lev, 4.4, 4.2, tom)
+        perna.elipse(cx, 54 - lev, 3.6, 4, perna_m)
         q.poe(perna)
         pata = Peca()
-        pata.elipse(31 + dx, 59.5 - lev, 5, 2.6, 'branco')
+        pata.elipse(cx - 1.5, 59.5 - lev, 4.2, 2.4, pata_m)
         q.poe(pata)
-        q.px(27 + dx, 60 - lev, ROSA)
+        if pata_m == 'branco':
+            q.px(cx - 5, 60 - lev, ROSA)
+    # tronco: oval vertical, barriga para frente, costas curvas
     tronco = Peca()
-    tronco.elipse(33, 45 + by, 12.5, 11, 'couro')
-    tronco.elipse(25, 47 + by, 7.5, 7.5, 'couro')  # barriga saliente
+    tronco.elipse(33, 45 + by, 9.5, 11, 'couro')
+    tronco.elipse(28, 47.5 + by, 6.5, 7, 'couro')
     q.poe(tronco)
-    for i in range(15):
-        x, y = round(31 - i * 0.3), 34 + i
+    # uma alça diagonal sobre o ombro
+    for i in range(16):
+        x, y = round(37 - i * 0.6), 34 + i
         q.px(x, y + by, MAT['couro'][2])
         q.px(x + 1, y + by, MAT['couro'][2])
-    q.px(29, 40 + by, MAT['ouro'][2])
+        q.px(x + 2, y + by, MAT['couro'][0])
+    # cinto horizontal, fivela única na frente, bolsinha e bomba no quadril de trás
     cinto = Peca()
-    cinto.retangulo(17, 48 + by, 45, 51 + by, 'couro')
-    cinto.recorta(_union(tronco, 0))
+    cinto.retangulo(18, 48 + by, 44, 51 + by, 'couro')
+    cinto.recorta(tronco)
     q.poe(cinto)
-    rebites(q, 19, 43, 49 + by, pula=((19, 21),))
+    rebites(q, 27, 41, 49 + by)
     fivela = Peca()
-    fivela.retangulo(17, 48 + by, 19, 51 + by, 'ouro')
+    fivela.retangulo(21, 48 + by, 23, 51 + by, 'ouro')
     q.poe(fivela)
+    q.px(22, 49 + by, CONTORNO)
+    q.px(22, 50 + by, CONTORNO)
     bolsa = Peca()
-    bolsa.retangulo(39, 51 + by, 44, 55 + by, 'couro')
+    bolsa.retangulo(39, 50 + by, 43, 54 + by, 'couro')
     q.poe(bolsa)
-    q.px(41, 52 + by, MAT['ouro'][2])
+    q.px(41, 51 + by, MAT['ouro'][2])
     bomba = Peca()
-    bomba.elipse(36, 56 + by, 2.6, 2.6, 'metal')
+    bomba.elipse(41.5, 56.5 + by, 2.4, 2.4, 'metal')
     q.poe(bomba)
-    q.px(37, 52 + by, MAT['ouro'][2])
-    barba = Peca()
-    barba.elipse(24, 32 + by, 8, 8, 'branco')
-    barba.elipse(31, 30 + by, 6, 6.5, 'branco')
-    for tx, fundo in ((18, 42), (22.5, 44), (27, 43), (31.5, 40)):
-        barba.triangulo((tx - 3, 36 + by), (tx + 3, 36 + by), (tx - 1 + sw, fundo + by), 'branco')
-    barba.triangulo((17, 28 + by), (17, 35 + by), (13, 33 + by), 'branco')
-    orelhas = Peca()
-    orelhas.triangulo((37, 17 + by), (38, 9 + by), (42, 16 + by), 'pelo')
-    q.poe(orelhas)
+    q.px(42, 53 + by, MAT['ouro'][2])
+    # orelha de perfil, no topo e um pouco para trás
     orelha = Peca()
-    orelha.triangulo((29, 16 + by), (32, 8 + by), (36, 15 + by), 'pelo')
+    orelha.triangulo((30, 16 + by), (35, 8 + by), (40, 16 + by), 'pelo')
+    # cabeça: frente quase reta na vertical (focinho achatado)
     cabeca = Peca()
-    cabeca.elipse(31, 24 + by, 12, 10.5, 'pelo')
-    for tx, ty in ((27, 13), (36, 13), (40, 15)):
+    cabeca.elipse(30.5, 23 + by, 11, 10, 'pelo')
+    for tx, ty in ((26, 13), (38, 15), (41, 19)):
         cabeca.triangulo((tx - 2, ty + 2 + by), (tx + 2, ty + 2 + by), (tx + 1, ty - 1 + by), 'pelo')
+    cabeca.mat = {p: m for p, m in cabeca.mat.items() if p[0] >= 21}
     q.poe(cabeca)
     q.poe(orelha)
-    q.px(32, 12 + by, ROSA)
-    q.px(32, 13 + by, MAT['branco'][1])
-    focinho = Peca()
-    focinho.elipse(22, 27 + by, 3.5, 3, 'branco')
-    q.poe(focinho, contorno=False)
-    for y in range(20, 27):
-        for x in range(19, 30):
-            if ((x + 0.5 - 23) / 6.5) ** 2 + ((y + 0.5 - 24) / 4) ** 2 <= 1 and (x, y) != (19, 20):
-                q.px(x, y + by, ROSTO[1] if (x + y) % 2 or x < 27 else ROSTO[0])
-    q.poe(barba, luz_verde=lambda x, y: x > 26)
-    # sobrancelha franzida, olho semicerrado, nariz achatado
-    for x, y in ((20, 22), (21, 22), (22, 21), (23, 21), (24, 20), (25, 20), (26, 19), (27, 19),
-                 (21, 23), (22, 22), (23, 22), (24, 21), (25, 21), (26, 20)):
+    for x, y in ((34, 12), (35, 12), (34, 13), (35, 11)):
+        q.px(x, y + by, ROSA)
+    q.px(35, 9 + by, MAT['branco'][2])
+    q.px(36, 10 + by, MAT['branco'][1])
+    # testa e área do olho mais claras; bochecha branca na frente e embaixo
+    for y in range(19, 27):
+        for x in range(21, 31):
+            if ((x + 0.5 - 25) / 5.5) ** 2 + ((y + 0.5 - 23.5) / 4) ** 2 <= 1:
+                q.px(x, y + by, ROSTO[1] if (x + y) % 2 or x < 28 else ROSTO[0])
+    bochecha = Peca()
+    bochecha.elipse(25.5, 28.5 + by, 5, 3.5, 'branco')
+    bochecha.mat = {p: m for p, m in bochecha.mat.items() if p[0] >= 21}
+    q.poe(bochecha, contorno=False)
+    # barba: massa arredondada do queixo ao peito, com 4 tufos que cobrem a alça
+    barba = Peca()
+    barba.elipse(26, 34 + by, 7, 6.5, 'branco')
+    barba.elipse(31, 31 + by, 5.5, 5, 'branco')
+    for tx, fundo in ((21, 41), (25, 43), (29, 42), (33, 40)):
+        barba.triangulo((tx - 2.5, 37 + by), (tx + 2.5, 37 + by), (tx + sw, fundo + by), 'branco')
+    q.poe(barba, luz_verde=lambda x, y: x > 28)
+    for x, y in ((18, 33), (19, 38), (34, 37), (36, 33), (17, 36)):
+        q.px(x + sw, y + by, MAT['branco'][1] if (x + y) % 2 else MAT['branco'][0])
+    # rosto: sobrancelha franzida caindo para o nariz, um olho, nariz e boca
+    for x, y in ((21, 22), (22, 22), (23, 21), (24, 21), (25, 20), (26, 20), (27, 19), (28, 19),
+                 (22, 23), (23, 22), (24, 22), (25, 21), (26, 21), (27, 20)):
         q.px(x, y + by, SOBRANCELHA)
-    for x, c in ((21, OLHO), (22, CONTORNO), (23, BRILHO), (24, OLHO), (25, OLHO)):
+    for x, c in ((23, OLHO), (24, CONTORNO), (25, BRILHO), (26, OLHO)):
         q.px(x, 24 + by, c)
-    for x, c in ((21, OLHO_SOMBRA), (22, CONTORNO), (23, OLHO), (24, OLHO_SOMBRA)):
+    for x, c in ((23, OLHO_SOMBRA), (24, CONTORNO), (25, OLHO_SOMBRA)):
         q.px(x, 25 + by, c)
-    for x in range(21, 26):
+    for x in range(22, 27):
         q.px(x, 26 + by, MAT['pelo'][0])
+    for y in range(17, 33):
+        if q.img.getpixel((20, y + by))[3] == 0:
+            q.px(20, y + by, CONTORNO)
+    q.px(20, 27 + by, ROSA)
     q.px(19, 27 + by, ROSA)
-    q.px(19, 28 + by, ROSA)
-    for x, y in ((19, 31), (20, 30), (21, 30), (22, 31)):
+    q.px(19, 26 + by, CONTORNO)
+    q.px(19, 28 + by, CONTORNO)
+    q.px(18, 27 + by, CONTORNO)
+    for x, y in ((21, 30), (22, 29), (23, 30)):
         q.px(x, y + by, MAT['branco'][0])
-    gema(q, 20, 44 + by)
-    # braço próximo: manga branca e luva segurando o cabo
+    gema(q, 21, 44 + by)
+    # braço da frente: manga branca e luva
     manga = Peca()
-    manga.elipse(35, 40 + by, 4.2, 5.5, 'branco')
-    manga.elipse(32 + f['braco'], 45 + by, 3.4, 3.6, 'branco')
+    manga.elipse(35, 40 + by, 4, 5.5, 'branco')
+    manga.elipse(31 + br, 45 + by, 3.2, 3.4, 'branco')
     q.poe(manga, luz_verde=lambda x, y: True)
-    gx, gy = 29 + f['braco'], 49 + by
     if com_martelo:
-        cabeca_m, caixa = martelo_cabeca(11, 46 + by, 11, 12)
+        gx, gy = 28 + br, 48 + by
+        cabeca_m, _ = martelo_cabeca(14 + br, 41 + by, 5, 12, emblema=False)
         q.poe(cabeca_m, luz_verde=lambda x, y: True)
-        emblema(q, caixa)
-        cabo(q, (17, 47 + by), (42, 50 + by))
+        q.px(14 + br, 41 + by, MAT['gema'][0])
+        cabo(q, (17 + br, 43 + by), (41 + br, 53 + by))
+    else:
+        gx, gy = 31 + br, 51 + by
     g = Peca()
-    g.elipse(gx, gy, 3.8, 3.4, 'luva')
-    g.retangulo(gx - 1, gy - 5, gx + 3, gy - 3, 'luva')
+    g.elipse(gx, gy, 3.6, 3.3, 'luva')
+    g.retangulo(gx + 1, gy - 5, gx + 4, gy - 3, 'luva')
     q.poe(g)
     costura(q, gx, gy)
 
