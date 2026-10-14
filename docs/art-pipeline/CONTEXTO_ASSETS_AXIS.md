@@ -36,7 +36,7 @@ Documento de passagem para continuar a arte das construções em outro chat. Est
 | `forge` | Forja | outer | ✅ nível 1 (`forge.outer.png`). Níveis 2 e 3 opcionais |
 | `hot_springs` | Fontes Termais | outer | ✅ níveis 1, 2 e 3 |
 | `arcane_lab` | Laboratório Arcano | outer | ✅ níveis 1, 2 e 3 (adaptado do formato pequeno para o arco da muralha) |
-| `axis_heart` | Coração da Axis | core | a fazer |
+| `axis_heart` | Coração da Axis | core | ✅ níveis 1, 2 e 3 (512×512) |
 | `infirmary` | Enfermaria | middle, outer | a fazer |
 | `library` | Biblioteca | middle | a fazer |
 | `sanctuary` | Santuário | middle | ✅ níveis 1, 2 e 3 |
@@ -185,4 +185,3 @@ Um zip contendo:
 **Próximas sugeridas:**
 - Para o anel intermediário (v4): Biblioteca, Santuário e as construções novas que o Ítalo vai inventar.
 - Para a muralha: Quartel.
-- Por último, o Coração da Axis.
