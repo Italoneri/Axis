@@ -40,7 +40,7 @@ Documento de passagem para continuar a arte das construções em outro chat. Est
 | `infirmary` | Enfermaria | middle, outer | a fazer |
 | `library` | Biblioteca | middle | a fazer |
 | `sanctuary` | Santuário | middle | ✅ níveis 1, 2 e 3 |
-| `armory` | Depósito | middle | ✅ níveis 1, 2 e 3 (era o Arsenal da muralha; saves antigos com ele num espaço outer continuam valendo) |
+| `armory` | Depósito | middle | ✅ níveis 1, 2 e 3 (era o Arsenal da muralha; em saves antigos ele é movido para o primeiro espaço middle livre ao carregar) |
 | `barracks` | Quartel | outer | a fazer |
 
 O Ítalo vai criar **mais construções para o anel intermediário**. Os efeitos de nível e os custos ficam no `src/data/buildings.json`. Construção nova = arte + uma entrada nova nesse arquivo.

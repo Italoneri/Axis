@@ -414,6 +414,8 @@ const buildingEventSchema = z.object({
     'building_removed',
     /** Dropped while loading a save: its slot no longer exists in the layout. */
     'building_dropped',
+    /** Moved while loading a save to `slotId`: its old slot no longer accepts it. */
+    'building_moved',
   ]),
   buildingId: z.string(),
   level: z.number().int().positive(),
@@ -421,7 +423,7 @@ const buildingEventSchema = z.object({
   slotId: z.string().optional(),
   paid: paidSchema.optional(),
   /** Why a `building_dropped` went; entries from before only had missing slots. */
-  reason: z.enum(['missing_slot', 'unknown_building']).optional(),
+  reason: z.enum(['missing_slot', 'unknown_building', 'wrong_slot']).optional(),
 });
 
 const signedBag = z.record(z.string(), z.number().int());
