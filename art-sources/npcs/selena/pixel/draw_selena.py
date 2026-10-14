@@ -403,9 +403,18 @@ def draw_profile_right(dy=0, sway=0, pe_e=0, pe_d=0, passo=0, braco=0):
     lace_dots(f, 34 + b, 36 + b, 43 + d)
     f.part(ellipse(32, 34 + d, 4, 4), "blouse")
     lace_dots(f, 29, 35, 38 + d)
-    # cabeça de lado: crânio + nariz pequeno
-    head = ellipse(32, 20 + d, 8, 8.5) | poly([(39, 21 + d), (41, 23 + d), (39, 24 + d)])
+    # cabeça de lado: crânio atrás + perfil do rosto definido linha a linha.
+    # Borda da frente (x mais à direita) por linha: testa reta e arredondada,
+    # nariz 1px para fora, lábios recolhidos 1px atrás do nariz, queixo pequeno
+    # e mandíbula subindo para a orelha.
+    edge = {12: 36, 13: 37, 14: 38, 15: 39, 16: 40, 17: 40, 18: 40, 19: 40, 20: 40, 21: 40,
+            22: 41, 23: 40, 24: 40, 25: 40, 26: 39, 27: 38, 28: 36}
+    face = np.zeros((H, W), bool)
+    for y, xe in edge.items():
+        face[y + d, 30 : xe + 1] = True
+    head = (ellipse(31, 20 + d, 8, 8.5) & (np.arange(W)[None, :] <= 36)) | face
     f.part(head, "skin")
+    f.px(40, 23 + d, MATS["skin"][2])  # sombra sob o nariz
     # olho único
     f.pts([(36, 20 + d), (37, 20 + d), (38, 20 + d)], C["lash"])
     for yy in (21, 22, 23):
@@ -413,8 +422,10 @@ def draw_profile_right(dy=0, sway=0, pe_e=0, pe_d=0, passo=0, braco=0):
         f.px(37, yy + d, C["iris"])
     f.px(37, 21 + d, C["white"])
     f.pts([(35, 17 + d), (36, 17 + d), (37, 17 + d), (38, 18 + d)], C["brow"])
-    # sorriso visível e bochecha
-    f.pts([(37, 26 + d), (38, 27 + d), (39, 26 + d)], C["mouth"])
+    # boca de perfil: 1px colado na borda, 2px abaixo do nariz,
+    # e a covinha do sorriso 1px acima, do lado de dentro
+    f.px(40, 24 + d, C["mouth"])
+    f.px(39, 23 + d, C["mouth"])
     f.pts([(35, 24 + d), (36, 24 + d)], C["blush"])
     # cabelo cobrindo a nuca e o alto da cabeça, franja à frente
     hair = (ellipse(30, 17 + d, 10, 9) | poly([(21, 18 + d), (27, 18 + d), (29, 30 + d), (24, 33 + d), (21, 28 + d)])) \
