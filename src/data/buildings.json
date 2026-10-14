@@ -454,12 +454,9 @@
       { "type": "glow", "x": 0.295, "y": 0.224, "color": "#f0781e", "radius": 0.04, "minLevel": 3 },
       { "type": "glow", "x": 0.763, "y": 0.244, "color": "#ebc828", "radius": 0.04, "minLevel": 3 },
       { "type": "glow", "x": 0.527, "y": 0.116, "color": "#ffe08a", "radius": 0.06, "minLevel": 3 },
-      { "type": "sparks", "x": 0.527, "y": 0.116, "color": "#ffe08a", "minLevel": 3 },
       { "type": "glow", "x": 0.135, "y": 0.246, "color": "#ffd36e", "radius": 0.05, "minLevel": 3 },
       { "type": "glow", "x": 0.865, "y": 0.246, "color": "#ffd36e", "radius": 0.05, "minLevel": 3 },
       { "type": "glow", "x": 0.5, "y": 0.328, "color": "#e2b84a", "radius": 0.075, "minLevel": 3 },
-      { "type": "smoke", "x": 0.378, "y": 0.339, "color": "#d8cfc0", "minLevel": 3 },
-      { "type": "smoke", "x": 0.622, "y": 0.339, "color": "#d8cfc0", "minLevel": 3 },
       { "type": "glow", "x": 0.192, "y": 0.505, "color": "#ffc46b", "radius": 0.03, "minLevel": 3 },
       { "type": "glow", "x": 0.808, "y": 0.505, "color": "#ffc46b", "radius": 0.03, "minLevel": 3 }
     ],
