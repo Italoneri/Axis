@@ -65,8 +65,14 @@
     "npc.aventureira.idle": "assets/npcs/aventureira/idle.png",
     "npc.aventureira_civil.walk": "assets/npcs/aventureira_civil/walk.png",
     "npc.aventureira_civil.idle": "assets/npcs/aventureira_civil/idle.png",
+    "npc.aventureira_gata.walk": "assets/npcs/aventureira_gata/walk.png",
+    "npc.aventureira_gata.idle": "assets/npcs/aventureira_gata/idle.png",
     "npc.bianca.walk": "assets/npcs/bianca/walk.png",
     "npc.bianca.idle": "assets/npcs/bianca/idle.png",
+    "npc.empregada.walk": "assets/npcs/empregada/walk.png",
+    "npc.empregada.idle": "assets/npcs/empregada/idle.png",
+    "npc.raposa.walk": "assets/npcs/raposa/walk.png",
+    "npc.raposa.idle": "assets/npcs/raposa/idle.png",
     "npc.thrax.walk": "assets/npcs/thrax/walk.png",
     "npc.thrax.idle": "assets/npcs/thrax/idle.png"
   }

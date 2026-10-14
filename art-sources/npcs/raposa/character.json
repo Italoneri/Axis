@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body":       { "itemId": "body", "recolor": "lpcr.porcelain" },
+    "head":       { "itemId": "heads_human_female", "recolor": "lpcr.porcelain" },
+    "eyes":       { "itemId": "heads_human_female", "subId": 1, "recolor": "red" },
+    "expression": { "itemId": "face_neutral", "recolor": "lpcr.porcelain" },
+    "furry_ears": { "itemId": "head_ears_wolf", "recolor": "pink" },
+    "inner_ear":  { "itemId": "head_ears_wolf", "subId": 1, "recolor": "white" },
+    "tail":       { "itemId": "tail_wolf_fluffy", "variant": "pink" },
+    "hair":       { "itemId": "hair_high_ponytail", "recolor": "pink" },
+    "dress":      { "itemId": "dress_sash", "variant": "white" },
+    "shoes":      { "itemId": "feet_sandals", "recolor": "white" }
+  }
+}

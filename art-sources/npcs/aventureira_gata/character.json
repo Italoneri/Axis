@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body": { "itemId": "body", "recolor": "light" },
+    "head": { "itemId": "heads_human_female", "recolor": "light" },
+    "eyes": { "itemId": "heads_human_female", "subId": 1, "recolor": "green" },
+    "expression": { "itemId": "face_neutral", "recolor": "light" },
+    "furry_ears": { "itemId": "head_ears_cat", "recolor": "orange" },
+    "hair": { "itemId": "hair_lob", "recolor": "orange" },
+    "clothes": { "itemId": "torso_clothes_longsleeve", "recolor": "charcoal" },
+    "vest": { "itemId": "dress_bodice", "variant": "walnut" },
+    "shoulders": { "itemId": "shoulders_mantal", "recolor": "tan" },
+    "legs": { "itemId": "legs_pants", "recolor": "walnut" },
+    "shoes": { "itemId": "feet_boots_fold", "recolor": "brown" },
+    "weapon": { "itemId": "weapon_sword_arming", "variant": "steel" }
+  }
+}
