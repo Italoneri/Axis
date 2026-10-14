@@ -25,8 +25,9 @@ Documento de passagem para um chat cujo trabalho é **receber os zips de arte da
 | Coração da Axis | `axis_heart` | core | placeholder |
 | Enfermaria | `infirmary` | middle, outer | placeholder |
 | Biblioteca | `library` | middle | placeholder |
-| Santuário | `sanctuary` | middle | placeholder |
-| Arsenal, Quartel | `armory`, `barracks` | outer | placeholder |
+| Santuário | `sanctuary` | middle | `.middle.png`, `.lv2`, `.lv3` + fx |
+| Depósito | `armory` | middle | `.middle.png`, `.lv2`, `.lv3` + fx |
+| Quartel | `barracks` | outer | placeholder |
 
 ### Transição do anel intermediário
 

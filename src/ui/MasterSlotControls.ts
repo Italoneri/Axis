@@ -11,7 +11,11 @@ export function renderMasterSlotControls(
   slot: SlotDef,
   placed: PlacedBuilding | undefined,
 ): HTMLElement {
-  const options = store.catalog.buildings.filter((b) => b.allowedSlots.includes(slot.type));
+  // A building from an older save may stand where its slot type is no longer allowed
+  // (the Depósito used to go on the wall); it stays listed so the master can still manage it.
+  const options = store.catalog.buildings.filter(
+    (b) => b.allowedSlots.includes(slot.type) || b.id === placed?.buildingId,
+  );
   const initial = options.find((b) => b.id === placed?.buildingId) ?? options[0];
 
   const buildingSelect = el(
