@@ -1,0 +1,69 @@
+{
+  "version": 2,
+  "bodyType": "male",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "recolor": "fur_grey"
+    },
+    "head": {
+      "itemId": "heads_human_male_plump",
+      "recolor": "fur_grey"
+    },
+    "expression": {
+      "itemId": "face_angry",
+      "recolor": "fur_grey"
+    },
+    "eyes": {
+      "itemId": "face_angry",
+      "subId": 1,
+      "recolor": "orange"
+    },
+    "furry_ears": {
+      "itemId": "head_ears_cat",
+      "recolor": "dark_gray"
+    },
+    "inner_ear": {
+      "itemId": "head_ears_cat",
+      "subId": 1,
+      "recolor": "white"
+    },
+    "tail": {
+      "itemId": "tail_cat",
+      "variant": "fur_grey"
+    },
+    "beard": {
+      "itemId": "beards_winter",
+      "recolor": "white"
+    },
+    "clothes": {
+      "itemId": "torso_clothes_longsleeve",
+      "recolor": "charcoal"
+    },
+    "overalls": {
+      "itemId": "torso_aprons_overalls",
+      "variant": "brown"
+    },
+    "gloves": {
+      "itemId": "arms_gloves",
+      "recolor": "black"
+    },
+    "legs": {
+      "itemId": "legs_pants",
+      "recolor": "charcoal"
+    },
+    "shoes": {
+      "itemId": "feet_boots_basic",
+      "recolor": "black"
+    },
+    "weapon": {
+      "itemId": "tool_hammer",
+      "recolor": "iron"
+    },
+    "handle": {
+      "itemId": "tool_hammer",
+      "subId": 1,
+      "recolor": "walnut"
+    }
+  }
+}

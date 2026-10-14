@@ -69,6 +69,8 @@
     "npc.aventureira_gata.idle": "assets/npcs/aventureira_gata/idle.png",
     "npc.bianca.walk": "assets/npcs/bianca/walk.png",
     "npc.bianca.idle": "assets/npcs/bianca/idle.png",
+    "npc.bigodes.walk": "assets/npcs/bigodes/walk.png",
+    "npc.bigodes.idle": "assets/npcs/bigodes/idle.png",
     "npc.empregada.walk": "assets/npcs/empregada/walk.png",
     "npc.empregada.idle": "assets/npcs/empregada/idle.png",
     "npc.raposa.walk": "assets/npcs/raposa/walk.png",

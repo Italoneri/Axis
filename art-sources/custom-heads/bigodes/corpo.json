@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "bodyType": "male",
+  "selections": {
+    "body": {
+      "itemId": "body",
+      "recolor": "fur_grey"
+    },
+    "tail": {
+      "itemId": "tail_cat",
+      "variant": "fur_grey"
+    },
+    "clothes": {
+      "itemId": "torso_clothes_longsleeve",
+      "recolor": "charcoal"
+    },
+    "overalls": {
+      "itemId": "torso_aprons_overalls",
+      "variant": "brown"
+    },
+    "gloves": {
+      "itemId": "arms_gloves",
+      "recolor": "black"
+    },
+    "legs": {
+      "itemId": "legs_pants",
+      "recolor": "charcoal"
+    },
+    "shoes": {
+      "itemId": "feet_boots_basic",
+      "recolor": "black"
+    },
+    "weapon": {
+      "itemId": "tool_hammer",
+      "recolor": "iron"
+    },
+    "handle": {
+      "itemId": "tool_hammer",
+      "subId": 1,
+      "recolor": "walnut"
+    }
+  }
+}
