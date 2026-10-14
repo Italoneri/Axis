@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "bodyType": "female",
+  "selections": {
+    "body":       { "itemId": "body", "recolor": "lpcr.porcelain" },
+    "head":       { "itemId": "heads_human_female", "recolor": "lpcr.porcelain" },
+    "eyes":       { "itemId": "heads_human_female", "subId": 1, "recolor": "yellow" },
+    "expression": { "itemId": "face_neutral", "recolor": "lpcr.porcelain" },
+    "hair":       { "itemId": "hair_bob", "recolor": "blonde" },
+    "hat":        { "itemId": "hat_formal_tiara", "variant": "white" },
+    "clothes":    { "itemId": "torso_clothes_sleeveless2_scoop", "recolor": "forest" },
+    "sleeves":    { "itemId": "torso_clothes_shortsleeves", "recolor": "white" },
+    "shoulders":  { "itemId": "shoulders_mantal", "recolor": "green" },
+    "legs":       { "itemId": "legs_skirts_plain", "recolor": "forest" },
+    "shoes":      { "itemId": "feet_sandals", "recolor": "leather" },
+    "weapon":     { "itemId": "weapon_sword_arming", "variant": "gold" }
+  }
+}
