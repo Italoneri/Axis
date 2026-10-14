@@ -11,6 +11,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { git, npm } from './commands';
+import { applyDefinitionFixes } from './definitionFixes';
 import { GENERATOR_DIR, GENERATOR_REPO } from './paths';
 import { BASE_SPARSE_PATTERNS, readSparsePatterns, writeSparsePatterns } from './sparse';
 
@@ -45,6 +46,7 @@ function cloneOrUpdate(): void {
   const kept = readSparsePatterns().filter((pattern) => !BASE_SPARSE_PATTERNS.includes(pattern));
   writeSparsePatterns([...BASE_SPARSE_PATTERNS, ...kept]);
   git(['sparse-checkout', 'reapply']);
+  applyDefinitionFixes();
 }
 
 /** `npm ci` only when the lockfile changed since the last setup. */

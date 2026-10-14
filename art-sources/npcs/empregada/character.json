@@ -41,7 +41,7 @@
     },
     "gloves": {
       "itemId": "arms_gloves",
-      "recolor": "cloth.black"
+      "recolor": "black"
     },
     "necklace": {
       "itemId": "neck_necklace_simple",
