@@ -530,6 +530,11 @@ button {
   gap: 4px;
 }
 
+/* Party and Axis texts may span several lines in the drawer too. */
+.effects li {
+  white-space: pre-line;
+}
+
 .abilities {
   display: grid;
   grid-template-columns: 1fr 1fr;
