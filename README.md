@@ -439,12 +439,14 @@ vendor/              gerador LPC clonado pelo lpc:setup (fora do git)
        {
          "cost": { "coins": 120, "materials": { "wood": 50, "iron": 30 } },
          "buildTime": 2,
-         "effect": "Montarias comuns custam metade."
+         "party": "Montarias comuns custam metade.",
+         "axis": ""
        },
        {
          "cost": { "coins": 300, "materials": { "wood": 100, "iron": 60 } },
          "buildTime": 4,
-         "effect": "Viagens a partir da Axis levam 1 dia a menos.",
+         "party": "Viagens a partir da Axis levam 1 dia a menos.",
+         "axis": "",
          "requires": [{ "building": "axis_heart", "minLevel": 1 }]
        }
      ]
@@ -453,6 +455,7 @@ vendor/              gerador LPC clonado pelo lpc:setup (fora do git)
 
    - `allowedSlots`: `core` (centro), `middle` (os 8 arcos em volta do disco azul) e/ou `outer` (os arcos junto à muralha).
    - `requires` no nível de cima vale para **todos** os níveis; dentro de um nível, só para aquele nível.
+   - `party` é o texto para a mesa de RPG e `axis` o buff da base. Os dois são obrigatórios; `""` aparece como "a definir".
    - `buildTime` é em dias de jogo (`0` = imediato). Pode haver quantos níveis você quiser.
    - O `cost` segue o [formato de custo](#formato-de-custo-nas-estruturas).
 

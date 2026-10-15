@@ -53,7 +53,8 @@ export const testCatalog = parseCatalog({
         {
           cost: { coins: 10 },
           buildTime: 2,
-          effect: 'h1',
+          party: 'h1',
+          axis: '',
           jobs: [
             {
               activity: 'estudar',
@@ -66,7 +67,8 @@ export const testCatalog = parseCatalog({
         {
           cost: { coins: 10 },
           buildTime: 2,
-          effect: 'h2',
+          party: 'h2',
+          axis: 'h2 axis',
           jobs: [
             {
               activity: 'rezar',
@@ -86,11 +88,12 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 20 }, buildTime: 3, effect: 'f1', jobs: [forging(1)] },
+        { cost: { coins: 20 }, buildTime: 3, party: 'f1', axis: 'f1 axis', jobs: [forging(1)] },
         {
           cost: { coins: 30 },
           buildTime: 0,
-          effect: 'f2',
+          party: '',
+          axis: '',
           requires: [{ building: 'heart', minLevel: 1 }],
           jobs: [forging(2)],
         },
@@ -104,7 +107,9 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       requires: [{ building: 'forge', minLevel: 1 }],
-      levels: [{ cost: { coins: 10, materials: { iron: 5 } }, buildTime: 1, effect: 'a1' }],
+      levels: [
+        { cost: { coins: 10, materials: { iron: 5 } }, buildTime: 1, party: 'a1', axis: '' },
+      ],
     },
     {
       id: 'barracks',
@@ -114,8 +119,8 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 10 }, buildTime: 2, effect: 'b1', housing: { capacity: 2 } },
-        { cost: { coins: 10 }, buildTime: 2, effect: 'b2', housing: { capacity: 3 } },
+        { cost: { coins: 10 }, buildTime: 2, party: 'b1', axis: '', housing: { capacity: 2 } },
+        { cost: { coins: 10 }, buildTime: 2, party: 'b2', axis: '', housing: { capacity: 3 } },
       ],
     },
     {
@@ -126,8 +131,8 @@ export const testCatalog = parseCatalog({
       sprite: 's',
       allowedSlots: ['outer'],
       levels: [
-        { cost: { coins: 10 }, buildTime: 1, effect: 'g1' },
-        { cost: { coins: 10 }, buildTime: 1, effect: 'g2' },
+        { cost: { coins: 10 }, buildTime: 1, party: 'g1', axis: '' },
+        { cost: { coins: 10 }, buildTime: 1, party: 'g2', axis: '' },
       ],
     },
   ],

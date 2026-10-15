@@ -36,6 +36,24 @@ describe('shipped game data', () => {
     expect(() => parseCatalog({ ...rawGameData, layout })).toThrow(/layout\.json/);
   });
 
+  it('rejects a building level without its party and axis texts', () => {
+    const [first, ...rest] = rawGameData.buildings;
+    const level = first?.levels[0];
+    if (!first || !level) throw new Error('no buildings shipped');
+    const withoutParty = Object.fromEntries(
+      Object.entries(level).filter(([key]) => key !== 'party'),
+    );
+    const broken = { ...first, levels: [withoutParty, ...first.levels.slice(1)] };
+    expect(() => parseCatalog({ ...rawGameData, buildings: [broken, ...rest] })).toThrow();
+  });
+
+  it('ships every level with party and axis texts, empty meaning "a definir"', () => {
+    const levels = gameData.buildings.flatMap((b) => b.levels);
+    expect(levels.every((l) => typeof l.party === 'string' && typeof l.axis === 'string')).toBe(
+      true,
+    );
+  });
+
   it('has exactly one structure for the core slot', () => {
     expect(gameData.buildings.filter((b) => b.allowedSlots.includes('core'))).toHaveLength(1);
   });

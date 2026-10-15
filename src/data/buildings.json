@@ -124,17 +124,20 @@
       {
         "cost": { "coins": 300, "materials": { "wood": 60, "iron": 40, "aetherium": 30 } },
         "buildTime": 5,
-        "effect": "Desperta a Axis: libera o nível 2 das demais estruturas."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 600, "materials": { "wood": 120, "iron": 80, "aetherium": 60 } },
         "buildTime": 8,
-        "effect": "Libera o nível 3 das demais estruturas. Uma vez por sessão, um personagem pode rolar novamente um teste que falhou."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 1200, "materials": { "wood": 180, "iron": 120, "aetherium": 120 } },
         "buildTime": 12,
-        "effect": "A Axis pulsa com poder: todos os personagens começam cada sessão com inspiração."
+        "party": "",
+        "axis": ""
       }
     ]
   },
@@ -164,7 +167,8 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 48, "iron": 32 } },
         "buildTime": 3,
-        "effect": "Reparos de equipamento custam metade do preço.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "forjar",
@@ -177,7 +181,8 @@
       {
         "cost": { "coins": 350, "materials": { "wood": 108, "iron": 72, "aetherium": 10 } },
         "buildTime": 5,
-        "effect": "Armas e armaduras comuns são forjadas na metade do tempo.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "forjar",
@@ -191,7 +196,8 @@
       {
         "cost": { "coins": 800, "materials": { "wood": 210, "iron": 140, "aetherium": 40 } },
         "buildTime": 8,
-        "effect": "Uma vez por arco, aprimora uma arma ou armadura para +1.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "forjar",
@@ -222,7 +228,8 @@
       {
         "cost": { "coins": 120, "materials": { "wood": 36, "iron": 24 } },
         "buildTime": 2,
-        "effect": "Descanso longo recupera +1 dado de vida.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "tratar",
@@ -239,7 +246,8 @@
       {
         "cost": { "coins": 300, "materials": { "wood": 72, "iron": 48, "aetherium": 15 } },
         "buildTime": 4,
-        "effect": "Descanso longo remove 1 nível de exaustão adicional.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "tratar",
@@ -257,7 +265,8 @@
       {
         "cost": { "coins": 700, "materials": { "wood": 150, "iron": 100, "aetherium": 40 } },
         "buildTime": 7,
-        "effect": "Poções de cura custam metade e personagens caídos na Axis estabilizam sozinhos.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "tratar",
@@ -285,7 +294,8 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 30, "iron": 20, "aetherium": 5 } },
         "buildTime": 3,
-        "effect": "Vantagem em testes de História e Arcanismo para pesquisas feitas na Axis. Libera o Arquivo de Pesquisas com a ficha completa de cada estudo.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "pesquisar",
@@ -298,7 +308,8 @@
       {
         "cost": { "coins": 350, "materials": { "wood": 60, "iron": 40, "aetherium": 20 } },
         "buildTime": 5,
-        "effect": "Uma pergunta por sessão ao mestre sobre o mundo (resposta verdadeira, talvez vaga).",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "pesquisar",
@@ -312,7 +323,8 @@
       {
         "cost": { "coins": 750, "materials": { "wood": 120, "iron": 80, "aetherium": 50 } },
         "buildTime": 8,
-        "effect": "Copiar magias para o grimório custa metade do tempo e do ouro.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "pesquisar",
@@ -371,18 +383,21 @@
       {
         "cost": { "coins": 200, "materials": { "wood": 60, "iron": 40 } },
         "buildTime": 3,
-        "effect": "Munição comum é reposta gratuitamente entre sessões."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 400, "materials": { "wood": 120, "iron": 80 } },
         "buildTime": 5,
-        "effect": "+1 na CA de quem defender a Axis em combate.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 850, "materials": { "wood": 210, "iron": 140, "aetherium": 30 } },
         "buildTime": 8,
-        "effect": "Cada personagem pode retirar uma arma +1 do depósito para usar fora da Axis.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -464,7 +479,8 @@
       {
         "cost": { "coins": 180, "materials": { "wood": 24, "iron": 16, "aetherium": 10 } },
         "buildTime": 3,
-        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de resistência contra medo.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "cuidar",
@@ -481,7 +497,8 @@
       {
         "cost": { "coins": 400, "materials": { "wood": 48, "iron": 32, "aetherium": 30 } },
         "buildTime": 5,
-        "effect": "Remover maldições e doenças comuns na Axis não consome componentes.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "cuidar",
@@ -499,7 +516,8 @@
       {
         "cost": { "coins": 900, "materials": { "wood": 90, "iron": 60, "aetherium": 80 } },
         "buildTime": 10,
-        "effect": "Uma vez por arco, uma ressurreição na Axis dispensa o componente material.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "cuidar",
@@ -547,20 +565,23 @@
       {
         "cost": { "coins": 100, "materials": { "wood": 42, "iron": 28 } },
         "buildTime": 2,
-        "effect": "Descanso curto na Axis leva apenas 30 minutos.",
+        "party": "",
+        "axis": "",
         "housing": { "capacity": 6 }
       },
       {
         "cost": { "coins": 250, "materials": { "wood": 90, "iron": 60 } },
         "buildTime": 4,
-        "effect": "Abriga até 4 aliados que ajudam em atividades de tempo livre.",
+        "party": "",
+        "axis": "",
         "housing": { "capacity": 14 },
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 550, "materials": { "wood": 180, "iron": 120, "aetherium": 10 } },
         "buildTime": 7,
-        "effect": "Quem começa a sessão descansado na Axis recebe inspiração.",
+        "party": "",
+        "axis": "",
         "housing": { "capacity": 14 },
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
@@ -588,7 +609,8 @@
       {
         "cost": { "coins": 200, "materials": { "wood": 36, "iron": 24, "aetherium": 20 } },
         "buildTime": 4,
-        "effect": "Identificar itens mágicos não exige descanso curto.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "destilar",
@@ -601,7 +623,8 @@
       {
         "cost": { "coins": 450, "materials": { "wood": 72, "iron": 48, "aetherium": 50 } },
         "buildTime": 6,
-        "effect": "Criar poções e pergaminhos comuns custa metade.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "destilar",
@@ -615,7 +638,8 @@
       {
         "cost": { "coins": 1000, "materials": { "wood": 120, "iron": 80, "aetherium": 120 } },
         "buildTime": 10,
-        "effect": "Uma vez por arco, cria um item mágico incomum à escolha do grupo.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "destilar",
@@ -657,18 +681,21 @@
       {
         "cost": { "coins": 140, "materials": { "wood": 60, "iron": 12 } },
         "buildTime": 3,
-        "effect": "Um descanso curto nas termas recupera +1 dado de vida extra."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 320, "materials": { "wood": 110, "iron": 30, "aetherium": 12 } },
         "buildTime": 5,
-        "effect": "Após um descanso longo, cada personagem ganha PV temporários iguais ao seu nível.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 750, "materials": { "wood": 200, "iron": 60, "aetherium": 40 } },
         "buildTime": 8,
-        "effect": "Uma vez por sessão, quem se banhar nas termas recupera um espaço de magia ou um uso de habilidade de nível 1 a 3.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -721,7 +748,8 @@
       {
         "cost": { "coins": 120, "materials": { "wood": 54, "iron": 18 } },
         "buildTime": 2,
-        "effect": "Comida e bebida na Axis são de graça: o grupo não paga estilo de vida modesto entre sessões.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "cozinhar",
@@ -738,7 +766,8 @@
       {
         "cost": { "coins": 280, "materials": { "wood": 108, "iron": 36, "aetherium": 10 } },
         "buildTime": 4,
-        "effect": "Uma vez por sessão, o mestre conta ao grupo um boato útil ouvido entre os fregueses.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "cozinhar",
@@ -756,7 +785,8 @@
       {
         "cost": { "coins": 650, "materials": { "wood": 200, "iron": 70, "aetherium": 30 } },
         "buildTime": 7,
-        "effect": "Uma vez por arco, um banquete no restaurante dá ao grupo os efeitos de Banquete de Heróis.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "cozinhar",
@@ -793,18 +823,21 @@
       {
         "cost": { "coins": 110, "materials": { "wood": 48, "iron": 24 } },
         "buildTime": 2,
-        "effect": "Aprender uma proficiência em arma ou armadura no tempo livre leva metade do tempo."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 260, "materials": { "wood": 96, "iron": 60 } },
         "buildTime": 4,
-        "effect": "Uma vez por sessão, um personagem pode rolar novamente um teste de Atletismo ou Acrobacia.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 600, "materials": { "wood": 180, "iron": 110, "aetherium": 20 } },
         "buildTime": 7,
-        "effect": "Uma vez por arco, cada personagem pode trocar um talento ou seu estilo de luta.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -976,7 +1009,8 @@
       {
         "cost": { "coins": 180, "materials": { "wood": 30, "iron": 20, "aetherium": 15 } },
         "buildTime": 3,
-        "effect": "Uma vez por sessão, um conjurador que descansar na Axis recupera um espaço de magia de 1º nível.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "estudar",
@@ -989,7 +1023,8 @@
       {
         "cost": { "coins": 420, "materials": { "wood": 60, "iron": 40, "aetherium": 45 } },
         "buildTime": 5,
-        "effect": "Magias conjuradas como ritual na Axis não levam os 10 minutos extras.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "estudar",
@@ -1003,7 +1038,8 @@
       {
         "cost": { "coins": 950, "materials": { "wood": 100, "iron": 70, "aetherium": 110 } },
         "buildTime": 10,
-        "effect": "Uma vez por arco, o grupo pode voltar para a Axis de qualquer lugar por um Círculo de Teletransporte.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "estudar",
@@ -1050,7 +1086,8 @@
       {
         "cost": { "coins": 130, "materials": { "wood": 40, "iron": 15 } },
         "buildTime": 2,
-        "effect": "Uma vez por sessão, o grupo pode pedir ao mestre um detalhe de algo que já viu ou ouviu na campanha.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "catalogar",
@@ -1063,7 +1100,8 @@
       {
         "cost": { "coins": 320, "materials": { "wood": 80, "iron": 30, "aetherium": 10 } },
         "buildTime": 4,
-        "effect": "Vantagem em testes de Investigação feitos com documentos guardados no Arquivo.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "catalogar",
@@ -1077,7 +1115,8 @@
       {
         "cost": { "coins": 700, "materials": { "wood": 160, "iron": 60, "aetherium": 35 } },
         "buildTime": 7,
-        "effect": "Uma vez por arco, o grupo obtém um registro oficial (genealogia, contrato, mapa antigo) sobre um assunto à escolha.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "catalogar",
@@ -1154,18 +1193,21 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 80 } },
         "buildTime": 2,
-        "effect": "Mesa redonda: um plano traçado na Axis dá ao grupo vantagem na primeira iniciativa da missão."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 400, "materials": { "wood": 200, "iron": 80 } },
         "buildTime": 4,
-        "effect": "Mesa do conselho: aliados e contatos convocados à Axis chegam na metade do tempo.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 900, "materials": { "wood": 300, "iron": 200, "aetherium": 20 } },
         "buildTime": 7,
-        "effect": "Salão do conselho: uma vez por arco, cada personagem pode rolar novamente um teste durante uma missão planejada aqui.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]
@@ -1225,7 +1267,8 @@
       {
         "cost": { "coins": 180, "materials": { "wood": 50, "iron": 20 } },
         "buildTime": 3,
-        "effect": "Uma vez por sessão, o grupo analisa um documento, mapa ou pergaminho encontrado e o mestre revela um detalhe escondido nele (autor, origem, data ou marca d'água).",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "analisar",
@@ -1238,7 +1281,8 @@
       {
         "cost": { "coins": 420, "materials": { "wood": 100, "iron": 40, "aetherium": 15 } },
         "buildTime": 5,
-        "effect": "Vantagem em testes para decifrar cifras e idiomas desconhecidos e para identificar falsificações em documentos trazidos ao laboratório.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "analisar",
@@ -1252,7 +1296,8 @@
       {
         "cost": { "coins": 900, "materials": { "wood": 180, "iron": 70, "aetherium": 45 } },
         "buildTime": 8,
-        "effect": "Uma vez por arco, a Lente de Análise revela por completo um texto apagado, cifrado ou protegido por magia, inclusive o que foi escrito por baixo dele.",
+        "party": "",
+        "axis": "",
         "jobs": [
           {
             "activity": "analisar",
@@ -1300,18 +1345,21 @@
       {
         "cost": { "coins": 150, "materials": { "wood": 50, "iron": 20 } },
         "buildTime": 2,
-        "effect": "Mural de missões: uma vez por sessão, o mestre oferece um contrato extra (trabalho pago ou rumor de tesouro)."
+        "party": "",
+        "axis": ""
       },
       {
         "cost": { "coins": 350, "materials": { "wood": 100, "iron": 50 } },
         "buildTime": 4,
-        "effect": "Contratos fechados pela Guilda pagam 10% a mais em ouro.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
       },
       {
         "cost": { "coins": 800, "materials": { "wood": 180, "iron": 100, "aetherium": 20 } },
         "buildTime": 7,
-        "effect": "Contratos raros: uma vez por arco, a Guilda oferece um contrato cuja recompensa é um item mágico.",
+        "party": "",
+        "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
       }
     ]

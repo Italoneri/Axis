@@ -4,16 +4,23 @@ import { activeBonuses, activePostEffects } from './BonusSystem';
 import { makeState, npc, testCatalog } from './testFixtures';
 
 describe('activeBonuses', () => {
-  it('lists accumulated effects of finished levels in catalog order', () => {
+  it('accumulates party and axis texts of finished levels in catalog order', () => {
     const state = makeState({
       slots: {
         outer_n: { buildingId: 'forge', level: 2, status: 'done' },
-        core: { buildingId: 'heart', level: 1, status: 'done' },
+        core: { buildingId: 'heart', level: 2, status: 'done' },
       },
     });
     expect(activeBonuses(state, testCatalog)).toEqual([
-      { buildingId: 'heart', name: 'Coração', level: 1, effects: ['h1'], count: 1 },
-      { buildingId: 'forge', name: 'Forja', level: 2, effects: ['f1', 'f2'], count: 1 },
+      {
+        buildingId: 'heart',
+        name: 'Coração',
+        level: 2,
+        party: ['h1', 'h2'],
+        axis: ['h2 axis'],
+        count: 1,
+      },
+      { buildingId: 'forge', name: 'Forja', level: 2, party: ['f1'], axis: ['f1 axis'], count: 1 },
     ]);
   });
 
@@ -37,7 +44,7 @@ describe('activeBonuses', () => {
       },
     });
     expect(activeBonuses(state, testCatalog)).toEqual([
-      { buildingId: 'heart', name: 'Coração', level: 1, effects: ['h1'], count: 1 },
+      { buildingId: 'heart', name: 'Coração', level: 1, party: ['h1'], axis: [], count: 1 },
     ]);
   });
 });

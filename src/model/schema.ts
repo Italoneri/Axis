@@ -84,7 +84,10 @@ export const jobDefSchema = z.strictObject({
 export const buildingLevelSchema = z.object({
   cost: costSchema,
   buildTime: positiveInt,
-  effect: z.string().min(1),
+  /** What the level gives the party at the RPG table; empty until the master writes it. */
+  party: z.string(),
+  /** Base buffs, plain text for now (mechanical buffs come later); empty until written. */
+  axis: z.string(),
   requires: z.array(requirementSchema).optional(),
   housing: z.object({ capacity: z.number().int().positive() }).optional(),
   jobs: z.array(jobDefSchema).optional(),

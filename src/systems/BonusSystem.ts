@@ -7,8 +7,10 @@ export interface ActiveBonus {
   buildingId: string;
   name: string;
   level: number;
-  /** Effects of every level reached so far: level bonuses accumulate. */
-  effects: string[];
+  /** Party texts of every level reached so far (levels accumulate); unwritten ones left out. */
+  party: string[];
+  /** Axis texts of every level reached so far; unwritten ones left out. */
+  axis: string[];
   /** Copies in force (Alojamentos): their effects still count once, at the highest level. */
   count: number;
 }
@@ -18,11 +20,13 @@ export function activeBonuses(state: GameState, catalog: Catalog): ActiveBonus[]
   return catalog.buildings.flatMap((def) => {
     const level = builtLevel(state, def.id);
     if (level === 0) return [];
-    const effects = def.levels.slice(0, level).map((l) => l.effect);
+    const reached = def.levels.slice(0, level);
+    const party = reached.map((l) => l.party).filter(Boolean);
+    const axis = reached.map((l) => l.axis).filter(Boolean);
     const count = Object.values(state.slots).filter(
       (placed) => placed.buildingId === def.id && activeLevel(placed) >= 1,
     ).length;
-    return [{ buildingId: def.id, name: def.name, level, effects, count }];
+    return [{ buildingId: def.id, name: def.name, level, party, axis, count }];
   });
 }
 
