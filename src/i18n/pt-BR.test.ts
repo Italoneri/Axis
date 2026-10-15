@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { archiveAction, jobEffectText, logEntryText, t, type TextContext } from './pt-BR';
+import {
+  archiveAction,
+  depotAction,
+  jobEffectText,
+  logEntryText,
+  t,
+  type TextContext,
+} from './pt-BR';
 
 const ctx: TextContext = {
   building: (id) => id,
@@ -147,5 +154,57 @@ describe('archive log', () => {
     expect(logEntryText({ day: 2, kind: 'archive_changed', actor: 'Bia', change }, ctx)).toBe(
       'Dia 2 — Bia removeu o tópico Pets (está na lixeira)',
     );
+  });
+});
+
+describe('depot log', () => {
+  it.each([
+    {
+      change: { target: 'section', action: 'created', title: 'Poções' },
+      text: 'Thorin criou a seção Poções no depósito',
+    },
+    {
+      change: { target: 'section', action: 'removed', title: 'Poções' },
+      text: 'Thorin removeu a seção Poções do depósito (está na lixeira)',
+    },
+    {
+      change: { target: 'item', action: 'created', title: 'Poção de cura', quantity: 3 },
+      text: "Thorin pôs 'Poção de cura' (×3) no depósito",
+    },
+    {
+      change: { target: 'item', action: 'removed', title: 'Corda', quantity: 1 },
+      text: "Thorin removeu 'Corda' (×1) do depósito (está na lixeira)",
+    },
+    {
+      change: {
+        target: 'item',
+        action: 'moved',
+        title: 'Corda',
+        quantity: 1,
+        from: 'Outros',
+        to: 'Ferramentas',
+      },
+      text: "Thorin moveu 'Corda' (×1) de Outros para Ferramentas no depósito",
+    },
+    {
+      change: { target: 'item', action: 'stored', title: 'Escudo', quantity: 1, to: 'Armas' },
+      text: "Thorin guardou 'Escudo' (×1) no depósito, em Armas",
+    },
+    {
+      change: {
+        target: 'item',
+        action: 'taken',
+        title: 'Poção de cura',
+        quantity: 2,
+        from: 'Poções',
+      },
+      text: "Thorin retirou 'Poção de cura' (×2) de Poções do depósito",
+    },
+    {
+      change: { target: 'trash', action: 'emptied' },
+      text: 'Thorin esvaziou a lixeira do depósito',
+    },
+  ] as const)('reads $text', ({ change, text }) => {
+    expect(depotAction('Thorin', change)).toBe(text);
   });
 });

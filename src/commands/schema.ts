@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   amountBagSchema,
   archiveChangeSchema,
+  depotChangeSchema,
   MISSION_DESCRIPTION_LIMIT,
   MISSION_MAX_DAYS,
   MISSION_TITLE_LIMIT,
@@ -155,6 +156,7 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   }),
   // Arquivo de registros: the records live apart; this only writes what changed to the log.
   command('archive_log', { change: archiveChangeSchema }),
+  command('depot_log', { change: depotChangeSchema }),
 ]);
 
 export type GameCommand = z.infer<typeof gameCommandSchema>;

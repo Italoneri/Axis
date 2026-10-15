@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { findBuilding, findSlot, type Catalog } from '../model/catalog';
-import { gameStateSchema, SAVE_VERSION, type GameState } from '../model/schema';
+import {
+  gameStateSchema,
+  SAVE_VERSION,
+  type GameState,
+  type PlacedBuilding,
+} from '../model/schema';
 import { parseArchive, type Archive } from './Archive';
+import { parseDepot, type Depot } from './Depot';
 import { initialInfluence } from './Influence';
 import { rehomeNpcs, settleNpcs } from './Npcs';
 import { trimLog } from './outcome';
@@ -43,9 +49,38 @@ export function serializeState(state: GameState): string {
   return JSON.stringify(state, null, 2);
 }
 
-/** The exported file: the game plus, when there is one, the Arquivo de registros beside it. */
-export function serializeSave(state: GameState, archive: Archive | null): string {
-  return JSON.stringify(archive ? { ...state, archive } : state, null, 2);
+/** The exported file: the game plus, when there are, the Arquivo de registros and the Depósito beside it. */
+export function serializeSave(
+  state: GameState,
+  archive: Archive | null,
+  depot: Depot | null = null,
+): string {
+  return JSON.stringify(
+    { ...state, ...(archive ? { archive } : {}), ...(depot ? { depot } : {}) },
+    null,
+    2,
+  );
+}
+
+const saveWithDepotSchema = z.looseObject({ depot: z.unknown().optional() });
+
+/** The depot inside an imported save: null for saves without one. `parseSave` ignores the key. */
+export function parseSaveDepot(
+  text: string,
+): { ok: true; depot: Depot | null } | { ok: false; error: string } {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (error) {
+    return {
+      ok: false,
+      error: `invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  const save = saveWithDepotSchema.safeParse(json);
+  if (!save.success || save.data.depot === undefined) return { ok: true, depot: null };
+  const parsed = parseDepot(save.data.depot);
+  return parsed.ok ? parsed : { ok: false, error: `depot: ${parsed.error}` };
 }
 
 const saveWithArchiveSchema = z.looseObject({ archive: z.unknown().optional() });
@@ -95,7 +130,8 @@ export function parseState(json: unknown, catalog: Catalog): ParseResult {
   }
 
   const upgraded = upgradeWithCatalog(result.data, catalog, migrated.from);
-  const dropped = settleNpcs(dropUnusableBuildings(upgraded, catalog), catalog);
+  const moved = moveMisplacedBuildings(upgraded, catalog);
+  const dropped = settleNpcs(dropUnusableBuildings(moved, catalog), catalog);
   const state = { ...dropped, log: trimLog(dropped.log) };
   const problems = referenceProblems(state, catalog);
   if (problems.length > 0) return { ok: false, error: problems.join('; '), outdated: false };
@@ -165,15 +201,65 @@ export function migrateSave(
 }
 
 /**
- * Buildings on slots the layout no longer has (say, fewer mid_N) or that the
- * catalog no longer has (a building taken out of the game) are removed and
- * logged, so the rest of the save still loads.
+ * A building on a slot type it no longer accepts (the Depósito left the wall
+ * for the middle ring) moves to the first free slot it accepts, in layout
+ * order, with its level, construction and the NPCs living or working there.
+ * Without a free slot it stays put and `dropUnusableBuildings` removes it.
+ */
+function moveMisplacedBuildings(state: GameState, catalog: Catalog): GameState {
+  const taken = new Set(Object.keys(state.slots));
+  const moves = new Map<string, { slotId: string; placed: PlacedBuilding }>();
+  for (const [slotId, placed] of Object.entries(state.slots)) {
+    const slot = findSlot(catalog, slotId);
+    const def = findBuilding(catalog, placed.buildingId);
+    if (!slot || !def || def.allowedSlots.includes(slot.type)) continue;
+    const target = catalog.layout.slots.find(
+      (s) => def.allowedSlots.includes(s.type) && !taken.has(s.id),
+    );
+    if (!target) continue;
+    taken.add(target.id);
+    moves.set(slotId, { slotId: target.id, placed });
+  }
+  if (moves.size === 0) return state;
+
+  const to = (slotId: string) => moves.get(slotId)?.slotId ?? slotId;
+  return {
+    ...state,
+    slots: Object.fromEntries(
+      Object.entries(state.slots).map(([slotId, placed]) => [to(slotId), placed]),
+    ),
+    npcs: state.npcs.map((npc) => ({
+      ...npc,
+      home: npc.home && to(npc.home),
+      job: npc.job && { ...npc.job, slotId: to(npc.job.slotId) },
+    })),
+    log: [
+      ...state.log,
+      ...[...moves.values()].map(({ slotId, placed }) => ({
+        day: state.day,
+        kind: 'building_moved' as const,
+        buildingId: placed.buildingId,
+        level: placed.level,
+        slotId,
+      })),
+    ],
+  };
+}
+
+/**
+ * Buildings on slots the layout no longer has (say, fewer mid_N), that the
+ * catalog no longer has (a building taken out of the game) or on a slot type
+ * they no longer accept with nowhere to move are removed and logged, so the
+ * rest of the save still loads.
  */
 function dropUnusableBuildings(state: GameState, catalog: Catalog): GameState {
   const entries = Object.entries(state.slots);
   const reasonFor = ([slotId, placed]: (typeof entries)[number]): DropReason | null => {
-    if (!findSlot(catalog, slotId)) return 'missing_slot';
-    return findBuilding(catalog, placed.buildingId) ? null : 'unknown_building';
+    const slot = findSlot(catalog, slotId);
+    if (!slot) return 'missing_slot';
+    const def = findBuilding(catalog, placed.buildingId);
+    if (!def) return 'unknown_building';
+    return def.allowedSlots.includes(slot.type) ? null : 'wrong_slot';
   };
   const dropped = entries.flatMap((entry) => {
     const reason = reasonFor(entry);
@@ -202,7 +288,7 @@ function dropUnusableBuildings(state: GameState, catalog: Catalog): GameState {
   };
 }
 
-type DropReason = 'missing_slot' | 'unknown_building';
+type DropReason = 'missing_slot' | 'unknown_building' | 'wrong_slot';
 
 /** Loads the saved game, falling back to a fresh one when nothing usable is stored. */
 export function loadState(storage: Storage, catalog: Catalog): GameState {

@@ -1,4 +1,5 @@
 import type { ArchiveStore, ImageFileSource } from '../archiveStore';
+import type { DepotStore } from '../depotStore';
 import { t } from '../i18n/pt-BR';
 import { imageMime } from '../persistence/ArchiveImageStore';
 import {
@@ -11,7 +12,7 @@ import {
   isZip,
   readBundle,
 } from '../systems/SaveBundle';
-import { parseSave, parseSaveArchive, serializeSave } from '../systems/SaveSystem';
+import { parseSave, parseSaveArchive, parseSaveDepot, serializeSave } from '../systems/SaveSystem';
 import type { GameStore } from '../store';
 import { el } from './dom';
 import { downloadBlob, downloadText } from './download';
@@ -19,12 +20,13 @@ import { downloadBlob, downloadText } from './download';
 type Notify = (msg: string, tone?: 'error') => void;
 
 /**
- * Export/import of the game; the Arquivo de registros travels in the same
- * file. With archive images or photos the save is a .zip (save.json plus the images).
+ * Export/import of the game; the Arquivo de registros and the Depósito travel
+ * in the same file. With archive images or photos the save is a .zip (save.json plus the images).
  */
 export function createSaveControls(
   store: GameStore,
   archive: ArchiveStore,
+  depot: DepotStore,
   notify: Notify,
 ): HTMLElement {
   const fileInput = el('input', {
@@ -36,7 +38,7 @@ export function createSaveControls(
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
     fileInput.value = '';
-    if (file) void importSave(file, store, archive, notify);
+    if (file) void importSave(file, store, archive, depot, notify);
   });
 
   return el(
@@ -44,7 +46,11 @@ export function createSaveControls(
     { class: 'topbar__actions' },
     el(
       'button',
-      { class: 'btn', type: 'button', onclick: () => void exportSave(store, archive, notify) },
+      {
+        class: 'btn',
+        type: 'button',
+        onclick: () => void exportSave(store, archive, depot, notify),
+      },
       t.save.export,
     ),
     el('button', { class: 'btn', type: 'button', onclick: () => fileInput.click() }, t.save.import),
@@ -52,8 +58,13 @@ export function createSaveControls(
   );
 }
 
-async function exportSave(store: GameStore, archive: ArchiveStore, notify: Notify): Promise<void> {
-  const text = serializeSave(store.current, archive.stored);
+async function exportSave(
+  store: GameStore,
+  archive: ArchiveStore,
+  depot: DepotStore,
+  notify: Notify,
+): Promise<void> {
+  const text = serializeSave(store.current, archive.stored, depot.stored);
   const name = `axis-save-dia-${store.current.day}`;
   const photos = photoFiles(store.current);
   if (!hasArchiveImages(archive.stored) && photos.length === 0) {
@@ -86,6 +97,7 @@ async function importSave(
   file: File,
   store: GameStore,
   archive: ArchiveStore,
+  depot: DepotStore,
   notify: Notify,
 ): Promise<void> {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -100,8 +112,10 @@ async function importSave(
 
   const parsed = parseSave(bundle.saveText, store.catalog);
   const records = parseSaveArchive(bundle.saveText);
+  const stored = parseSaveDepot(bundle.saveText);
   if (!parsed.ok) return notify(t.save.invalid(parsed.error), 'error');
   if (!records.ok) return notify(t.save.invalid(records.error), 'error');
+  if (!stored.ok) return notify(t.save.invalid(stored.error), 'error');
   if (!window.confirm(t.save.confirmImport)) return;
   // The files first: once the state lands, its photos are looked up (and the old ones removed).
   await store.images.restore(parsed.state, (ref, variant) => {
@@ -114,5 +128,6 @@ async function importSave(
     return data && new Blob([data.slice()], { type: imageMime(ref.image.format) });
   };
   if (records.archive) void archive.replace(records.archive, imageFiles);
+  if (stored.depot) void depot.replace(stored.depot);
   notify(t.save.imported);
 }

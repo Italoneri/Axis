@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { OnlineConfig } from './config';
 import type { ArchiveBackend, ArchiveTable, ArchiveWriteResult } from './SupabaseArchiveRepository';
+import type { DepotBackend, DepotTable, DepotWriteResult } from './SupabaseDepotRepository';
 import type { FunctionReply, GameBackend } from './SupabaseRepository';
 import type { ImageBucket } from './SupabaseImageStore';
 
@@ -118,24 +119,31 @@ const archiveEventSchema = z.object({
   old: z.record(z.string(), z.unknown()),
 });
 
+/** Every row of one game in `table`, page by page (archive and depot tables). */
+async function fetchGameRows(
+  client: SupabaseClient,
+  table: ArchiveTable | DepotTable,
+  gameId: string,
+): Promise<unknown[]> {
+  const rows: unknown[] = [];
+  for (let page = 0; page < ARCHIVE_MAX_PAGES; page++) {
+    const from = page * ARCHIVE_PAGE_SIZE;
+    const { data, error } = await client
+      .from(table)
+      .select('*')
+      .eq('game_id', gameId)
+      .order('id')
+      .range(from, from + ARCHIVE_PAGE_SIZE - 1);
+    if (error) throw new Error(`load ${table}: ${error.message}`);
+    rows.push(...data);
+    if (data.length < ARCHIVE_PAGE_SIZE) return rows;
+  }
+  console.warn('[online] stopped loading at the page limit', { table, rows: rows.length });
+  return rows;
+}
+
 export function supabaseArchiveBackend(client: SupabaseClient): ArchiveBackend {
-  const fetchTable = async (table: ArchiveTable, gameId: string): Promise<unknown[]> => {
-    const rows: unknown[] = [];
-    for (let page = 0; page < ARCHIVE_MAX_PAGES; page++) {
-      const from = page * ARCHIVE_PAGE_SIZE;
-      const { data, error } = await client
-        .from(table)
-        .select('*')
-        .eq('game_id', gameId)
-        .order('id')
-        .range(from, from + ARCHIVE_PAGE_SIZE - 1);
-      if (error) throw new Error(`load ${table}: ${error.message}`);
-      rows.push(...data);
-      if (data.length < ARCHIVE_PAGE_SIZE) return rows;
-    }
-    console.warn('[archive] stopped loading at the page limit', { table, rows: rows.length });
-    return rows;
-  };
+  const fetchTable = (table: ArchiveTable, gameId: string) => fetchGameRows(client, table, gameId);
 
   return {
     fetchRows: async (gameId) => {
@@ -228,5 +236,106 @@ function archiveRefusal(
   if (error.code === '42501') return { ok: false, error: 'forbidden' };
   if (error.message.includes('category_not_empty'))
     return { ok: false, error: 'category_not_empty' };
+  throw new Error(`${operation}: ${error.message}`);
+}
+
+const DEPOT_TABLES = ['depot_sections', 'depot_items'] as const;
+
+/** Same shape as the archive backend: members write the rows directly, RLS decides. */
+export function supabaseDepotBackend(client: SupabaseClient): DepotBackend {
+  return {
+    fetchRows: async (gameId) => {
+      const [sections, items] = await Promise.all(
+        DEPOT_TABLES.map((table) => fetchGameRows(client, table, gameId)),
+      );
+      return { sections: sections ?? [], items: items ?? [] };
+    },
+
+    writeRows: async (gameId, change) => {
+      const withGame = (rows: readonly object[]) =>
+        rows.map((row) => ({ ...row, game_id: gameId }));
+      // Sections before their items go in; items before their sections go away.
+      const steps = [
+        change.sections.length > 0 &&
+          (() =>
+            client
+              .from('depot_sections')
+              .upsert(withGame(change.sections), { onConflict: 'game_id,id' })),
+        change.items.length > 0 &&
+          (() =>
+            client
+              .from('depot_items')
+              .upsert(withGame(change.items), { onConflict: 'game_id,id' })),
+        change.removedItemIds.length > 0 &&
+          (() =>
+            client
+              .from('depot_items')
+              .delete()
+              .eq('game_id', gameId)
+              .in('id', change.removedItemIds)),
+        change.removedSectionIds.length > 0 &&
+          (() =>
+            client
+              .from('depot_sections')
+              .delete()
+              .eq('game_id', gameId)
+              .in('id', change.removedSectionIds)),
+      ];
+      for (const step of steps) {
+        if (!step) continue;
+        const { error } = await step();
+        if (error) return depotRefusal(error, 'write depot');
+      }
+      return { ok: true };
+    },
+
+    replaceRows: async (gameId, rows) => {
+      const { error } = await client.rpc('replace_depot', {
+        target_game: gameId,
+        sections: rows.sections,
+        items: rows.items,
+      });
+      return error ? depotRefusal(error, 'replace depot') : { ok: true };
+    },
+
+    watch: (gameId, onEvent) => {
+      const handle = (table: DepotTable) => (payload: unknown) => {
+        const event = archiveEventSchema.safeParse(payload);
+        if (!event.success) {
+          console.warn('[depot] unexpected realtime payload', event.error.message);
+          return;
+        }
+        const { eventType, new: row, old } = event.data;
+        if (eventType !== 'DELETE') return onEvent({ table, kind: 'upsert', row });
+        if (typeof old.id === 'string') onEvent({ table, kind: 'delete', id: old.id });
+      };
+      // Deletes only carry the key, so the game filter cannot apply to them: ids are random.
+      const channel = DEPOT_TABLES.reduce(
+        (built, table) =>
+          built
+            .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table, filter: `game_id=eq.${gameId}` },
+              handle(table),
+            )
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table }, handle(table)),
+        client.channel(`depot:${gameId}`),
+      ).subscribe();
+      return () => void client.removeChannel(channel);
+    },
+  };
+}
+
+/** RLS (42501), the owner check and the empty-section trigger are refusals; anything else fails. */
+function depotRefusal(
+  error: { code?: string; message: string },
+  operation: string,
+): DepotWriteResult {
+  if (error.code === '42501' || error.message.includes('forbidden')) {
+    return { ok: false, error: 'forbidden' };
+  }
+  if (error.message.includes('category_not_empty')) {
+    return { ok: false, error: 'category_not_empty' };
+  }
   throw new Error(`${operation}: ${error.message}`);
 }

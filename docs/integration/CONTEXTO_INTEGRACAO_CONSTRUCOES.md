@@ -22,11 +22,12 @@ Documento de passagem para um chat cujo trabalho é **receber os zips de arte da
 | Forja | `forge` | outer | `forge.outer.png` (nível 1) + 4 fx |
 | Fontes Termais | `hot_springs` | outer | `.outer.png`, `.outer.lv2.png`, `.outer.lv3.png` + 8 fx (com `minLevel`/`maxLevel`) |
 | Laboratório Arcano | `arcane_lab` | outer | `.outer.png`, `.lv2`, `.lv3` + 8 fx (com cor na fumaça e nas faíscas) |
-| Coração da Axis | `axis_heart` | core | placeholder |
+| Coração da Axis | `axis_heart` | core | `.core.png`, `.lv2`, `.lv3` + fx |
 | Enfermaria | `infirmary` | middle, outer | placeholder |
 | Biblioteca | `library` | middle | placeholder |
-| Santuário | `sanctuary` | middle | placeholder |
-| Arsenal, Quartel | `armory`, `barracks` | outer | placeholder |
+| Santuário | `sanctuary` | middle | `.middle.png`, `.lv2`, `.lv3` + fx |
+| Depósito | `armory` | middle | `.middle.png`, `.lv2`, `.lv3` + fx |
+| Quartel | `barracks` | outer | placeholder |
 
 ### Transição do anel intermediário
 

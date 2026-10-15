@@ -1,6 +1,7 @@
 import type { SlotType } from '../map/layout';
 import type {
   ArchiveChange,
+  DepotChange,
   JobEffect,
   LogEntry,
   Meal,
@@ -16,6 +17,13 @@ import {
   type NoteVisibility,
 } from '../systems/Archive';
 import { IMAGE_LIMITS, type ImagePrepareError } from '../systems/ArchiveImages';
+import {
+  ITEM_NOTES_LIMIT,
+  NAME_LIMIT,
+  QUANTITY_LIMIT,
+  type DepotError,
+  type ItemKind,
+} from '../systems/Depot';
 import { PHOTO_LIMITS, type PhotoError } from '../systems/GameImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
@@ -705,6 +713,88 @@ export const t = {
       no_author: 'Escolha seu personagem antes de escrever no Arquivo.',
     } satisfies Record<ArchiveError, string>,
   },
+
+  depot: {
+    title: 'Depósito',
+    open: 'Abrir depósito',
+    panelHint:
+      'Equipamentos, poções e qualquer outro item do grupo, em seções. Cada personagem também tem a sua área privada.',
+    counts: (sections: number, items: number) =>
+      `${sections} ${sections === 1 ? 'seção' : 'seções'} · ${items} ${items === 1 ? 'item' : 'itens'}`,
+    close: 'Fechar',
+    search: 'Buscar itens',
+    searchResults: (count: number) =>
+      count === 0
+        ? 'Nenhum item encontrado.'
+        : `${count} ${count === 1 ? 'item encontrado' : 'itens encontrados'}`,
+    character: 'Você é',
+    shared: 'Depósito do grupo',
+    sharedHint: 'Todos os jogadores veem e mexem.',
+    privateArea: (name: string) => `Área privada de ${name}`,
+    myArea: 'Minha área privada',
+    privateHint: 'Só você e o mestre veem.',
+    privateHintMaster: 'Só o dono e o mestre veem.',
+    noArea: 'Escolha seu personagem para ver a sua área privada.',
+    backToSections: '← Seções',
+    noSections: 'Nenhuma seção ainda (ex.: Armas, Armaduras, Poções).',
+    noPrivateSections: 'Nenhuma seção privada ainda.',
+    newSection: '+ Seção',
+    newPrivateFor: 'Nova seção privada para',
+    sectionName: 'Nome da seção',
+    sectionIcon: 'Ícone (emoji)',
+    createSection: 'Criar',
+    renameSection: 'Editar seção',
+    saveSection: 'Salvar',
+    removeSection: 'Remover seção',
+    moveUp: 'Subir',
+    moveDown: 'Descer',
+    pickSection: 'Escolha uma seção à esquerda.',
+    emptySection: 'Nenhum item nesta seção.',
+    newItem: '+ Item',
+    itemName: 'Nome',
+    itemKind: 'Tipo',
+    itemQuantity: 'Quantidade',
+    itemNotes: 'Observações (efeito, dano, dono, de onde veio…)',
+    kinds: {
+      equipamento: 'Equipamento',
+      pocao: 'Poção',
+      outro: 'Outro',
+    } satisfies Record<ItemKind, string>,
+    kindIcons: { equipamento: '⚔️', pocao: '🧪', outro: '📦' } satisfies Record<ItemKind, string>,
+    privateBadge: '🔒 privado',
+    quantity: (quantity: number) => `×${quantity.toLocaleString('pt-BR')}`,
+    increase: 'Adicionar 1',
+    decrease: 'Retirar 1',
+    save: 'Salvar',
+    cancel: 'Cancelar',
+    edit: 'Editar',
+    remove: 'Remover',
+    moveTo: 'Mover para',
+    move: 'Mover',
+    byline: (author: string, editor?: string) =>
+      editor && editor !== author ? `por ${author} · editado por ${editor}` : `por ${author}`,
+    trash: (count: number) => `🗑 Lixeira (${count})`,
+    trashTitle: 'Lixeira',
+    trashHint:
+      'O que foi removido fica aqui até o mestre esvaziar a lixeira. Qualquer um pode restaurar o que vê.',
+    trashEmpty: 'A lixeira está vazia.',
+    trashedSection: (name: string) => `Seção: ${name}`,
+    trashedItem: (name: string, section: string) => `${name} (em ${section})`,
+    restore: 'Restaurar',
+    emptyTrash: 'Esvaziar lixeira',
+    errors: {
+      empty_name: 'Informe um nome.',
+      duplicate_name: 'Já existe uma seção com esse nome nesta área.',
+      duplicate_id: 'Esse registro já foi criado.',
+      not_found: 'Item não encontrado (talvez já tenha sido removido).',
+      category_not_empty: 'A seção ainda tem itens. Mova-os ou remova-os antes.',
+      forbidden: 'Você não pode fazer isso.',
+      too_long: `Nome até ${NAME_LIMIT} caracteres e observações até ${ITEM_NOTES_LIMIT.toLocaleString('pt-BR')}.`,
+      invalid_quantity: `A quantidade vai de 1 a ${QUANTITY_LIMIT.toLocaleString('pt-BR')}. Para zerar, remova o item.`,
+      invalid_command: 'Ação inválida. Confira os valores informados.',
+      no_author: 'Escolha seu personagem antes de mexer no depósito.',
+    } satisfies Record<DepotError, string>,
+  },
   errors: {
     empty_name: 'Informe um nome.',
     duplicate_name: 'Já existe um item com esse nome.',
@@ -793,6 +883,7 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'building_forced':
     case 'building_removed':
     case 'building_dropped':
+    case 'building_moved':
       return buildingAction(entry, ctx);
     case 'coins_adjusted':
       return coinsAdjustedText(entry, ctx);
@@ -850,6 +941,8 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return npcAction(entry, ctx);
     case 'archive_changed':
       return archiveAction(masterActor(entry), entry.change);
+    case 'depot_changed':
+      return depotAction(masterActor(entry), entry.change);
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -884,6 +977,37 @@ export function archiveAction(actor: string, change: ArchiveChange): string {
       return `${actor} anexou ${change.count === 1 ? 'uma imagem' : `${change.count} imagens`} a '${change.title}'`;
     case 'image':
       return `${actor} removeu uma imagem de '${change.title}'`;
+    default:
+      return assertNever(change);
+  }
+}
+
+/** "Thorin guardou 'Poção de cura' (×3) no depósito, em Poções". */
+export function depotAction(actor: string, change: DepotChange): string {
+  switch (change.target) {
+    case 'section': {
+      const where = change.action === 'removed' ? 'do depósito (está na lixeira)' : 'no depósito';
+      return `${actor} ${ARCHIVE_VERBS[change.action]} a seção ${change.title} ${where}`;
+    }
+    case 'item': {
+      const what = `'${change.title}' (${t.depot.quantity(change.quantity)})`;
+      switch (change.action) {
+        case 'moved':
+          return `${actor} moveu ${what} de ${change.from} para ${change.to} no depósito`;
+        case 'stored':
+          return `${actor} guardou ${what} no depósito, em ${change.to}`;
+        case 'taken':
+          return `${actor} retirou ${what} de ${change.from} do depósito`;
+        default: {
+          const where =
+            change.action === 'removed' ? 'do depósito (está na lixeira)' : 'no depósito';
+          const verb = change.action === 'created' ? 'pôs' : ARCHIVE_VERBS[change.action];
+          return `${actor} ${verb} ${what} ${where}`;
+        }
+      }
+    }
+    case 'trash':
+      return `${actor} esvaziou a lixeira do depósito`;
     default:
       return assertNever(change);
   }
@@ -1034,12 +1158,18 @@ function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
     build_completed: `Concluída: ${what}`,
     building_forced: `${masterActor(entry)} definiu ${what}`,
     building_removed: `${masterActor(entry)} removeu ${what}`,
-    building_dropped:
-      entry.kind === 'building_dropped' && entry.reason === 'unknown_building'
-        ? `${what} removida: a construção não existe mais no jogo`
-        : `${what} removida: o espaço não existe mais no mapa`,
+    building_dropped: droppedText(entry, what),
+    building_moved: `${what} mudou de lugar: o espaço antigo não aceita mais essa construção`,
   };
   return actions[entry.kind] + paid;
+}
+
+function droppedText(entry: BuildingEntry, what: string): string {
+  if (entry.reason === 'unknown_building')
+    return `${what} removida: a construção não existe mais no jogo`;
+  if (entry.reason === 'wrong_slot')
+    return `${what} removida: o espaço não aceita mais essa construção e não havia outro livre`;
+  return `${what} removida: o espaço não existe mais no mapa`;
 }
 
 function paidText(

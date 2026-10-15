@@ -21,11 +21,13 @@ export function renderMasterTools(
     act,
     openArchive,
     openMenu,
+    openDepot,
   }: {
     session: MasterAccess;
     act: Act;
     openArchive?: (() => void) | undefined;
     openMenu?: (() => void) | undefined;
+    openDepot?: (() => void) | undefined;
   },
 ): HTMLElement[] {
   return [
@@ -37,6 +39,15 @@ export function renderMasterTools(
             t.archive.title,
             el('p', { class: 'panel__hint' }, t.archive.panelHint),
             el('button', { class: 'btn', type: 'button', onclick: openArchive }, t.archive.open),
+          ),
+        ]
+      : []),
+    ...(openDepot
+      ? [
+          section(
+            t.depot.title,
+            el('p', { class: 'panel__hint' }, t.depot.panelHint),
+            el('button', { class: 'btn', type: 'button', onclick: openDepot }, t.depot.open),
           ),
         ]
       : []),

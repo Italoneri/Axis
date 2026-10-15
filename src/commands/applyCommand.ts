@@ -145,6 +145,7 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'npc_assign_job',
   'npc_unassign',
   'archive_log',
+  'depot_log',
   'mission_create',
   'mission_update',
   'mission_remove',
@@ -376,6 +377,9 @@ const handlers: Handlers = {
 
   archive_log: ({ change }, { state }) =>
     resources(ok(withLog(state, { day: state.day, kind: 'archive_changed', change }))),
+
+  depot_log: ({ change }, { state }) =>
+    resources(ok(withLog(state, { day: state.day, kind: 'depot_changed', change }))),
 };
 
 function materialFields({ name, category, icon, description }: MaterialFields): MaterialFields {

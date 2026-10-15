@@ -161,6 +161,10 @@ const validCommands: Record<CommandType, GameCommand> = {
     type: 'archive_log',
     change: { target: 'topic', action: 'created', title: 'Pets' },
   },
+  depot_log: {
+    type: 'depot_log',
+    change: { target: 'item', action: 'created', title: 'Poção de cura', quantity: 3 },
+  },
   set_image: {
     type: 'set_image',
     target: { kind: 'character', id: 'thorin' },
@@ -358,6 +362,7 @@ describe('applyCommand permissions', () => {
     'npc_assign_job',
     'npc_unassign',
     'archive_log',
+    'depot_log',
     'mission_create',
     'mission_update',
     'mission_remove',
@@ -518,6 +523,19 @@ describe('applyCommand log', () => {
       { day: 3, kind: 'coins_deposited', actor, character: 'Thorin', coins: { gold: 2 } },
     ]);
     expect(result.state.log.at(-1)).toEqual(result.logged[0]);
+  });
+
+  it('logs a depot change with its actor', () => {
+    const result = run(validCommands.depot_log, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.logged).toEqual([
+      {
+        day: 3,
+        kind: 'depot_changed',
+        actor: 'Thorin',
+        change: { target: 'item', action: 'created', title: 'Poção de cura', quantity: 3 },
+      },
+    ]);
   });
 
   it('logs an archive change with its actor', () => {
