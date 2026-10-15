@@ -1,6 +1,11 @@
 import { jobEffectText, logEntryText, t, type TextContext } from '../i18n/pt-BR';
 import type { GameStore } from '../store';
-import { activeBonuses, activePostEffects, type PostEffect } from '../systems/BonusSystem';
+import {
+  activeBonuses,
+  activePostEffects,
+  type ActiveBonus,
+  type PostEffect,
+} from '../systems/BonusSystem';
 import { el, replaceKeepingScroll } from './dom';
 import { textContext } from './format';
 import type { MasterAccess } from './MasterSession';
@@ -187,14 +192,27 @@ export class InfoDrawer {
             ),
           ),
         ),
-        el(
-          'ul',
-          { class: 'effects' },
-          ...[...bonus.party, ...bonus.axis].map((text) => el('li', {}, text)),
-        ),
+        ...this.bonusTexts(bonus),
       );
     });
     return [...cards, ...posts];
+  }
+
+  /** Party and Axis texts reached so far; a building with none written reads "a definir". */
+  private bonusTexts(bonus: ActiveBonus): HTMLElement[] {
+    const groups = [
+      { label: t.details.party, texts: bonus.party },
+      { label: t.details.axis, texts: bonus.axis },
+    ].filter((group) => group.texts.length > 0);
+    if (groups.length === 0) return [el('p', { class: 'panel__hint' }, t.details.unwritten)];
+    return groups.map(({ label, texts }) =>
+      el(
+        'div',
+        {},
+        el('span', { class: 'stat__label' }, label),
+        el('ul', { class: 'effects' }, ...texts.map((text) => el('li', {}, text))),
+      ),
+    );
   }
 
   /** Occupied posts: their bonus text or what they yield each day. */

@@ -26,6 +26,7 @@ import { buildingLabel, formatGold, textContext } from './format';
 import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
+import { abilityColumns, buildingDetails } from './buildingDetails';
 import { ResearchArchive } from './resources/ResearchArchive';
 import { button, thumb } from './widgets';
 
@@ -49,6 +50,8 @@ export class SlotPanel {
   private renderedSlotId: string | null = null;
   private readonly selectionListeners = new Set<SelectionListener>();
   private readonly researchArchive = new ResearchArchive();
+  /** Buildings whose "Detalhes" is open, so re-renders keep it open. */
+  private readonly openDetails = new Set<string>();
 
   constructor(
     private readonly root: HTMLElement,
@@ -151,6 +154,7 @@ export class SlotPanel {
           ),
         levelDef && this.levelStats(levelDef, state),
         this.reasonList(check),
+        this.details(def, 0, state),
         el(
           'button',
           {
@@ -175,8 +179,14 @@ export class SlotPanel {
     const activeLevelDef = def.levels[activeLevel(placed) - 1];
     const summary = this.cardHead(def, t.level(placed.level));
     const currentEffect = activeLevelDef
-      ? this.stat(t.panel.currentEffect, activeLevelDef.party)
+      ? el(
+          'div',
+          {},
+          el('h3', { class: 'section-title' }, t.panel.currentEffect),
+          abilityColumns(activeLevelDef),
+        )
       : el('p', { class: 'panel__hint' }, t.panel.notYetActive);
+    const details = this.details(def, activeLevel(placed), state);
 
     if (placed.status === 'building') {
       const progress = constructionProgress(placed, state.day);
@@ -205,7 +215,7 @@ export class SlotPanel {
             t.panel.progress(placed.startedOnDay, placed.completesOnDay, state.day),
           ),
         ),
-        el('div', { class: 'card' }, currentEffect),
+        el('div', { class: 'card' }, currentEffect, details),
       ];
     }
 
@@ -218,12 +228,13 @@ export class SlotPanel {
           summary,
           currentEffect,
           el('p', { class: 'panel__hint' }, t.panel.maxLevel),
+          details,
         ),
       ];
     }
     const check = checkUpgrade(state, this.store.catalog, slotId);
     return [
-      el('div', { class: 'card' }, summary, currentEffect),
+      el('div', { class: 'card' }, summary, currentEffect, details),
       el(
         'div',
         { class: check.ok ? 'card' : 'card card--blocked' },
@@ -273,8 +284,22 @@ export class SlotPanel {
         this.costList(level.cost, state),
       ),
       this.stat(t.panel.time, level.buildTime === 0 ? t.instant : t.days(level.buildTime)),
-      this.stat(t.panel.effect, level.party),
+      abilityColumns(level),
     );
+  }
+
+  private details(def: BuildingDef, currentLevel: number, state: GameState): HTMLElement {
+    return buildingDetails({
+      def,
+      ctx: textContext(this.store.catalog, state),
+      currentLevel,
+      open: this.openDetails.has(def.id),
+      onToggle: (open) => {
+        if (open) this.openDetails.add(def.id);
+        else this.openDetails.delete(def.id);
+      },
+      costOf: (level) => this.costList(level.cost, state),
+    });
   }
 
   /** Coins are checked against the Acampamento; materials against the stock. */

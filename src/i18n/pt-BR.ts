@@ -69,7 +69,6 @@ export const t = {
     noOptions: 'Nenhuma estrutura pode ser construída neste espaço.',
     cost: 'Custo',
     time: 'Tempo',
-    effect: 'Efeito',
     build: 'Construir',
     upgrade: 'Melhorar',
     currentEffect: 'Efeito atual',
@@ -80,6 +79,19 @@ export const t = {
     progress: (startedOnDay: number, completesOnDay: number, currentDay: number) =>
       `Iniciado no dia ${startedOnDay} · conclui no dia ${completesOnDay} (faltam ${t.days(Math.max(0, completesOnDay - currentDay))})`,
     notYetActive: 'Nenhum efeito ativo até a conclusão.',
+  },
+
+  details: {
+    toggle: 'Detalhes',
+    level: (level: number) => `Nível ${level}`,
+    party: 'Party',
+    axis: 'Axis',
+    unwritten: 'a definir',
+    requires: (building: string, minLevel: number) => `Requer ${building} nv. ${minLevel}`,
+    post: (name: string, effect: string) => `Posto ${name}: ${effect}`,
+    postBase: (name: string, effect: string) =>
+      `Posto ${name}: ${effect} (base, cresce com a perícia do NPC)`,
+    housing: (capacity: number) => `Moradia para ${capacity} NPCs`,
   },
 
   save: {
