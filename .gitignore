@@ -14,5 +14,6 @@ supabase/functions/_shared/game.js
 
 # Local tooling & AI artifacts
 Claude outputs/
+.claude/
 .impeccable/
 **/.impeccable/

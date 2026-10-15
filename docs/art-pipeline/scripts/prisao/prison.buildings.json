@@ -1,0 +1,229 @@
+{
+  "id": "prison",
+  "name": "Prisão",
+  "description": "Celas, grilhões e uma sala de interrogatório para quem cruzar o caminho do grupo.",
+  "icon": "icon.prison",
+  "sprite": "building.prison",
+  "allowedSlots": [
+    "outer"
+  ],
+  "fx": [
+    {
+      "type": "glow",
+      "x": 0.26,
+      "y": 0.39,
+      "color": "#ffb347",
+      "radius": 0.04,
+      "maxLevel": 1
+    },
+    {
+      "type": "glow",
+      "x": 0.74,
+      "y": 0.39,
+      "color": "#ffb347",
+      "radius": 0.04,
+      "maxLevel": 1
+    },
+    {
+      "type": "glow",
+      "x": 0.227,
+      "y": 0.607,
+      "color": "#ffb347",
+      "radius": 0.03,
+      "maxLevel": 1
+    },
+    {
+      "type": "glow",
+      "x": 0.757,
+      "y": 0.599,
+      "color": "#ffb347",
+      "radius": 0.03,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.195,
+      "y": 0.399,
+      "color": "#ffb347",
+      "radius": 0.04,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.396,
+      "y": 0.379,
+      "color": "#ffb347",
+      "radius": 0.04,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.604,
+      "y": 0.379,
+      "color": "#ffb347",
+      "radius": 0.04,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.805,
+      "y": 0.399,
+      "color": "#ffb347",
+      "radius": 0.04,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.373,
+      "y": 0.598,
+      "color": "#ffb347",
+      "radius": 0.03,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.607,
+      "y": 0.526,
+      "color": "#ff7a1a",
+      "radius": 0.04,
+      "minLevel": 2
+    },
+    {
+      "type": "sparks",
+      "x": 0.607,
+      "y": 0.526,
+      "minLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.432,
+      "y": 0.866,
+      "color": "#ff7a1a",
+      "radius": 0.05,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.568,
+      "y": 0.866,
+      "color": "#ff7a1a",
+      "radius": 0.05,
+      "minLevel": 2,
+      "maxLevel": 2
+    },
+    {
+      "type": "glow",
+      "x": 0.5,
+      "y": 0.141,
+      "color": "#E2B84A",
+      "radius": 0.07,
+      "minLevel": 3
+    },
+    {
+      "type": "sparks",
+      "x": 0.5,
+      "y": 0.141,
+      "color": "#ffe08a",
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.5,
+      "y": 0.09,
+      "color": "#9fd8ff",
+      "radius": 0.04,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.195,
+      "y": 0.399,
+      "color": "#dff2ff",
+      "radius": 0.04,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.396,
+      "y": 0.379,
+      "color": "#dff2ff",
+      "radius": 0.04,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.604,
+      "y": 0.379,
+      "color": "#dff2ff",
+      "radius": 0.04,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.805,
+      "y": 0.399,
+      "color": "#dff2ff",
+      "radius": 0.04,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.747,
+      "y": 0.598,
+      "color": "#9fd8ff",
+      "radius": 0.035,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.432,
+      "y": 0.866,
+      "color": "#ffc04d",
+      "radius": 0.05,
+      "minLevel": 3
+    },
+    {
+      "type": "glow",
+      "x": 0.568,
+      "y": 0.866,
+      "color": "#ffc04d",
+      "radius": 0.05,
+      "minLevel": 3
+    }
+  ],
+  "levels": [
+    {
+      "cost": {
+        "coins": 0,
+        "materials": {}
+      },
+      "buildTime": 0,
+      "effect": "",
+      "jobs": []
+    },
+    {
+      "cost": {
+        "coins": 0,
+        "materials": {}
+      },
+      "buildTime": 0,
+      "effect": "",
+      "jobs": []
+    },
+    {
+      "cost": {
+        "coins": 0,
+        "materials": {}
+      },
+      "buildTime": 0,
+      "effect": "",
+      "jobs": []
+    }
+  ]
+}
