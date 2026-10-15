@@ -175,7 +175,7 @@ export class SlotPanel {
     const activeLevelDef = def.levels[activeLevel(placed) - 1];
     const summary = this.cardHead(def, t.level(placed.level));
     const currentEffect = activeLevelDef
-      ? this.stat(t.panel.currentEffect, activeLevelDef.effect)
+      ? this.stat(t.panel.currentEffect, activeLevelDef.party)
       : el('p', { class: 'panel__hint' }, t.panel.notYetActive);
 
     if (placed.status === 'building') {
@@ -273,7 +273,7 @@ export class SlotPanel {
         this.costList(level.cost, state),
       ),
       this.stat(t.panel.time, level.buildTime === 0 ? t.instant : t.days(level.buildTime)),
-      this.stat(t.panel.effect, level.effect),
+      this.stat(t.panel.effect, level.party),
     );
   }
 

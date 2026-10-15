@@ -187,7 +187,11 @@ export class InfoDrawer {
             ),
           ),
         ),
-        el('ul', { class: 'effects' }, ...bonus.effects.map((effect) => el('li', {}, effect))),
+        el(
+          'ul',
+          { class: 'effects' },
+          ...[...bonus.party, ...bonus.axis].map((text) => el('li', {}, text)),
+        ),
       );
     });
     return [...cards, ...posts];

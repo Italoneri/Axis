@@ -112,8 +112,8 @@ describe('several Alojamentos', () => {
       outer_3: barracks(1, 'building'),
     });
     const bonus = activeBonuses(state, gameData).find((b) => b.buildingId === 'barracks');
-    expect(bonus).toMatchObject({ level: 2, count: 2 });
-    expect(bonus?.effects).toHaveLength(2);
+    // Shipped texts are still unwritten, so nothing to list yet.
+    expect(bonus).toMatchObject({ level: 2, count: 2, party: [], axis: [] });
     expect(t.drawer.copies(2, 'Alojamento')).toBe('(2 Alojamentos)');
   });
 
