@@ -290,6 +290,21 @@
     "icon": "icon.library",
     "sprite": "building.library",
     "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.503, "y": 0.334, "color": "#ffb347", "radius": 0.04, "maxLevel": 2 },
+      { "type": "glow", "x": 0.177, "y": 0.717, "color": "#ffb347", "radius": 0.03 },
+      { "type": "glow", "x": 0.797, "y": 0.71, "color": "#ffb347", "radius": 0.03 },
+      { "type": "glow", "x": 0.5, "y": 0.334, "color": "#ffb347", "radius": 0.075, "minLevel": 2 },
+      { "type": "glow", "x": 0.5, "y": 0.656, "color": "#E2B84A", "radius": 0.06, "minLevel": 3 },
+      { "type": "glow", "x": 0.444, "y": 0.099, "color": "#dff4ff", "radius": 0.03, "minLevel": 3 },
+      { "type": "glow", "x": 0.556, "y": 0.099, "color": "#dff4ff", "radius": 0.03, "minLevel": 3 },
+      { "type": "glow", "x": 0.503, "y": 0.334, "color": "#dff4ff", "radius": 0.04, "minLevel": 3 },
+      { "type": "glow", "x": 0.5, "y": 0.656, "color": "#9b7dff", "radius": 0.06, "minLevel": 3 },
+      { "type": "sparks", "x": 0.5, "y": 0.656, "color": "#c9b8ff", "minLevel": 3 },
+      { "type": "glow", "x": 0.377, "y": 0.578, "color": "#b48cff", "radius": 0.025, "minLevel": 3 },
+      { "type": "glow", "x": 0.627, "y": 0.598, "color": "#b48cff", "radius": 0.025, "minLevel": 3 },
+      { "type": "glow", "x": 0.388, "y": 0.744, "color": "#b48cff", "radius": 0.025, "minLevel": 3 }
+    ],
     "levels": [
       {
         "cost": { "coins": 150, "materials": { "wood": 30, "iron": 20, "aetherium": 5 } },
@@ -1361,6 +1376,567 @@
         "party": "",
         "axis": "",
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "trading_post",
+    "name": "Entreposto",
+    "description": "Onde os mercadores de fora da Axis negociam com o grupo e vendem materiais.",
+    "icon": "icon.trading_post",
+    "sprite": "building.trading_post",
+    "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.629, "y": 0.196, "color": "#ffb347", "radius": 0.035 },
+      { "type": "glow", "x": 0.073, "y": 0.409, "color": "#ffb347", "radius": 0.03, "maxLevel": 1 },
+      {
+        "type": "glow",
+        "x": 0.165,
+        "y": 0.454,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.835,
+        "y": 0.454,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.5, "y": 0.514, "color": "#E2B84A", "radius": 0.07, "minLevel": 3 },
+      { "type": "glow", "x": 0.345, "y": 0.369, "color": "#9b7dff", "radius": 0.05, "minLevel": 3 },
+      { "type": "sparks", "x": 0.345, "y": 0.369, "color": "#c9b8ff", "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 200, "materials": { "wood": 60, "iron": 40 } },
+        "buildTime": 3,
+        "party": "",
+        "axis": ""
+      },
+      {
+        "cost": { "coins": 400, "materials": { "wood": 120, "iron": 80 } },
+        "buildTime": 5,
+        "party": "",
+        "axis": "",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 850, "materials": { "wood": 210, "iron": 140, "aetherium": 30 } },
+        "buildTime": 8,
+        "party": "",
+        "axis": "",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "stable",
+    "name": "Estábulo",
+    "description": "Baias com palha fresca, cestos macios e poleiros: aqui os companheiros do grupo comem, descansam e esperam a próxima aventura.",
+    "icon": "icon.stable",
+    "sprite": "building.stable",
+    "allowedSlots": ["middle"],
+    "fx": [
+      { "type": "glow", "x": 0.419, "y": 0.752, "color": "#ffb347", "radius": 0.04 },
+      { "type": "glow", "x": 0.581, "y": 0.752, "color": "#ffb347", "radius": 0.04 },
+      {
+        "type": "glow",
+        "x": 0.422,
+        "y": 0.114,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      { "type": "glow", "x": 0.382, "y": 0.293, "color": "#b48cff", "radius": 0.05, "minLevel": 3 },
+      { "type": "glow", "x": 0.377, "y": 0.107, "color": "#7fd4ff", "radius": 0.03, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.511,
+        "y": 0.437,
+        "color": "#7fd4ff",
+        "radius": 0.045,
+        "minLevel": 3
+      },
+      { "type": "glow", "x": 0.5, "y": 0.63, "color": "#e2b84a", "radius": 0.06, "minLevel": 3 },
+      { "type": "sparks", "x": 0.879, "y": 0.75, "color": "#FF7A1A", "minLevel": 3 },
+      { "type": "glow", "x": 0.838, "y": 0.422, "color": "#ffb347", "radius": 0.03, "minLevel": 3 }
+    ],
+    "levels": [
+      {
+        "cost": { "coins": 200, "materials": { "wood": 60, "iron": 40 } },
+        "buildTime": 3,
+        "party": "",
+        "axis": ""
+      },
+      {
+        "cost": { "coins": 400, "materials": { "wood": 120, "iron": 80 } },
+        "buildTime": 5,
+        "party": "",
+        "axis": "",
+        "requires": [{ "building": "axis_heart", "minLevel": 1 }]
+      },
+      {
+        "cost": { "coins": 850, "materials": { "wood": 210, "iron": 140, "aetherium": 30 } },
+        "buildTime": 8,
+        "party": "",
+        "axis": "",
+        "requires": [{ "building": "axis_heart", "minLevel": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "herb_garden",
+    "name": "Estufa de Ervas",
+    "description": "Um jardim murado encostado na muralha, com canteiros de ervas, árvores e uma estufa de vidro onde crescem as plantas raras da Axis.",
+    "icon": "icon.herb_garden",
+    "sprite": "building.herb_garden",
+    "allowedSlots": ["outer"],
+    "fx": [
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.128,
+        "color": "#bfffd0",
+        "radius": 0.12,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "smoke",
+        "x": 0.5,
+        "y": 0.46,
+        "color": "#e8fbff",
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.443,
+        "y": 0.865,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.557,
+        "y": 0.865,
+        "color": "#ffb347",
+        "radius": 0.035,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.128,
+        "color": "#fff0b0",
+        "radius": 0.12,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.658,
+        "color": "#7fe0d6",
+        "radius": 0.05,
+        "minLevel": 3
+      },
+      {
+        "type": "sparks",
+        "x": 0.436,
+        "y": 0.461,
+        "color": "#d8ff8a",
+        "minLevel": 3
+      },
+      {
+        "type": "sparks",
+        "x": 0.575,
+        "y": 0.461,
+        "color": "#d8ff8a",
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.273,
+        "y": 0.188,
+        "color": "#9b6bff",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.318,
+        "y": 0.184,
+        "color": "#ff9a3a",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.364,
+        "y": 0.18,
+        "color": "#ff4a4a",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.409,
+        "y": 0.178,
+        "color": "#6fe36f",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.454,
+        "y": 0.176,
+        "color": "#4aa8ff",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.546,
+        "y": 0.176,
+        "color": "#ffe04a",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.591,
+        "y": 0.178,
+        "color": "#f4f1ff",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.636,
+        "y": 0.18,
+        "color": "#8a6cc0",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.682,
+        "y": 0.184,
+        "color": "#9b6bff",
+        "radius": 0.022,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.727,
+        "y": 0.188,
+        "color": "#ff9a3a",
+        "radius": 0.022,
+        "minLevel": 3
+      }
+    ],
+    "levels": [
+      {
+        "cost": {
+          "coins": 200,
+          "materials": {
+            "wood": 60,
+            "iron": 40
+          }
+        },
+        "buildTime": 3,
+        "party": "",
+        "axis": ""
+      },
+      {
+        "cost": {
+          "coins": 400,
+          "materials": {
+            "wood": 120,
+            "iron": 80
+          }
+        },
+        "buildTime": 5,
+        "party": "",
+        "axis": "",
+        "requires": [
+          {
+            "building": "axis_heart",
+            "minLevel": 1
+          }
+        ]
+      },
+      {
+        "cost": {
+          "coins": 850,
+          "materials": {
+            "wood": 210,
+            "iron": 140,
+            "aetherium": 30
+          }
+        },
+        "buildTime": 8,
+        "party": "",
+        "axis": "",
+        "requires": [
+          {
+            "building": "axis_heart",
+            "minLevel": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "prison",
+    "name": "Prisão",
+    "description": "Celas, grilhões e uma sala de interrogatório para quem cruzar o caminho do grupo.",
+    "icon": "icon.prison",
+    "sprite": "building.prison",
+    "allowedSlots": ["outer"],
+    "fx": [
+      {
+        "type": "glow",
+        "x": 0.26,
+        "y": 0.39,
+        "color": "#ffb347",
+        "radius": 0.04,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.74,
+        "y": 0.39,
+        "color": "#ffb347",
+        "radius": 0.04,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.227,
+        "y": 0.607,
+        "color": "#ffb347",
+        "radius": 0.03,
+        "maxLevel": 1
+      },
+      {
+        "type": "glow",
+        "x": 0.757,
+        "y": 0.599,
+        "color": "#ffb347",
+        "radius": 0.03,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.195,
+        "y": 0.399,
+        "color": "#ffb347",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.396,
+        "y": 0.379,
+        "color": "#ffb347",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.604,
+        "y": 0.379,
+        "color": "#ffb347",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.805,
+        "y": 0.399,
+        "color": "#ffb347",
+        "radius": 0.04,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.373,
+        "y": 0.598,
+        "color": "#ffb347",
+        "radius": 0.03,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.607,
+        "y": 0.526,
+        "color": "#ff7a1a",
+        "radius": 0.04,
+        "minLevel": 2
+      },
+      {
+        "type": "sparks",
+        "x": 0.607,
+        "y": 0.526,
+        "minLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.432,
+        "y": 0.866,
+        "color": "#ff7a1a",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.568,
+        "y": 0.866,
+        "color": "#ff7a1a",
+        "radius": 0.05,
+        "minLevel": 2,
+        "maxLevel": 2
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.141,
+        "color": "#E2B84A",
+        "radius": 0.07,
+        "minLevel": 3
+      },
+      {
+        "type": "sparks",
+        "x": 0.5,
+        "y": 0.141,
+        "color": "#ffe08a",
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.5,
+        "y": 0.09,
+        "color": "#9fd8ff",
+        "radius": 0.04,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.195,
+        "y": 0.399,
+        "color": "#dff2ff",
+        "radius": 0.04,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.396,
+        "y": 0.379,
+        "color": "#dff2ff",
+        "radius": 0.04,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.604,
+        "y": 0.379,
+        "color": "#dff2ff",
+        "radius": 0.04,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.805,
+        "y": 0.399,
+        "color": "#dff2ff",
+        "radius": 0.04,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.747,
+        "y": 0.598,
+        "color": "#9fd8ff",
+        "radius": 0.035,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.432,
+        "y": 0.866,
+        "color": "#ffc04d",
+        "radius": 0.05,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.568,
+        "y": 0.866,
+        "color": "#ffc04d",
+        "radius": 0.05,
+        "minLevel": 3
+      }
+    ],
+    "levels": [
+      {
+        "cost": {
+          "coins": 100,
+          "materials": {
+            "wood": 42,
+            "iron": 28
+          }
+        },
+        "buildTime": 2,
+        "party": "",
+        "axis": ""
+      },
+      {
+        "cost": {
+          "coins": 250,
+          "materials": {
+            "wood": 90,
+            "iron": 60
+          }
+        },
+        "buildTime": 4,
+        "party": "",
+        "axis": "",
+        "requires": [
+          {
+            "building": "axis_heart",
+            "minLevel": 1
+          }
+        ]
+      },
+      {
+        "cost": {
+          "coins": 550,
+          "materials": {
+            "wood": 180,
+            "iron": 120,
+            "aetherium": 10
+          }
+        },
+        "buildTime": 7,
+        "party": "",
+        "axis": "",
+        "requires": [
+          {
+            "building": "axis_heart",
+            "minLevel": 2
+          }
+        ]
       }
     ]
   }
