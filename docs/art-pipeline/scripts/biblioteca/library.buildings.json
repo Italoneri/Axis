@@ -1,0 +1,109 @@
+{
+ "id": "library",
+ "allowedSlots": [
+  "middle"
+ ],
+ "fx": [
+  {
+   "type": "glow",
+   "x": 0.503,
+   "y": 0.334,
+   "color": "#ffb347",
+   "radius": 0.04,
+   "maxLevel": 2
+  },
+  {
+   "type": "glow",
+   "x": 0.177,
+   "y": 0.717,
+   "color": "#ffb347",
+   "radius": 0.03
+  },
+  {
+   "type": "glow",
+   "x": 0.797,
+   "y": 0.71,
+   "color": "#ffb347",
+   "radius": 0.03
+  },
+  {
+   "type": "glow",
+   "x": 0.5,
+   "y": 0.334,
+   "color": "#ffb347",
+   "radius": 0.075,
+   "minLevel": 2
+  },
+  {
+   "type": "glow",
+   "x": 0.5,
+   "y": 0.656,
+   "color": "#E2B84A",
+   "radius": 0.06,
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.444,
+   "y": 0.099,
+   "color": "#dff4ff",
+   "radius": 0.03,
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.556,
+   "y": 0.099,
+   "color": "#dff4ff",
+   "radius": 0.03,
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.503,
+   "y": 0.334,
+   "color": "#dff4ff",
+   "radius": 0.04,
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.5,
+   "y": 0.656,
+   "color": "#9b7dff",
+   "radius": 0.06,
+   "minLevel": 3
+  },
+  {
+   "type": "sparks",
+   "x": 0.5,
+   "y": 0.656,
+   "color": "#c9b8ff",
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.377,
+   "y": 0.578,
+   "color": "#b48cff",
+   "radius": 0.025,
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.627,
+   "y": 0.598,
+   "color": "#b48cff",
+   "radius": 0.025,
+   "minLevel": 3
+  },
+  {
+   "type": "glow",
+   "x": 0.388,
+   "y": 0.744,
+   "color": "#b48cff",
+   "radius": 0.025,
+   "minLevel": 3
+  }
+ ]
+}
