@@ -268,7 +268,7 @@ function parseKind(value: string): ItemKind {
   return ITEM_KINDS.find((kind) => kind === value) ?? 'outro';
 }
 
-function priceInputs(
+export function priceInputs(
   catalog: Catalog,
   initial: CoinBag | undefined,
 ): { element: HTMLElement; read(): CoinBag } {

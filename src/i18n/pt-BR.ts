@@ -8,6 +8,7 @@ import type {
   MissionDifficulty,
   NpcReleaseReason,
   NpcStatus,
+  PlotType,
   ResearchStatus,
 } from '../model/schema';
 import {
@@ -532,6 +533,35 @@ export const t = {
     empty: 'Vazio',
     notBuilt: 'A Estufa de Ervas ainda não foi construída.',
     closePopover: 'Fechar',
+    tabs: { garden: 'Jardim', crops: 'Cultivos' },
+    crops: {
+      newCrop: 'Nova planta',
+      newTitle: 'Nova planta',
+      editTitle: 'Editar planta',
+      empty: 'Nenhuma planta cadastrada.',
+      edit: 'Editar',
+      remove: 'Remover',
+      seed: 'Semente',
+      harvest: 'Colheita',
+      plotType: 'Tipo de canteiro',
+      days: 'Dias para crescer',
+      yield: 'Rendimento por colheita',
+      rare: 'Rara (não vendida)',
+      price: 'Preço da semente',
+      noSeeds: 'Todos os materiais já têm uma planta.',
+      save: 'Salvar',
+      cancel: 'Cancelar',
+      close: 'Fechar',
+      uncategorized: 'Sem categoria',
+      removedMaterial: 'material removido',
+      plotTypes: {
+        canteiro: 'Canteiro',
+        muda: 'Muda',
+        estufa: 'Bancada da estufa',
+        arcana: 'Bancada arcana',
+        lago: 'Lago',
+      } satisfies Record<PlotType, string>,
+    },
   },
 
   shop: {

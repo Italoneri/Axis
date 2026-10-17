@@ -1,4 +1,5 @@
 import type { Actor, GameCommand } from '../../commands/schema';
+import type { Crop } from '../../model/schema';
 import { plotLabel } from '../../i18n/plotLabel';
 import { t } from '../../i18n/pt-BR';
 import { artTextureKey, availableArtFiles, pickArtFile } from '../../map/buildingArt';
@@ -7,7 +8,9 @@ import { fromBronze } from '../../systems/Coins';
 import { gardenLevel, HERB_GARDEN_BUILDING_ID } from '../../systems/Garden';
 import { el } from '../dom';
 import { formatPrice } from '../format';
+import type { MasterAccess } from '../MasterSession';
 import { button, closeButton, keepEscapeInside } from '../widgets';
+import { openCropForm } from './CropForm';
 import {
   gardenSummary,
   plotViews,
@@ -18,6 +21,7 @@ import {
 
 export interface GardenWindowDeps {
   game: GameStore;
+  session: MasterAccess;
   viewer: () => Actor;
 }
 
@@ -26,20 +30,29 @@ export interface GardenWindowDeps {
  * list of the same plots on narrow screens. It re-renders with the game, so
  * growth and other players' actions show up while the window is open.
  */
+type GardenTab = 'garden' | 'crops';
+const TABS: readonly GardenTab[] = ['garden', 'crops'];
+
 export class GardenWindow {
   private dialog: HTMLDialogElement | null = null;
   private stopWatching: (() => void) | null = null;
   private selectedPlotId: string | null = null;
+  private tab: GardenTab = 'garden';
   private readonly header = el('header', { class: 'menu__header' });
+  private readonly tabs = el('nav', { class: 'tabs garden-tabs', role: 'tablist' });
   private readonly body = el('div', { class: 'menu__body garden-body' });
 
-  constructor(private readonly deps: GardenWindowDeps) {}
+  constructor(private readonly deps: GardenWindowDeps) {
+    // Leaving the master tools hides the crops tab.
+    deps.session.subscribe(() => this.render());
+  }
 
   open(): void {
     if (this.dialog) return;
     const dialog = this.buildDialog();
     this.dialog = dialog;
     this.selectedPlotId = null;
+    this.tab = 'garden';
     this.stopWatching = this.deps.game.subscribe(() => this.render());
     document.body.append(dialog);
     this.render();
@@ -51,6 +64,7 @@ export class GardenWindow {
       'dialog',
       { class: 'dialog dialog--menu dialog--garden', 'aria-label': t.garden.title },
       this.header,
+      this.tabs,
       this.body,
     );
     keepEscapeInside(dialog);
@@ -67,6 +81,13 @@ export class GardenWindow {
     const dialog = this.dialog;
     if (!dialog) return;
     const { game } = this.deps;
+    if (!this.isMaster()) this.tab = 'garden';
+    this.tabs.hidden = !this.isMaster();
+    this.tabs.replaceChildren(...TABS.map((tab) => this.tabButton(tab)));
+    if (this.tab === 'crops') {
+      this.renderCrops(dialog);
+      return;
+    }
     const views = plotViews(game.current, game.catalog);
     if (!views.some((view) => view.plot.id === this.selectedPlotId)) this.selectedPlotId = null;
     const { ready } = gardenSummary(views);
@@ -87,6 +108,97 @@ export class GardenWindow {
       this.stage(views),
       el('ul', { class: 'garden-cards' }, ...views.map((view) => this.card(view))),
     );
+  }
+
+  private tabButton(tab: GardenTab): HTMLElement {
+    const isActive = tab === this.tab;
+    return el(
+      'button',
+      {
+        class: isActive ? 'tab tab--active' : 'tab',
+        type: 'button',
+        role: 'tab',
+        'aria-selected': String(isActive),
+        onclick: () => {
+          this.tab = tab;
+          this.render();
+        },
+      },
+      t.garden.tabs[tab],
+    );
+  }
+
+  private isMaster(): boolean {
+    return this.deps.viewer().role === 'master';
+  }
+
+  private renderCrops(dialog: HTMLDialogElement): void {
+    const { crops } = this.deps.game.current.garden;
+    this.header.replaceChildren(
+      el('h2', { class: 'panel__title' }, t.garden.title),
+      el(
+        'div',
+        { class: 'garden-header__tools' },
+        button(t.garden.crops.newCrop, () => this.editCrop(), { primary: true }),
+        closeButton(t.garden.close, () => dialog.close()),
+      ),
+    );
+    this.body.replaceChildren(
+      crops.length === 0
+        ? el('p', { class: 'panel__hint' }, t.garden.crops.empty)
+        : el('ul', { class: 'garden-crops' }, ...crops.map((crop) => this.cropRow(crop))),
+    );
+  }
+
+  private cropRow(crop: Crop): HTMLElement {
+    const { game } = this.deps;
+    const name = (id: string) =>
+      game.current.materials.items.find((material) => material.id === id)?.name ??
+      t.garden.crops.removedMaterial;
+    return el(
+      'li',
+      { class: 'garden-crop' },
+      el(
+        'div',
+        { class: 'garden-seed__info' },
+        el('strong', {}, `${name(crop.seedId)} → ${name(crop.harvestId)}`),
+        el(
+          'span',
+          { class: 'panel__hint' },
+          [
+            t.garden.crops.plotTypes[crop.plotType],
+            t.garden.growDays(crop.days),
+            t.garden.yields(crop.yield, name(crop.harvestId)),
+            crop.rare ? t.garden.rareBadge : formatPrice(game.catalog, crop.price),
+          ].join(' · '),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'row' },
+        button(t.garden.crops.edit, () => this.editCrop(crop)),
+        button(
+          t.garden.crops.remove,
+          () => void game.dispatch({ type: 'garden_crop_remove', seedId: crop.seedId }),
+        ),
+      ),
+    );
+  }
+
+  private editCrop(crop?: Crop): void {
+    const { game } = this.deps;
+    openCropForm({
+      state: game.current,
+      catalog: game.catalog,
+      ...(crop ? { crop } : {}),
+      save: (next) => {
+        const { seedId, ...fields } = next;
+        const command: GameCommand = crop
+          ? { type: 'garden_crop_update', seedId, crop: fields }
+          : { type: 'garden_crop_create', crop: next };
+        return game.dispatch(command) === null;
+      },
+    });
   }
 
   private stage(views: readonly PlotView[]): HTMLElement {

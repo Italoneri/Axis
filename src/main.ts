@@ -201,7 +201,7 @@ async function start(): Promise<void> {
   const openMenu = () => menuWindow.open();
   const shopWindow = new ShopWindow({ game: store, session, memory, viewer: archiveViewer });
   const openShop = () => shopWindow.open();
-  const gardenWindow = new GardenWindow({ game: store, viewer: archiveViewer });
+  const gardenWindow = new GardenWindow({ game: store, session, viewer: archiveViewer });
   hideGate();
 
   store.subscribe((_state, change) => {
