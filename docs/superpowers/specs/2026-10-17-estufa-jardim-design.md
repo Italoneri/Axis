@@ -57,15 +57,15 @@ O Ítalo cria nos Materiais duas categorias, **Sementes** e **Ervas**, com os it
 
 O mestre transforma uma semente em **cultivo**, ligando duas coisas que já existem, sempre por lista, sem digitar id:
 
-| Campo         | Significado                                                                     |
-| ------------- | ------------------------------------------------------------------------------- |
-| `seedId`      | material da semente (um cultivo por semente)                                    |
-| `harvestId`   | material que a colheita entrega                                                 |
-| `plotType`    | tipo de espaço onde pode ser plantada                                           |
-| `days`        | dias até ficar pronta (inteiro ≥ 1)                                             |
-| `yield`       | quanto cada colheita entrega (inteiro ≥ 1; numa bancada já vale pelos 10 vasos) |
-| `rare`        | rara: não se compra no jardim e não rebrota                                     |
-| `priceBronze` | preço da semente no jardim; obrigatório se comum, ausente se rara               |
+| Campo       | Significado                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------- |
+| `seedId`    | material da semente (um cultivo por semente)                                                       |
+| `harvestId` | material que a colheita entrega                                                                    |
+| `plotType`  | tipo de espaço onde pode ser plantada                                                              |
+| `days`      | dias até ficar pronta (inteiro ≥ 1)                                                                |
+| `yield`     | quanto cada colheita entrega (inteiro ≥ 1; numa bancada já vale pelos 10 vasos)                    |
+| `rare`      | rara: não se compra no jardim e não rebrota                                                        |
+| `price`     | preço da semente no jardim, em moedas como os itens da loja; obrigatório se comum, ausente se rara |
 
 Fica em `state.garden.crops`, no save, como os itens da loja.
 
@@ -121,16 +121,16 @@ Quando existir a skill, basta adicionar `jobs` aos níveis da estufa:
 
 ## Comandos
 
-| Comando                                                          | Quem pode        |
-| ---------------------------------------------------------------- | ---------------- |
-| `garden_crop_create`, `garden_crop_update`, `garden_crop_remove` | só o mestre      |
-| `garden_plant` (`plotId`, `seedId`, `buy?: true`)                | jogador e mestre |
-| `garden_harvest` (`plotIds`: um ou "colher tudo")                | jogador e mestre |
-| `garden_clear` (`plotId`)                                        | jogador e mestre |
+| Comando                                                                   | Quem pode        |
+| ------------------------------------------------------------------------- | ---------------- |
+| `garden_crop_create`, `garden_crop_update`, `garden_crop_remove`          | só o mestre      |
+| `garden_plant` (`plotId`, `seedId`, `buy?: true`)                         | jogador e mestre |
+| `garden_harvest` (`plotId`; sem `plotId` = colher tudo o que está pronto) | jogador e mestre |
+| `garden_clear` (`plotId`)                                                 | jogador e mestre |
 
 Regras em `src/systems/Garden.ts` (funções puras), validação em `src/commands/schema.ts`. A compra sempre debita o acampamento, então não há `payer` nem regra nova em `isAllowed`. O mestre planta sem pagar, como compra de graça no Entreposto.
 
-Erros: `garden_not_built`, `unknown_plot` (não existe no nível em vigor), `plot_occupied`, `plot_empty`, `not_ready`, `wrong_plot_type`, `unknown_crop`, `no_seed`, `rare_not_for_sale`, `crop_already_exists`, `insufficient_funds`. Remover um cultivo com plantas no chão é recusado (`crop_in_use`). **(escolha do Claude)**
+Erros: `garden_not_built`, `unknown_plot` (não existe no nível em vigor), `plot_occupied`, `plot_empty`, `not_ready`, `wrong_plot_type`, `no_seed`, `rare_not_for_sale`, `crop_already_exists`; e os que já existem: `not_found` (cultivo ou material desconhecido), `insufficient_coins` (acampamento sem bronze) e `nothing_changed` (colher tudo sem nada pronto). Remover um cultivo com plantas no chão é recusado (`crop_in_use`). **(escolha do Claude)**
 
 ## Onde guardar
 
