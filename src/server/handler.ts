@@ -125,7 +125,7 @@ const actions: Actions = {
     if (!outcome.ok) return refusal(outcome);
     if (outcome.state === stored.state) return reply(200, { state: stored.state });
 
-    const saved = await db.commitUpdate({
+    const update = {
       gameId,
       expectedRevision,
       state: outcome.state,
@@ -133,7 +133,11 @@ const actions: Actions = {
       actor: actorName(stored.state, ctx) ?? null,
       command,
       entries: outcome.logged,
-    });
+    };
+    const delivery = outcome.change.kind === 'shop_purchased' ? outcome.change.delivery : null;
+    const saved = delivery
+      ? await db.commitPurchase({ ...update, delivery })
+      : await db.commitUpdate(update);
     return saved ? reply(200, { state: outcome.state }) : conflict();
   },
 
