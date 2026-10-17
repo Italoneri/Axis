@@ -199,22 +199,12 @@ export function updateShopItem(state: GameState, id: string, fields: ShopItemFie
     ...(discountPercent === undefined ? {} : { discountPercent }),
     ...(image === undefined ? {} : { image }),
   };
-  return ok(
-    setItems(
-      state,
-      state.shop.items.map((item) => (item.id === id ? next : item)),
-    ),
-  );
+  return ok(setItems(state, state.shop.items.map((item) => (item.id === id ? next : item))));
 }
 
 export function removeShopItem(state: GameState, id: string): Outcome {
   if (!findShopItem(state, id)) return fail('not_found');
-  return ok(
-    setItems(
-      state,
-      state.shop.items.filter((item) => item.id !== id),
-    ),
-  );
+  return ok(setItems(state, state.shop.items.filter((item) => item.id !== id)));
 }
 
 /** `null` ends the promotion. */
@@ -229,12 +219,7 @@ export function setShopPromotion(
   if ((discountPercent ?? undefined) === previous) return ok(state);
   const next: ShopItem =
     discountPercent === null ? undiscounted : { ...undiscounted, discountPercent };
-  return ok(
-    setItems(
-      state,
-      state.shop.items.map((item) => (item.id === id ? next : item)),
-    ),
-  );
+  return ok(setItems(state, state.shop.items.map((item) => (item.id === id ? next : item))));
 }
 
 function findShopItem(state: GameState, id: string): ShopItem | undefined {
@@ -249,8 +234,7 @@ function fieldsError(state: GameState, fields: ShopItemFields, ownId?: string): 
   if (fields.kind === 'equipment') return fields.name.trim() ? null : 'empty_name';
   if (!state.materials.items.some((m) => m.id === fields.materialId)) return 'not_found';
   const isListed = state.shop.items.some(
-    (item) =>
-      item.id !== ownId && item.kind === 'material' && item.materialId === fields.materialId,
+    (item) => item.id !== ownId && item.kind === 'material' && item.materialId === fields.materialId,
   );
   return isListed ? 'material_already_listed' : null;
 }

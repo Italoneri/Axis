@@ -262,22 +262,25 @@ export function deliverToDepot(depot: Depot, delivery: DepotDelivery, now: strin
 
 function shopSectionFor(
   depot: Depot,
-  { ownerId, authorId }: DepotDelivery,
+  { ownerId, authorId, itemId }: DepotDelivery,
 ): { depot: Depot; section: DepotSection } {
+  // Section ids are client-chosen: only this area's sections may be reused.
   const id = shopSectionId(ownerId);
-  const area = activeSections(depot, ownerId);
-  const live = area.find((s) => s.id === id) ?? area.find((s) => s.name === SHOP_SECTION_NAME);
-  if (live) return { depot, section: live };
-  const trashed = depot.sections.find((s) => s.id === id);
+  const area = depot.sections.filter((s) => s.ownerId === ownerId);
+  const live = area.filter((s) => s.deletedAt === null);
+  const found = live.find((s) => s.id === id) ?? live.find((s) => s.name === SHOP_SECTION_NAME);
+  if (found) return { depot, section: found };
+  const trashed = area.find((s) => s.id === id);
   if (trashed) {
     const restored = { ...trashed, deletedAt: null };
     return { depot: replaceSection(depot, restored), section: restored };
   }
+  const isIdTaken = depot.sections.some((s) => s.id === id);
   const created: DepotSection = {
-    id,
+    id: isIdTaken ? `entreposto-${itemId}`.slice(0, 64) : id,
     name: SHOP_SECTION_NAME,
     ownerId,
-    order: nextOrder(area),
+    order: nextOrder(live),
     authorId,
     deletedAt: null,
   };

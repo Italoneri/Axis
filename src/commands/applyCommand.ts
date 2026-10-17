@@ -389,7 +389,8 @@ const handlers: Handlers = {
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
 
   shop_item_create: ({ id, item }, { state }) => resources(addShopItem(state, { ...item, id })),
-  shop_item_update: ({ itemId, item }, { state }) => resources(updateShopItem(state, itemId, item)),
+  shop_item_update: ({ itemId, item }, { state }) =>
+    resources(updateShopItem(state, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),

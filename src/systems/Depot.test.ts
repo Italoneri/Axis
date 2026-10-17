@@ -394,4 +394,31 @@ describe('deliverToDepot', () => {
     const result = deliverToDepot({ sections: [trashed], items: [] }, delivery, NOW);
     expect(result.sections).toEqual([{ ...trashed, deletedAt: null }]);
   });
+
+  it('ignoresSectionWithShopIdInAnotherArea', () => {
+    const thorins = section('entreposto-lyra', 'Meu baú', 'thorin');
+    const result = deliverToDepot(
+      { sections: [thorins], items: [] },
+      { ...delivery, ownerId: 'lyra' },
+      NOW,
+    );
+    const hers = result.sections.find((s) => s.ownerId === 'lyra');
+    expect(result.sections.find((s) => s.id === 'entreposto-lyra')).toEqual(thorins);
+    expect(hers).toMatchObject({ id: 'entreposto-d1', name: SHOP_SECTION_NAME, deletedAt: null });
+    expect(result.items[0]?.sectionId).toBe('entreposto-d1');
+  });
+
+  it('keepsTrashedShopSectionOfAnotherAreaInTheTrash', () => {
+    const thorins = {
+      ...section('entreposto-lyra', SHOP_SECTION_NAME, 'thorin'),
+      deletedAt: LATER,
+    };
+    const result = deliverToDepot(
+      { sections: [thorins], items: [] },
+      { ...delivery, ownerId: 'lyra' },
+      NOW,
+    );
+    expect(result.sections).toContainEqual(thorins);
+    expect(result.items[0]?.sectionId).not.toBe('entreposto-lyra');
+  });
 });
