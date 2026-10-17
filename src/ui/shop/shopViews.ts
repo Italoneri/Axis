@@ -1,10 +1,10 @@
 import { t } from '../../i18n/pt-BR';
 import type { Catalog } from '../../model/catalog';
-import { fromBronze } from '../../systems/Coins';
+import { consolidate, fromBronze, type CoinBag } from '../../systems/Coins';
 import type { ShopEntry } from '../../systems/Shop';
 import { CAMP, type WalletRef } from '../../systems/Wallets';
 import { el } from '../dom';
-import { formatPrice } from '../format';
+import { formatCount, formatPrice } from '../format';
 import {
   button,
   closeButton,
@@ -30,8 +30,11 @@ export function filterEntries(entries: ShopEntry[], filter: ShopFilter): ShopEnt
 export interface ShopCardModel {
   name: string;
   image: string | undefined;
+  /** Biggest coins first, as drawn with their icons. */
+  price: CoinBag;
   priceText: string;
   /** Base price, only while a promotion lowers it. */
+  oldPrice?: CoinBag;
   oldPriceText?: string;
   ribbon?: string;
   stockText: string | number;
@@ -44,13 +47,16 @@ export function shopCardModel(entry: ShopEntry, catalog: Catalog): ShopCardModel
     item.discountPercent === undefined
       ? {}
       : {
+          oldPrice: consolidate(item.price, catalog.currencies),
           oldPriceText: formatPrice(catalog, item.price),
           ribbon: `−${item.discountPercent}%`,
         };
+  const price = fromBronze(entry.unitBronze, catalog.currencies);
   return {
     name: entry.name,
     image: entry.image,
-    priceText: formatPrice(catalog, fromBronze(entry.unitBronze, catalog.currencies)),
+    price,
+    priceText: formatPrice(catalog, price),
     ...promo,
     stockText: item.stock ?? t.shop.unlimited,
     isOut: item.stock === 0,
@@ -68,45 +74,131 @@ export interface ShopCardContext extends ImageSource {
   onSell?(): void;
 }
 
+/**
+ * A square tile on the merchant's counter: picture in a niche, name, price in
+ * coins and the buy button at the base. The master's tools float over the
+ * picture so they never change the tile's size.
+ */
 export function shopCard(entry: ShopEntry, ctx: ShopCardContext): HTMLElement {
   const model = shopCardModel(entry, ctx.catalog);
   const classes = [
     'shop-card',
     model.isOut && 'shop-card--out',
     entry.isLocked && 'shop-card--locked',
+    entry.item.hidden && 'shop-card--hidden',
   ];
   return el(
     'li',
     { class: classes.filter(Boolean).join(' ') },
-    model.ribbon && el('span', { class: 'shop-card__ribbon' }, model.ribbon),
-    thumb(ctx, { image: model.image, name: model.name }, 'lg'),
-    el('h3', { class: 'shop-card__name' }, model.name),
+    shopCardMedia(entry, model, ctx),
+    el('h3', { class: 'shop-card__name', title: model.name }, model.name),
     el(
       'p',
       { class: 'shop-card__price' },
-      el('strong', {}, model.priceText),
-      model.oldPriceText && el('s', { class: 'shop-card__old' }, model.oldPriceText),
+      model.oldPrice &&
+        el(
+          's',
+          { class: 'shop-card__old' },
+          coinPrice(ctx.catalog, model.oldPrice),
+          el('span', { class: 'shop-card__sr' }, model.oldPriceText),
+        ),
+      el(
+        'strong',
+        { class: 'shop-card__now' },
+        coinPrice(ctx.catalog, model.price),
+        el('span', { class: 'shop-card__sr' }, model.priceText),
+      ),
     ),
-    el('p', { class: 'shop-card__stock' }, t.shop.stock(model.stockText)),
-    entry.isLocked && el('p', { class: 'shop-card__note' }, t.shop.lockedAt(entry.item.minLevel)),
-    entry.item.hidden && el('p', { class: 'shop-card__note' }, t.shop.hidden),
     el(
       'div',
-      { class: 'row' },
+      { class: 'shop-card__actions' },
       button(model.isOut ? t.shop.outOfStock : t.shop.buy, ctx.onBuy, {
         primary: true,
         disabled: model.isOut,
       }),
       ctx.onSell && button(t.shop.sell, ctx.onSell),
-      ctx.onPromo && button(t.shop.promo, ctx.onPromo),
     ),
-    (ctx.onEdit || ctx.onRemove) &&
+  );
+}
+
+const FALLBACK_ICONS = { material: 'icon.materials', equipment: 'icon.armory' } as const;
+
+function shopCardMedia(entry: ShopEntry, model: ShopCardModel, ctx: ShopCardContext): HTMLElement {
+  const { item } = entry;
+  const badges = [
+    entry.isLocked && t.shop.lockedAt(item.minLevel),
+    item.hidden && t.shop.hidden,
+  ].filter((badge) => badge !== false);
+  return el(
+    'div',
+    { class: 'shop-card__media' },
+    thumb(ctx, { image: model.image, name: model.name, fallback: FALLBACK_ICONS[item.kind] }, 'lg'),
+    el(
+      'span',
+      { class: 'shop-card__stock', title: t.shop.stock(model.stockText) },
+      el('span', { 'aria-hidden': 'true' }, String(model.stockText)),
+      el('span', { class: 'shop-card__sr' }, t.shop.stock(model.stockText)),
+    ),
+    model.ribbon && el('span', { class: 'shop-card__ribbon' }, model.ribbon),
+    badges.length > 0 &&
       el(
-        'div',
-        { class: 'row' },
-        ctx.onEdit && button(t.shop.master.edit, ctx.onEdit),
-        ctx.onRemove && confirmButton(t.shop.master.remove, ctx.onRemove),
+        'span',
+        { class: 'shop-card__badges' },
+        ...badges.map((badge) => el('span', { class: 'shop-card__badge' }, badge)),
       ),
+    model.isOut &&
+      el('span', { class: 'shop-card__sold', 'aria-hidden': 'true' }, t.shop.outOfStock),
+    masterTools(ctx),
+  );
+}
+
+/** Icon-only buttons; their names come from aria-label and title. */
+function masterTools(ctx: ShopCardContext): HTMLElement | false {
+  const texts = t.shop.master;
+  const tools = [
+    ctx.onPromo && iconButton('%', t.shop.promo, ctx.onPromo),
+    ctx.onEdit && iconButton('✎', texts.edit, ctx.onEdit),
+    ctx.onRemove && removeButton(ctx.onRemove),
+  ].filter((tool) => tool !== undefined);
+  if (tools.length === 0) return false;
+  return el(
+    'div',
+    { class: 'shop-card__tools', role: 'group', 'aria-label': texts.tools },
+    ...tools,
+  );
+}
+
+function iconButton(icon: string, label: string, onclick: () => void): HTMLButtonElement {
+  return el(
+    'button',
+    { class: 'btn shop-tool', type: 'button', 'aria-label': label, title: label, onclick },
+    icon,
+  );
+}
+
+function removeButton(onRemove: () => void): HTMLButtonElement {
+  const label = t.shop.master.remove;
+  const node = confirmButton('✕', onRemove, t.shop.master.confirmRemove);
+  node.classList.add('shop-tool');
+  node.setAttribute('aria-label', label);
+  node.title = label;
+  return node;
+}
+
+/** "3 [bronze]": each coin with its icon, biggest first; screen readers get the text beside it. */
+function coinPrice(catalog: Catalog, bag: CoinBag): HTMLElement {
+  const coins = catalog.currencies.filter((currency) => (bag[currency.id] ?? 0) > 0);
+  return el(
+    'span',
+    { class: 'coin-price', 'aria-hidden': 'true' },
+    ...coins.map((currency) =>
+      el(
+        'span',
+        { class: 'coin-price__coin' },
+        formatCount(bag[currency.id] ?? 0),
+        thumb({ catalog }, { image: currency.icon, name: currency.name }),
+      ),
+    ),
   );
 }
 

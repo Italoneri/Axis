@@ -39,17 +39,17 @@ export interface ShopWindowDeps {
 }
 
 /**
- * "Entreposto — Comércio": a large <dialog> with the filter tabs, the passing
- * merchant's banner and a grid of cards. It re-renders with the game, so stock
+ * "Entreposto — Comércio": a large <dialog> with the filter tabs and the
+ * merchant's counter (the passing merchant's shelf on top, then the tiles). It re-renders with the game, so stock
  * and promotions change while the window is open.
  */
 export class ShopWindow {
   private dialog: HTMLDialogElement | null = null;
   private filter: ShopFilter = 'tudo';
   private stopWatching: (() => void) | null = null;
-  private readonly tabs = el('nav', { class: 'tabs', role: 'tablist' });
-  private readonly toolbar = el('div', { class: 'row' });
-  private readonly body = el('div', { class: 'menu__body' });
+  private readonly tabs = el('nav', { class: 'tabs shop-tabs', role: 'tablist' });
+  private readonly toolbar = el('div', { class: 'shop-bar__tools' });
+  private readonly body = el('div', { class: 'menu__body shop-body' });
 
   constructor(private readonly deps: ShopWindowDeps) {
     // Entering or leaving the master tools changes what the shop shows.
@@ -70,15 +70,14 @@ export class ShopWindow {
   private buildDialog(): HTMLDialogElement {
     const dialog = el(
       'dialog',
-      { class: 'dialog dialog--menu', 'aria-label': t.shop.title },
+      { class: 'dialog dialog--menu dialog--shop', 'aria-label': t.shop.title },
       el(
         'header',
         { class: 'menu__header' },
         el('h2', { class: 'panel__title' }, t.shop.title),
         closeButton(t.shop.close, () => dialog.close()),
       ),
-      this.tabs,
-      this.toolbar,
+      el('div', { class: 'shop-bar' }, this.tabs, this.toolbar),
       this.body,
     );
     keepEscapeInside(dialog);
@@ -105,14 +104,19 @@ export class ShopWindow {
     this.tabs.replaceChildren(...SHOP_FILTERS.map((filter) => this.tab(filter)));
     this.body.replaceChildren(
       ...(tradingPostLevel(current) < 1 ? [el('p', { class: 'notice' }, t.shop.notBuilt)] : []),
-      ...(featured.length > 0 ? [this.banner(featured)] : []),
-      shown.length === 0
-        ? el('p', { class: 'panel__hint' }, t.shop.empty)
-        : el(
-            'ul',
-            { class: 'menu__grid', role: 'tabpanel' },
-            ...shown.map((entry) => this.card(entry)),
-          ),
+      el(
+        'div',
+        { class: 'shop-stall' },
+        el('p', { class: 'shop-stall__sign' }, t.shop.sign),
+        featured.length > 0 && this.merchantShelf(featured),
+        el(
+          'section',
+          { class: 'shop-shelf', role: 'tabpanel' },
+          shown.length === 0
+            ? el('p', { class: 'panel__hint shop-shelf__empty' }, t.shop.empty)
+            : el('ul', { class: 'shop-grid' }, ...shown.map((entry) => this.card(entry))),
+        ),
+      ),
     );
   }
 
@@ -135,12 +139,12 @@ export class ShopWindow {
     );
   }
 
-  private banner(featured: ShopEntry[]): HTMLElement {
+  private merchantShelf(featured: ShopEntry[]): HTMLElement {
     return el(
       'section',
-      { class: 'shop-banner' },
-      el('h3', { class: 'section-title' }, t.shop.merchant),
-      el('ul', { class: 'menu__grid' }, ...featured.map((entry) => this.card(entry))),
+      { class: 'shop-shelf shop-shelf--featured', 'aria-label': t.shop.merchant },
+      el('h3', { class: 'shop-shelf__label' }, t.shop.merchant),
+      el('ul', { class: 'shop-grid' }, ...featured.map((entry) => this.card(entry))),
     );
   }
 

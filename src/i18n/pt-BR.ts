@@ -512,7 +512,8 @@ export const t = {
     panelHint: 'Madeira, ferro e raridades do mercador: compre aqui o que falta ao acampamento.',
     close: 'Fechar comércio',
     filters: { tudo: 'Tudo', basicos: 'Básicos', raros: 'Raros' },
-    merchant: 'O mercador itinerante trouxe:',
+    sign: 'Entreposto',
+    merchant: 'Mercador de passagem',
     empty: 'Nada à venda nesta aba.',
     notBuilt: 'O Entreposto ainda não foi construído: por enquanto nada é vendido.',
     unlimited: '∞',
@@ -546,8 +547,10 @@ export const t = {
     },
     master: {
       newItem: 'Novo item',
+      tools: 'Ações do mestre',
       edit: 'Editar',
       remove: 'Remover',
+      confirmRemove: 'Remover?',
       promo: {
         title: (name: string) => `Promoção: ${name}`,
         percent: 'Desconto (1 a 90%)',

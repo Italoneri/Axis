@@ -63,6 +63,8 @@ describe('shopCardModel', () => {
     expect(model.ribbon).toBe('−25%');
     expect(model.oldPriceText).toBe('1 Prata');
     expect(model.priceText).toBe('7 Bronze');
+    expect(model.oldPrice).toEqual({ silver: 1 });
+    expect(model.price).toEqual({ bronze: 7 });
   });
 });
 
