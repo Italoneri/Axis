@@ -7,10 +7,12 @@ import {
   clampView,
   cropRect,
   droppedUploads,
+  imageOf,
   isUploadFor,
   looksLikeUpload,
   panView,
   parseUploadRef,
+  setImage,
   uploadRef,
   uploadsOf,
 } from './GameImages';
@@ -170,5 +172,35 @@ describe('square crop', () => {
       y: 0,
       side: 1,
     });
+  });
+});
+
+describe('setImage on shop items', () => {
+  const ref = 'upload:shop_item/shop_wood/img_1.webp';
+
+  it('setsPhotoOfShopItem', () => {
+    const target = { kind: 'shop_item', id: 'shop_wood' } as const;
+    const set = setImage(makeState(), testCatalog, target, ref);
+    if (!set.ok) throw new Error(set.error);
+    expect(set.state.shop.items[0]?.image).toBe(ref);
+    expect(imageOf(set.state, testCatalog, target)).toBe(ref);
+    expect(uploadsOf(set.state).map(uploadRef)).toEqual([ref]);
+
+    const cleared = setImage(set.state, testCatalog, target, undefined);
+    if (!cleared.ok) throw new Error(cleared.error);
+    expect(cleared.state.shop.items[0]).not.toHaveProperty('image');
+    expect(droppedUploads(set.state, cleared.state).map(uploadRef)).toEqual([ref]);
+  });
+
+  it('reportsUnknownShopItemAsNotFound', () => {
+    const target = { kind: 'shop_item', id: 'ghost' } as const;
+    expect(setImage(makeState(), testCatalog, target, ref)).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+  });
+
+  it('parsesShopItemUploads', () => {
+    expect(parseUploadRef(ref)?.target).toEqual({ kind: 'shop_item', id: 'shop_wood' });
   });
 });

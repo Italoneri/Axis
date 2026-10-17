@@ -51,6 +51,12 @@ import {
   updateMission,
   type MissionFields,
 } from '../systems/Missions';
+import {
+  addShopItem,
+  removeShopItem,
+  setShopPromotion,
+  updateShopItem,
+} from '../systems/Shop';
 import { isUploadFor, looksLikeUpload, setImage } from '../systems/GameImages';
 import { advanceDays } from '../systems/TimeSystem';
 import {
@@ -109,6 +115,10 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   npc_unavailable: true,
   empty_reward: true,
   building_limit: true,
+  material_already_listed: true,
+  out_of_stock: true,
+  not_for_sale: true,
+  invalid_quantity: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -366,6 +376,13 @@ const handlers: Handlers = {
     missions(sendNpcsOnMission(state, catalog, { missionId, npcIds })),
   mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
+
+  shop_item_create: ({ id, item }, { state }) => resources(addShopItem(state, { ...item, id })),
+  shop_item_update: ({ itemId, item }, { state }) =>
+    resources(updateShopItem(state, itemId, item)),
+  shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
+  shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
+    resources(setShopPromotion(state, itemId, discountPercent)),
 
   set_image: ({ target, image }, { state, catalog }) => {
     // An uploaded photo only fits the record whose folder holds it (the Storage policies look at it).

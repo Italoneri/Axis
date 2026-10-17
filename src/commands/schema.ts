@@ -11,6 +11,7 @@ import {
   npcSpriteSchema,
   npcStatusSchema,
   researchSchema,
+  shopItemSchema,
   npcAttributesSchema,
   skillLevelSchema,
 } from '../model/schema';
@@ -75,6 +76,15 @@ const [inProgress, completed] = researchSchema.options;
 const researchDraftSchema = z.discriminatedUnion('status', [
   inProgress.omit({ id: true }),
   completed.omit({ id: true }),
+]);
+
+// The name is checked by the system, so a blank one keeps its own message.
+const [materialItem, equipmentItem] = shopItemSchema.options;
+const shopItemFieldsSchema = z.discriminatedUnion('kind', [
+  materialItem.omit({ id: true, discountPercent: true, image: true }),
+  equipmentItem
+    .omit({ id: true, discountPercent: true, image: true, name: true })
+    .extend({ name: z.string() }),
 ]);
 
 const command = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
@@ -148,6 +158,14 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
     missionId: ref,
     result: missionResultSchema,
     injuredNpcIds: z.array(ref).max(50).default([]),
+  }),
+  // Entreposto shop (master only)
+  command('shop_item_create', { id: newRecordId, item: shopItemFieldsSchema }),
+  command('shop_item_update', { itemId: ref, item: shopItemFieldsSchema }),
+  command('shop_item_remove', { itemId: ref }),
+  command('shop_set_promotion', {
+    itemId: ref,
+    discountPercent: z.number().int().min(1).max(90).nullable(),
   }),
   // Photos (the master's forms send them with the other fields too)
   command('set_image', {

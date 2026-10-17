@@ -30,7 +30,15 @@ export type ActionError =
   | 'npc_unavailable'
   | 'empty_reward'
   /** Forcing one more copy than the building's `maxCount` (say, a 5th Alojamento). */
-  | 'building_limit';
+  | 'building_limit'
+  /** A material already has its shop item; one per material. */
+  | 'material_already_listed'
+  /** The shop does not have that many units left. */
+  | 'out_of_stock'
+  /** The item is hidden, locked above the Entreposto level, or its material is gone. */
+  | 'not_for_sale'
+  /** A purchase or sale quantity outside 1..limit. */
+  | 'invalid_quantity';
 
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 

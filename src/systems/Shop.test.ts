@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState, ShopItem } from '../model/schema';
-import { isOnSale, sellBackBronze, shopEntries, tradingPostLevel, unitPriceBronze } from './Shop';
+import type { Outcome } from './outcome';
+import {
+  addShopItem,
+  isOnSale,
+  removeShopItem,
+  sellBackBronze,
+  setShopPromotion,
+  shopEntries,
+  tradingPostLevel,
+  unitPriceBronze,
+  updateShopItem,
+} from './Shop';
 import { makeState, testCatalog } from './testFixtures';
 
 const player = { role: 'player' } as const;
@@ -107,5 +118,118 @@ describe('tradingPostLevel', () => {
   it('reportsZeroWhenNotBuilt', () => {
     expect(tradingPostLevel(makeState())).toBe(0);
     expect(tradingPostLevel(withTradingPost(2))).toBe(2);
+  });
+});
+
+describe('shop item edits', () => {
+  const equipment = {
+    kind: 'equipment',
+    name: 'Espada longa',
+    description: '',
+    depotKind: 'equipamento',
+    price: { silver: 8 },
+    stock: 2,
+    minLevel: 2,
+    featured: false,
+    hidden: false,
+  } as const;
+  const materialFields = {
+    kind: 'material',
+    materialId: 'wood',
+    price: { bronze: 4 },
+    stock: null,
+    minLevel: 1,
+    featured: false,
+    hidden: false,
+  } as const;
+
+  function unwrap(outcome: Outcome): GameState {
+    if (!outcome.ok) throw new Error(outcome.error);
+    return outcome.state;
+  }
+
+  it('addsEquipmentAndMaterialItems', () => {
+    const state = makeState();
+    const added = unwrap(addShopItem(state, { id: 'shop_sword', ...equipment }));
+    expect(added.shop.items.at(-1)).toEqual({ id: 'shop_sword', ...equipment });
+    const free = unwrap(removeShopItem(state, 'shop_wood'));
+    const readded = unwrap(addShopItem(free, { id: 'shop_wood2', ...materialFields }));
+    expect(readded.shop.items.at(-1)).toMatchObject({ id: 'shop_wood2', materialId: 'wood' });
+  });
+
+  it('trimsTheEquipmentName', () => {
+    const state = unwrap(addShopItem(makeState(), { id: 's', ...equipment, name: '  Adaga  ' }));
+    expect(state.shop.items.at(-1)).toMatchObject({ name: 'Adaga' });
+  });
+
+  it('rejectsSecondItemForSameMaterial', () => {
+    const state = makeState();
+    expect(addShopItem(state, { id: 'shop_dup', ...materialFields })).toEqual({
+      ok: false,
+      error: 'material_already_listed',
+    });
+    expect(updateShopItem(state, 'shop_iron', materialFields)).toEqual({
+      ok: false,
+      error: 'material_already_listed',
+    });
+  });
+
+  it('keepsTheSameMaterialOnUpdate', () => {
+    const state = unwrap(updateShopItem(makeState(), 'shop_wood', materialFields));
+    expect(state.shop.items[0]).toMatchObject({ id: 'shop_wood', price: { bronze: 4 } });
+  });
+
+  it('rejectsMaterialItemForUnknownMaterial', () => {
+    const fields = { ...materialFields, materialId: 'ghost' };
+    expect(addShopItem(makeState(), { id: 's', ...fields })).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+  });
+
+  it('rejectsEmptyEquipmentName', () => {
+    expect(addShopItem(makeState(), { id: 's', ...equipment, name: '   ' })).toEqual({
+      ok: false,
+      error: 'empty_name',
+    });
+  });
+
+  it('rejectsDuplicateItemId', () => {
+    expect(addShopItem(makeState(), { id: 'shop_wood', ...equipment })).toEqual({
+      ok: false,
+      error: 'duplicate_id',
+    });
+  });
+
+  it('keepsPromotionAndImageOnUpdate', () => {
+    const base = unwrap(addShopItem(makeState(), { id: 's', ...equipment }));
+    const decorated = unwrap(setShopPromotion(base, 's', 20));
+    const withImage = {
+      ...decorated,
+      shop: { items: decorated.shop.items.map((i) => (i.id === 's' ? { ...i, image: 'x' } : i)) },
+    };
+    const updated = unwrap(updateShopItem(withImage, 's', { ...equipment, stock: 5 }));
+    expect(updated.shop.items.at(-1)).toMatchObject({ stock: 5, discountPercent: 20, image: 'x' });
+  });
+
+  it('reportsUnknownItemsAsNotFound', () => {
+    const state = makeState();
+    expect(updateShopItem(state, 'ghost', equipment)).toEqual({ ok: false, error: 'not_found' });
+    expect(removeShopItem(state, 'ghost')).toEqual({ ok: false, error: 'not_found' });
+    expect(setShopPromotion(state, 'ghost', 10)).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it('removesAnItem', () => {
+    const state = unwrap(removeShopItem(makeState(), 'shop_wood'));
+    expect(state.shop.items.map((i) => i.id)).toEqual(['shop_iron', 'shop_aetherium']);
+  });
+
+  it('setsAndClearsPromotion', () => {
+    const promoted = unwrap(setShopPromotion(makeState(), 'shop_wood', 25));
+    expect(promoted.shop.items[0]).toMatchObject({ discountPercent: 25 });
+    const cleared = unwrap(setShopPromotion(promoted, 'shop_wood', null));
+    expect(cleared.shop.items[0]).not.toHaveProperty('discountPercent');
+    const state = makeState();
+    expect(unwrap(setShopPromotion(state, 'shop_wood', null))).toBe(state);
   });
 });
