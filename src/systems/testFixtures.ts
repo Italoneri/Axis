@@ -1,6 +1,7 @@
-import { parseCatalog } from '../model/catalog';
+import { HERB_GARDEN_BUILDING_ID, parseCatalog, type Catalog } from '../model/catalog';
 import {
   SAVE_VERSION,
+  type BuildingLevel,
   type GameState,
   type Mission,
   type Npc,
@@ -233,6 +234,31 @@ export const testCatalog = parseCatalog({
   ...seed,
   garden: { levels: [] },
 });
+
+const gardenLevel = (wood: number): BuildingLevel => ({
+  cost: { coins: 10 },
+  buildTime: 1,
+  party: '',
+  axis: '',
+  produces: { wood },
+});
+
+/** `testCatalog` plus an herb garden that yields 3, 6 and 10 wood a day. */
+export const herbGardenCatalog: Catalog = {
+  ...testCatalog,
+  buildings: [
+    ...testCatalog.buildings,
+    {
+      id: HERB_GARDEN_BUILDING_ID,
+      name: 'Estufa de Ervas',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [gardenLevel(3), gardenLevel(6), gardenLevel(10)],
+    },
+  ],
+};
 
 /** Same content as `createInitialState(testCatalog)`, built by hand so tests can override parts. */
 export function makeState(overrides: Partial<GameState> = {}): GameState {

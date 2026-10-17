@@ -634,6 +634,15 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     /** Material name, research title or building id. */
     target: z.string(),
   }),
+  /** Summary of one advance: what a building produced by itself, in whole units. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('building_produced'),
+    buildingId: z.string(),
+    /** Material name. */
+    material: z.string(),
+    quantity: positiveInt,
+  }),
   z.object({ ...entryBase, kind: z.literal('npc_wages_paid'), bronze: positiveInt }),
   z.object({
     ...entryBase,

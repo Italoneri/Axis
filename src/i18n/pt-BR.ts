@@ -1036,6 +1036,8 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return archiveAction(masterActor(entry), entry.change);
     case 'depot_changed':
       return depotAction(masterActor(entry), entry.change);
+    case 'building_produced':
+      return `${ctx.building(entry.buildingId)} produziu ${entry.quantity} ${entry.material}`;
     case 'shop_purchased':
       return shopPurchaseText(entry, ctx);
     case 'shop_sold':
@@ -1243,7 +1245,7 @@ function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: Text
   }
 }
 
-type BuildingEntry = Extract<LogEntry, { buildingId: string }>;
+type BuildingEntry = Extract<LogEntry, { buildingId: string; level: number }>;
 
 function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
   const what = `${ctx.buildingAt(entry.buildingId, entry.slotId)} nv. ${entry.level}`;

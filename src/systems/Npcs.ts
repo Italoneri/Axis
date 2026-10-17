@@ -1,6 +1,5 @@
-import { findBuilding, findSlot, type Catalog } from '../model/catalog';
+import { findSlot, type Catalog } from '../model/catalog';
 import type {
-  BuildingLevel,
   NpcsConfig,
   GameState,
   JobDef,
@@ -12,7 +11,7 @@ import type {
   NpcStatus,
 } from '../model/schema';
 import { ATTRIBUTE_IDS } from '../model/schema';
-import { activeLevel } from './BuildSystem';
+import { activeLevel, levelInForce } from './BuildSystem';
 import { idError, nameError } from './Categories';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
 
@@ -332,17 +331,6 @@ export function rehomeNpcs(state: GameState, catalog: Catalog): GameState {
 export function settledStatus(status: NpcStatus, job: NpcJob | null): NpcStatus {
   if (status === 'ferido' || status === 'em_missao') return status;
   return job ? 'trabalhando' : 'disponivel';
-}
-
-function levelInForce(
-  state: GameState,
-  catalog: Catalog,
-  slotId: string,
-): BuildingLevel | undefined {
-  const placed = state.slots[slotId];
-  if (!placed) return undefined;
-  const level = activeLevel(placed);
-  return findBuilding(catalog, placed.buildingId)?.levels[level - 1];
 }
 
 type JobCheck = { ok: true; post: Post; researchId?: string } | { ok: false; error: ActionError };

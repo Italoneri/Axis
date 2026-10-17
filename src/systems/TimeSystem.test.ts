@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { HERB_GARDEN_BUILDING_ID } from '../model/catalog';
 import { advanceDays, constructionProgress } from './TimeSystem';
-import { makeState, testCatalog } from './testFixtures';
+import { herbGardenCatalog, makeState, testCatalog } from './testFixtures';
 
 const building = (startedOnDay: number, completesOnDay: number, buildingId = 'forge') =>
   ({ buildingId, level: 1, status: 'building', startedOnDay, completesOnDay }) as const;
@@ -25,6 +26,23 @@ describe('advanceDays', () => {
       { day: 4, kind: 'build_completed', buildingId: 'heart', level: 1, slotId: 'b' },
       { day: 6, kind: 'build_completed', buildingId: 'forge', level: 1, slotId: 'a' },
       { day: 6, kind: 'days_advanced', days: 3 },
+    ]);
+  });
+
+  it('logsProductionOnceForTheWholeAdvance', () => {
+    const state = makeState({
+      slots: { outer_n: { buildingId: HERB_GARDEN_BUILDING_ID, level: 1, status: 'done' } },
+    });
+    const { state: next } = advanceDays(state, herbGardenCatalog, 3);
+
+    expect(next.log.filter((e) => e.kind === 'building_produced')).toEqual([
+      {
+        day: 4,
+        kind: 'building_produced',
+        buildingId: HERB_GARDEN_BUILDING_ID,
+        material: 'Madeira',
+        quantity: 9,
+      },
     ]);
   });
 

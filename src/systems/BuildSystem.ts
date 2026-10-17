@@ -39,6 +39,17 @@ export function activeLevel(placed: PlacedBuilding): number {
   return placed.status === 'done' ? placed.level : placed.level - 1;
 }
 
+export function levelInForce(
+  state: GameState,
+  catalog: Catalog,
+  slotId: string,
+): BuildingLevel | undefined {
+  const placed = state.slots[slotId];
+  if (!placed) return undefined;
+  const level = activeLevel(placed);
+  return findBuilding(catalog, placed.buildingId)?.levels[level - 1];
+}
+
 /** How many copies of a building may stand in the Axis at once. */
 export function maxCountOf(def: Pick<BuildingDef, 'maxCount'>): number {
   return def.maxCount ?? 1;

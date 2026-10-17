@@ -3,6 +3,7 @@ import type { GameState, LogEntry, PlacedBuilding } from '../model/schema';
 import { returnFromMissions } from './Missions';
 import { settleNpcs } from './Npcs';
 import { EMPTY_TALLY, tallyLog, workOneDay, type WorkTally } from './NpcWork';
+import { EMPTY_PRODUCTION, produceOneDay, productionLog, type ProductionTally } from './Production';
 
 export interface AdvanceResult {
   state: GameState;
@@ -13,17 +14,24 @@ export interface AdvanceResult {
 interface Progress {
   state: GameState;
   tally: WorkTally;
+  production: ProductionTally;
   completedSlotIds: string[];
 }
 
 /**
  * Moves the calendar forward one day at a time. Each day runs, in order: NPC
- * wages, the effects of the posts, finished constructions, NPCs freed by them,
- * then NPCs back from missions. NPC work is logged once, summed over the whole advance.
+ * wages, the effects of the posts, passive production, finished constructions,
+ * NPCs freed by them, then NPCs back from missions. NPC work and production are
+ * logged once, summed over the whole advance.
  */
 export function advanceDays(state: GameState, catalog: Catalog, days: number): AdvanceResult {
   if (!Number.isInteger(days) || days < 1) throw new Error(`invalid day count: ${days}`);
-  const start: Progress = { state, tally: EMPTY_TALLY, completedSlotIds: [] };
+  const start: Progress = {
+    state,
+    tally: EMPTY_TALLY,
+    production: EMPTY_PRODUCTION,
+    completedSlotIds: [],
+  };
   const end = Array.from({ length: days }, (_, i) => state.day + i + 1).reduce(
     (progress, day) => passDay(progress, catalog, day),
     start,
@@ -32,7 +40,12 @@ export function advanceDays(state: GameState, catalog: Catalog, days: number): A
   return {
     state: {
       ...end.state,
-      log: [...end.state.log, ...tallyLog(end.tally, day), { day, kind: 'days_advanced', days }],
+      log: [
+        ...end.state.log,
+        ...tallyLog(end.tally, day),
+        ...productionLog(end.production, catalog, end.state, day),
+        { day, kind: 'days_advanced', days },
+      ],
     },
     completedSlotIds: end.completedSlotIds,
   };
@@ -40,10 +53,12 @@ export function advanceDays(state: GameState, catalog: Catalog, days: number): A
 
 function passDay(progress: Progress, catalog: Catalog, day: number): Progress {
   const worked = workOneDay({ ...progress.state, day }, catalog, progress.tally);
-  const completed = completeConstructions(worked.state);
+  const produced = produceOneDay(worked.state, catalog, progress.production);
+  const completed = completeConstructions(produced.state);
   return {
     state: returnFromMissions(settleNpcs(completed.state, catalog)),
     tally: worked.tally,
+    production: produced.tally,
     completedSlotIds: [...progress.completedSlotIds, ...completed.slotIds],
   };
 }
