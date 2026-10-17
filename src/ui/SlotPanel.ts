@@ -1,4 +1,5 @@
-import { blockReasonText, t } from '../i18n/pt-BR';
+import type { Actor } from '../commands/schema';
+import { blockReasonText, listText, t } from '../i18n/pt-BR';
 import type { SlotType } from '../map/layout';
 import { findBuilding, findSlot, GUILD_BUILDING_ID, TAVERN_BUILDING_ID } from '../model/catalog';
 import type { BuildingDef, BuildingLevel, Cost, GameState, PlacedBuilding } from '../model/schema';
@@ -12,10 +13,11 @@ import {
   type BuildCheck,
 } from '../systems/BuildSystem';
 import { toBronze } from '../systems/Coins';
+import { CAMP } from '../systems/Wallets';
 import { findMaterial } from '../systems/Materials';
 import type { ArchiveStore } from '../archiveStore';
 import type { DepotStore } from '../depotStore';
-import { TRADING_POST_BUILDING_ID } from '../systems/Shop';
+import { missingPurchase, TRADING_POST_BUILDING_ID } from '../systems/Shop';
 import { DEPOT_BUILDING_ID, depotCounts } from '../systems/Depot';
 import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
 import { missionTab } from '../systems/Missions';
@@ -27,7 +29,8 @@ import { buildingLabel, formatGold, textContext } from './format';
 import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
-import { abilityColumns, buildingDetails } from './buildingDetails';
+import { abilityColumns, buildingDetails, shortcutModel } from './buildingDetails';
+import { confirmPurchase } from './shop/shopViews';
 import { ResearchArchive } from './resources/ResearchArchive';
 import { button, thumb } from './widgets';
 
@@ -62,6 +65,7 @@ export class SlotPanel {
     private readonly archive: { store: ArchiveStore; open: () => void },
     private readonly windows: BuildingWindows,
     private readonly depot: DepotAccess,
+    private readonly viewer: () => Actor,
   ) {
     store.subscribe(() => this.render());
     archive.store.subscribe(() => this.render());
@@ -156,6 +160,7 @@ export class SlotPanel {
           ),
         levelDef && this.levelStats(levelDef, state),
         this.reasonList(check),
+        levelDef && this.buyMissing(check, levelDef.cost, state),
         this.details(def, 0, state),
         el(
           'button',
@@ -243,6 +248,7 @@ export class SlotPanel {
         el('h3', { class: 'section-title' }, t.panel.nextLevel(placed.level + 1)),
         this.levelStats(nextLevelDef, state),
         this.reasonList(check),
+        this.buyMissing(check, nextLevelDef.cost, state),
         el(
           'button',
           {
@@ -341,6 +347,39 @@ export class SlotPanel {
       'ul',
       { class: 'reasons' },
       ...check.reasons.map((reason) => el('li', {}, blockReasonText(reason, ctx))),
+    );
+  }
+
+  /** Buys what the cost lacks from the Entreposto, always paid by the camp; it does not start the build. */
+  private buyMissing(check: BuildCheck, cost: Cost, state: GameState): HTMLElement | null {
+    if (check.ok || !check.reasons.some((r) => r.kind === 'missing_materials')) return null;
+    const { catalog } = this.store;
+    const viewer = this.viewer();
+    const model = shortcutModel(state, catalog, cost, viewer);
+    if (!model) return null;
+    const total = missingPurchase(state, catalog, cost, viewer);
+    const buy = async () => {
+      const choice = await confirmPurchase({
+        catalog,
+        title: t.shop.shortcut.title,
+        lines: model.lines,
+        totalBronze: () => total.totalBronze,
+        payers: viewer.role === 'master' ? null : [CAMP],
+        maxQuantity: null,
+        fixedQuantity: true,
+      });
+      if (!choice) return;
+      void this.store.dispatch({
+        type: 'shop_buy_materials',
+        lines: total.lines.map(({ itemId, quantity }) => ({ itemId, quantity })),
+      });
+    };
+    return el(
+      'div',
+      { class: 'shortcut' },
+      el('button', { class: 'btn', type: 'button', onclick: () => void buy() }, model.label),
+      model.unavailable.length > 0 &&
+        el('p', { class: 'panel__hint' }, t.shop.shortcut.unavailable(listText(model.unavailable))),
     );
   }
 

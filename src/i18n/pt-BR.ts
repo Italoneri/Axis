@@ -540,6 +540,12 @@ export const t = {
       cancel: 'Cancelar',
     },
     payerCamp: 'Acampamento',
+    shortcut: {
+      button: (price: string) => `Comprar o que falta no Entreposto — ${price}`,
+      title: 'Comprar o que falta',
+      line: (quantity: number, name: string, price: string) => `${quantity} ${name} — ${price}`,
+      unavailable: (names: string) => `Não vende: ${names}`,
+    },
     master: {
       newItem: 'Novo item',
       edit: 'Editar',

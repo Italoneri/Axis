@@ -150,7 +150,8 @@ async function start(): Promise<void> {
       contextFor: (command) =>
         command.type === 'archive_log' ||
         command.type === 'depot_log' ||
-        command.type === 'shop_buy'
+        command.type === 'shop_buy' ||
+        command.type === 'shop_buy_materials'
           ? { actor: archiveViewer() }
           : mode.contextFor(command),
       onRefused: (error) => notify(t.errors[error], 'error'),
@@ -235,6 +236,7 @@ async function start(): Promise<void> {
     { store: archive, open: openArchive },
     { menu: openMenu, missions: () => missionBoard.open(), shop: openShop },
     { store: depot, open: openDepot },
+    archiveViewer,
   );
 
   mountTopBar(
