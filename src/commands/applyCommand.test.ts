@@ -14,6 +14,19 @@ function richState(): GameState {
   const base = withIron(10, { day: 3 });
   return {
     ...base,
+    garden: {
+      crops: [
+        {
+          seedId: 'iron',
+          harvestId: 'wood',
+          plotType: 'muda',
+          days: 2,
+          yield: 1,
+          rare: true,
+        },
+      ],
+      plots: {},
+    },
     slots: {
       core: { buildingId: 'heart', level: 1, status: 'done' },
       outer_n: { buildingId: 'forge', level: 1, status: 'done' },
@@ -186,6 +199,24 @@ const validCommands: Record<CommandType, GameCommand> = {
   shop_item_create: { type: 'shop_item_create', id: 'shop_sword', item: shopEquipment },
   shop_item_update: { type: 'shop_item_update', itemId: 'shop_wood', item: shopEquipment },
   shop_item_remove: { type: 'shop_item_remove', itemId: 'shop_iron' },
+  garden_crop_create: {
+    type: 'garden_crop_create',
+    crop: {
+      seedId: 'wood',
+      harvestId: 'iron',
+      plotType: 'canteiro',
+      days: 3,
+      yield: 2,
+      rare: false,
+      price: { gold: 1 },
+    },
+  },
+  garden_crop_update: {
+    type: 'garden_crop_update',
+    seedId: 'iron',
+    crop: { harvestId: 'wood', plotType: 'canteiro', days: 3, yield: 2, rare: true },
+  },
+  garden_crop_remove: { type: 'garden_crop_remove', seedId: 'iron' },
   shop_set_promotion: { type: 'shop_set_promotion', itemId: 'shop_wood', discountPercent: 20 },
   shop_buy: {
     type: 'shop_buy',
@@ -456,6 +487,14 @@ describe('applyCommand permissions', () => {
     validCommands.shop_set_promotion,
     { type: 'set_image', target: { kind: 'shop_item', id: 'shop_wood' } },
   ])('refusesShopEditsFromPlayers: $type', (command) => {
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
+
+  it.each([
+    validCommands.garden_crop_create,
+    validCommands.garden_crop_update,
+    validCommands.garden_crop_remove,
+  ])('refusesCropEditsFromPlayers: $type', (command) => {
     expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
   });
 

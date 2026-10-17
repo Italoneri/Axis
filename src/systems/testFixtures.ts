@@ -5,6 +5,8 @@ import {
   type GameState,
   type Mission,
   type Npc,
+  type PlotDef,
+  type PlotType,
   type ShopItem,
 } from '../model/schema';
 
@@ -243,9 +245,38 @@ const gardenLevel = (wood: number): BuildingLevel => ({
   produces: { wood },
 });
 
+const plots = (type: PlotType, count: number, prefix: string = type): PlotDef[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `${prefix}-${i + 1}`,
+    type,
+    x: 0.1,
+    y: 0.1,
+    w: 0.1,
+    h: 0.1,
+  }));
+
+const sharedPlots = [...plots('canteiro', 4), ...plots('muda', 4)];
+
 /** `testCatalog` plus an herb garden that yields 3, 6 and 10 wood a day. */
 export const herbGardenCatalog: Catalog = {
   ...testCatalog,
+  garden: {
+    levels: [
+      { plots: sharedPlots },
+      {
+        plots: [...sharedPlots, ...plots('canteiro', 2, 'canteiro-x'), ...plots('estufa', 2)],
+      },
+      {
+        plots: [
+          ...sharedPlots,
+          ...plots('canteiro', 2, 'canteiro-x'),
+          ...plots('estufa', 1),
+          ...plots('arcana', 1),
+          ...plots('lago', 1),
+        ],
+      },
+    ],
+  },
   buildings: [
     ...testCatalog.buildings,
     {

@@ -10,6 +10,7 @@ import {
   type CharacterFields,
 } from '../systems/Characters';
 import type { DepotDelivery } from '../systems/Depot';
+import { addCrop, removeCrop, updateCrop } from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
@@ -128,6 +129,16 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   out_of_stock: true,
   not_for_sale: true,
   invalid_quantity: true,
+  garden_not_built: true,
+  unknown_plot: true,
+  plot_occupied: true,
+  plot_empty: true,
+  not_ready: true,
+  wrong_plot_type: true,
+  no_seed: true,
+  rare_not_for_sale: true,
+  crop_already_exists: true,
+  crop_in_use: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -399,6 +410,9 @@ const handlers: Handlers = {
   shop_item_update: ({ itemId, item }, { state, catalog }) =>
     resources(updateShopItem(state, catalog, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
+  garden_crop_create: ({ crop }, { state }) => resources(addCrop(state, crop)),
+  garden_crop_update: ({ seedId, crop }, { state }) => resources(updateCrop(state, seedId, crop)),
+  garden_crop_remove: ({ seedId }, { state }) => resources(removeCrop(state, seedId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
 

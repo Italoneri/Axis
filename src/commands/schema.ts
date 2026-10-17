@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   amountBagSchema,
   archiveChangeSchema,
+  cropSchema,
   depotChangeSchema,
   MISSION_DESCRIPTION_LIMIT,
   MISSION_MAX_DAYS,
@@ -87,6 +88,12 @@ const shopItemFieldsSchema = z.discriminatedUnion('kind', [
     .extend({ name: z.string() }),
 ]);
 
+const [commonCrop, rareCrop] = cropSchema.options;
+const cropFieldsSchema = z.discriminatedUnion('rare', [
+  commonCrop.omit({ seedId: true }),
+  rareCrop.omit({ seedId: true }),
+]);
+
 const command = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
   z.object({ type: z.literal(type), ...shape });
 
@@ -163,6 +170,10 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   command('shop_item_create', { id: newRecordId, item: shopItemFieldsSchema }),
   command('shop_item_update', { itemId: ref, item: shopItemFieldsSchema }),
   command('shop_item_remove', { itemId: ref }),
+  // Herb garden crops (master only)
+  command('garden_crop_create', { crop: cropSchema }),
+  command('garden_crop_update', { seedId: ref, crop: cropFieldsSchema }),
+  command('garden_crop_remove', { seedId: ref }),
   command('shop_set_promotion', {
     itemId: ref,
     discountPercent: z.number().int().min(1).max(90).nullable(),
