@@ -9,7 +9,7 @@ import { gardenLevel, HERB_GARDEN_BUILDING_ID } from '../../systems/Garden';
 import { el } from '../dom';
 import { formatPrice } from '../format';
 import type { MasterAccess } from '../MasterSession';
-import { button, closeButton, keepEscapeInside } from '../widgets';
+import { button, closeButton, confirmButton, keepEscapeInside } from '../widgets';
 import { openCropForm } from './CropForm';
 import {
   gardenSummary,
@@ -176,7 +176,7 @@ export class GardenWindow {
         'div',
         { class: 'row' },
         button(t.garden.crops.edit, () => this.editCrop(crop)),
-        button(
+        confirmButton(
           t.garden.crops.remove,
           () => void game.dispatch({ type: 'garden_crop_remove', seedId: crop.seedId }),
         ),
@@ -322,7 +322,9 @@ export class GardenWindow {
   }
 
   private clearButton(view: PlotView): HTMLElement {
-    return button(t.garden.clear, () => this.send({ type: 'garden_clear', plotId: view.plot.id }));
+    return confirmButton(t.garden.clear, () =>
+      this.send({ type: 'garden_clear', plotId: view.plot.id }),
+    );
   }
 
   private seedList(view: PlotView): HTMLElement {
