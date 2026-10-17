@@ -27,6 +27,7 @@ import {
 import { PHOTO_LIMITS, type PhotoError } from '../systems/GameImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
+import { plotLabel } from './plotLabel';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const decimalFormat = new Intl.NumberFormat('pt-BR', {
@@ -504,6 +505,31 @@ export const t = {
       compressed_too_large: `mesmo comprimida, a foto passou de ${PHOTO_LIMITS.storedBytes / 1024} KB.`,
     } satisfies Record<PhotoError, string>,
     refused: (fileName: string, reason: string) => `${fileName}: ${reason}`,
+  },
+
+  garden: {
+    title: '🌿 Estufa de Ervas',
+    open: 'Abrir jardim',
+    close: 'Fechar jardim',
+    panelHint: 'Plante sementes, acompanhe o crescimento e colha ervas para o acampamento.',
+    counts: ({ ready, growing, empty }: { ready: number; growing: number; empty: number }) =>
+      `${ready} prontas · ${growing} crescendo · ${empty} vazias`,
+    harvestAll: 'Colher tudo',
+    harvest: 'Colher',
+    clear: 'Arrancar',
+    plant: 'Plantar',
+    buyAndPlant: (price: string) => `Comprar e plantar (${price})`,
+    rareHint: 'Planta rara: só com a semente em estoque',
+    campShort: (missing: string) => `Acampamento sem moedas (faltam ${missing})`,
+    seedsOwned: (n: number) => `Estoque: ${n}`,
+    chooseSeed: 'Escolha uma semente',
+    noSeeds: 'Nenhuma semente cadastrada para este canteiro.',
+    daysLeft: (n: number) => (n === 1 ? 'Falta 1 dia' : `Faltam ${n} dias`),
+    ready: 'Pronta para colher',
+    yields: (quantity: number, name: string) => `Rende ${quantity} ${name}`,
+    empty: 'Vazio',
+    notBuilt: 'A Estufa de Ervas ainda não foi construída.',
+    closePopover: 'Fechar',
   },
 
   shop: {
@@ -1059,7 +1085,7 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'garden_seed_returned':
       return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
     case 'garden_cleared':
-      return `${entry.actor ?? 'Alguém'} limpou o canteiro ${entry.plot} (${entry.seed})`;
+      return `${entry.actor ?? 'Alguém'} limpou ${plotLabel(entry.plot)} (${entry.seed})`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1333,13 +1359,13 @@ function shopPurchaseText(
   return `${entry.actor ?? 'Alguém'} comprou ${what} no Entreposto ${price}`;
 }
 
-/** "Thorin plantou Hortelã em canteiro-1 (semente comprada por 2 PB)". */
+/** "Thorin plantou Hortelã em Canteiro 1 (semente comprada por 2 PB)". */
 function gardenPlantedText(
   entry: Extract<LogEntry, { kind: 'garden_planted' }>,
   ctx: TextContext,
 ): string {
   const bought = entry.bronze === 0 ? '' : ` (semente comprada por ${ctx.gold(entry.bronze)})`;
-  return `${entry.actor ?? 'Alguém'} plantou ${entry.seed} em ${entry.plot}${bought}`;
+  return `${entry.actor ?? 'Alguém'} plantou ${entry.seed} em ${plotLabel(entry.plot)}${bought}`;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

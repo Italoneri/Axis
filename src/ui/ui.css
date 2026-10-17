@@ -3363,3 +3363,200 @@ details > summary {
   gap: 12px;
   padding: 16px;
 }
+
+/* ---------- Estufa de Ervas: jardim ---------- */
+
+.garden-header__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.garden-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  overflow: auto;
+}
+
+/* Shrinks to the art so the plots' percent boxes line up with it. */
+.garden-stage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.garden-stage__art {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 130px);
+  border-radius: 8px;
+}
+
+.garden-plot {
+  --glow: #ffe27a;
+  position: absolute;
+  padding: 0;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  background: transparent;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.garden-plot--arcana {
+  --glow: #d8ff8a;
+}
+
+.garden-plot:hover,
+.garden-plot[aria-expanded='true'] {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.14);
+}
+
+.garden-plot:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 2px;
+}
+
+.garden-plot--ready {
+  border-color: var(--glow);
+  box-shadow:
+    0 0 10px 2px var(--glow),
+    inset 0 0 10px var(--glow);
+  animation: garden-glow 2s ease-in-out infinite;
+}
+
+@keyframes garden-glow {
+  50% {
+    box-shadow:
+      0 0 18px 5px var(--glow),
+      inset 0 0 14px var(--glow);
+  }
+}
+
+.garden-popover {
+  position: absolute;
+  z-index: 2;
+  width: min(300px, 90%);
+  transform: translateX(-50%);
+  margin: 6px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.garden-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.garden-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.garden-panel p {
+  margin: 0;
+}
+
+.garden-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(212, 175, 55, 0.18);
+}
+
+.garden-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+
+.garden-seeds,
+.garden-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.garden-seed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.garden-seed__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.garden-seed .btn {
+  flex-shrink: 0;
+}
+
+.garden-cards {
+  display: none;
+}
+
+.garden-card {
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  background: linear-gradient(to bottom, #2d2530, #1f1a22);
+}
+
+.garden-card--ready {
+  border-color: #ffe27a;
+  box-shadow: 0 0 8px rgba(255, 226, 122, 0.45);
+}
+
+.garden-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.garden-card__panel {
+  padding: 0 12px 12px;
+}
+
+@media (max-width: 640px) {
+  .garden-stage {
+    display: none;
+  }
+
+  .garden-cards {
+    display: flex;
+  }
+
+  .garden-header__tools .btn--primary {
+    padding-inline: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-plot--ready {
+    animation: none;
+  }
+}
