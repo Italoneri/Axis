@@ -639,6 +639,16 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
   z.object({ ...entryBase, kind: z.literal('archive_changed'), change: archiveChangeSchema }),
   z.object({ ...entryBase, kind: z.literal('depot_changed'), change: depotChangeSchema }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('shop_purchased'),
+    quantity: z.number().int().positive(),
+    /** 0 for a free purchase (the master's). */
+    bronze: positiveInt,
+    wallet: walletLabel,
+    /** Omitted when delivered to a private area: the log is shared with every player. */
+    item: z.string().optional(),
+  }),
   // Missions: titles and names at the time.
   z.object({
     ...entryBase,

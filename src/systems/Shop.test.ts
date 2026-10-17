@@ -3,6 +3,7 @@ import type { GameState, ShopItem } from '../model/schema';
 import type { Outcome } from './outcome';
 import {
   addShopItem,
+  buyFromShop,
   isOnSale,
   removeShopItem,
   sellBackBronze,
@@ -12,6 +13,7 @@ import {
   unitPriceBronze,
   updateShopItem,
 } from './Shop';
+import { toBronze } from './Coins';
 import { makeState, testCatalog } from './testFixtures';
 
 const player = { role: 'player' } as const;
@@ -231,5 +233,168 @@ describe('shop item edits', () => {
     expect(cleared.shop.items[0]).not.toHaveProperty('discountPercent');
     const state = makeState();
     expect(unwrap(setShopPromotion(state, 'shop_wood', null))).toBe(state);
+  });
+});
+
+describe('buyFromShop', () => {
+  const thorin = { role: 'player', characterId: 'thorin' } as const;
+  const camp = { kind: 'camp' } as const;
+  const own = { kind: 'character', characterId: 'thorin' } as const;
+  const sword: ShopItem = {
+    id: 'shop_sword',
+    kind: 'equipment',
+    name: 'Espada longa',
+    description: '1d8',
+    depotKind: 'equipamento',
+    price: { silver: 8 },
+    stock: 2,
+    minLevel: 1,
+    featured: false,
+    hidden: false,
+  };
+
+  function shopState(level = 1, items: ShopItem[] = [material({ bronze: 3 }), sword]): GameState {
+    return withItems(withTradingPost(level), items);
+  }
+
+  function buy(
+    state: GameState,
+    itemId: string,
+    quantity: number,
+    payer: typeof camp | typeof own = camp,
+    actor: typeof thorin | typeof master = thorin,
+  ) {
+    const outcome = buyFromShop(
+      state,
+      testCatalog,
+      { itemId, quantity, payer, deliveryId: 'd1' },
+      actor,
+    );
+    if (!outcome.ok) throw new Error(outcome.error);
+    return outcome;
+  }
+
+  const woodStock = (state: GameState) =>
+    state.materials.items.find((m) => m.id === 'wood')?.quantity;
+  const campBronze = (state: GameState) => toBronze(state.wallets.camp, testCatalog.currencies);
+
+  it('addsMaterialToCampStock', () => {
+    const before = shopState();
+    const { state, delivery } = buy(before, 'shop_x', 12);
+    expect(woodStock(state)).toBe((woodStock(before) ?? 0) + 12);
+    expect(campBronze(before) - campBronze(state)).toBe(36);
+    expect(delivery).toBeNull();
+    expect(state.log.at(-1)).toEqual({
+      day: 1,
+      kind: 'shop_purchased',
+      quantity: 12,
+      bronze: 36,
+      item: 'Madeira',
+    });
+    expect(state.log).toHaveLength(1);
+  });
+
+  it('paysFromOwnWallet', () => {
+    const before = shopState();
+    const { state } = buy(before, 'shop_x', 2, own);
+    expect(toBronze(state.wallets.characters['thorin'] ?? {}, testCatalog.currencies)).toBe(
+      500 - 6,
+    );
+    expect(state.wallets.camp).toEqual(before.wallets.camp);
+    expect(state.log.at(-1)).toMatchObject({ bronze: 6, wallet: 'Thorin' });
+  });
+
+  it('refusesQuantityAboveStock', () => {
+    const state = shopState();
+    const outcome = buyFromShop(
+      state,
+      testCatalog,
+      { itemId: 'shop_sword', quantity: 3, payer: camp, deliveryId: 'd1' },
+      thorin,
+    );
+    expect(outcome).toEqual({ ok: false, error: 'out_of_stock' });
+    expect(state.shop.items.find((i) => i.id === 'shop_sword')?.stock).toBe(2);
+  });
+
+  it('decrementsLimitedStock', () => {
+    const { state } = buy(shopState(), 'shop_sword', 1);
+    expect(state.shop.items.find((i) => i.id === 'shop_sword')?.stock).toBe(1);
+  });
+
+  it('keepsInfiniteStockNull', () => {
+    const { state } = buy(shopState(), 'shop_x', 5);
+    expect(state.shop.items.find((i) => i.id === 'shop_x')?.stock).toBeNull();
+  });
+
+  it('chargesDiscountedPrice', () => {
+    const before = shopState(1, [material({ bronze: 3 }, 25)]);
+    const { state } = buy(before, 'shop_x', 10);
+    expect(campBronze(before) - campBronze(state)).toBe(20);
+  });
+
+  it('refusesWithoutTradingPost', () => {
+    const state = withItems(makeState(), [material({ bronze: 3 })]);
+    const order = { itemId: 'shop_x', quantity: 1, payer: camp, deliveryId: 'd1' };
+    expect(buyFromShop(state, testCatalog, order, thorin)).toEqual({
+      ok: false,
+      error: 'not_for_sale',
+    });
+  });
+
+  it('refusesUnknownItem', () => {
+    const order = { itemId: 'ghost', quantity: 1, payer: camp, deliveryId: 'd1' };
+    expect(buyFromShop(shopState(), testCatalog, order, thorin)).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+  });
+
+  it.each([0, -1, 1.5, 100_000])('refusesQuantity %s', (quantity) => {
+    const order = { itemId: 'shop_x', quantity, payer: camp, deliveryId: 'd1' };
+    expect(buyFromShop(shopState(), testCatalog, order, thorin)).toEqual({
+      ok: false,
+      error: 'invalid_quantity',
+    });
+  });
+
+  it('refusesWhenWalletCannotPay', () => {
+    const order = { itemId: 'shop_sword', quantity: 2, payer: own, deliveryId: 'd1' };
+    const poor = { ...shopState(), wallets: { camp: {}, characters: { thorin: { bronze: 10 } } } };
+    expect(buyFromShop(poor, testCatalog, order, thorin)).toEqual({
+      ok: false,
+      error: 'insufficient_coins',
+    });
+  });
+
+  it('masterBuysFreeIntoGroupDepot', () => {
+    const before = shopState();
+    const { state, delivery } = buy(before, 'shop_sword', 1, camp, master);
+    expect(delivery).toEqual({
+      itemId: 'd1',
+      ownerId: null,
+      authorId: 'mestre',
+      name: 'Espada longa',
+      kind: 'equipamento',
+      quantity: 1,
+      notes: '1d8',
+    });
+    expect(state.wallets).toEqual(before.wallets);
+    expect(state.log.at(-1)).toEqual({
+      day: 1,
+      kind: 'shop_purchased',
+      quantity: 1,
+      bronze: 0,
+      item: 'Espada longa',
+    });
+  });
+
+  it('playerEquipmentGoesToPrivateArea', () => {
+    const { delivery } = buy(shopState(), 'shop_sword', 1);
+    expect(delivery).toMatchObject({ ownerId: 'thorin', authorId: 'thorin', name: 'Espada longa' });
+  });
+
+  it('logOmitsItemForPrivateDelivery', () => {
+    const { state } = buy(shopState(), 'shop_sword', 1);
+    expect(state.log.at(-1)).toEqual({ day: 1, kind: 'shop_purchased', quantity: 1, bronze: 80 });
   });
 });

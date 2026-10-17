@@ -18,6 +18,7 @@ function richState(): GameState {
       core: { buildingId: 'heart', level: 1, status: 'done' },
       outer_n: { buildingId: 'forge', level: 1, status: 'done' },
       outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+      post: { buildingId: 'trading_post', level: 1, status: 'done' },
     },
     npcs: [
       npc({
@@ -186,6 +187,13 @@ const validCommands: Record<CommandType, GameCommand> = {
   shop_item_update: { type: 'shop_item_update', itemId: 'shop_wood', item: shopEquipment },
   shop_item_remove: { type: 'shop_item_remove', itemId: 'shop_iron' },
   shop_set_promotion: { type: 'shop_set_promotion', itemId: 'shop_wood', discountPercent: 20 },
+  shop_buy: {
+    type: 'shop_buy',
+    itemId: 'shop_wood',
+    quantity: 2,
+    payer: { kind: 'camp' },
+    deliveryId: 'delivery_1',
+  },
   mission_create: { type: 'mission_create', id: 'mission_1', ...missionFields },
   mission_update: { type: 'mission_update', missionId: 'contrato', ...missionFields },
   mission_remove: { type: 'mission_remove', missionId: 'contrato' },
@@ -385,6 +393,7 @@ describe('applyCommand permissions', () => {
     'mission_take_party',
     'mission_send_npcs',
     'set_image',
+    'shop_buy',
   ]);
   const masterOnly = Object.values(validCommands).filter(
     (c) => !playerCommands.has(c.type) && !membershipCommands.has(c.type),
@@ -441,6 +450,21 @@ describe('applyCommand permissions', () => {
     { type: 'set_image', target: { kind: 'shop_item', id: 'shop_wood' } },
   ])('refusesShopEditsFromPlayers: $type', (command) => {
     expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
+
+  it('refusesPayingFromAnotherCharacter', () => {
+    const command = {
+      ...validCommands.shop_buy,
+      payer: { kind: 'character', characterId: 'lyra' },
+    };
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
+
+  it('allowsPlayerToPayFromCamp', () => {
+    const result = run(validCommands.shop_buy, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.change).toEqual({ kind: 'shop_purchased', delivery: null });
+    expect(result.logged).toMatchObject([{ kind: 'shop_purchased', actor: 'Thorin', bronze: 6 }]);
   });
 
   it('lets a player clear the photo of their own character', () => {

@@ -9,6 +9,7 @@ import {
   updateCharacter,
   type CharacterFields,
 } from '../systems/Characters';
+import type { DepotDelivery } from '../systems/Depot';
 import { setWorldInfluence } from '../systems/Influence';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
@@ -53,6 +54,7 @@ import {
 } from '../systems/Missions';
 import {
   addShopItem,
+  buyFromShop,
   removeShopItem,
   setShopPromotion,
   updateShopItem,
@@ -69,6 +71,7 @@ import {
 } from '../systems/Wallets';
 import {
   gameCommandSchema,
+  type Actor,
   type CommandContext,
   type CommandType,
   type GameCommand,
@@ -83,7 +86,9 @@ export type StateChange =
   | { kind: 'building_removed'; slotId: string }
   | { kind: 'resources_changed' }
   | { kind: 'npcs_changed' }
-  | { kind: 'missions_changed' };
+  | { kind: 'missions_changed' }
+  /** `delivery` must still be filed in the depot (kept outside the state); null for materials. */
+  | { kind: 'shop_purchased'; delivery: DepotDelivery | null };
 
 export type CommandError =
   | ActionError
@@ -162,6 +167,7 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'mission_take_party',
   'mission_send_npcs',
   'set_image',
+  'shop_buy',
 ]);
 
 /** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
@@ -187,7 +193,7 @@ export function applyCommand(
   const command = parsed.data;
   if (!isAllowed(command, ctx)) return { ok: false, error: 'forbidden' };
   const actor = actorName(state, ctx);
-  const outcome = run(command.type, command, { state, catalog, actor });
+  const outcome = run(command.type, command, { state, catalog, actor, who: ctx.actor });
   if (!outcome.ok) return outcome;
   // A no-op keeps the very same state (and revision), so nothing needs saving.
   if (outcome.state === state) return { ...outcome, logged: [] };
@@ -215,6 +221,9 @@ export function isAllowed(command: GameCommand, { actor, membership }: CommandCo
   if (!PLAYER_COMMANDS.has(command.type)) return false;
   // A player only acts for their own character: their coins, their photo.
   if (command.type === 'deposit') return command.characterId === actor.characterId;
+  if (command.type === 'shop_buy') {
+    return command.payer.kind === 'camp' || command.payer.characterId === actor.characterId;
+  }
   if (command.type === 'set_image') {
     return command.target.kind === 'character' && command.target.id === actor.characterId;
   }
@@ -227,6 +236,8 @@ interface World {
   catalog: Catalog;
   /** Who runs the command, as the log names them. */
   actor: string | undefined;
+  /** Who runs it, for rules that depend on the role. */
+  who: Actor;
 }
 type Handlers = { [K in CommandType]: (command: CommandOf[K], world: World) => HandlerOutcome };
 
@@ -378,11 +389,20 @@ const handlers: Handlers = {
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
 
   shop_item_create: ({ id, item }, { state }) => resources(addShopItem(state, { ...item, id })),
-  shop_item_update: ({ itemId, item }, { state }) =>
-    resources(updateShopItem(state, itemId, item)),
+  shop_item_update: ({ itemId, item }, { state }) => resources(updateShopItem(state, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
+
+  shop_buy: ({ itemId, quantity, payer, deliveryId }, { state, catalog, who }) => {
+    const result = buyFromShop(state, catalog, { itemId, quantity, payer, deliveryId }, who);
+    if (!result.ok) return result;
+    return {
+      ok: true,
+      state: result.state,
+      change: { kind: 'shop_purchased', delivery: result.delivery },
+    };
+  },
 
   set_image: ({ target, image }, { state, catalog }) => {
     // An uploaded photo only fits the record whose folder holds it (the Storage policies look at it).

@@ -959,6 +959,8 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return archiveAction(masterActor(entry), entry.change);
     case 'depot_changed':
       return depotAction(masterActor(entry), entry.change);
+    case 'shop_purchased':
+      return shopPurchaseText(entry, ctx);
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1215,6 +1217,21 @@ function coinsAdjustedText(
   const verb = value < 0 ? 'removeu' : 'adicionou';
   const where = value < 0 ? walletOf(entry.wallet) : `a ${walletName(entry.wallet)}`;
   return `${masterActor(entry)} ${verb} ${ctx.gold(Math.abs(value))} ${where} (${coins})`;
+}
+
+/** "Thorin comprou 12 Madeira no Entreposto por 36 PB do Acampamento"; a private delivery names no item. */
+function shopPurchaseText(
+  entry: Extract<LogEntry, { kind: 'shop_purchased' }>,
+  ctx: TextContext,
+): string {
+  const what = entry.item
+    ? `${entry.quantity} ${entry.item}`
+    : entry.quantity === 1
+      ? 'um item'
+      : `${entry.quantity} itens`;
+  const price =
+    entry.bronze === 0 ? 'de graça' : `por ${ctx.gold(entry.bronze)} ${walletOf(entry.wallet)}`;
+  return `${entry.actor ?? 'Alguém'} comprou ${what} no Entreposto ${price}`;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

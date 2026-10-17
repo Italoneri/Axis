@@ -206,7 +206,7 @@ function move(state: GameState, from: WalletRef, to: WalletRef, coins: CoinBag):
   return ok(setWallet(withdrawn, to, addCoins(target, coins)));
 }
 
-function walletLabel(state: GameState, ref: WalletRef): string | undefined {
+export function walletLabel(state: GameState, ref: WalletRef): string | undefined {
   if (ref.kind === 'camp') return undefined;
   return state.characters.find((c) => c.id === ref.characterId)?.name ?? ref.characterId;
 }

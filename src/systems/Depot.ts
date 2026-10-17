@@ -225,6 +225,65 @@ export function itemOwner(
   return depot.sections.find((section) => section.id === item.sectionId)?.ownerId;
 }
 
+export const SHOP_SECTION_NAME = 'Compras do Entreposto';
+
+export interface DepotDelivery {
+  itemId: string;
+  ownerId: string | null;
+  authorId: string;
+  name: string;
+  kind: ItemKind;
+  quantity: number;
+  notes: string;
+}
+
+export function shopSectionId(ownerId: string | null): string {
+  return `entreposto-${ownerId ?? 'grupo'}`.slice(0, 64);
+}
+
+/** Puts a purchase in the owner's "Compras do Entreposto" section, opening or restoring it when needed. */
+export function deliverToDepot(depot: Depot, delivery: DepotDelivery, now: string): Depot {
+  const { depot: withSection, section } = shopSectionFor(depot, delivery);
+  const item: DepotItem = {
+    id: delivery.itemId,
+    sectionId: section.id,
+    name: delivery.name,
+    kind: delivery.kind,
+    quantity: delivery.quantity,
+    notes: delivery.notes,
+    order: nextOrder(withSection.items.filter((i) => i.sectionId === section.id)),
+    authorId: delivery.authorId,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  return { ...withSection, items: [...withSection.items, item] };
+}
+
+function shopSectionFor(
+  depot: Depot,
+  { ownerId, authorId }: DepotDelivery,
+): { depot: Depot; section: DepotSection } {
+  const id = shopSectionId(ownerId);
+  const area = activeSections(depot, ownerId);
+  const live = area.find((s) => s.id === id) ?? area.find((s) => s.name === SHOP_SECTION_NAME);
+  if (live) return { depot, section: live };
+  const trashed = depot.sections.find((s) => s.id === id);
+  if (trashed) {
+    const restored = { ...trashed, deletedAt: null };
+    return { depot: replaceSection(depot, restored), section: restored };
+  }
+  const created: DepotSection = {
+    id,
+    name: SHOP_SECTION_NAME,
+    ownerId,
+    order: nextOrder(area),
+    authorId,
+    deletedAt: null,
+  };
+  return { depot: { ...depot, sections: [...depot.sections, created] }, section: created };
+}
+
 /** What a write must send to storage: changed or new records, and records gone for good. */
 export interface DepotDiff {
   sections: DepotSection[];
