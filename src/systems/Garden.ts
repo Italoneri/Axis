@@ -47,16 +47,27 @@ export function cropsFor(state: GameState, plotType: PlotType): Crop[] {
     .sort((a, b) => seedName(a).localeCompare(seedName(b)));
 }
 
-export function addCrop(state: GameState, crop: Crop): Outcome {
+function isFreeCommonCrop(crop: Crop | CropFields, catalog: Catalog): boolean {
+  return !crop.rare && toBronze(crop.price, catalog.currencies) === 0;
+}
+
+export function addCrop(state: GameState, catalog: Catalog, crop: Crop): Outcome {
   if (!findMaterial(state.materials, crop.seedId)) return fail('not_found');
   if (!findMaterial(state.materials, crop.harvestId)) return fail('not_found');
   if (findCrop(state, crop.seedId)) return fail('crop_already_exists');
+  if (isFreeCommonCrop(crop, catalog)) return fail('empty_price');
   return ok(setCrops(state, [...state.garden.crops, crop]));
 }
 
-export function updateCrop(state: GameState, seedId: string, fields: CropFields): Outcome {
+export function updateCrop(
+  state: GameState,
+  catalog: Catalog,
+  seedId: string,
+  fields: CropFields,
+): Outcome {
   if (!findCrop(state, seedId)) return fail('not_found');
   if (!findMaterial(state.materials, fields.harvestId)) return fail('not_found');
+  if (isFreeCommonCrop(fields, catalog)) return fail('empty_price');
   const next: Crop = { ...fields, seedId };
   return ok(
     setCrops(

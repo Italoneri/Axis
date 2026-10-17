@@ -64,21 +64,27 @@ describe('addCrop', () => {
       crop: { ...common, harvestId: 'nope' },
       error: 'not_found',
     },
+    { name: 'free common crop', crop: { ...common, price: {} }, error: 'empty_price' },
+    {
+      name: 'zero-priced common crop',
+      crop: { ...common, price: { gold: 0 } },
+      error: 'empty_price',
+    },
   ])('refuses $name', ({ crop, error }) => {
-    expect(addCrop(makeState(), crop)).toEqual({ ok: false, error });
+    expect(addCrop(makeState(), catalog, crop)).toEqual({ ok: false, error });
   });
 
   it('refusesSecondCropForTheSameSeed', () => {
-    const first = addCrop(makeState(), common);
+    const first = addCrop(makeState(), catalog, common);
     if (!first.ok) throw new Error(first.error);
-    expect(addCrop(first.state, { ...common, days: 9 })).toEqual({
+    expect(addCrop(first.state, catalog, { ...common, days: 9 })).toEqual({
       ok: false,
       error: 'crop_already_exists',
     });
   });
 
   it('addsValidCrop', () => {
-    const result = addCrop(makeState(), common);
+    const result = addCrop(makeState(), catalog, common);
     if (!result.ok) throw new Error(result.error);
     expect(result.state.garden.crops).toEqual([common]);
   });
@@ -95,14 +101,28 @@ describe('updateCrop', () => {
 
   it('dropsThePriceWhenSwitchingToRare', () => {
     const fields: CropFields = { ...sharedFields, rare: true };
-    const result = updateCrop(withCrop(), 'wood', fields);
+    const result = updateCrop(withCrop(), catalog, 'wood', fields);
     if (!result.ok) throw new Error(result.error);
     expect(findCrop(result.state, 'wood')).toEqual({ ...fields, seedId: 'wood' });
   });
 
+  it.each([
+    { name: 'empty price', price: {} },
+    { name: 'zero price', price: { gold: 0 } },
+  ])('refusesCommonCropWith $name', ({ price }) => {
+    const fields: CropFields = { ...sharedFields, rare: false, price };
+    expect(updateCrop(withCrop(), catalog, 'wood', fields)).toEqual({
+      ok: false,
+      error: 'empty_price',
+    });
+  });
+
   it('refusesUnknownSeed', () => {
     const fields: CropFields = { ...sharedFields, rare: false, price: common.price };
-    expect(updateCrop(withCrop(), 'nope', fields)).toEqual({ ok: false, error: 'not_found' });
+    expect(updateCrop(withCrop(), catalog, 'nope', fields)).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
   });
 });
 

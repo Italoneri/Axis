@@ -421,8 +421,9 @@ const handlers: Handlers = {
   shop_item_update: ({ itemId, item }, { state, catalog }) =>
     resources(updateShopItem(state, catalog, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
-  garden_crop_create: ({ crop }, { state }) => resources(addCrop(state, crop)),
-  garden_crop_update: ({ seedId, crop }, { state }) => resources(updateCrop(state, seedId, crop)),
+  garden_crop_create: ({ crop }, { state, catalog }) => resources(addCrop(state, catalog, crop)),
+  garden_crop_update: ({ seedId, crop }, { state, catalog }) =>
+    resources(updateCrop(state, catalog, seedId, crop)),
   garden_crop_remove: ({ seedId }, { state }) => resources(removeCrop(state, seedId)),
   garden_plant: ({ plotId, seedId, buy }, { state, catalog, who }) =>
     resources(plant(state, catalog, { plotId, seedId, buy }, who)),
