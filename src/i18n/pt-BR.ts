@@ -973,7 +973,7 @@ export const t = {
     plot_empty: 'Esse canteiro está vazio.',
     not_ready: 'Essa planta ainda não está pronta para a colheita.',
     wrong_plot_type: 'Essa planta não cresce nesse tipo de canteiro.',
-    no_seed: 'A semente dessa planta não existe mais.',
+    no_seed: 'Não há semente dessa planta no estoque.',
     rare_not_for_sale: 'Plantas raras não são vendidas aqui.',
     crop_already_exists: 'Essa semente já tem uma planta cadastrada.',
     crop_in_use: 'Há canteiros cultivando essa planta. Colha ou limpe antes de remover.',

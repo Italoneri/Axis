@@ -51,7 +51,7 @@ export type ActionError =
   | 'not_ready'
   /** The crop does not grow in that kind of plot. */
   | 'wrong_plot_type'
-  /** The crop's seed material is gone, so it cannot be planted. */
+  /** No seed in stock and the player is not buying one. */
   | 'no_seed'
   /** Rare crops have no price and are not sold in the garden. */
   | 'rare_not_for_sale'
