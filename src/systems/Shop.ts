@@ -2,12 +2,12 @@ import type { Catalog } from '../model/catalog';
 import type { Cost, GameState, ShopItem } from '../model/schema';
 import type { Actor } from '../commands/schema';
 import { builtLevel } from './BuildSystem';
-import { addCoins, fromBronze, pay, toBronze } from './Coins';
+import { addCoins, fromBronze, toBronze } from './Coins';
 import { idError } from './Categories';
 import { depotAuthorOf, NAME_LIMIT, QUANTITY_LIMIT, type DepotDelivery } from './Depot';
-import { materialNeeds, setMaterials } from './Materials';
+import { addStock, materialNeeds } from './Materials';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
-import { CAMP, setWallet, walletLabel, walletOf, type WalletRef } from './Wallets';
+import { CAMP, chargeWallet, setWallet, walletLabel, type WalletRef } from './Wallets';
 
 export const TRADING_POST_BUILDING_ID = 'trading_post';
 export const SELL_BACK_LEVEL = 3;
@@ -115,7 +115,7 @@ export function buyFromShop(
 
   const isMaster = actor.role === 'master';
   const cost = isMaster ? 0 : unitPriceBronze(item, catalog) * quantity;
-  const paid = isMaster ? ok(state) : charge(state, catalog, order.payer, cost);
+  const paid = isMaster ? ok(state) : chargeWallet(state, catalog, order.payer, cost);
   if (!paid.ok) return refuse(paid.error);
 
   const stocked = withStock(paid.state, item, item.stock === null ? null : item.stock - quantity);
@@ -246,27 +246,12 @@ function materialItem(state: GameState, materialId: string): ShopItem | undefine
 
 const refuse = (error: ActionError): PurchaseOutcome => ({ ok: false, error });
 
-function charge(state: GameState, catalog: Catalog, payer: WalletRef, costBronze: number): Outcome {
-  const wallet = walletOf(state, payer);
-  if (!wallet) return fail('not_found');
-  const payment = pay(wallet, costBronze, catalog.currencies);
-  return payment.ok ? ok(setWallet(state, payer, payment.wallet)) : fail('insufficient_coins');
-}
-
 function withStock(state: GameState, item: ShopItem, stock: number | null): GameState {
   if (stock === item.stock) return state;
   return setItems(
     state,
     state.shop.items.map((i) => (i.id === item.id ? { ...i, stock } : i)),
   );
-}
-
-/** Adds (or, negative, removes) the units without a `material_adjusted` entry: the purchase has its own. */
-function addStock(state: GameState, materialId: string, quantity: number): GameState {
-  const items = state.materials.items.map((m) =>
-    m.id === materialId ? { ...m, quantity: m.quantity + quantity } : m,
-  );
-  return setMaterials(state, { ...state.materials, items });
 }
 
 function equipmentDelivery(

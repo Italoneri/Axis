@@ -138,6 +138,14 @@ export function removeMaterialCategory(state: GameState, id: string): Outcome {
   return withCategories(state, removeCategory(state.materials.categories, id, isInUse));
 }
 
+/** Adds (or, negative, removes) the units without a `material_adjusted` entry: the caller logs its own. */
+export function addStock(state: GameState, materialId: string, quantity: number): GameState {
+  const items = state.materials.items.map((m) =>
+    m.id === materialId ? { ...m, quantity: m.quantity + quantity } : m,
+  );
+  return setMaterials(state, { ...state.materials, items });
+}
+
 export function setMaterials(state: GameState, materials: Materials): GameState {
   return { ...state, materials };
 }

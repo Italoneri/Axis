@@ -185,6 +185,19 @@ export function consolidateWallet(state: GameState, catalog: Catalog, ref: Walle
   );
 }
 
+/** Pays `costBronze` from the wallet, taking the change back. */
+export function chargeWallet(
+  state: GameState,
+  catalog: Catalog,
+  payer: WalletRef,
+  costBronze: number,
+): Outcome {
+  const wallet = walletOf(state, payer);
+  if (!wallet) return fail('not_found');
+  const payment = pay(wallet, costBronze, catalog.currencies);
+  return payment.ok ? ok(setWallet(state, payer, payment.wallet)) : fail('insufficient_coins');
+}
+
 export function setWallet(state: GameState, ref: WalletRef, wallet: CoinBag): GameState {
   if (ref.kind === 'camp') return { ...state, wallets: { ...state.wallets, camp: wallet } };
   return {
