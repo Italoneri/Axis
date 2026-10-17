@@ -8,6 +8,7 @@ import { formatPrice } from '../format';
 import {
   button,
   closeButton,
+  confirmButton,
   field,
   keepEscapeInside,
   numberInput,
@@ -60,6 +61,9 @@ export interface ShopCardContext extends ImageSource {
   onBuy(): void;
   /** Master only: opens the promotion editor. */
   onPromo?(): void;
+  /** Master only. */
+  onEdit?(): void;
+  onRemove?(): void;
   /** Entreposto level 3 and some of the material in the camp stock. */
   onSell?(): void;
 }
@@ -96,6 +100,13 @@ export function shopCard(entry: ShopEntry, ctx: ShopCardContext): HTMLElement {
       ctx.onSell && button(t.shop.sell, ctx.onSell),
       ctx.onPromo && button(t.shop.promo, ctx.onPromo),
     ),
+    (ctx.onEdit || ctx.onRemove) &&
+      el(
+        'div',
+        { class: 'row' },
+        ctx.onEdit && button(t.shop.master.edit, ctx.onEdit),
+        ctx.onRemove && confirmButton(t.shop.master.remove, ctx.onRemove),
+      ),
   );
 }
 
@@ -190,6 +201,78 @@ export function confirmPurchase(opts: ConfirmOptions): Promise<Confirmation | nu
       resolve(
         dialog.returnValue === 'confirmed' && isValid() ? { quantity: quantity(), payer } : null,
       );
+      dialog.remove();
+    });
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+}
+
+export const PROMO_PRESETS = [10, 25, 50] as const;
+const MAX_DISCOUNT = 90;
+
+/** The whole percent typed, or null when it is not between 1 and 90. */
+export function parseDiscount(text: string): number | null {
+  const value = Number(text);
+  return Number.isInteger(value) && value >= 1 && value <= MAX_DISCOUNT ? value : null;
+}
+
+type PromotionChoice = number | null | undefined;
+
+/**
+ * Promotion editor: presets, a free percent and "Tirar promoção".
+ * Resolves with the percent, `null` to end the promotion, or `undefined` when closed.
+ */
+export function askPromotion(name: string, current: number | undefined): Promise<PromotionChoice> {
+  const texts = t.shop.master.promo;
+  const percent = numberInput({ value: current, min: 1, max: MAX_DISCOUNT, label: texts.percent });
+  const apply = button(texts.apply, () => dialog.close('apply'), { primary: true });
+  const refresh = () => {
+    apply.disabled = parseDiscount(percent.value) === null;
+  };
+  percent.addEventListener('input', refresh);
+  refresh();
+
+  const dialog = el(
+    'dialog',
+    { class: 'dialog dialog--shop-confirm', 'aria-label': texts.title(name) },
+    el(
+      'header',
+      { class: 'menu__header' },
+      el('h2', { class: 'panel__title' }, texts.title(name)),
+      closeButton(t.shop.master.form.close, () => dialog.close()),
+    ),
+    el(
+      'div',
+      { class: 'shop-confirm__body' },
+      el(
+        'div',
+        { class: 'row' },
+        ...PROMO_PRESETS.map((preset) =>
+          button(`${preset}%`, () => {
+            percent.value = String(preset);
+            dialog.close('apply');
+          }),
+        ),
+      ),
+      field(texts.percent, percent),
+      el(
+        'div',
+        { class: 'row row--end' },
+        current !== undefined && button(texts.clear, () => dialog.close('clear')),
+        apply,
+      ),
+    ),
+  );
+  keepEscapeInside(dialog);
+
+  const choice = (): PromotionChoice => {
+    if (dialog.returnValue === 'clear') return null;
+    return dialog.returnValue === 'apply' ? (parseDiscount(percent.value) ?? undefined) : undefined;
+  };
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => {
+      resolve(choice());
       dialog.remove();
     });
     document.body.append(dialog);

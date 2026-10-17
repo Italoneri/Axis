@@ -1,4 +1,5 @@
 import type { Actor } from '../../commands/schema';
+import type { ShopItem } from '../../model/schema';
 import { newId } from '../../commands/newId';
 import { t } from '../../i18n/pt-BR';
 import type { GameStore } from '../../store';
@@ -10,14 +11,17 @@ import {
   tradingPostLevel,
   unitPriceBronze,
   type ShopEntry,
+  type ShopItemFields,
 } from '../../systems/Shop';
 import { CAMP, type WalletRef } from '../../systems/Wallets';
 import { el } from '../dom';
 import { formatPrice } from '../format';
 import type { MasterAccess } from '../MasterSession';
 import type { UiMemory } from '../uiMemory';
-import { closeButton, keepEscapeInside } from '../widgets';
+import { button, closeButton, keepEscapeInside } from '../widgets';
+import { openShopItemForm } from './ShopItemForm';
 import {
+  askPromotion,
   confirmPurchase,
   filterEntries,
   shopCard,
@@ -44,6 +48,7 @@ export class ShopWindow {
   private filter: ShopFilter = 'tudo';
   private stopWatching: (() => void) | null = null;
   private readonly tabs = el('nav', { class: 'tabs', role: 'tablist' });
+  private readonly toolbar = el('div', { class: 'row' });
   private readonly body = el('div', { class: 'menu__body' });
 
   constructor(private readonly deps: ShopWindowDeps) {
@@ -73,6 +78,7 @@ export class ShopWindow {
         closeButton(t.shop.close, () => dialog.close()),
       ),
       this.tabs,
+      this.toolbar,
       this.body,
     );
     keepEscapeInside(dialog);
@@ -91,6 +97,11 @@ export class ShopWindow {
     const entries = shopEntries(current, catalog, this.deps.viewer());
     const featured = entries.filter((entry) => entry.item.featured);
     const shown = filterEntries(entries, this.filter);
+    this.toolbar.replaceChildren(
+      ...(this.isMaster()
+        ? [button(t.shop.master.newItem, () => this.editItem(), { primary: true })]
+        : []),
+    );
     this.tabs.replaceChildren(...SHOP_FILTERS.map((filter) => this.tab(filter)));
     this.body.replaceChildren(
       ...(tradingPostLevel(current) < 1 ? [el('p', { class: 'notice' }, t.shop.notBuilt)] : []),
@@ -142,7 +153,54 @@ export class ShopWindow {
       images: game.images,
       onBuy: () => void this.buy(entry),
       ...(canSell ? { onSell: () => void this.sell(entry) } : {}),
+      ...(this.isMaster()
+        ? {
+            onPromo: () => void this.promote(entry),
+            onEdit: () => this.editItem(entry.item),
+            onRemove: () => void game.dispatch({ type: 'shop_item_remove', itemId: entry.item.id }),
+          }
+        : {}),
     });
+  }
+
+  private isMaster(): boolean {
+    return this.deps.viewer().role === 'master';
+  }
+
+  private async promote(entry: ShopEntry): Promise<void> {
+    const discount = await askPromotion(entry.name, entry.item.discountPercent);
+    if (discount === undefined) return;
+    void this.deps.game.dispatch({
+      type: 'shop_set_promotion',
+      itemId: entry.item.id,
+      discountPercent: discount,
+    });
+  }
+
+  private editItem(item?: ShopItem): void {
+    openShopItemForm({
+      game: this.deps.game,
+      ...(item ? { item } : {}),
+      save: (id, fields, image) => this.saveItem(item, id, fields, image),
+    });
+  }
+
+  /** The photo goes in its own command, after the item exists. */
+  private saveItem(
+    item: ShopItem | undefined,
+    id: string,
+    fields: ShopItemFields,
+    image: string | undefined,
+  ): boolean {
+    const { game } = this.deps;
+    const saved =
+      game.dispatch(
+        item
+          ? { type: 'shop_item_update', itemId: id, item: fields }
+          : { type: 'shop_item_create', id, item: fields },
+      ) === null;
+    if (!saved || image === undefined || image === (item?.image ?? '')) return saved;
+    return game.dispatch({ type: 'set_image', target: { kind: 'shop_item', id }, image }) === null;
   }
 
   private heldQuantity(entry: ShopEntry): number {

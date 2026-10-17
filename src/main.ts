@@ -225,7 +225,7 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview, walkingNpcs },
     act,
-    { ...mode.drawerExtras(store), openArchive, openMenu, openDepot },
+    { ...mode.drawerExtras(store), openArchive, openMenu, openDepot, openShop },
   );
   const missionBoard = new MissionBoard({ game: store, session, act, memory });
   const panel = new SlotPanel(

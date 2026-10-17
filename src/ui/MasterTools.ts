@@ -22,12 +22,14 @@ export function renderMasterTools(
     openArchive,
     openMenu,
     openDepot,
+    openShop,
   }: {
     session: MasterAccess;
     act: Act;
     openArchive?: (() => void) | undefined;
     openMenu?: (() => void) | undefined;
     openDepot?: (() => void) | undefined;
+    openShop?: (() => void) | undefined;
   },
 ): HTMLElement[] {
   return [
@@ -48,6 +50,15 @@ export function renderMasterTools(
             t.depot.title,
             el('p', { class: 'panel__hint' }, t.depot.panelHint),
             el('button', { class: 'btn', type: 'button', onclick: openDepot }, t.depot.open),
+          ),
+        ]
+      : []),
+    ...(openShop
+      ? [
+          section(
+            t.shop.title,
+            el('p', { class: 'panel__hint' }, t.shop.panelHint),
+            el('button', { class: 'btn', type: 'button', onclick: openShop }, t.shop.open),
           ),
         ]
       : []),

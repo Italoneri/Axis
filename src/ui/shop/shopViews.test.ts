@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ShopItem } from '../../model/schema';
 import { shopEntries, type ShopEntry } from '../../systems/Shop';
 import { makeState, testCatalog } from '../../systems/testFixtures';
-import { filterEntries, shopCardModel } from './shopViews';
+import { filterEntries, parseDiscount, shopCardModel } from './shopViews';
 
 const master = { role: 'master' } as const;
 
@@ -63,5 +63,20 @@ describe('shopCardModel', () => {
     expect(model.ribbon).toBe('−25%');
     expect(model.oldPriceText).toBe('1 Prata');
     expect(model.priceText).toBe('7 Bronze');
+  });
+});
+
+describe('parseDiscount', () => {
+  it.each([
+    ['1', 1],
+    ['90', 90],
+    ['25', 25],
+    ['0', null],
+    ['91', null],
+    ['12.5', null],
+    ['', null],
+    ['abc', null],
+  ])('reads %j as %s', (text, expected) => {
+    expect(parseDiscount(text)).toBe(expected);
   });
 });
