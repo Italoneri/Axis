@@ -33,9 +33,20 @@ export function materialOptions(state: GameState, editing?: ShopItem): SelectOpt
     .map((material) => ({ value: material.id, label: material.name }));
 }
 
-/** null: infinite stock. */
-export function parseStock(isInfinite: boolean, text: string): number | null {
-  return isInfinite ? null : parseCount(text);
+/** null: infinite stock; undefined: the text is not a whole number, so the form cannot save. */
+export function parseStock(isInfinite: boolean, text: string): number | null | undefined {
+  if (isInfinite) return null;
+  const count = Number(text);
+  return text.trim() !== '' && Number.isInteger(count) && count >= 0 ? count : undefined;
+}
+
+/** A new equipment needs no material, so only the material kind depends on one being free. */
+export function canSaveForm(opts: {
+  isEquipment: boolean;
+  hasFreeMaterial: boolean;
+  isEditing: boolean;
+}): boolean {
+  return opts.isEditing || opts.isEquipment || opts.hasFreeMaterial;
 }
 
 /** One text per coin; blanks and zeros are left out. */
@@ -63,10 +74,13 @@ export type FormValues = CommonValues &
     | { kind: 'equipment'; name: string; description: string; depotKind: ItemKind }
   );
 
-export function buildFields(values: FormValues): ShopItemFields {
+/** null when the stock text is invalid. */
+export function buildFields(values: FormValues): ShopItemFields | null {
+  const stock = parseStock(values.isInfinite, values.stockText);
+  if (stock === undefined) return null;
   const common = {
     price: values.price,
-    stock: parseStock(values.isInfinite, values.stockText),
+    stock,
     minLevel: values.minLevel,
     featured: values.featured,
     hidden: values.hidden,
@@ -87,8 +101,8 @@ export interface ShopItemFormOptions {
   game: GameStore;
   /** Present when editing. */
   item?: ShopItem;
-  /** Saves the item; `image` is the photo to set, undefined when the item takes none. */
-  save(id: string, fields: ShopItemFields, image: string | undefined): boolean;
+  /** Saves the item and returns whether it now exists; a refused photo does not count against it. */
+  save(id: string, fields: ShopItemFields, image: string): boolean;
 }
 
 /** Modal form of a shop item. It closes when `save` accepts the item. */
@@ -147,15 +161,26 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
     field(texts.name, name),
     field(texts.description, description),
     field(texts.depotKind, depotKind),
-    el('div', { class: 'field' }, el('span', {}, texts.photo), photo.element),
   );
+  const noMaterials = el('p', { class: 'panel__hint' }, texts.noMaterials);
+  const submitButton = el('button', { class: 'btn btn--primary', type: 'submit' }, texts.save);
   const syncVisibility = () => {
     materialPart.hidden = isEquipment();
     equipmentPart.hidden = !isEquipment();
+    noMaterials.hidden = isEquipment() || options.length > 0;
     stock.disabled = isInfinite.checked;
+    const hasValidStock = parseStock(isInfinite.checked, stock.value) !== undefined;
+    submitButton.disabled =
+      !hasValidStock ||
+      !canSaveForm({
+        isEquipment: isEquipment(),
+        hasFreeMaterial: options.length > 0,
+        isEditing: item !== undefined,
+      });
   };
   kind.addEventListener('change', syncVisibility);
   isInfinite.addEventListener('change', syncVisibility);
+  stock.addEventListener('input', syncVisibility);
 
   const common = () => ({
     price: prices.read(),
@@ -178,19 +203,15 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
 
   const submit = () => {
     const values = read();
-    const done = (image: string | undefined) => {
-      const saved = save(id, buildFields(values), image);
+    const fields = buildFields(values);
+    if (!fields) return;
+    void saveWithPhoto(photo, { kind: 'shop_item', id }, (image) => {
+      const saved = save(id, fields, image);
       if (saved) dialog.close();
       return saved;
-    };
-    if (values.kind === 'material') {
-      done(undefined);
-      return;
-    }
-    void saveWithPhoto(photo, { kind: 'shop_item', id }, done);
+    });
   };
 
-  const canSave = options.length > 0 || item !== undefined;
   const dialog = el(
     'dialog',
     {
@@ -214,8 +235,9 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
       },
       field(texts.kind, kind),
       materialPart,
-      options.length === 0 && el('p', { class: 'panel__hint' }, texts.noMaterials),
+      noMaterials,
       equipmentPart,
+      el('div', { class: 'field' }, el('span', {}, texts.photo), photo.element),
       el('div', { class: 'field' }, el('span', {}, texts.price), prices.element),
       el('label', { class: 'row' }, isInfinite, texts.infiniteStock),
       field(texts.stock, stock),
@@ -226,7 +248,7 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
         'div',
         { class: 'row row--end' },
         button(texts.cancel, () => dialog.close()),
-        el('button', { class: 'btn btn--primary', type: 'submit', disabled: !canSave }, texts.save),
+        submitButton,
       ),
     ),
   );

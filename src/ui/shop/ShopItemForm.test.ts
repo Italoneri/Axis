@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ShopItem } from '../../model/schema';
 import { makeState } from '../../systems/testFixtures';
-import { buildFields, materialOptions, parseStock, priceBag } from './ShopItemForm';
+import { buildFields, canSaveForm, materialOptions, parseStock, priceBag } from './ShopItemForm';
 
 function listed(id: string, materialId: string): ShopItem {
   return {
@@ -39,7 +39,12 @@ describe('parseStock', () => {
     [true, '12', null],
     [false, '12', 12],
     [false, '0', 0],
-    [false, 'abc', 0],
+    [false, 'abc', undefined],
+    [false, '', undefined],
+    [false, '  ', undefined],
+    [false, '1.5', undefined],
+    [false, '-1', undefined],
+    [true, '', null],
   ])('infinite=%s text=%s gives %s', (isInfinite, text, expected) => {
     expect(parseStock(isInfinite, text)).toBe(expected);
   });
@@ -76,5 +81,32 @@ describe('buildFields', () => {
       depotKind: 'equipamento',
     });
     expect(fields).toMatchObject({ kind: 'equipment', name: 'Espada Rúnica', stock: 3 });
+  });
+});
+
+describe('canSaveForm', () => {
+  it.each([
+    [{ isEquipment: true, hasFreeMaterial: false, isEditing: false }, true],
+    [{ isEquipment: false, hasFreeMaterial: false, isEditing: false }, false],
+    [{ isEquipment: false, hasFreeMaterial: true, isEditing: false }, true],
+    [{ isEquipment: false, hasFreeMaterial: false, isEditing: true }, true],
+  ])('%j gives %s', (opts, expected) => {
+    expect(canSaveForm(opts)).toBe(expected);
+  });
+});
+
+describe('buildFields invalid stock', () => {
+  it('refusesBlankStockWhenFinite', () => {
+    const fields = buildFields({
+      price: {},
+      isInfinite: false,
+      stockText: '',
+      minLevel: 1,
+      featured: false,
+      hidden: false,
+      kind: 'material',
+      materialId: 'wood',
+    });
+    expect(fields).toBeNull();
   });
 });

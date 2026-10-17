@@ -190,7 +190,7 @@ export class ShopWindow {
     item: ShopItem | undefined,
     id: string,
     fields: ShopItemFields,
-    image: string | undefined,
+    image: string,
   ): boolean {
     const { game } = this.deps;
     const saved =
@@ -199,8 +199,10 @@ export class ShopWindow {
           ? { type: 'shop_item_update', itemId: id, item: fields }
           : { type: 'shop_item_create', id, item: fields },
       ) === null;
-    if (!saved || image === undefined || image === (item?.image ?? '')) return saved;
-    return game.dispatch({ type: 'set_image', target: { kind: 'shop_item', id }, image }) === null;
+    if (!saved || image === (item?.image ?? '')) return saved;
+    // The item exists now; a refused photo is already toasted and can be retried by editing.
+    void game.dispatch({ type: 'set_image', target: { kind: 'shop_item', id }, image });
+    return true;
   }
 
   private heldQuantity(entry: ShopEntry): number {
