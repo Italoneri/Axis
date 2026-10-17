@@ -91,7 +91,10 @@ describe('updateMaterial and removeMaterial', () => {
 
   it('removes and logs', () => {
     const result = removeMaterial(makeState(), 'iron');
-    expect(result.ok && result.state.materials.items).toEqual([]);
+    expect(result.ok && result.state.materials.items.map((m) => m.id)).toEqual([
+      'wood',
+      'aetherium',
+    ]);
     expect(result.ok && result.state.log.at(-1)).toMatchObject({ kind: 'material_removed' });
   });
 });

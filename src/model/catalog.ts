@@ -13,6 +13,7 @@ import {
   missionsConfigSchema,
   npcsConfigSchema,
   researchBookSchema,
+  shopSchema,
   skillDefSchema,
   tavernMenuSchema,
   walletsSeedSchema,
@@ -26,6 +27,7 @@ import {
   type MissionsConfig,
   type NpcsConfig,
   type ResearchBook,
+  type Shop,
   type SkillDef,
   type TavernMenu,
   type WalletsSeed,
@@ -40,6 +42,7 @@ export interface Seed {
   readonly wallets: WalletsSeed;
   readonly materials: Materials;
   readonly research: ResearchBook;
+  readonly shop: Shop;
 }
 
 /** All static game data, validated and cross-checked. */
@@ -82,6 +85,7 @@ export interface RawCatalog {
   attributes: unknown;
   npcs: unknown;
   missions: unknown;
+  shop: unknown;
   /** Display only, so the server catalog leaves it out. */
   tavernMenu?: unknown;
 }
@@ -102,6 +106,7 @@ export function parseCatalog(raw: RawCatalog): Catalog {
       wallets: parseFile('wallets.json', walletsSeedSchema, raw.wallets),
       materials: parseFile('materials.json', materialsSchema, raw.materials),
       research: parseFile('research.json', researchBookSchema, raw.research),
+      shop: parseFile('shop.json', shopSchema, raw.shop),
     },
     skills: parseFile('skills.json', z.object({ skills: z.array(skillDefSchema) }), raw.skills)
       .skills,
@@ -341,12 +346,22 @@ function seedProblems({ currencies, seed }: Catalog): string[] {
   const wallets = [seed.wallets.camp, ...seed.wallets.characters.map((c) => c.wallet)];
   const materialCategories = new Set(seed.materials.categories.map((c) => c.id));
   const researchCategories = new Set(seed.research.categories.map((c) => c.id));
+  const materialIds = new Set(seed.materials.items.map((m) => m.id));
   return [
     ...duplicates('character', seed.wallets.characters),
     ...duplicates('material', seed.materials.items),
     ...duplicates('material category', seed.materials.categories),
     ...duplicates('research', seed.research.entries),
     ...duplicates('research category', seed.research.categories),
+    ...duplicates('shop item', seed.shop.items),
+    ...seed.shop.items.flatMap((item) => [
+      ...(item.kind === 'material' && !materialIds.has(item.materialId)
+        ? [`shop.json: ${item.id} sells unknown material "${item.materialId}"`]
+        : []),
+      ...Object.keys(item.price)
+        .filter((id) => !currencyIds.has(id))
+        .map((id) => `shop.json: ${item.id} uses unknown currency "${id}"`),
+    ]),
     ...wallets
       .flatMap((wallet) => Object.keys(wallet))
       .filter((id) => !currencyIds.has(id))

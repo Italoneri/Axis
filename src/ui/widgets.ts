@@ -60,26 +60,38 @@ export interface ImageSource {
 
 export type ThumbSize = 'sm' | 'md' | 'lg';
 
+export interface ThumbSubject {
+  image?: string | undefined;
+  name: string;
+  color?: string | undefined;
+  /** Asset key shown instead of the initial when there is no picture. */
+  fallback?: string;
+}
+
 /**
- * Image from an asset key, a URL or a photo sent in game, or a colored circle
- * with the initial as placeholder (also while a photo loads, or if it is gone).
+ * Image from an asset key, a URL or a photo sent in game, or a placeholder
+ * (also while a photo loads, or if it is gone): the `fallback` icon when it
+ * resolves, otherwise a colored circle with the initial.
  */
 export function thumb(
   { catalog, images }: ImageSource,
-  { image, name, color }: { image?: string | undefined; name: string; color?: string | undefined },
+  { image, name, color, fallback }: ThumbSubject,
   size: ThumbSize = 'sm',
 ): HTMLElement {
   const className = `thumb thumb--${size}`;
+  const fallbackSrc = resolveImage(catalog, fallback);
   const placeholder = () =>
-    el(
-      'span',
-      {
-        class: `${className} thumb--placeholder`,
-        style: color ? `--thumb-color: ${color}` : undefined,
-        'aria-hidden': 'true',
-      },
-      name.trim().charAt(0).toUpperCase() || '?',
-    );
+    fallbackSrc
+      ? el('img', { class: `${className} thumb--fallback`, src: fallbackSrc, alt: '' })
+      : el(
+          'span',
+          {
+            class: `${className} thumb--placeholder`,
+            style: color ? `--thumb-color: ${color}` : undefined,
+            'aria-hidden': 'true',
+          },
+          name.trim().charAt(0).toUpperCase() || '?',
+        );
   if (looksLikeUpload(image)) {
     return images ? uploadedThumb(images, image, className, placeholder()) : placeholder();
   }
@@ -382,4 +394,19 @@ export function categoryManager(
       button(t.common.create, () => act(ops.add(newInput.value)), { primary: true }),
     ),
   );
+}
+
+export function closeButton(label: string, onClose: () => void): HTMLElement {
+  return el(
+    'button',
+    { class: 'btn btn--icon', type: 'button', 'aria-label': label, onclick: onClose },
+    '×',
+  );
+}
+
+/** Esc closes the dialog; the slot panel behind it should stay open. */
+export function keepEscapeInside(dialog: HTMLDialogElement): void {
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') event.stopPropagation();
+  });
 }

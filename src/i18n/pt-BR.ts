@@ -506,6 +506,81 @@ export const t = {
     refused: (fileName: string, reason: string) => `${fileName}: ${reason}`,
   },
 
+  shop: {
+    title: '⚖ Entreposto — Comércio',
+    open: 'Abrir comércio',
+    panelHint: 'Madeira, ferro e raridades do mercador: compre aqui o que falta ao acampamento.',
+    close: 'Fechar comércio',
+    filters: { tudo: 'Tudo', basicos: 'Básicos', raros: 'Raros' },
+    sign: 'Entreposto',
+    merchant: 'Mercador de passagem',
+    empty: 'Nada à venda nesta aba.',
+    notBuilt: 'O Entreposto ainda não foi construído: por enquanto nada é vendido.',
+    unlimited: '∞',
+    stock: (stock: string | number) => `Estoque: ${stock}`,
+    outOfStock: 'Esgotado',
+    lockedAt: (level: number) => `libera no Nv ${level}`,
+    hidden: 'oculto',
+    buy: 'Comprar',
+    sell: 'Vender',
+    promo: 'Promoção',
+    free: 'de graça',
+    confirm: {
+      buyTitle: (name: string) => `Comprar ${name}`,
+      sellTitle: (name: string) => `Vender ${name}`,
+      unitPrice: (price: string) => `Preço por unidade: ${price}`,
+      held: (quantity: number) => `No estoque do acampamento: ${quantity}`,
+      quantity: 'Quantidade',
+      payer: 'Pagar com',
+      total: 'Total',
+      receive: 'Você recebe',
+      buy: 'Comprar',
+      sell: 'Vender',
+      cancel: 'Cancelar',
+    },
+    payerCamp: 'Acampamento',
+    shortcut: {
+      button: (price: string) => `Comprar o que falta no Entreposto — ${price}`,
+      title: 'Comprar o que falta',
+      line: (quantity: number, name: string, price: string) => `${quantity} ${name} — ${price}`,
+      unavailable: (names: string) => `Não vende: ${names}`,
+    },
+    master: {
+      newItem: 'Novo item',
+      tools: 'Ações do mestre',
+      edit: 'Editar',
+      remove: 'Remover',
+      confirmRemove: 'Remover?',
+      promo: {
+        title: (name: string) => `Promoção: ${name}`,
+        percent: 'Desconto (1 a 90%)',
+        apply: 'Aplicar',
+        clear: 'Tirar promoção',
+      },
+      form: {
+        newTitle: 'Novo item do comércio',
+        editTitle: 'Editar item do comércio',
+        kind: 'Tipo',
+        kinds: { material: 'Material', equipment: 'Equipamento' },
+        material: 'Material',
+        noMaterials: 'Todos os materiais já estão à venda.',
+        name: 'Nome',
+        description: 'Descrição',
+        depotKind: 'Tipo no Depósito',
+        photo: 'Foto',
+        price: 'Preço',
+        infiniteStock: 'Estoque infinito',
+        stock: 'Estoque',
+        minLevel: 'Nível mínimo do Entreposto',
+        featured: 'Mercador de passagem',
+        hidden: 'Oculto aos jogadores',
+        save: 'Salvar',
+        cancel: 'Cancelar',
+        close: 'Fechar',
+      },
+    },
+  },
+
   menu: {
     title: 'Cardápio da Taverna',
     open: 'Ver cardápio',
@@ -828,6 +903,12 @@ export const t = {
     mission_closed: 'Esta missão não está mais nessa etapa (talvez alguém já tenha agido).',
     npc_unavailable: 'Só NPCs disponíveis ou trabalhando podem sair em missão.',
     empty_reward: 'Informe uma recompensa maior que zero.',
+    name_too_long: `O nome pode ter até ${NAME_LIMIT} caracteres.`,
+    empty_price: 'Defina um preço maior que zero.',
+    material_already_listed: 'Esse material já está à venda. Edite o item existente.',
+    out_of_stock: 'Não há unidades suficientes em estoque.',
+    not_for_sale: 'Este item não está à venda.',
+    invalid_quantity: 'Informe uma quantidade válida.',
     forbidden: 'Somente o Mestre pode fazer isso.',
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
@@ -955,6 +1036,10 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return archiveAction(masterActor(entry), entry.change);
     case 'depot_changed':
       return depotAction(masterActor(entry), entry.change);
+    case 'shop_purchased':
+      return shopPurchaseText(entry, ctx);
+    case 'shop_sold':
+      return `${entry.actor ?? 'Alguém'} vendeu ${entry.quantity} ${entry.material} ao Entreposto por ${ctx.gold(entry.bronze)}`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1211,6 +1296,21 @@ function coinsAdjustedText(
   const verb = value < 0 ? 'removeu' : 'adicionou';
   const where = value < 0 ? walletOf(entry.wallet) : `a ${walletName(entry.wallet)}`;
   return `${masterActor(entry)} ${verb} ${ctx.gold(Math.abs(value))} ${where} (${coins})`;
+}
+
+/** "Thorin comprou 12 Madeira no Entreposto por 36 PB do Acampamento"; a private delivery names no item. */
+function shopPurchaseText(
+  entry: Extract<LogEntry, { kind: 'shop_purchased' }>,
+  ctx: TextContext,
+): string {
+  const what = entry.item
+    ? `${entry.quantity} ${entry.item}`
+    : entry.quantity === 1
+      ? 'um item'
+      : `${entry.quantity} itens`;
+  const price =
+    entry.bronze === 0 ? 'de graça' : `por ${ctx.gold(entry.bronze)} ${walletOf(entry.wallet)}`;
+  return `${entry.actor ?? 'Alguém'} comprou ${what} no Entreposto ${price}`;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

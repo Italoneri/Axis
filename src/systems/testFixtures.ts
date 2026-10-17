@@ -1,5 +1,11 @@
 import { parseCatalog } from '../model/catalog';
-import { SAVE_VERSION, type GameState, type Mission, type Npc } from '../model/schema';
+import {
+  SAVE_VERSION,
+  type GameState,
+  type Mission,
+  type Npc,
+  type ShopItem,
+} from '../model/schema';
 
 const currencies = [
   { id: 'emerald', name: 'Esmeralda', icon: 'i', bronzeValue: 10000, order: 1 },
@@ -14,6 +20,19 @@ function outerSlot(id: string, startAngle: number) {
   return { id, type: 'outer', shape: 'arc', x: 0.5, y: 0.1, angle: startAngle + 8.5, arc };
 }
 
+function shopMaterial(id: string, materialId: string, price: Record<string, number>): ShopItem {
+  return {
+    id,
+    kind: 'material',
+    materialId,
+    price,
+    stock: null,
+    minLevel: 1,
+    featured: false,
+    hidden: false,
+  };
+}
+
 const seed = {
   wallets: {
     camp: { gold: 100 },
@@ -21,9 +40,20 @@ const seed = {
   },
   materials: {
     categories: [{ id: 'ores', name: 'Minérios' }],
-    items: [{ id: 'iron', name: 'Ferro', category: 'ores', quantity: 0 }],
+    items: [
+      { id: 'iron', name: 'Ferro', category: 'ores', quantity: 0 },
+      { id: 'wood', name: 'Madeira', category: 'ores', quantity: 0 },
+      { id: 'aetherium', name: 'Aetherium', category: 'ores', quantity: 0 },
+    ],
   },
   research: { categories: [{ id: 'arcana', name: 'Arcana' }], entries: [] },
+  shop: {
+    items: [
+      shopMaterial('shop_wood', 'wood', { bronze: 3 }),
+      shopMaterial('shop_iron', 'iron', { silver: 1 }),
+      shopMaterial('shop_aetherium', 'aetherium', { silver: 5 }),
+    ],
+  },
 };
 
 const influence = {
@@ -216,6 +246,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     influence: { human: 0, draconic: 0 },
     npcs: [],
     missions: [],
+    shop: seed.shop,
     slots: {},
     log: [],
     ...overrides,

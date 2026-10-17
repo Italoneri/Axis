@@ -1,5 +1,11 @@
 import type { DepotChange } from '../model/schema';
-import type { Depot, DepotCommand, DepotContext, DepotError } from '../systems/Depot';
+import type {
+  Depot,
+  DepotCommand,
+  DepotContext,
+  DepotDelivery,
+  DepotError,
+} from '../systems/Depot';
 
 export type DepotSubmitResult =
   { ok: true; depot: Depot; change: DepotChange | null } | { ok: false; error: DepotError };
@@ -14,6 +20,8 @@ export interface DepotRepository {
   load(): Promise<Depot>;
   /** Throws when storage or the network itself fails. */
   submit(command: DepotCommand, ctx: DepotContext): Promise<DepotSubmitResult>;
+  /** A shop purchase landing in the buyer's depot area; online the server already wrote it. */
+  deliver(delivery: DepotDelivery, now: string): Promise<boolean>;
   /** An imported save: replaces the whole depot. */
   replace(depot: Depot): Promise<void>;
   /** Changes written elsewhere (another tab offline, another player online). */

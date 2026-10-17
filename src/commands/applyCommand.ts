@@ -9,6 +9,7 @@ import {
   updateCharacter,
   type CharacterFields,
 } from '../systems/Characters';
+import type { DepotDelivery } from '../systems/Depot';
 import { setWorldInfluence } from '../systems/Influence';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
@@ -51,6 +52,15 @@ import {
   updateMission,
   type MissionFields,
 } from '../systems/Missions';
+import {
+  addShopItem,
+  buyFromShop,
+  buyMaterials,
+  removeShopItem,
+  sellToShop,
+  setShopPromotion,
+  updateShopItem,
+} from '../systems/Shop';
 import { isUploadFor, looksLikeUpload, setImage } from '../systems/GameImages';
 import { advanceDays } from '../systems/TimeSystem';
 import {
@@ -63,6 +73,7 @@ import {
 } from '../systems/Wallets';
 import {
   gameCommandSchema,
+  type Actor,
   type CommandContext,
   type CommandType,
   type GameCommand,
@@ -77,7 +88,9 @@ export type StateChange =
   | { kind: 'building_removed'; slotId: string }
   | { kind: 'resources_changed' }
   | { kind: 'npcs_changed' }
-  | { kind: 'missions_changed' };
+  | { kind: 'missions_changed' }
+  /** `delivery` must still be filed in the depot (kept outside the state); null for materials. */
+  | { kind: 'shop_purchased'; delivery: DepotDelivery | null };
 
 export type CommandError =
   | ActionError
@@ -90,6 +103,8 @@ export type CommandError =
 /** Every error, so answers from the server can be checked at runtime (the Record keeps it exhaustive). */
 const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   empty_name: true,
+  name_too_long: true,
+  empty_price: true,
   duplicate_name: true,
   duplicate_id: true,
   not_found: true,
@@ -109,6 +124,10 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   npc_unavailable: true,
   empty_reward: true,
   building_limit: true,
+  material_already_listed: true,
+  out_of_stock: true,
+  not_for_sale: true,
+  invalid_quantity: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -152,6 +171,9 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'mission_take_party',
   'mission_send_npcs',
   'set_image',
+  'shop_buy',
+  'shop_buy_materials',
+  'shop_sell',
 ]);
 
 /** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
@@ -177,7 +199,7 @@ export function applyCommand(
   const command = parsed.data;
   if (!isAllowed(command, ctx)) return { ok: false, error: 'forbidden' };
   const actor = actorName(state, ctx);
-  const outcome = run(command.type, command, { state, catalog, actor });
+  const outcome = run(command.type, command, { state, catalog, actor, who: ctx.actor });
   if (!outcome.ok) return outcome;
   // A no-op keeps the very same state (and revision), so nothing needs saving.
   if (outcome.state === state) return { ...outcome, logged: [] };
@@ -205,6 +227,9 @@ export function isAllowed(command: GameCommand, { actor, membership }: CommandCo
   if (!PLAYER_COMMANDS.has(command.type)) return false;
   // A player only acts for their own character: their coins, their photo.
   if (command.type === 'deposit') return command.characterId === actor.characterId;
+  if (command.type === 'shop_buy') {
+    return command.payer.kind === 'camp' || command.payer.characterId === actor.characterId;
+  }
   if (command.type === 'set_image') {
     return command.target.kind === 'character' && command.target.id === actor.characterId;
   }
@@ -217,6 +242,8 @@ interface World {
   catalog: Catalog;
   /** Who runs the command, as the log names them. */
   actor: string | undefined;
+  /** Who runs it, for rules that depend on the role. */
+  who: Actor;
 }
 type Handlers = { [K in CommandType]: (command: CommandOf[K], world: World) => HandlerOutcome };
 
@@ -366,6 +393,29 @@ const handlers: Handlers = {
     missions(sendNpcsOnMission(state, catalog, { missionId, npcIds })),
   mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
+
+  shop_item_create: ({ id, item }, { state, catalog }) =>
+    resources(addShopItem(state, catalog, { ...item, id })),
+  shop_item_update: ({ itemId, item }, { state, catalog }) =>
+    resources(updateShopItem(state, catalog, itemId, item)),
+  shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
+  shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
+    resources(setShopPromotion(state, itemId, discountPercent)),
+
+  shop_buy: ({ itemId, quantity, payer, deliveryId }, { state, catalog, who }) => {
+    const result = buyFromShop(state, catalog, { itemId, quantity, payer, deliveryId }, who);
+    if (!result.ok) return result;
+    return {
+      ok: true,
+      state: result.state,
+      change: { kind: 'shop_purchased', delivery: result.delivery },
+    };
+  },
+
+  shop_buy_materials: ({ lines }, { state, catalog, who }) =>
+    resources(buyMaterials(state, catalog, lines, who)),
+  shop_sell: ({ materialId, quantity }, { state, catalog }) =>
+    resources(sellToShop(state, catalog, { materialId, quantity })),
 
   set_image: ({ target, image }, { state, catalog }) => {
     // An uploaded photo only fits the record whose folder holds it (the Storage policies look at it).

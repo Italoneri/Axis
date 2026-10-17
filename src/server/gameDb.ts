@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { LogEntry } from '../model/schema';
+import type { DepotDelivery } from '../systems/Depot';
 
 // The database as the Edge Function needs it. Every call is a SQL function in
 // supabase/migrations, executable only with the service role.
@@ -26,6 +27,8 @@ export interface GameDb {
   loadForMember(gameId: string, userId: string): Promise<MemberGame | null>;
   /** False when the stored revision is no longer `expectedRevision`. */
   commitUpdate(update: GameUpdate): Promise<boolean>;
+  /** commitUpdate plus the depot rows, in one transaction; false on revision conflict. */
+  commitPurchase(update: GameUpdate & { delivery: DepotDelivery }): Promise<boolean>;
   /** Creates the game with `ownerId` as its master; returns the game id. */
   createGame(name: string, state: unknown, ownerId: string): Promise<string>;
   createInvite(invite: NewInvite): Promise<string>;
@@ -136,23 +139,21 @@ export function rpcGameDb(client: RpcClient): GameDb {
     if (error) throw new Error(`${fn}: ${error.message}`);
     return schema.parse(data);
   };
+  const updateArgs = (update: GameUpdate) => ({
+    target_game: update.gameId,
+    expected_revision: update.expectedRevision,
+    next_state: update.state,
+    acting_user: update.userId,
+    acting_name: update.actor,
+    command: update.command,
+    entries: update.entries,
+  });
   return {
     loadForMember: (gameId, userId) =>
       call('load_game_for', { target_game: gameId, member: userId }, memberGameSchema),
-    commitUpdate: (update) =>
-      call(
-        'commit_game_update',
-        {
-          target_game: update.gameId,
-          expected_revision: update.expectedRevision,
-          next_state: update.state,
-          acting_user: update.userId,
-          acting_name: update.actor,
-          command: update.command,
-          entries: update.entries,
-        },
-        z.boolean(),
-      ),
+    commitUpdate: (update) => call('commit_game_update', updateArgs(update), z.boolean()),
+    commitPurchase: ({ delivery, ...update }) =>
+      call('commit_shop_purchase', { ...updateArgs(update), delivery }, z.boolean()),
     createGame: (name, state, ownerId) =>
       call('create_game', { game_name: name, initial_state: state, owner: ownerId }, z.uuid()),
     createInvite: (invite) =>

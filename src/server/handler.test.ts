@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { gameStateSchema } from '../model/schema';
+import { toBronze } from '../systems/Coins';
 import { serializeState, createInitialState } from '../systems/SaveSystem';
 import { serverCatalog } from './catalog';
 import { handleGameRequest, sha256Hex, type GameResponse } from './handler';
@@ -290,5 +292,118 @@ describe('join links', () => {
     const userId = '00000000-0000-4000-8000-0000000000aa';
     const refused = await request({ action: 'unlink_player', gameId, userId }, MASTER);
     expect(refused.status).toBe(404);
+  });
+});
+
+describe('shop purchases', () => {
+  const sword = {
+    id: 'shop_sword',
+    kind: 'equipment',
+    name: 'Espada curta',
+    description: 'Afiada.',
+    depotKind: 'equipamento',
+    price: { bronze: 5 },
+    stock: null,
+    minLevel: 1,
+    featured: false,
+    hidden: false,
+  } as const;
+
+  async function withShop() {
+    const context = setup();
+    const seed = createInitialState(serverCatalog);
+    const gameId = await context.createGame({
+      ...seed,
+      slots: { mid_1: { buildingId: 'trading_post', level: 1, status: 'done' } },
+      shop: { items: [...seed.shop.items, sword] },
+    });
+    context.db.players.set(`${gameId}:${PLAYER}`, { role: 'player', characterId: character });
+    const buy = (itemId: string) =>
+      context.request(
+        {
+          action: 'command',
+          gameId,
+          expectedRevision: 0,
+          command: {
+            type: 'shop_buy',
+            itemId,
+            quantity: 1,
+            payer: { kind: 'camp' },
+            deliveryId: 'delivery_1',
+          },
+        },
+        PLAYER,
+      );
+    const campBronze = () => {
+      const parsed = gameStateSchema.parse(context.db.games.get(gameId)?.state);
+      return toBronze(parsed.wallets.camp, serverCatalog.currencies);
+    };
+    return { ...context, gameId, buy, campBronze };
+  }
+
+  it('commitsEquipmentPurchaseWithDelivery', async () => {
+    const { db, buy, campBronze } = await withShop();
+    const before = campBronze();
+    expect((await buy('shop_sword')).status).toBe(200);
+    expect(db.deliveries).toEqual([
+      {
+        itemId: 'delivery_1',
+        ownerId: character,
+        authorId: character,
+        name: 'Espada curta',
+        kind: 'equipamento',
+        quantity: 1,
+        notes: 'Afiada.',
+      },
+    ]);
+    expect(campBronze()).toBe(before - 5);
+  });
+
+  it('storesThePrivatePurchaseWithoutTheItem', async () => {
+    const { db, buy } = await withShop();
+    await buy('shop_sword');
+    expect(db.loggedCommands).toEqual([{ type: 'shop_buy', quantity: 1, payer: { kind: 'camp' } }]);
+  });
+
+  it('keepsTheItemOfAGroupPurchaseInTheStoredCommand', async () => {
+    const { db, gameId, request } = await withShop();
+    await request(
+      {
+        action: 'command',
+        gameId,
+        expectedRevision: 0,
+        command: {
+          type: 'shop_buy',
+          itemId: 'shop_sword',
+          quantity: 1,
+          payer: { kind: 'camp' },
+          deliveryId: 'delivery_1',
+        },
+      },
+      MASTER,
+    );
+    expect(db.deliveries[0]?.ownerId).toBeNull();
+    expect(db.loggedCommands).toMatchObject([{ type: 'shop_buy', itemId: 'shop_sword' }]);
+  });
+
+  it('materialPurchaseUsesPlainCommit', async () => {
+    const { db, gameId, buy } = await withShop();
+    expect((await buy('shop_wood')).status).toBe(200);
+    expect(db.deliveries).toEqual([]);
+    expect(db.games.get(gameId)?.revision).toBe(1);
+  });
+
+  it('conflictLeavesNoDelivery', async () => {
+    const { db, buy } = await withShop();
+    const load = db.loadForMember.bind(db);
+    // Someone else saves between the load and the commit.
+    db.loadForMember = async (id, userId) => {
+      const game = await load(id, userId);
+      const stored = db.games.get(id);
+      if (stored) db.games.set(id, { ...stored, revision: stored.revision + 1 });
+      return game;
+    };
+    expect((await buy('shop_sword')).status).toBe(409);
+    expect(db.deliveries).toEqual([]);
   });
 });

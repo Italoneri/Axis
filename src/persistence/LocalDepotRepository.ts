@@ -1,10 +1,12 @@
 import {
   applyDepotCommand,
+  deliverToDepot,
   EMPTY_DEPOT,
   parseDepot,
   type Depot,
   type DepotCommand,
   type DepotContext,
+  type DepotDelivery,
   type DepotParse,
 } from '../systems/Depot';
 import type { DepotRepository, DepotSubmitResult } from './DepotRepository';
@@ -32,6 +34,11 @@ export class LocalDepotRepository implements DepotRepository {
     const outcome = applyDepotCommand(stored, command, ctx);
     if (outcome.ok && outcome.depot !== stored) this.write(outcome.depot);
     return Promise.resolve(outcome);
+  }
+
+  deliver(delivery: DepotDelivery, now: string): Promise<boolean> {
+    this.write(deliverToDepot(this.read(), delivery, now));
+    return Promise.resolve(true);
   }
 
   replace(depot: Depot): Promise<void> {

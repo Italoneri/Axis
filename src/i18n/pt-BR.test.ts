@@ -208,3 +208,49 @@ describe('depot log', () => {
     expect(depotAction('Thorin', change)).toBe(text);
   });
 });
+
+describe('shop purchase log', () => {
+  const goldCtx: TextContext = { ...ctx, gold: (bronze) => `${bronze} PB` };
+  it.each([
+    {
+      entry: { quantity: 12, bronze: 36, item: 'Madeira' },
+      text: 'Thorin comprou 12 Madeira no Entreposto por 36 PB do Acampamento',
+    },
+    {
+      entry: { quantity: 2, bronze: 6, item: 'Ferro', wallet: 'Thorin' },
+      text: 'Thorin comprou 2 Ferro no Entreposto por 6 PB de Thorin',
+    },
+    {
+      entry: { quantity: 1, bronze: 80 },
+      text: 'Thorin comprou um item no Entreposto por 80 PB do Acampamento',
+    },
+    {
+      entry: { quantity: 3, bronze: 80 },
+      text: 'Thorin comprou 3 itens no Entreposto por 80 PB do Acampamento',
+    },
+    {
+      entry: { quantity: 1, bronze: 0, item: 'Espada' },
+      text: 'Thorin comprou 1 Espada no Entreposto de graça',
+    },
+  ])('writes "$text"', ({ entry, text }) => {
+    const full = { day: 5, kind: 'shop_purchased', actor: 'Thorin', ...entry } as const;
+    expect(logEntryText(full, goldCtx)).toBe(`Dia 5 — ${text}`);
+  });
+});
+
+describe('shop sale log', () => {
+  const goldCtx: TextContext = { ...ctx, gold: (bronze) => `${bronze} PB` };
+  it('writesWhoSoldWhatForHowMuch', () => {
+    const entry = {
+      day: 5,
+      kind: 'shop_sold',
+      actor: 'Thorin',
+      material: 'Madeira',
+      quantity: 10,
+      bronze: 15,
+    } as const;
+    expect(logEntryText(entry, goldCtx)).toBe(
+      'Dia 5 — Thorin vendeu 10 Madeira ao Entreposto por 15 PB',
+    );
+  });
+});

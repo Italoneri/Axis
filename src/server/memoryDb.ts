@@ -1,3 +1,4 @@
+import type { DepotDelivery } from '../systems/Depot';
 import type {
   GameDb,
   InviteAcceptance,
@@ -32,6 +33,9 @@ export class MemoryDb implements GameDb {
   invites: Invite[] = [];
   joinLinks: JoinLink[] = [];
   names = new Map<string, string>();
+  deliveries: DepotDelivery[] = [];
+  /** The command stored with each accepted update, as the game_log row would keep it. */
+  loggedCommands: unknown[] = [];
   private nextId = 1;
 
   private uuid(): string {
@@ -44,11 +48,23 @@ export class MemoryDb implements GameDb {
     return Promise.resolve(game && player ? { ...game, ...player } : null);
   }
 
-  commitUpdate({ gameId, expectedRevision, state }: Parameters<GameDb['commitUpdate']>[0]) {
+  commitUpdate({
+    gameId,
+    expectedRevision,
+    state,
+    command,
+  }: Parameters<GameDb['commitUpdate']>[0]) {
     const game = this.games.get(gameId);
     if (!game || game.revision !== expectedRevision) return Promise.resolve(false);
+    this.loggedCommands.push(command);
     this.games.set(gameId, { state, revision: expectedRevision + 1 });
     return Promise.resolve(true);
+  }
+
+  async commitPurchase({ delivery, ...update }: Parameters<GameDb['commitPurchase']>[0]) {
+    if (!(await this.commitUpdate(update))) return false;
+    this.deliveries.push(delivery);
+    return true;
   }
 
   createGame(name: string, state: unknown, ownerId: string): Promise<string> {

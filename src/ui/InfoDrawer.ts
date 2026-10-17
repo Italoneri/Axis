@@ -33,6 +33,8 @@ export interface DrawerExtras {
   openMenu?: (() => void) | undefined;
   /** Likewise for the Depósito. */
   openDepot?: (() => void) | undefined;
+  /** Likewise for the Entreposto. */
+  openShop?: (() => void) | undefined;
 }
 
 const MASTER_TABS: readonly DrawerTab[] = ['master', 'map'];
@@ -141,6 +143,7 @@ export class InfoDrawer {
         openArchive: this.extras.openArchive,
         openMenu: this.extras.openMenu,
         openDepot: this.extras.openDepot,
+        openShop: this.extras.openShop,
       });
       return [...tools, ...this.panelsOf(tab).map((panel) => panel.element)];
     }

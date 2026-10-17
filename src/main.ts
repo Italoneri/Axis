@@ -36,6 +36,7 @@ import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
 import { MenuWindow } from './ui/menu/MenuWindow';
+import { ShopWindow } from './ui/shop/ShopWindow';
 import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
 import { WalkingNpcsSetting } from './ui/walkingNpcsSetting';
@@ -147,7 +148,11 @@ async function start(): Promise<void> {
     repository,
     {
       contextFor: (command) =>
-        command.type === 'archive_log' || command.type === 'depot_log'
+        command.type === 'archive_log' ||
+        command.type === 'depot_log' ||
+        command.type === 'shop_buy' ||
+        command.type === 'shop_buy_materials' ||
+        command.type === 'shop_sell'
           ? { actor: archiveViewer() }
           : mode.contextFor(command),
       onRefused: (error) => notify(t.errors[error], 'error'),
@@ -193,7 +198,15 @@ async function start(): Promise<void> {
   const openDepot = () => depotWindow.open();
   const menuWindow = new MenuWindow({ game: store, memory });
   const openMenu = () => menuWindow.open();
+  const shopWindow = new ShopWindow({ game: store, session, memory, viewer: archiveViewer });
+  const openShop = () => shopWindow.open();
   hideGate();
+
+  store.subscribe((_state, change) => {
+    if (change.kind === 'shop_purchased' && change.delivery && !mode.isOnline) {
+      void depot.deliver(change.delivery);
+    }
+  });
 
   // Every entry a local command logs becomes a toast.
   store.subscribe((state, _change, logged) => {
@@ -214,7 +227,7 @@ async function start(): Promise<void> {
     session,
     { liveMap, preview, walkingNpcs },
     act,
-    { ...mode.drawerExtras(store), openArchive, openMenu, openDepot },
+    { ...mode.drawerExtras(store), openArchive, openMenu, openDepot, openShop },
   );
   const missionBoard = new MissionBoard({ game: store, session, act, memory });
   const panel = new SlotPanel(
@@ -222,8 +235,9 @@ async function start(): Promise<void> {
     store,
     session,
     { store: archive, open: openArchive },
-    { menu: openMenu, missions: () => missionBoard.open() },
+    { menu: openMenu, missions: () => missionBoard.open(), shop: openShop },
     { store: depot, open: openDepot },
+    archiveViewer,
   );
 
   mountTopBar(

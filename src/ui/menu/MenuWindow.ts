@@ -7,6 +7,7 @@ import { dishLevel, isDishAvailable, menuFor } from '../../systems/TavernMenu';
 import { el } from '../dom';
 import { formatPrice } from '../format';
 import type { UiMemory } from '../uiMemory';
+import { closeButton, keepEscapeInside } from '../widgets';
 
 const MEAL_MEMORY_KEY = 'menu.meal';
 
@@ -154,21 +155,6 @@ function showPhoto(src: string, name: string): void {
   dialog.addEventListener('close', () => dialog.remove());
   document.body.append(dialog);
   dialog.showModal();
-}
-
-function closeButton(label: string, onClose: () => void): HTMLElement {
-  return el(
-    'button',
-    { class: 'btn btn--icon', type: 'button', 'aria-label': label, onclick: onClose },
-    '×',
-  );
-}
-
-/** Esc closes the dialog; the slot panel behind it should stay open. */
-function keepEscapeInside(dialog: HTMLDialogElement): void {
-  dialog.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') event.stopPropagation();
-  });
 }
 
 function parseMeal(value: string): Meal {

@@ -11,7 +11,7 @@ import { fail, ok, type Outcome } from './outcome';
 // private game-images bucket online), under `<kind>/<id>/`, so the Storage
 // policies can tell a player's own character from everything else.
 
-export const IMAGE_KINDS = ['character', 'npc', 'material', 'world'] as const;
+export const IMAGE_KINDS = ['character', 'npc', 'material', 'world', 'shop_item'] as const;
 export type ImageKind = (typeof IMAGE_KINDS)[number];
 
 /** The record a photo belongs to. */
@@ -55,7 +55,7 @@ export function checkStoredPhoto(bytes: number): PhotoError | null {
 
 const UPLOAD_PREFIX = 'upload:';
 const UPLOAD_PATTERN =
-  /^upload:(character|npc|material|world)\/([A-Za-z0-9_-]{1,64})\/([a-z0-9_-]{1,64})\.(webp|jpeg)$/;
+  /^upload:(character|npc|material|world|shop_item)\/([A-Za-z0-9_-]{1,64})\/([a-z0-9_-]{1,64})\.(webp|jpeg)$/;
 
 export function uploadRef({ target, imageId, format }: UploadRef): string {
   return `${UPLOAD_PREFIX}${target.kind}/${target.id}/${imageId}.${format}`;
@@ -106,6 +106,8 @@ export function imageOf(
       return state.materials.items.find((m) => m.id === target.id)?.icon;
     case 'world':
       return state.worldIcons?.[target.id] ?? catalog.worlds.find((w) => w.id === target.id)?.icon;
+    case 'shop_item':
+      return state.shop.items.find((i) => i.id === target.id)?.image;
   }
 }
 
@@ -131,6 +133,7 @@ function recordExists(state: GameState, catalog: Catalog, { kind, id }: ImageTar
     npc: state.npcs,
     material: state.materials.items,
     world: catalog.worlds,
+    shop_item: state.shop.items,
   };
   return records[kind].some((record) => record.id === id);
 }
@@ -171,6 +174,13 @@ function withImage(
       });
       return { ...state, materials: { ...state.materials, items } };
     }
+    case 'shop_item': {
+      const items = edit(state.shop.items, (i) => {
+        if (image) i.image = image;
+        else delete i.image;
+      });
+      return { ...state, shop: { ...state.shop, items } };
+    }
     case 'world': {
       const others = Object.entries(state.worldIcons ?? {}).filter(([worldId]) => worldId !== id);
       const icons = Object.fromEntries(image ? [...others, [id, image]] : others);
@@ -185,6 +195,7 @@ export function uploadsOf(state: GameState): UploadRef[] {
     ...state.characters.map((c) => c.portrait),
     ...state.npcs.map((n) => n.portrait),
     ...state.materials.items.map((m) => m.icon),
+    ...state.shop.items.map((i) => i.image),
     ...Object.values(state.worldIcons ?? {}),
   ];
   return refs.map(parseUploadRef).filter((ref) => ref !== null);

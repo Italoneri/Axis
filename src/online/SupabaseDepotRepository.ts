@@ -200,6 +200,11 @@ export class SupabaseDepotRepository implements DepotRepository {
     return outcome;
   }
 
+  /** The purchase function already wrote the rows; realtime brings them. */
+  deliver(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
   async replace(depot: Depot): Promise<void> {
     const written = await this.backend.replaceRows(this.gameId, {
       sections: depot.sections.map(sectionToRow),

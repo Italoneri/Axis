@@ -18,6 +18,7 @@ function richState(): GameState {
       core: { buildingId: 'heart', level: 1, status: 'done' },
       outer_n: { buildingId: 'forge', level: 1, status: 'done' },
       outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
+      post: { buildingId: 'trading_post', level: 3, status: 'done' },
     },
     npcs: [
       npc({
@@ -64,6 +65,18 @@ const draft = {
   notes: '',
   status: 'em_andamento',
   progress: 0,
+} as const;
+
+const shopEquipment = {
+  kind: 'equipment',
+  name: 'Espada longa',
+  description: '',
+  depotKind: 'equipamento',
+  price: { silver: 8 },
+  stock: 2,
+  minLevel: 2,
+  featured: false,
+  hidden: false,
 } as const;
 
 const missionFields = {
@@ -170,6 +183,22 @@ const validCommands: Record<CommandType, GameCommand> = {
     target: { kind: 'character', id: 'thorin' },
     image: 'upload:character/thorin/img_1.webp',
   },
+  shop_item_create: { type: 'shop_item_create', id: 'shop_sword', item: shopEquipment },
+  shop_item_update: { type: 'shop_item_update', itemId: 'shop_wood', item: shopEquipment },
+  shop_item_remove: { type: 'shop_item_remove', itemId: 'shop_iron' },
+  shop_set_promotion: { type: 'shop_set_promotion', itemId: 'shop_wood', discountPercent: 20 },
+  shop_buy: {
+    type: 'shop_buy',
+    itemId: 'shop_wood',
+    quantity: 2,
+    payer: { kind: 'camp' },
+    deliveryId: 'delivery_1',
+  },
+  shop_buy_materials: {
+    type: 'shop_buy_materials',
+    lines: [{ itemId: 'shop_wood', quantity: 2 }],
+  },
+  shop_sell: { type: 'shop_sell', materialId: 'iron', quantity: 4 },
   mission_create: { type: 'mission_create', id: 'mission_1', ...missionFields },
   mission_update: { type: 'mission_update', missionId: 'contrato', ...missionFields },
   mission_remove: { type: 'mission_remove', missionId: 'contrato' },
@@ -369,6 +398,9 @@ describe('applyCommand permissions', () => {
     'mission_take_party',
     'mission_send_npcs',
     'set_image',
+    'shop_buy',
+    'shop_buy_materials',
+    'shop_sell',
   ]);
   const masterOnly = Object.values(validCommands).filter(
     (c) => !playerCommands.has(c.type) && !membershipCommands.has(c.type),
@@ -417,6 +449,56 @@ describe('applyCommand permissions', () => {
     expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
   });
 
+  it.each([
+    validCommands.shop_item_create,
+    validCommands.shop_item_update,
+    validCommands.shop_item_remove,
+    validCommands.shop_set_promotion,
+    { type: 'set_image', target: { kind: 'shop_item', id: 'shop_wood' } },
+  ])('refusesShopEditsFromPlayers: $type', (command) => {
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
+
+  it('refusesPayingFromAnotherCharacter', () => {
+    const command = {
+      ...validCommands.shop_buy,
+      payer: { kind: 'character', characterId: 'lyra' },
+    };
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+  });
+
+  it('allowsPlayerToPayFromCamp', () => {
+    const result = run(validCommands.shop_buy, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.change).toEqual({ kind: 'shop_purchased', delivery: null });
+    expect(result.logged).toMatchObject([{ kind: 'shop_purchased', actor: 'Thorin', bronze: 6 }]);
+  });
+
+  it('buysMissingMaterialsForAPlayer', () => {
+    const result = run(validCommands.shop_buy_materials, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.change).toEqual({ kind: 'resources_changed' });
+    expect(result.logged).toMatchObject([{ kind: 'shop_purchased', actor: 'Thorin', bronze: 6 }]);
+  });
+
+  it.each([
+    { lines: [] },
+    { lines: Array.from({ length: 21 }, () => ({ itemId: 'shop_wood', quantity: 1 })) },
+  ])('rejectsBadMaterialLines', (fields) => {
+    const command = { ...validCommands.shop_buy_materials, ...fields };
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'invalid_command' });
+  });
+
+  it('refusesSellingBelowLevel3', () => {
+    const state = richState();
+    const post = { buildingId: 'trading_post', level: 1, status: 'done' } as const;
+    const level1 = { ...state, slots: { ...state.slots, post } };
+    expect(run(validCommands.shop_sell, thorinPlayer, level1)).toEqual({
+      ok: false,
+      error: 'not_for_sale',
+    });
+  });
+
   it('lets a player clear the photo of their own character', () => {
     const command = { type: 'set_image', target: { kind: 'character', id: 'thorin' } };
     expect(run(command, thorinPlayer).ok).toBe(true);
@@ -461,7 +543,11 @@ describe('applyCommand membership', () => {
 });
 
 describe('applyCommand set_image', () => {
-  const setImage = (kind: 'character' | 'npc' | 'material' | 'world', id: string, image?: string) =>
+  const setImage = (
+    kind: 'character' | 'npc' | 'material' | 'world' | 'shop_item',
+    id: string,
+    image?: string,
+  ) =>
     ({
       type: 'set_image',
       target: { kind, id },
@@ -473,6 +559,7 @@ describe('applyCommand set_image', () => {
     { kind: 'material', id: 'iron', read: (s: GameState) => s.materials.items[0]?.icon },
     { kind: 'world', id: 'human', read: (s: GameState) => s.worldIcons?.human },
     { kind: 'character', id: 'thorin', read: (s: GameState) => s.characters[0]?.portrait },
+    { kind: 'shop_item', id: 'shop_wood', read: (s: GameState) => s.shop.items[0]?.image },
   ] as const)('lets the master set and clear the photo of a $kind', ({ kind, id, read }) => {
     const image = `upload:${kind}/${id}/img_1.webp`;
     const set = run(setImage(kind, id, image));

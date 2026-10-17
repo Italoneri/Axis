@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { actorName, applyCommand, MASTER_ACTOR } from '../commands/applyCommand';
+import { gameCommandSchema } from '../commands/schema';
+import type { DepotDelivery } from '../systems/Depot';
 import { createInitialState, parseState, type ParseResult } from '../systems/SaveSystem';
 import {
   conflict,
@@ -102,6 +104,14 @@ export async function handleGameRequest(
   return run(parsed.data.action, parsed.data, { ...deps, userId });
 }
 
+/** The history never names an item filed in a private area, so the purchase drops what points to it. */
+function loggedCommand(raw: unknown, delivery: DepotDelivery): unknown {
+  const parsed = gameCommandSchema.safeParse(raw);
+  if (!parsed.success || parsed.data.type !== 'shop_buy' || delivery.ownerId === null) return raw;
+  const { type, quantity, payer } = parsed.data;
+  return { type, quantity, payer };
+}
+
 function run<K extends ActionName>(
   action: K,
   request: ActionOf[K],
@@ -125,7 +135,7 @@ const actions: Actions = {
     if (!outcome.ok) return refusal(outcome);
     if (outcome.state === stored.state) return reply(200, { state: stored.state });
 
-    const saved = await db.commitUpdate({
+    const update = {
       gameId,
       expectedRevision,
       state: outcome.state,
@@ -133,7 +143,11 @@ const actions: Actions = {
       actor: actorName(stored.state, ctx) ?? null,
       command,
       entries: outcome.logged,
-    });
+    };
+    const delivery = outcome.change.kind === 'shop_purchased' ? outcome.change.delivery : null;
+    const saved = delivery
+      ? await db.commitPurchase({ ...update, command: loggedCommand(command, delivery), delivery })
+      : await db.commitUpdate(update);
     return saved ? reply(200, { state: outcome.state }) : conflict();
   },
 

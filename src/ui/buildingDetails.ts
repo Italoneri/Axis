@@ -1,6 +1,12 @@
+import type { Actor } from '../commands/schema';
 import { jobEffectText, t, type TextContext } from '../i18n/pt-BR';
-import type { BuildingDef, BuildingLevel, JobDef } from '../model/schema';
+import type { Catalog } from '../model/catalog';
+import type { BuildingDef, BuildingLevel, Cost, GameState, JobDef } from '../model/schema';
+import { fromBronze } from '../systems/Coins';
+import { findMaterial } from '../systems/Materials';
+import { missingPurchase, tradingPostLevel } from '../systems/Shop';
 import { el } from './dom';
+import { formatPrice } from './format';
 
 export interface DetailsOptions {
   def: BuildingDef;
@@ -92,4 +98,33 @@ function levelBlock(options: DetailsOptions, level: BuildingLevel, index: number
     ),
     facts.length > 0 && el('ul', { class: 'effects' }, ...facts.map((fact) => el('li', {}, fact))),
   );
+}
+
+export interface ShortcutModel {
+  label: string;
+  lines: string[];
+  /** Names of the missing materials the shop cannot sell. */
+  unavailable: string[];
+}
+
+/** "Comprar o que falta no Entreposto": null when there is no Entreposto or nothing to buy. */
+export function shortcutModel(
+  state: GameState,
+  catalog: Catalog,
+  cost: Cost,
+  viewer: Actor,
+): ShortcutModel | null {
+  if (tradingPostLevel(state) < 1) return null;
+  const purchase = missingPurchase(state, catalog, cost, viewer);
+  if (purchase.lines.length === 0) return null;
+  const nameOf = (id: string) => findMaterial(state.materials, id)?.name ?? id;
+  const priceOf = (bronze: number) =>
+    bronze === 0 ? t.shop.free : formatPrice(catalog, fromBronze(bronze, catalog.currencies));
+  return {
+    label: t.shop.shortcut.button(priceOf(purchase.totalBronze)),
+    lines: purchase.lines.map((line) =>
+      t.shop.shortcut.line(line.quantity, nameOf(line.materialId), priceOf(line.bronze)),
+    ),
+    unavailable: purchase.unavailable.map(nameOf),
+  };
 }

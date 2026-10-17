@@ -6,6 +6,8 @@ import { slotTypeSchema } from '../map/layout';
 
 const positiveInt = z.number().int().nonnegative();
 const percent = z.number().int().min(0).max(100);
+/** Longest name of a depot item or section, equipment sold by the shop included. */
+export const NAME_LIMIT = 120;
 const displayName = z.string().trim().min(1);
 /**
  * Asset key from assets.json, an image URL, or a photo sent in game
@@ -639,6 +641,24 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
   z.object({ ...entryBase, kind: z.literal('archive_changed'), change: archiveChangeSchema }),
   z.object({ ...entryBase, kind: z.literal('depot_changed'), change: depotChangeSchema }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('shop_purchased'),
+    quantity: z.number().int().positive(),
+    /** 0 for a free purchase (the master's). */
+    bronze: positiveInt,
+    wallet: walletLabel,
+    /** Omitted when delivered to a private area: the log is shared with every player. */
+    item: z.string().optional(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('shop_sold'),
+    /** Material name at the time. */
+    material: z.string(),
+    quantity: z.number().int().positive(),
+    bronze: positiveInt,
+  }),
   // Missions: titles and names at the time.
   z.object({
     ...entryBase,
@@ -671,7 +691,37 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
-export const SAVE_VERSION = 7;
+export const depotItemKindSchema = z.enum(['equipamento', 'pocao', 'outro']);
+
+const shopItemBase = {
+  id: z.string().min(1),
+  /** Base price; a promotion is applied on top of it. */
+  price: amountBagSchema,
+  /** null: infinite. */
+  stock: positiveInt.nullable(),
+  minLevel: z.number().int().min(1).max(3),
+  /** Sold by the passing merchant instead of the regular stall. */
+  featured: z.boolean(),
+  hidden: z.boolean(),
+  discountPercent: z.number().int().min(1).max(90).optional(),
+  /** Overrides the material icon / equipment photo. */
+  image: imageRef,
+};
+
+export const shopItemSchema = z.discriminatedUnion('kind', [
+  z.object({ ...shopItemBase, kind: z.literal('material'), materialId: z.string().min(1) }),
+  z.object({
+    ...shopItemBase,
+    kind: z.literal('equipment'),
+    name: displayName.max(NAME_LIMIT),
+    description: z.string().max(2000),
+    depotKind: depotItemKindSchema,
+  }),
+]);
+
+export const shopSchema = z.object({ items: z.array(shopItemSchema) });
+
+export const SAVE_VERSION = 8;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
@@ -694,6 +744,7 @@ export const gameStateSchema = z.object({
   worldIcons: z.record(z.string(), z.string()).optional(),
   npcs: z.array(npcSchema),
   missions: z.array(missionSchema),
+  shop: shopSchema,
   slots: z.record(z.string(), placedBuildingSchema),
   log: z.array(logEntrySchema),
 });
@@ -741,3 +792,5 @@ export type ArchiveChange = z.infer<typeof archiveChangeSchema>;
 export type DepotChange = z.infer<typeof depotChangeSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
+export type ShopItem = z.infer<typeof shopItemSchema>;
+export type Shop = z.infer<typeof shopSchema>;

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { findBuilding } from '../model/catalog';
+import type { GameState } from '../model/schema';
 import { makeState, testCatalog } from '../systems/testFixtures';
-import { levelFacts } from './buildingDetails';
+import { levelFacts, shortcutModel } from './buildingDetails';
 import { textContext } from './format';
 
 const ctx = textContext(testCatalog, makeState());
@@ -32,5 +33,60 @@ describe('levelFacts', () => {
     if (!def) throw new Error('no armory in testCatalog');
     const twoLevels = { ...def, levels: [...def.levels, ...def.levels] };
     expect(levelFacts(twoLevels, 1, ctx)).toEqual([]);
+  });
+});
+
+describe('shortcutModel', () => {
+  const thorin = { role: 'player', characterId: 'thorin' } as const;
+  const master = { role: 'master' } as const;
+  const forgeLevel2 = { coins: 400, materials: { wood: 108, iron: 72, aetherium: 10 } };
+  const quantities: Record<string, number> = { wood: 96, iron: 72, aetherium: 8 };
+
+  function stateWith(tradingPostLevel: number, shopHidden: readonly string[] = []): GameState {
+    const base = makeState({
+      slots:
+        tradingPostLevel > 0
+          ? { s1: { buildingId: 'trading_post', level: tradingPostLevel, status: 'done' } }
+          : {},
+    });
+    return {
+      ...base,
+      materials: {
+        ...base.materials,
+        items: base.materials.items.map((m) => ({ ...m, quantity: quantities[m.id] ?? 0 })),
+      },
+      shop: { items: base.shop.items.map((i) => ({ ...i, hidden: shopHidden.includes(i.id) })) },
+    };
+  }
+
+  it('buildsShortcutForForgeLevel2', () => {
+    expect(shortcutModel(stateWith(1), testCatalog, forgeLevel2, thorin)).toEqual({
+      label: 'Comprar o que falta no Entreposto — 1 Ouro, 3 Prata e 6 Bronze',
+      lines: ['12 Madeira — 3 Prata e 6 Bronze', '2 Aetherium — 1 Ouro'],
+      unavailable: [],
+    });
+  });
+
+  it('namesMaterialsTheShopDoesNotSell', () => {
+    const model = shortcutModel(stateWith(1, ['shop_aetherium']), testCatalog, forgeLevel2, thorin);
+    expect(model?.unavailable).toEqual(['Aetherium']);
+    expect(model?.lines).toEqual(['12 Madeira — 3 Prata e 6 Bronze']);
+  });
+
+  it('hidesShortcutWithoutTradingPost', () => {
+    expect(shortcutModel(stateWith(0), testCatalog, forgeLevel2, thorin)).toBeNull();
+  });
+
+  it('hidesShortcutWhenNothingIsBuyable', () => {
+    const state = stateWith(1, ['shop_wood']);
+    expect(
+      shortcutModel(state, testCatalog, { coins: 0, materials: { wood: 100 } }, thorin),
+    ).toBeNull();
+  });
+
+  it('readsFreeForMaster', () => {
+    const model = shortcutModel(stateWith(1), testCatalog, forgeLevel2, master);
+    expect(model?.label).toBe('Comprar o que falta no Entreposto — de graça');
+    expect(model?.lines).toEqual(['12 Madeira — de graça', '2 Aetherium — de graça']);
   });
 });

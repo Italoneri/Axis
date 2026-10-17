@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Actor } from '../commands/schema';
-import type { DepotChange } from '../model/schema';
+import { depotItemKindSchema, NAME_LIMIT, type DepotChange } from '../model/schema';
 import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
 
 // Depósito: sections and items kept outside the GameState, like the
@@ -10,7 +10,7 @@ import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
 
 /** Building whose side panel opens the depot once built. */
 export const DEPOT_BUILDING_ID = 'armory';
-export const NAME_LIMIT = 120;
+export { NAME_LIMIT };
 export const ITEM_NOTES_LIMIT = 2_000;
 export const QUANTITY_LIMIT = 99_999;
 
@@ -21,7 +21,7 @@ const timestamp = z.string().min(1);
 const ownerSchema = z.string().min(1).max(64).nullable();
 const quantitySchema = z.number().int().min(1).max(QUANTITY_LIMIT);
 
-export const itemKindSchema = z.enum(['equipamento', 'pocao', 'outro']);
+export const itemKindSchema = depotItemKindSchema;
 
 export const depotSectionSchema = z.object({
   id: recordId,
@@ -223,6 +223,68 @@ export function itemOwner(
   item: Pick<DepotItem, 'sectionId'>,
 ): string | null | undefined {
   return depot.sections.find((section) => section.id === item.sectionId)?.ownerId;
+}
+
+export const SHOP_SECTION_NAME = 'Compras do Entreposto';
+
+export interface DepotDelivery {
+  itemId: string;
+  ownerId: string | null;
+  authorId: string;
+  name: string;
+  kind: ItemKind;
+  quantity: number;
+  notes: string;
+}
+
+export function shopSectionId(ownerId: string | null): string {
+  return `entreposto-${ownerId ?? 'grupo'}`.slice(0, 64);
+}
+
+/** Puts a purchase in the owner's "Compras do Entreposto" section, opening or restoring it when needed. */
+export function deliverToDepot(depot: Depot, delivery: DepotDelivery, now: string): Depot {
+  const { depot: withSection, section } = shopSectionFor(depot, delivery);
+  const item: DepotItem = {
+    id: delivery.itemId,
+    sectionId: section.id,
+    name: delivery.name,
+    kind: delivery.kind,
+    quantity: delivery.quantity,
+    notes: delivery.notes,
+    order: nextOrder(withSection.items.filter((i) => i.sectionId === section.id)),
+    authorId: delivery.authorId,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  return { ...withSection, items: [...withSection.items, item] };
+}
+
+function shopSectionFor(
+  depot: Depot,
+  { ownerId, authorId, itemId }: DepotDelivery,
+): { depot: Depot; section: DepotSection } {
+  // Section ids are client-chosen: only this area's sections may be reused.
+  const id = shopSectionId(ownerId);
+  const area = depot.sections.filter((s) => s.ownerId === ownerId);
+  const live = area.filter((s) => s.deletedAt === null);
+  const found = live.find((s) => s.id === id) ?? live.find((s) => s.name === SHOP_SECTION_NAME);
+  if (found) return { depot, section: found };
+  const trashed = area.find((s) => s.id === id);
+  if (trashed) {
+    const restored = { ...trashed, deletedAt: null };
+    return { depot: replaceSection(depot, restored), section: restored };
+  }
+  const isIdTaken = depot.sections.some((s) => s.id === id);
+  const created: DepotSection = {
+    id: isIdTaken ? `entreposto-${itemId}`.slice(0, 64) : id,
+    name: SHOP_SECTION_NAME,
+    ownerId,
+    order: nextOrder(live),
+    authorId,
+    deletedAt: null,
+  };
+  return { depot: { ...depot, sections: [...depot.sections, created] }, section: created };
 }
 
 /** What a write must send to storage: changed or new records, and records gone for good. */

@@ -4,10 +4,13 @@ import {
   activeSections,
   applyDepotCommand,
   depotCounts,
+  deliverToDepot,
   depotDiff,
   EMPTY_DEPOT,
   parseDepot,
   searchItems,
+  SHOP_SECTION_NAME,
+  shopSectionId,
   sectionItems,
   visibleDepot,
   type Depot,
@@ -336,5 +339,86 @@ describe('depot queries', () => {
     expect(parseDepot(JSON.parse(JSON.stringify(base)))).toEqual({ ok: true, depot: base });
     expect(parseDepot({ sections: 1 }).ok).toBe(false);
     expect(parseDepot(EMPTY_DEPOT)).toEqual({ ok: true, depot: EMPTY_DEPOT });
+  });
+});
+
+describe('deliverToDepot', () => {
+  const delivery = {
+    itemId: 'd1',
+    ownerId: 'thorin',
+    authorId: 'thorin',
+    name: 'Espada longa',
+    kind: 'equipamento',
+    quantity: 1,
+    notes: '1d8',
+  } as const;
+  const LATER = '2026-10-15T12:00:00.000Z';
+
+  it('createsShopSectionOnce', () => {
+    const first = deliverToDepot(EMPTY_DEPOT, delivery, NOW);
+    const second = deliverToDepot(first, { ...delivery, itemId: 'd2', name: 'Adaga' }, LATER);
+    expect(second.sections).toEqual([
+      {
+        id: shopSectionId('thorin'),
+        name: SHOP_SECTION_NAME,
+        ownerId: 'thorin',
+        order: 0,
+        authorId: 'thorin',
+        deletedAt: null,
+      },
+    ]);
+    expect(second.items.map((i) => [i.id, i.order])).toEqual([
+      ['d1', 0],
+      ['d2', 1],
+    ]);
+    expect(second.items[0]).toMatchObject({ createdAt: NOW, updatedAt: NOW, deletedAt: null });
+  });
+
+  it('namesTheGroupSectionAfterTheGroup', () => {
+    expect(shopSectionId(null)).toBe('entreposto-grupo');
+    expect(shopSectionId('a'.repeat(80))).toHaveLength(64);
+  });
+
+  it('reusesSectionWithSameNameInArea', () => {
+    const own = section('minhas-compras', SHOP_SECTION_NAME, 'thorin');
+    const result = deliverToDepot({ sections: [own], items: [] }, delivery, NOW);
+    expect(result.sections).toEqual([own]);
+    expect(result.items[0]?.sectionId).toBe('minhas-compras');
+  });
+
+  it('restoresTrashedShopSection', () => {
+    const trashed = {
+      ...section(shopSectionId('thorin'), SHOP_SECTION_NAME, 'thorin'),
+      deletedAt: LATER,
+    };
+    const result = deliverToDepot({ sections: [trashed], items: [] }, delivery, NOW);
+    expect(result.sections).toEqual([{ ...trashed, deletedAt: null }]);
+  });
+
+  it('ignoresSectionWithShopIdInAnotherArea', () => {
+    const thorins = section('entreposto-lyra', 'Meu baú', 'thorin');
+    const result = deliverToDepot(
+      { sections: [thorins], items: [] },
+      { ...delivery, ownerId: 'lyra' },
+      NOW,
+    );
+    const hers = result.sections.find((s) => s.ownerId === 'lyra');
+    expect(result.sections.find((s) => s.id === 'entreposto-lyra')).toEqual(thorins);
+    expect(hers).toMatchObject({ id: 'entreposto-d1', name: SHOP_SECTION_NAME, deletedAt: null });
+    expect(result.items[0]?.sectionId).toBe('entreposto-d1');
+  });
+
+  it('keepsTrashedShopSectionOfAnotherAreaInTheTrash', () => {
+    const thorins = {
+      ...section('entreposto-lyra', SHOP_SECTION_NAME, 'thorin'),
+      deletedAt: LATER,
+    };
+    const result = deliverToDepot(
+      { sections: [thorins], items: [] },
+      { ...delivery, ownerId: 'lyra' },
+      NOW,
+    );
+    expect(result.sections).toContainEqual(thorins);
+    expect(result.items[0]?.sectionId).not.toBe('entreposto-lyra');
   });
 });

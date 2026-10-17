@@ -20,7 +20,7 @@ export type ParseResult =
   | { ok: false; error: string; outdated: boolean };
 
 export function createInitialState(catalog: Catalog): GameState {
-  const { wallets, materials, research } = catalog.seed;
+  const { wallets, materials, research, shop } = catalog.seed;
   return {
     version: SAVE_VERSION,
     revision: 0,
@@ -40,6 +40,7 @@ export function createInitialState(catalog: Catalog): GameState {
     influence: initialInfluence(catalog.worlds),
     npcs: [],
     missions: [],
+    shop,
     slots: {},
     log: [],
   };
@@ -153,6 +154,7 @@ export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   // Housing moved to the Alojamento alone; the move itself needs the catalog (below).
   5: (save) => save,
   6: (save) => ({ ...save, missions: [] }),
+  7: (save) => ({ ...save, shop: { items: [] } }),
 };
 
 /** Turns a parsed save that came from version N into the rules of N + 1, with the catalog at hand. */
@@ -161,6 +163,8 @@ type CatalogMigration = (state: GameState, catalog: Catalog) => GameState;
 /** Steps of `SAVE_MIGRATIONS` that need the catalog, keyed the same way and run after parsing. */
 const CATALOG_MIGRATIONS: Readonly<Record<number, CatalogMigration>> = {
   5: rehomeNpcs,
+  7: (state, catalog) =>
+    state.shop.items.length > 0 ? state : { ...state, shop: catalog.seed.shop },
 };
 
 function upgradeWithCatalog(state: GameState, catalog: Catalog, from: number): GameState {
