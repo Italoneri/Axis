@@ -463,6 +463,18 @@ describe('missing materials and selling back', () => {
       expect(result.unavailable).toEqual(['ghost']);
     });
 
+    it('chargesTheMasterNothing', () => {
+      const result = missingPurchase(forgeState(), testCatalog, forgeLevel2, master);
+      expect(result.lines.map((l) => l.bronze)).toEqual([0, 0]);
+      expect(result.totalBronze).toBe(0);
+    });
+
+    it('listsQuantityAboveTheLimitAsUnavailable', () => {
+      const huge = { coins: 0, materials: { wood: 200_000 } };
+      const result = missingPurchase(forgeState(), testCatalog, huge, thorin);
+      expect(result).toEqual({ lines: [], totalBronze: 0, unavailable: ['wood'] });
+    });
+
     it('sumsPromotionalLinesIntoTheTotal', () => {
       const state = forgeState();
       const onSale = withItems(
@@ -501,6 +513,27 @@ describe('missing materials and selling back', () => {
       });
     });
 
+    it('refusesEquipmentLine', () => {
+      const sword: ShopItem = {
+        id: 'shop_sword',
+        kind: 'equipment',
+        name: 'Espada longa',
+        description: '1d8',
+        depotKind: 'equipamento',
+        price: { silver: 8 },
+        stock: 2,
+        minLevel: 1,
+        featured: false,
+        hidden: false,
+      };
+      const before = withItems(forgeState(), [...forgeState().shop.items, sword]);
+      const mixed = [...lines, { itemId: 'shop_sword', quantity: 1 }];
+      expect(buyMaterials(before, testCatalog, mixed, thorin)).toEqual({
+        ok: false,
+        error: 'not_for_sale',
+      });
+    });
+
     it('refusesALineThatIsNoLongerOnSale', () => {
       const state = forgeState();
       const hidden = withItems(
@@ -520,7 +553,7 @@ describe('missing materials and selling back', () => {
 
     it('paysHalfOnTotalToCamp', () => {
       const before = level3();
-      const outcome = sellToShop(before, testCatalog, sale, thorin);
+      const outcome = sellToShop(before, testCatalog, sale);
       if (!outcome.ok) throw new Error(outcome.error);
       expect(stockOf(outcome.state, 'wood')).toBe(15);
       expect(campBronze(outcome.state) - campBronze(before)).toBe(15);
@@ -539,14 +572,14 @@ describe('missing materials and selling back', () => {
         state,
         state.shop.items.map((i) => (i.id === 'shop_wood' ? { ...i, discountPercent: 50 } : i)),
       );
-      const outcome = sellToShop(onSale, testCatalog, sale, thorin);
+      const outcome = sellToShop(onSale, testCatalog, sale);
       if (!outcome.ok) throw new Error(outcome.error);
       expect(campBronze(outcome.state) - campBronze(onSale)).toBe(15);
     });
 
     it('refusesBelowLevel3', () => {
       const state = stocked(withTradingPost(2), { wood: 25 });
-      expect(sellToShop(state, testCatalog, sale, thorin)).toEqual({
+      expect(sellToShop(state, testCatalog, sale)).toEqual({
         ok: false,
         error: 'not_for_sale',
       });
@@ -558,7 +591,23 @@ describe('missing materials and selling back', () => {
         state,
         state.shop.items.map((i) => (i.id === 'shop_wood' ? { ...i, hidden: true } : i)),
       );
-      expect(sellToShop(hidden, testCatalog, sale, thorin)).toEqual({
+      expect(sellToShop(hidden, testCatalog, sale)).toEqual({
+        ok: false,
+        error: 'not_for_sale',
+      });
+      expect(sellToShop(hidden, testCatalog, sale)).toEqual({
+        ok: false,
+        error: 'not_for_sale',
+      });
+    });
+
+    it('refusesMasterWhenItemIsLockedAboveTheLevel', () => {
+      const state = level3();
+      const locked = withItems(
+        state,
+        state.shop.items.map((i) => (i.id === 'shop_wood' ? { ...i, minLevel: 4 } : i)),
+      );
+      expect(sellToShop(locked, testCatalog, sale)).toEqual({
         ok: false,
         error: 'not_for_sale',
       });
@@ -569,7 +618,7 @@ describe('missing materials and selling back', () => {
       { quantity: 0, label: 'zero' },
       { quantity: 1.5, label: 'a fraction' },
     ])('refusesSellingQuantityOf $label', ({ quantity }) => {
-      expect(sellToShop(level3(), testCatalog, { materialId: 'wood', quantity }, thorin)).toEqual({
+      expect(sellToShop(level3(), testCatalog, { materialId: 'wood', quantity })).toEqual({
         ok: false,
         error: 'invalid_quantity',
       });

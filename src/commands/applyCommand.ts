@@ -393,7 +393,8 @@ const handlers: Handlers = {
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
 
   shop_item_create: ({ id, item }, { state }) => resources(addShopItem(state, { ...item, id })),
-  shop_item_update: ({ itemId, item }, { state }) => resources(updateShopItem(state, itemId, item)),
+  shop_item_update: ({ itemId, item }, { state }) =>
+    resources(updateShopItem(state, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
@@ -410,8 +411,8 @@ const handlers: Handlers = {
 
   shop_buy_materials: ({ lines }, { state, catalog, who }) =>
     resources(buyMaterials(state, catalog, lines, who)),
-  shop_sell: ({ materialId, quantity }, { state, catalog, who }) =>
-    resources(sellToShop(state, catalog, { materialId, quantity }, who)),
+  shop_sell: ({ materialId, quantity }, { state, catalog }) =>
+    resources(sellToShop(state, catalog, { materialId, quantity })),
 
   set_image: ({ target, image }, { state, catalog }) => {
     // An uploaded photo only fits the record whose folder holds it (the Storage policies look at it).
