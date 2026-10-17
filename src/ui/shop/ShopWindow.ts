@@ -147,7 +147,9 @@ export class ShopWindow {
   private card(entry: ShopEntry): HTMLElement {
     const { game } = this.deps;
     const canSell =
-      this.heldQuantity(entry) > 0 && tradingPostLevel(game.current) >= SELL_BACK_LEVEL;
+      !entry.item.hidden &&
+      this.heldQuantity(entry) > 0 &&
+      tradingPostLevel(game.current) >= SELL_BACK_LEVEL;
     return shopCard(entry, {
       catalog: game.catalog,
       images: game.images,

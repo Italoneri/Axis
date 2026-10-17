@@ -359,6 +359,33 @@ describe('shop purchases', () => {
     expect(campBronze()).toBe(before - 5);
   });
 
+  it('storesThePrivatePurchaseWithoutTheItem', async () => {
+    const { db, buy } = await withShop();
+    await buy('shop_sword');
+    expect(db.loggedCommands).toEqual([{ type: 'shop_buy', quantity: 1, payer: { kind: 'camp' } }]);
+  });
+
+  it('keepsTheItemOfAGroupPurchaseInTheStoredCommand', async () => {
+    const { db, gameId, request } = await withShop();
+    await request(
+      {
+        action: 'command',
+        gameId,
+        expectedRevision: 0,
+        command: {
+          type: 'shop_buy',
+          itemId: 'shop_sword',
+          quantity: 1,
+          payer: { kind: 'camp' },
+          deliveryId: 'delivery_1',
+        },
+      },
+      MASTER,
+    );
+    expect(db.deliveries[0]?.ownerId).toBeNull();
+    expect(db.loggedCommands).toMatchObject([{ type: 'shop_buy', itemId: 'shop_sword' }]);
+  });
+
   it('materialPurchaseUsesPlainCommit', async () => {
     const { db, gameId, buy } = await withShop();
     expect((await buy('shop_wood')).status).toBe(200);

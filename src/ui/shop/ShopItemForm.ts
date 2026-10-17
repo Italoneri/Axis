@@ -3,8 +3,8 @@ import { t } from '../../i18n/pt-BR';
 import type { Catalog } from '../../model/catalog';
 import type { GameState, ShopItem } from '../../model/schema';
 import type { GameStore } from '../../store';
-import type { CoinBag } from '../../systems/Coins';
-import { ITEM_KINDS, type ItemKind } from '../../systems/Depot';
+import { toBronze, type CoinBag } from '../../systems/Coins';
+import { ITEM_KINDS, NAME_LIMIT, type ItemKind } from '../../systems/Depot';
 import type { ShopItemFields } from '../../systems/Shop';
 import { el } from '../dom';
 import { photoField, saveWithPhoto } from '../photos/photoField';
@@ -128,6 +128,7 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
   });
   const name = el('input', {
     class: 'input input--wide',
+    maxlength: String(NAME_LIMIT),
     value: item?.kind === 'equipment' ? item.name : '',
   });
   const description = el('textarea', { class: 'input input--wide', rows: '3' });
@@ -170,8 +171,10 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
     noMaterials.hidden = isEquipment() || options.length > 0;
     stock.disabled = isInfinite.checked;
     const hasValidStock = parseStock(isInfinite.checked, stock.value) !== undefined;
+    const hasPrice = toBronze(prices.read(), catalog.currencies) > 0;
     submitButton.disabled =
       !hasValidStock ||
+      !hasPrice ||
       !canSaveForm({
         isEquipment: isEquipment(),
         hasFreeMaterial: options.length > 0,
@@ -181,6 +184,7 @@ export function openShopItemForm({ game, item, save }: ShopItemFormOptions): voi
   kind.addEventListener('change', syncVisibility);
   isInfinite.addEventListener('change', syncVisibility);
   stock.addEventListener('input', syncVisibility);
+  prices.element.addEventListener('input', syncVisibility);
 
   const common = () => ({
     price: prices.read(),

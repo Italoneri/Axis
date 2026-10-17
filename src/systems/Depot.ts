@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Actor } from '../commands/schema';
-import { depotItemKindSchema, type DepotChange } from '../model/schema';
+import { depotItemKindSchema, NAME_LIMIT, type DepotChange } from '../model/schema';
 import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
 
 // Depósito: sections and items kept outside the GameState, like the
@@ -10,7 +10,7 @@ import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
 
 /** Building whose side panel opens the depot once built. */
 export const DEPOT_BUILDING_ID = 'armory';
-export const NAME_LIMIT = 120;
+export { NAME_LIMIT };
 export const ITEM_NOTES_LIMIT = 2_000;
 export const QUANTITY_LIMIT = 99_999;
 

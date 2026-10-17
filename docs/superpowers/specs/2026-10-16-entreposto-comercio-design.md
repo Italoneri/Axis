@@ -99,7 +99,7 @@ Ferramenta do mestre, aberta pelo Entreposto ou pelas ferramentas do mestre, com
   - No cartão aparece uma **faixa de promoção** no canto com o desconto (ex.: "−25%"), o preço antigo riscado e o preço novo em destaque.
   - O preço com desconto é arredondado para baixo em bronze e nunca fica abaixo de 1 Bronze.
   - Cobrança, confirmação e atalho da construção usam o preço com desconto.
-  - A venda de volta continua usando o preço base, para que a promoção não seja usada para lucrar.
+  - A venda de volta usa o menor entre o preço base e o promocional, para que a promoção não seja usada para lucrar.
   - A promoção não acaba sozinha: o mestre tira quando quiser.
 
 O mestre também pode editar, repor estoque, ocultar ou remover um item.

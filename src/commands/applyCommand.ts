@@ -103,6 +103,8 @@ export type CommandError =
 /** Every error, so answers from the server can be checked at runtime (the Record keeps it exhaustive). */
 const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   empty_name: true,
+  name_too_long: true,
+  empty_price: true,
   duplicate_name: true,
   duplicate_id: true,
   not_found: true,
@@ -392,8 +394,10 @@ const handlers: Handlers = {
   mission_resolve: ({ missionId, result, injuredNpcIds }, { state, catalog }) =>
     missions(resolveMission(state, catalog, { missionId, result, injuredNpcIds })),
 
-  shop_item_create: ({ id, item }, { state }) => resources(addShopItem(state, { ...item, id })),
-  shop_item_update: ({ itemId, item }, { state }) => resources(updateShopItem(state, itemId, item)),
+  shop_item_create: ({ id, item }, { state, catalog }) =>
+    resources(addShopItem(state, catalog, { ...item, id })),
+  shop_item_update: ({ itemId, item }, { state, catalog }) =>
+    resources(updateShopItem(state, catalog, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),

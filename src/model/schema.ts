@@ -6,6 +6,8 @@ import { slotTypeSchema } from '../map/layout';
 
 const positiveInt = z.number().int().nonnegative();
 const percent = z.number().int().min(0).max(100);
+/** Longest name of a depot item or section, equipment sold by the shop included. */
+export const NAME_LIMIT = 120;
 const displayName = z.string().trim().min(1);
 /**
  * Asset key from assets.json, an image URL, or a photo sent in game
@@ -711,7 +713,7 @@ export const shopItemSchema = z.discriminatedUnion('kind', [
   z.object({
     ...shopItemBase,
     kind: z.literal('equipment'),
-    name: displayName,
+    name: displayName.max(NAME_LIMIT),
     description: z.string().max(2000),
     depotKind: depotItemKindSchema,
   }),

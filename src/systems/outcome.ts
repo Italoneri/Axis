@@ -3,6 +3,9 @@ import type { GameState, LogEntry } from '../model/schema';
 /** Expected refusals of master and player actions; the UI turns them into messages. */
 export type ActionError =
   | 'empty_name'
+  | 'name_too_long'
+  /** A shop item priced at zero bronze. */
+  | 'empty_price'
   | 'duplicate_name'
   | 'duplicate_id'
   | 'not_found'

@@ -151,7 +151,8 @@ async function start(): Promise<void> {
         command.type === 'archive_log' ||
         command.type === 'depot_log' ||
         command.type === 'shop_buy' ||
-        command.type === 'shop_buy_materials'
+        command.type === 'shop_buy_materials' ||
+        command.type === 'shop_sell'
           ? { actor: archiveViewer() }
           : mode.contextFor(command),
       onRefused: (error) => notify(t.errors[error], 'error'),

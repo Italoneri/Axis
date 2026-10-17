@@ -4,7 +4,7 @@ import type { Actor } from '../commands/schema';
 import { builtLevel } from './BuildSystem';
 import { addCoins, fromBronze, pay, toBronze } from './Coins';
 import { idError } from './Categories';
-import { depotAuthorOf, QUANTITY_LIMIT, type DepotDelivery } from './Depot';
+import { depotAuthorOf, NAME_LIMIT, QUANTITY_LIMIT, type DepotDelivery } from './Depot';
 import { materialNeeds, setMaterials } from './Materials';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
 import { CAMP, setWallet, walletLabel, walletOf, type WalletRef } from './Wallets';
@@ -37,9 +37,10 @@ export function unitPriceBronze(item: ShopItem, catalog: Catalog): number {
   return Math.max(1, Math.floor((base * (100 - item.discountPercent)) / 100));
 }
 
-/** Half the base price of the whole lot; promotions never lower it. */
+/** Half the lower of base and promotional price, on the whole lot, so promotions cannot be farmed. */
 export function sellBackBronze(item: ShopItem, quantity: number, catalog: Catalog): number {
-  return Math.floor((baseUnitBronze(item, catalog) * quantity) / 2);
+  const unit = Math.min(baseUnitBronze(item, catalog), unitPriceBronze(item, catalog));
+  return Math.floor((unit * quantity) / 2);
 }
 
 function shopName(state: GameState, item: ShopItem): string | undefined {
@@ -211,7 +212,7 @@ export function buyMaterials(
   return ok(current);
 }
 
-/** The camp gets half the base price of the lot, from level 3, for materials the shop lists. */
+/** The camp gets half the lower of base and promotional price of the lot, from level 3, for materials the shop lists. */
 export function sellToShop(
   state: GameState,
   catalog: Catalog,
@@ -290,17 +291,26 @@ function equipmentDelivery(
 type EditableFields<T> = T extends unknown ? Omit<T, 'id' | 'discountPercent' | 'image'> : never;
 export type ShopItemFields = EditableFields<ShopItem>;
 
-export function addShopItem(state: GameState, item: { id: string } & ShopItemFields): Outcome {
-  const error = idError(item.id, state.shop.items) ?? fieldsError(state, item);
+export function addShopItem(
+  state: GameState,
+  catalog: Catalog,
+  item: { id: string } & ShopItemFields,
+): Outcome {
+  const error = idError(item.id, state.shop.items) ?? fieldsError(state, catalog, item);
   if (error) return fail(error);
   return ok(setItems(state, [...state.shop.items, { ...cleanFields(item), id: item.id }]));
 }
 
 /** Keeps the promotion and the photo: only the fields the master form shows change. */
-export function updateShopItem(state: GameState, id: string, fields: ShopItemFields): Outcome {
+export function updateShopItem(
+  state: GameState,
+  catalog: Catalog,
+  id: string,
+  fields: ShopItemFields,
+): Outcome {
   const current = findShopItem(state, id);
   if (!current) return fail('not_found');
-  const error = fieldsError(state, fields, id);
+  const error = fieldsError(state, catalog, fields, id);
   if (error) return fail(error);
   const { discountPercent, image } = current;
   const next: ShopItem = {
@@ -355,14 +365,26 @@ function setItems(state: GameState, items: ShopItem[]): GameState {
   return { ...state, shop: { ...state.shop, items } };
 }
 
-function fieldsError(state: GameState, fields: ShopItemFields, ownId?: string): ActionError | null {
-  if (fields.kind === 'equipment') return fields.name.trim() ? null : 'empty_name';
+function fieldsError(
+  state: GameState,
+  catalog: Catalog,
+  fields: ShopItemFields,
+  ownId?: string,
+): ActionError | null {
+  if (toBronze(fields.price, catalog.currencies) === 0) return 'empty_price';
+  if (fields.kind === 'equipment') return equipmentNameError(fields.name);
   if (!state.materials.items.some((m) => m.id === fields.materialId)) return 'not_found';
   const isListed = state.shop.items.some(
     (item) =>
       item.id !== ownId && item.kind === 'material' && item.materialId === fields.materialId,
   );
   return isListed ? 'material_already_listed' : null;
+}
+
+function equipmentNameError(name: string): ActionError | null {
+  const trimmed = name.trim();
+  if (!trimmed) return 'empty_name';
+  return trimmed.length > NAME_LIMIT ? 'name_too_long' : null;
 }
 
 function cleanFields(fields: ShopItemFields): ShopItemFields {

@@ -376,7 +376,7 @@ export class SlotPanel {
     };
     return el(
       'div',
-      { class: 'shortcut' },
+      {},
       el('button', { class: 'btn', type: 'button', onclick: () => void buy() }, model.label),
       model.unavailable.length > 0 &&
         el('p', { class: 'panel__hint' }, t.shop.shortcut.unavailable(listText(model.unavailable))),

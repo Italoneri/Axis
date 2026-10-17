@@ -64,7 +64,7 @@ describe('sellBackBronze', () => {
   it.each([
     { price: { bronze: 3 }, quantity: 10, discount: undefined, expected: 15 },
     { price: { silver: 5 }, quantity: 3, discount: undefined, expected: 75 },
-    { price: { bronze: 3 }, quantity: 10, discount: 50, expected: 15 },
+    { price: { bronze: 3 }, quantity: 10, discount: 50, expected: 5 },
   ])('pays $expected for $quantity of $price', ({ price, quantity, discount, expected }) => {
     expect(sellBackBronze(material(price, discount), quantity, testCatalog)).toBe(expected);
   });
@@ -155,71 +155,101 @@ describe('shop item edits', () => {
 
   it('addsEquipmentAndMaterialItems', () => {
     const state = makeState();
-    const added = unwrap(addShopItem(state, { id: 'shop_sword', ...equipment }));
+    const added = unwrap(addShopItem(state, testCatalog, { id: 'shop_sword', ...equipment }));
     expect(added.shop.items.at(-1)).toEqual({ id: 'shop_sword', ...equipment });
     const free = unwrap(removeShopItem(state, 'shop_wood'));
-    const readded = unwrap(addShopItem(free, { id: 'shop_wood2', ...materialFields }));
+    const readded = unwrap(addShopItem(free, testCatalog, { id: 'shop_wood2', ...materialFields }));
     expect(readded.shop.items.at(-1)).toMatchObject({ id: 'shop_wood2', materialId: 'wood' });
   });
 
   it('trimsTheEquipmentName', () => {
-    const state = unwrap(addShopItem(makeState(), { id: 's', ...equipment, name: '  Adaga  ' }));
+    const state = unwrap(
+      addShopItem(makeState(), testCatalog, { id: 's', ...equipment, name: '  Adaga  ' }),
+    );
     expect(state.shop.items.at(-1)).toMatchObject({ name: 'Adaga' });
   });
 
   it('rejectsSecondItemForSameMaterial', () => {
     const state = makeState();
-    expect(addShopItem(state, { id: 'shop_dup', ...materialFields })).toEqual({
+    expect(addShopItem(state, testCatalog, { id: 'shop_dup', ...materialFields })).toEqual({
       ok: false,
       error: 'material_already_listed',
     });
-    expect(updateShopItem(state, 'shop_iron', materialFields)).toEqual({
+    expect(updateShopItem(state, testCatalog, 'shop_iron', materialFields)).toEqual({
       ok: false,
       error: 'material_already_listed',
     });
   });
 
   it('keepsTheSameMaterialOnUpdate', () => {
-    const state = unwrap(updateShopItem(makeState(), 'shop_wood', materialFields));
+    const state = unwrap(updateShopItem(makeState(), testCatalog, 'shop_wood', materialFields));
     expect(state.shop.items[0]).toMatchObject({ id: 'shop_wood', price: { bronze: 4 } });
   });
 
   it('rejectsMaterialItemForUnknownMaterial', () => {
     const fields = { ...materialFields, materialId: 'ghost' };
-    expect(addShopItem(makeState(), { id: 's', ...fields })).toEqual({
+    expect(addShopItem(makeState(), testCatalog, { id: 's', ...fields })).toEqual({
       ok: false,
       error: 'not_found',
     });
   });
 
+  it('rejectsEquipmentNamesAboveTheDepotLimit', () => {
+    const tooLong = { id: 's', ...equipment, name: 'a'.repeat(121) };
+    expect(addShopItem(makeState(), testCatalog, tooLong)).toEqual({
+      ok: false,
+      error: 'name_too_long',
+    });
+    const fits = unwrap(
+      addShopItem(makeState(), testCatalog, { ...tooLong, name: 'a'.repeat(120) }),
+    );
+    expect(fits.shop.items.at(-1)).toMatchObject({ name: 'a'.repeat(120) });
+  });
+
+  it.each([{}, { bronze: 0 }])('rejectsAnItemPricedAtZero %j', (price) => {
+    expect(addShopItem(makeState(), testCatalog, { id: 's', ...equipment, price })).toEqual({
+      ok: false,
+      error: 'empty_price',
+    });
+    expect(
+      updateShopItem(makeState(), testCatalog, 'shop_wood', { ...materialFields, price }),
+    ).toEqual({
+      ok: false,
+      error: 'empty_price',
+    });
+  });
+
   it('rejectsEmptyEquipmentName', () => {
-    expect(addShopItem(makeState(), { id: 's', ...equipment, name: '   ' })).toEqual({
+    expect(addShopItem(makeState(), testCatalog, { id: 's', ...equipment, name: '   ' })).toEqual({
       ok: false,
       error: 'empty_name',
     });
   });
 
   it('rejectsDuplicateItemId', () => {
-    expect(addShopItem(makeState(), { id: 'shop_wood', ...equipment })).toEqual({
+    expect(addShopItem(makeState(), testCatalog, { id: 'shop_wood', ...equipment })).toEqual({
       ok: false,
       error: 'duplicate_id',
     });
   });
 
   it('keepsPromotionAndImageOnUpdate', () => {
-    const base = unwrap(addShopItem(makeState(), { id: 's', ...equipment }));
+    const base = unwrap(addShopItem(makeState(), testCatalog, { id: 's', ...equipment }));
     const decorated = unwrap(setShopPromotion(base, 's', 20));
     const withImage = {
       ...decorated,
       shop: { items: decorated.shop.items.map((i) => (i.id === 's' ? { ...i, image: 'x' } : i)) },
     };
-    const updated = unwrap(updateShopItem(withImage, 's', { ...equipment, stock: 5 }));
+    const updated = unwrap(updateShopItem(withImage, testCatalog, 's', { ...equipment, stock: 5 }));
     expect(updated.shop.items.at(-1)).toMatchObject({ stock: 5, discountPercent: 20, image: 'x' });
   });
 
   it('reportsUnknownItemsAsNotFound', () => {
     const state = makeState();
-    expect(updateShopItem(state, 'ghost', equipment)).toEqual({ ok: false, error: 'not_found' });
+    expect(updateShopItem(state, testCatalog, 'ghost', equipment)).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
     expect(removeShopItem(state, 'ghost')).toEqual({ ok: false, error: 'not_found' });
     expect(setShopPromotion(state, 'ghost', 10)).toEqual({ ok: false, error: 'not_found' });
   });
@@ -566,7 +596,7 @@ describe('missing materials and selling back', () => {
       });
     });
 
-    it('ignoresPromotionsWhenPaying', () => {
+    it('paysHalfThePromotionalPriceDuringPromotions', () => {
       const state = level3();
       const onSale = withItems(
         state,
@@ -574,7 +604,7 @@ describe('missing materials and selling back', () => {
       );
       const outcome = sellToShop(onSale, testCatalog, sale);
       if (!outcome.ok) throw new Error(outcome.error);
-      expect(campBronze(outcome.state) - campBronze(onSale)).toBe(15);
+      expect(campBronze(outcome.state) - campBronze(onSale)).toBe(5);
     });
 
     it('refusesBelowLevel3', () => {
