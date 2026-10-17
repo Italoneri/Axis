@@ -22,6 +22,25 @@ describe('LocalDepotRepository', () => {
     expect(await repo.load()).toMatchObject({ sections: [{ id: 'pocoes' }], items: [] });
   });
 
+  it('deliversIntoLocalStorage', async () => {
+    const storage = memoryStorage();
+    await new LocalDepotRepository(storage).deliver(
+      {
+        itemId: 'compra-1',
+        ownerId: 'thorin',
+        authorId: 'thorin',
+        name: 'Espada',
+        kind: 'equipamento',
+        quantity: 1,
+        notes: '',
+      },
+      NOW,
+    );
+    const depot = await new LocalDepotRepository(storage).load();
+    expect(depot.sections.map((s) => s.name)).toEqual(['Compras do Entreposto']);
+    expect(depot.items).toMatchObject([{ id: 'compra-1', name: 'Espada', quantity: 1 }]);
+  });
+
   it('keeps an unreadable depot aside and starts empty', async () => {
     const storage = memoryStorage({ [DEPOT_STORAGE_KEY]: '{"sections":1}' });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);

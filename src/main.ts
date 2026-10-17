@@ -195,6 +195,12 @@ async function start(): Promise<void> {
   const openMenu = () => menuWindow.open();
   hideGate();
 
+  store.subscribe((_state, change) => {
+    if (change.kind === 'shop_purchased' && change.delivery && !mode.isOnline) {
+      void depot.deliver(change.delivery);
+    }
+  });
+
   // Every entry a local command logs becomes a toast.
   store.subscribe((state, _change, logged) => {
     const ctx = textContext(gameData, state);

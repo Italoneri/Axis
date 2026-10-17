@@ -6,6 +6,7 @@ import {
   visibleDepot,
   type Depot,
   type DepotCommand,
+  type DepotDelivery,
   type DepotError,
 } from './systems/Depot';
 
@@ -72,6 +73,21 @@ export class DepotStore {
   /** Resolves to whether the command was saved (refusals are already reported). */
   dispatch(command: DepotCommand): Promise<boolean> {
     return this.enqueue(() => this.submit(command));
+  }
+
+  /** A shop purchase into the buyer's area (offline); resolves to whether it was saved. */
+  deliver(delivery: DepotDelivery): Promise<boolean> {
+    return this.enqueue(async () => {
+      const now = this.hooks.now?.() ?? new Date().toISOString();
+      try {
+        const saved = await this.repository.deliver(delivery, now);
+        if (saved) this.show(await this.repository.load());
+        return saved;
+      } catch (error) {
+        this.hooks.onPersistError(error);
+        return false;
+      }
+    });
   }
 
   /** Re-reads the stored depot (when the window opens, to catch up with missed changes). */
