@@ -13,6 +13,8 @@ import { button, closeButton, keepEscapeInside } from '../widgets';
 import { openCropForm } from './CropForm';
 import {
   gardenSummary,
+  visibleTabs,
+  type GardenTab,
   plotViews,
   seedOptions,
   type PlotView,
@@ -30,9 +32,6 @@ export interface GardenWindowDeps {
  * list of the same plots on narrow screens. It re-renders with the game, so
  * growth and other players' actions show up while the window is open.
  */
-type GardenTab = 'garden' | 'crops';
-const TABS: readonly GardenTab[] = ['garden', 'crops'];
-
 export class GardenWindow {
   private dialog: HTMLDialogElement | null = null;
   private stopWatching: (() => void) | null = null;
@@ -81,9 +80,9 @@ export class GardenWindow {
     const dialog = this.dialog;
     if (!dialog) return;
     const { game } = this.deps;
-    if (!this.isMaster()) this.tab = 'garden';
-    this.tabs.hidden = !this.isMaster();
-    this.tabs.replaceChildren(...TABS.map((tab) => this.tabButton(tab)));
+    const tabs = visibleTabs(this.isMaster());
+    if (!tabs.includes(this.tab)) this.tab = 'garden';
+    this.tabs.replaceChildren(...tabs.map((tab) => this.tabButton(tab)));
     if (this.tab === 'crops') {
       this.renderCrops(dialog);
       return;

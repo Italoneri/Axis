@@ -3,7 +3,7 @@ import type { Actor } from '../../commands/schema';
 import { HERB_GARDEN_BUILDING_ID } from '../../model/catalog';
 import type { Crop, GameState, PlacedBuilding } from '../../model/schema';
 import { herbGardenCatalog as catalog, makeState, withCamp } from '../../systems/testFixtures';
-import { gardenSummary, plotViews, seedOptions } from './gardenViews';
+import { gardenSummary, plotViews, seedOptions, visibleTabs } from './gardenViews';
 
 const placed = {
   buildingId: HERB_GARDEN_BUILDING_ID,
@@ -120,5 +120,12 @@ describe('seedOptions', () => {
   it('showsPriceWhenCampCanPay', () => {
     const [option] = seedOptions(gardenWith({}), catalog, 'canteiro', player);
     expect(option).toMatchObject({ action: 'buy', priceBronze: 2, shortBronze: null });
+  });
+});
+
+describe('visibleTabs', () => {
+  it('offersCropsOnlyToTheMaster', () => {
+    expect(visibleTabs(true)).toEqual(['garden', 'crops']);
+    expect(visibleTabs(false)).toEqual([]);
   });
 });

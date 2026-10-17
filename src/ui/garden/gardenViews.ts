@@ -106,3 +106,10 @@ function seedAction(
   if (crop.rare) return 'rare_locked';
   return shortBronze === null ? 'buy' : 'camp_short';
 }
+
+export type GardenTab = 'garden' | 'crops';
+
+/** Only the master manages crops; players get no tab bar at all. */
+export function visibleTabs(isMaster: boolean): readonly GardenTab[] {
+  return isMaster ? ['garden', 'crops'] : [];
+}
