@@ -54,6 +54,13 @@ describe('shipped game data', () => {
     );
   });
 
+  it('rejectsSeedShopItemWithUnknownMaterial', () => {
+    const [first, ...rest] = rawGameData.shop.items;
+    if (!first) throw new Error('no shop items shipped');
+    const shop = { items: [{ ...first, materialId: 'nope' }, ...rest] };
+    expect(() => parseCatalog({ ...rawGameData, shop })).toThrow(/nope/);
+  });
+
   it('has exactly one structure for the core slot', () => {
     expect(gameData.buildings.filter((b) => b.allowedSlots.includes('core'))).toHaveLength(1);
   });

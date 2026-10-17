@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": "shop_wood",
+      "kind": "material",
+      "materialId": "wood",
+      "price": { "bronze": 3 },
+      "stock": null,
+      "minLevel": 1,
+      "featured": false,
+      "hidden": false
+    },
+    {
+      "id": "shop_iron",
+      "kind": "material",
+      "materialId": "iron",
+      "price": { "silver": 1 },
+      "stock": null,
+      "minLevel": 1,
+      "featured": false,
+      "hidden": false
+    },
+    {
+      "id": "shop_aetherium",
+      "kind": "material",
+      "materialId": "aetherium",
+      "price": { "silver": 5 },
+      "stock": null,
+      "minLevel": 1,
+      "featured": false,
+      "hidden": false
+    }
+  ]
+}

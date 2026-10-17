@@ -8,6 +8,7 @@ import materials from '../data/materials.json';
 import missions from '../data/missions.json';
 import npcs from '../data/npcs.json';
 import research from '../data/research.json';
+import shop from '../data/shop.json';
 import skills from '../data/skills.json';
 import wallets from '../data/wallets.json';
 import { parseCatalog } from '../model/catalog';
@@ -30,4 +31,5 @@ export const serverCatalog = parseCatalog({
   attributes,
   npcs,
   missions,
+  shop,
 });

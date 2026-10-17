@@ -22,6 +22,35 @@ describe('createInitialState', () => {
   });
 });
 
+describe('shop in the save', () => {
+  const seedIds = ['shop_wood', 'shop_iron', 'shop_aetherium'];
+  const shopIds = (state: { shop: { items: { id: string }[] } }) =>
+    state.shop.items.map((item) => item.id);
+
+  it('seedsTheShopOnNewGames', () => {
+    expect(shopIds(createInitialState(testCatalog))).toEqual(seedIds);
+  });
+
+  it('migratesVersion7SavesWithSeedShop', () => {
+    const { shop, ...rest } = makeState();
+    expect(shop.items).toHaveLength(3);
+    const parsed = parseSave(JSON.stringify({ ...rest, version: 7 }), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.version).toBe(SAVE_VERSION);
+    expect(shopIds(parsed.state)).toEqual(seedIds);
+  });
+
+  it('keepsAnExistingShopOnLoad', () => {
+    const [first] = testCatalog.seed.shop.items;
+    if (!first) throw new Error('no seed shop');
+    const custom = { ...first, id: 'shop_custom' };
+    const state = makeState({ shop: { items: [custom] } });
+    const parsed = parseSave(JSON.stringify(state), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(shopIds(parsed.state)).toEqual(['shop_custom']);
+  });
+});
+
 describe('parseSave', () => {
   it('round-trips a serialized state', () => {
     const state = makeState({

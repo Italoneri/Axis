@@ -671,7 +671,37 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
-export const SAVE_VERSION = 7;
+export const depotItemKindSchema = z.enum(['equipamento', 'pocao', 'outro']);
+
+const shopItemBase = {
+  id: z.string().min(1),
+  /** Base price; a promotion is applied on top of it. */
+  price: amountBagSchema,
+  /** null: infinite. */
+  stock: positiveInt.nullable(),
+  minLevel: z.number().int().min(1).max(3),
+  /** Sold by the passing merchant instead of the regular stall. */
+  featured: z.boolean(),
+  hidden: z.boolean(),
+  discountPercent: z.number().int().min(1).max(90).optional(),
+  /** Overrides the material icon / equipment photo. */
+  image: imageRef,
+};
+
+export const shopItemSchema = z.discriminatedUnion('kind', [
+  z.object({ ...shopItemBase, kind: z.literal('material'), materialId: z.string().min(1) }),
+  z.object({
+    ...shopItemBase,
+    kind: z.literal('equipment'),
+    name: displayName,
+    description: z.string().max(2000),
+    depotKind: depotItemKindSchema,
+  }),
+]);
+
+export const shopSchema = z.object({ items: z.array(shopItemSchema) });
+
+export const SAVE_VERSION = 8;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
@@ -694,6 +724,7 @@ export const gameStateSchema = z.object({
   worldIcons: z.record(z.string(), z.string()).optional(),
   npcs: z.array(npcSchema),
   missions: z.array(missionSchema),
+  shop: shopSchema,
   slots: z.record(z.string(), placedBuildingSchema),
   log: z.array(logEntrySchema),
 });
@@ -741,3 +772,5 @@ export type ArchiveChange = z.infer<typeof archiveChangeSchema>;
 export type DepotChange = z.infer<typeof depotChangeSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
+export type ShopItem = z.infer<typeof shopItemSchema>;
+export type Shop = z.infer<typeof shopSchema>;

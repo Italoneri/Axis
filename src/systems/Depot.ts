@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Actor } from '../commands/schema';
-import type { DepotChange } from '../model/schema';
+import { depotItemKindSchema, type DepotChange } from '../model/schema';
 import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
 
 // Depósito: sections and items kept outside the GameState, like the
@@ -21,7 +21,7 @@ const timestamp = z.string().min(1);
 const ownerSchema = z.string().min(1).max(64).nullable();
 const quantitySchema = z.number().int().min(1).max(QUANTITY_LIMIT);
 
-export const itemKindSchema = z.enum(['equipamento', 'pocao', 'outro']);
+export const itemKindSchema = depotItemKindSchema;
 
 export const depotSectionSchema = z.object({
   id: recordId,
