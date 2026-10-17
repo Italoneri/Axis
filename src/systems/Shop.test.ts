@@ -4,9 +4,12 @@ import type { Outcome } from './outcome';
 import {
   addShopItem,
   buyFromShop,
+  buyMaterials,
   isOnSale,
+  missingPurchase,
   removeShopItem,
   sellBackBronze,
+  sellToShop,
   setShopPromotion,
   shopEntries,
   tradingPostLevel,
@@ -396,5 +399,180 @@ describe('buyFromShop', () => {
   it('logOmitsItemForPrivateDelivery', () => {
     const { state } = buy(shopState(), 'shop_sword', 1);
     expect(state.log.at(-1)).toEqual({ day: 1, kind: 'shop_purchased', quantity: 1, bronze: 80 });
+  });
+});
+
+describe('missing materials and selling back', () => {
+  const thorin = { role: 'player', characterId: 'thorin' } as const;
+  const forgeLevel2 = { coins: 400, materials: { wood: 108, iron: 72, aetherium: 10 } };
+
+  function stocked(state: GameState, quantities: Record<string, number>): GameState {
+    const items = state.materials.items.map((m) => ({ ...m, quantity: quantities[m.id] ?? 0 }));
+    return { ...state, materials: { ...state.materials, items } };
+  }
+
+  const stockOf = (state: GameState, id: string) =>
+    state.materials.items.find((m) => m.id === id)?.quantity;
+  const campBronze = (state: GameState) => toBronze(state.wallets.camp, testCatalog.currencies);
+  const forgeState = () => stocked(withTradingPost(1), { wood: 96, iron: 72, aetherium: 8 });
+
+  describe('missingPurchase', () => {
+    it('pricesWhatTheForgeLacks', () => {
+      expect(missingPurchase(forgeState(), testCatalog, forgeLevel2, thorin)).toEqual({
+        lines: [
+          { itemId: 'shop_wood', materialId: 'wood', quantity: 12, bronze: 36 },
+          { itemId: 'shop_aetherium', materialId: 'aetherium', quantity: 2, bronze: 100 },
+        ],
+        totalBronze: 136,
+        unavailable: [],
+      });
+    });
+
+    it('listsUnsellableMaterialAsUnavailable', () => {
+      const hidden = forgeState().shop.items.map((i) =>
+        i.id === 'shop_aetherium' ? { ...i, hidden: true } : i,
+      );
+      const short = hidden.map((i) => (i.id === 'shop_wood' ? { ...i, stock: 5 } : i));
+      const result = missingPurchase(
+        withItems(forgeState(), short),
+        testCatalog,
+        forgeLevel2,
+        thorin,
+      );
+      expect(result).toEqual({ lines: [], totalBronze: 0, unavailable: ['wood', 'aetherium'] });
+    });
+
+    it('listsMaterialWithoutShopItemAsUnavailable', () => {
+      const state = withItems(forgeState(), []);
+      const result = missingPurchase(state, testCatalog, forgeLevel2, thorin);
+      expect(result.unavailable).toEqual(['wood', 'aetherium']);
+    });
+
+    it('skipsItemWhoseMaterialIsGone', () => {
+      const gone = {
+        ...forgeState(),
+        shop: { items: [{ ...material({ bronze: 3 }), materialId: 'ghost' }] },
+      };
+      const result = missingPurchase(
+        gone,
+        testCatalog,
+        { coins: 0, materials: { ghost: 4 } },
+        thorin,
+      );
+      expect(result.lines).toEqual([]);
+      expect(result.unavailable).toEqual(['ghost']);
+    });
+
+    it('sumsPromotionalLinesIntoTheTotal', () => {
+      const state = forgeState();
+      const onSale = withItems(
+        state,
+        state.shop.items.map((i) =>
+          i.id === 'shop_aetherium' ? { ...i, discountPercent: 50 } : i,
+        ),
+      );
+      const result = missingPurchase(onSale, testCatalog, forgeLevel2, thorin);
+      expect(result.lines.map((l) => l.bronze)).toEqual([36, 50]);
+      expect(result.totalBronze).toBe(result.lines.reduce((sum, l) => sum + l.bronze, 0));
+    });
+  });
+
+  describe('buyMaterials', () => {
+    const lines = [
+      { itemId: 'shop_wood', quantity: 12 },
+      { itemId: 'shop_aetherium', quantity: 2 },
+    ];
+
+    it('buysEveryLineFromTheCamp', () => {
+      const before = forgeState();
+      const outcome = buyMaterials(before, testCatalog, lines, thorin);
+      if (!outcome.ok) throw new Error(outcome.error);
+      expect(stockOf(outcome.state, 'wood')).toBe(108);
+      expect(stockOf(outcome.state, 'aetherium')).toBe(10);
+      expect(campBronze(before) - campBronze(outcome.state)).toBe(136);
+      expect(outcome.state.log.map((e) => e.kind)).toEqual(['shop_purchased', 'shop_purchased']);
+    });
+
+    it('isAllOrNothingWhenCampIsShort', () => {
+      const before = { ...forgeState(), wallets: { camp: { bronze: 40 }, characters: {} } };
+      expect(buyMaterials(before, testCatalog, lines, thorin)).toEqual({
+        ok: false,
+        error: 'insufficient_coins',
+      });
+    });
+
+    it('refusesALineThatIsNoLongerOnSale', () => {
+      const state = forgeState();
+      const hidden = withItems(
+        state,
+        state.shop.items.map((i) => (i.id === 'shop_aetherium' ? { ...i, hidden: true } : i)),
+      );
+      expect(buyMaterials(hidden, testCatalog, lines, thorin)).toEqual({
+        ok: false,
+        error: 'not_for_sale',
+      });
+    });
+  });
+
+  describe('sellToShop', () => {
+    const sale = { materialId: 'wood', quantity: 10 };
+    const level3 = () => stocked(withTradingPost(3), { wood: 25 });
+
+    it('paysHalfOnTotalToCamp', () => {
+      const before = level3();
+      const outcome = sellToShop(before, testCatalog, sale, thorin);
+      if (!outcome.ok) throw new Error(outcome.error);
+      expect(stockOf(outcome.state, 'wood')).toBe(15);
+      expect(campBronze(outcome.state) - campBronze(before)).toBe(15);
+      expect(outcome.state.log.at(-1)).toEqual({
+        day: 1,
+        kind: 'shop_sold',
+        material: 'Madeira',
+        quantity: 10,
+        bronze: 15,
+      });
+    });
+
+    it('ignoresPromotionsWhenPaying', () => {
+      const state = level3();
+      const onSale = withItems(
+        state,
+        state.shop.items.map((i) => (i.id === 'shop_wood' ? { ...i, discountPercent: 50 } : i)),
+      );
+      const outcome = sellToShop(onSale, testCatalog, sale, thorin);
+      if (!outcome.ok) throw new Error(outcome.error);
+      expect(campBronze(outcome.state) - campBronze(onSale)).toBe(15);
+    });
+
+    it('refusesBelowLevel3', () => {
+      const state = stocked(withTradingPost(2), { wood: 25 });
+      expect(sellToShop(state, testCatalog, sale, thorin)).toEqual({
+        ok: false,
+        error: 'not_for_sale',
+      });
+    });
+
+    it('refusesWhenItemHidden', () => {
+      const state = level3();
+      const hidden = withItems(
+        state,
+        state.shop.items.map((i) => (i.id === 'shop_wood' ? { ...i, hidden: true } : i)),
+      );
+      expect(sellToShop(hidden, testCatalog, sale, thorin)).toEqual({
+        ok: false,
+        error: 'not_for_sale',
+      });
+    });
+
+    it.each([
+      { quantity: 26, label: 'more than the stock' },
+      { quantity: 0, label: 'zero' },
+      { quantity: 1.5, label: 'a fraction' },
+    ])('refusesSellingQuantityOf $label', ({ quantity }) => {
+      expect(sellToShop(level3(), testCatalog, { materialId: 'wood', quantity }, thorin)).toEqual({
+        ok: false,
+        error: 'invalid_quantity',
+      });
+    });
   });
 });

@@ -649,6 +649,14 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     /** Omitted when delivered to a private area: the log is shared with every player. */
     item: z.string().optional(),
   }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('shop_sold'),
+    /** Material name at the time. */
+    material: z.string(),
+    quantity: z.number().int().positive(),
+    bronze: positiveInt,
+  }),
   // Missions: titles and names at the time.
   z.object({
     ...entryBase,

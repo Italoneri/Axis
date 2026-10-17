@@ -237,3 +237,20 @@ describe('shop purchase log', () => {
     expect(logEntryText(full, goldCtx)).toBe(`Dia 5 — ${text}`);
   });
 });
+
+describe('shop sale log', () => {
+  const goldCtx: TextContext = { ...ctx, gold: (bronze) => `${bronze} PB` };
+  it('writesWhoSoldWhatForHowMuch', () => {
+    const entry = {
+      day: 5,
+      kind: 'shop_sold',
+      actor: 'Thorin',
+      material: 'Madeira',
+      quantity: 10,
+      bronze: 15,
+    } as const;
+    expect(logEntryText(entry, goldCtx)).toBe(
+      'Dia 5 — Thorin vendeu 10 Madeira ao Entreposto por 15 PB',
+    );
+  });
+});

@@ -18,7 +18,7 @@ function richState(): GameState {
       core: { buildingId: 'heart', level: 1, status: 'done' },
       outer_n: { buildingId: 'forge', level: 1, status: 'done' },
       outer_e: { buildingId: 'barracks', level: 1, status: 'done' },
-      post: { buildingId: 'trading_post', level: 1, status: 'done' },
+      post: { buildingId: 'trading_post', level: 3, status: 'done' },
     },
     npcs: [
       npc({
@@ -194,6 +194,11 @@ const validCommands: Record<CommandType, GameCommand> = {
     payer: { kind: 'camp' },
     deliveryId: 'delivery_1',
   },
+  shop_buy_materials: {
+    type: 'shop_buy_materials',
+    lines: [{ itemId: 'shop_wood', quantity: 2 }],
+  },
+  shop_sell: { type: 'shop_sell', materialId: 'iron', quantity: 4 },
   mission_create: { type: 'mission_create', id: 'mission_1', ...missionFields },
   mission_update: { type: 'mission_update', missionId: 'contrato', ...missionFields },
   mission_remove: { type: 'mission_remove', missionId: 'contrato' },
@@ -394,6 +399,8 @@ describe('applyCommand permissions', () => {
     'mission_send_npcs',
     'set_image',
     'shop_buy',
+    'shop_buy_materials',
+    'shop_sell',
   ]);
   const masterOnly = Object.values(validCommands).filter(
     (c) => !playerCommands.has(c.type) && !membershipCommands.has(c.type),
@@ -465,6 +472,31 @@ describe('applyCommand permissions', () => {
     if (!result.ok) throw new Error(result.error);
     expect(result.change).toEqual({ kind: 'shop_purchased', delivery: null });
     expect(result.logged).toMatchObject([{ kind: 'shop_purchased', actor: 'Thorin', bronze: 6 }]);
+  });
+
+  it('buysMissingMaterialsForAPlayer', () => {
+    const result = run(validCommands.shop_buy_materials, thorinPlayer);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.change).toEqual({ kind: 'resources_changed' });
+    expect(result.logged).toMatchObject([{ kind: 'shop_purchased', actor: 'Thorin', bronze: 6 }]);
+  });
+
+  it.each([
+    { lines: [] },
+    { lines: Array.from({ length: 21 }, () => ({ itemId: 'shop_wood', quantity: 1 })) },
+  ])('rejectsBadMaterialLines', (fields) => {
+    const command = { ...validCommands.shop_buy_materials, ...fields };
+    expect(run(command, thorinPlayer)).toEqual({ ok: false, error: 'invalid_command' });
+  });
+
+  it('refusesSellingBelowLevel3', () => {
+    const state = richState();
+    const post = { buildingId: 'trading_post', level: 1, status: 'done' } as const;
+    const level1 = { ...state, slots: { ...state.slots, post } };
+    expect(run(validCommands.shop_sell, thorinPlayer, level1)).toEqual({
+      ok: false,
+      error: 'not_for_sale',
+    });
   });
 
   it('lets a player clear the photo of their own character', () => {

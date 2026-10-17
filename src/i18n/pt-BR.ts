@@ -961,6 +961,8 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return depotAction(masterActor(entry), entry.change);
     case 'shop_purchased':
       return shopPurchaseText(entry, ctx);
+    case 'shop_sold':
+      return `${entry.actor ?? 'Alguém'} vendeu ${entry.quantity} ${entry.material} ao Entreposto por ${ctx.gold(entry.bronze)}`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':

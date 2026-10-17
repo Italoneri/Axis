@@ -1,13 +1,13 @@
 import type { Catalog } from '../model/catalog';
-import type { GameState, ShopItem } from '../model/schema';
+import type { Cost, GameState, ShopItem } from '../model/schema';
 import type { Actor } from '../commands/schema';
 import { builtLevel } from './BuildSystem';
-import { pay, toBronze } from './Coins';
+import { addCoins, fromBronze, pay, toBronze } from './Coins';
 import { idError } from './Categories';
 import { depotAuthorOf, QUANTITY_LIMIT, type DepotDelivery } from './Depot';
-import { setMaterials } from './Materials';
+import { materialNeeds, setMaterials } from './Materials';
 import { fail, ok, withLog, type ActionError, type Outcome } from './outcome';
-import { setWallet, walletLabel, walletOf, type WalletRef } from './Wallets';
+import { CAMP, setWallet, walletLabel, walletOf, type WalletRef } from './Wallets';
 
 export const TRADING_POST_BUILDING_ID = 'trading_post';
 export const SELL_BACK_LEVEL = 3;
@@ -133,6 +133,110 @@ export function buyFromShop(
   return { ok: true, state: logged, delivery };
 }
 
+export interface PurchaseLine {
+  itemId: string;
+  materialId: string;
+  quantity: number;
+  bronze: number;
+}
+
+export interface MissingPurchase {
+  lines: PurchaseLine[];
+  totalBronze: number;
+  /** Material ids not buyable: no shop item, not on sale, or too little stock left. */
+  unavailable: string[];
+}
+
+/** What it takes to buy the materials `cost` lacks, priced as the viewer sees the shop. */
+export function missingPurchase(
+  state: GameState,
+  catalog: Catalog,
+  cost: Cost,
+  viewer: Actor,
+): MissingPurchase {
+  const { missing, unknown } = materialNeeds(state.materials, cost.materials ?? {});
+  const wanted = Object.entries(missing).map(([materialId, quantity]) => ({
+    materialId,
+    quantity,
+    item: materialItem(state, materialId),
+  }));
+  const lines = wanted.flatMap(({ materialId, quantity, item }) =>
+    item && isBuyable(state, item, quantity, viewer)
+      ? [
+          {
+            itemId: item.id,
+            materialId,
+            quantity,
+            bronze: unitPriceBronze(item, catalog) * quantity,
+          },
+        ]
+      : [],
+  );
+  const bought = new Set(lines.map((line) => line.materialId));
+  return {
+    lines,
+    totalBronze: lines.reduce((sum, line) => sum + line.bronze, 0),
+    unavailable: [...unknown, ...wanted.map((w) => w.materialId).filter((id) => !bought.has(id))],
+  };
+}
+
+function isBuyable(state: GameState, item: ShopItem, quantity: number, viewer: Actor): boolean {
+  return isOnSale(state, item, viewer) && (item.stock === null || item.stock >= quantity);
+}
+
+/** The camp pays every line by the `buyFromShop` rules; if one is refused, nothing is bought. */
+export function buyMaterials(
+  state: GameState,
+  catalog: Catalog,
+  lines: readonly { itemId: string; quantity: number }[],
+  actor: Actor,
+): Outcome {
+  let current = state;
+  for (const { itemId, quantity } of lines) {
+    const order = { itemId, quantity, payer: CAMP, deliveryId: '' };
+    const bought = buyFromShop(current, catalog, order, actor);
+    if (!bought.ok) return fail(bought.error);
+    current = bought.state;
+  }
+  return ok(current);
+}
+
+/** The camp gets half the base price of the lot, from level 3, for materials the shop lists. */
+export function sellToShop(
+  state: GameState,
+  catalog: Catalog,
+  order: { materialId: string; quantity: number },
+  actor: Actor,
+): Outcome {
+  const { materialId, quantity } = order;
+  const item = materialItem(state, materialId);
+  if (tradingPostLevel(state) < SELL_BACK_LEVEL || !item || !isOnSale(state, item, actor)) {
+    return fail('not_for_sale');
+  }
+  const held = state.materials.items.find((m) => m.id === materialId);
+  if (!held) return fail('not_found');
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > held.quantity) {
+    return fail('invalid_quantity');
+  }
+
+  const bronze = sellBackBronze(item, quantity, catalog);
+  const items = state.materials.items.map((m) =>
+    m.id === materialId ? { ...m, quantity: m.quantity - quantity } : m,
+  );
+  const paid = setWallet(
+    setMaterials(state, { ...state.materials, items }),
+    CAMP,
+    addCoins(state.wallets.camp, fromBronze(bronze, catalog.currencies)),
+  );
+  return ok(
+    withLog(paid, { day: state.day, kind: 'shop_sold', material: held.name, quantity, bronze }),
+  );
+}
+
+function materialItem(state: GameState, materialId: string): ShopItem | undefined {
+  return state.shop.items.find((i) => i.kind === 'material' && i.materialId === materialId);
+}
+
 const refuse = (error: ActionError): PurchaseOutcome => ({ ok: false, error });
 
 function charge(state: GameState, catalog: Catalog, payer: WalletRef, costBronze: number): Outcome {
@@ -199,12 +303,22 @@ export function updateShopItem(state: GameState, id: string, fields: ShopItemFie
     ...(discountPercent === undefined ? {} : { discountPercent }),
     ...(image === undefined ? {} : { image }),
   };
-  return ok(setItems(state, state.shop.items.map((item) => (item.id === id ? next : item))));
+  return ok(
+    setItems(
+      state,
+      state.shop.items.map((item) => (item.id === id ? next : item)),
+    ),
+  );
 }
 
 export function removeShopItem(state: GameState, id: string): Outcome {
   if (!findShopItem(state, id)) return fail('not_found');
-  return ok(setItems(state, state.shop.items.filter((item) => item.id !== id)));
+  return ok(
+    setItems(
+      state,
+      state.shop.items.filter((item) => item.id !== id),
+    ),
+  );
 }
 
 /** `null` ends the promotion. */
@@ -219,7 +333,12 @@ export function setShopPromotion(
   if ((discountPercent ?? undefined) === previous) return ok(state);
   const next: ShopItem =
     discountPercent === null ? undiscounted : { ...undiscounted, discountPercent };
-  return ok(setItems(state, state.shop.items.map((item) => (item.id === id ? next : item))));
+  return ok(
+    setItems(
+      state,
+      state.shop.items.map((item) => (item.id === id ? next : item)),
+    ),
+  );
 }
 
 function findShopItem(state: GameState, id: string): ShopItem | undefined {
@@ -234,7 +353,8 @@ function fieldsError(state: GameState, fields: ShopItemFields, ownId?: string): 
   if (fields.kind === 'equipment') return fields.name.trim() ? null : 'empty_name';
   if (!state.materials.items.some((m) => m.id === fields.materialId)) return 'not_found';
   const isListed = state.shop.items.some(
-    (item) => item.id !== ownId && item.kind === 'material' && item.materialId === fields.materialId,
+    (item) =>
+      item.id !== ownId && item.kind === 'material' && item.materialId === fields.materialId,
   );
   return isListed ? 'material_already_listed' : null;
 }

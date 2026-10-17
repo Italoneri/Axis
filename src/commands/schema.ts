@@ -173,6 +173,13 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
     payer: walletRefSchema,
     deliveryId: newRecordId,
   }),
+  command('shop_buy_materials', {
+    lines: z
+      .array(z.object({ itemId: ref, quantity: z.number().int() }))
+      .min(1)
+      .max(20),
+  }),
+  command('shop_sell', { materialId: ref, quantity: z.number().int() }),
   // Photos (the master's forms send them with the other fields too)
   command('set_image', {
     target: z.object({ kind: z.enum(IMAGE_KINDS), id: ref }),
