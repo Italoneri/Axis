@@ -265,8 +265,8 @@ function withPlot(state: GameState, plotId: string, planting: Planting): GameSta
 }
 
 function withoutPlot(state: GameState, plotId: string): GameState {
-  const { [plotId]: _cleared, ...rest } = state.garden.plots;
-  return setPlots(state, rest);
+  const rest = Object.entries(state.garden.plots).filter(([id]) => id !== plotId);
+  return setPlots(state, Object.fromEntries(rest));
 }
 
 function setPlots(state: GameState, plots: Garden['plots']): GameState {

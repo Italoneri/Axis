@@ -86,17 +86,22 @@ describe('addCrop', () => {
 
 describe('updateCrop', () => {
   const withCrop = (): GameState => makeState({ garden: { crops: [common], plots: {} } });
+  const sharedFields = {
+    harvestId: common.harvestId,
+    plotType: common.plotType,
+    days: common.days,
+    yield: common.yield,
+  };
 
   it('dropsThePriceWhenSwitchingToRare', () => {
-    const { seedId: _seedId, price: _price, ...rest } = common;
-    const fields: CropFields = { ...rest, rare: true };
+    const fields: CropFields = { ...sharedFields, rare: true };
     const result = updateCrop(withCrop(), 'wood', fields);
     if (!result.ok) throw new Error(result.error);
-    expect(findCrop(result.state, 'wood')).toEqual({ ...rest, seedId: 'wood', rare: true });
+    expect(findCrop(result.state, 'wood')).toEqual({ ...fields, seedId: 'wood' });
   });
 
   it('refusesUnknownSeed', () => {
-    const { seedId: _seedId, ...fields } = common;
+    const fields: CropFields = { ...sharedFields, rare: false, price: common.price };
     expect(updateCrop(withCrop(), 'nope', fields)).toEqual({ ok: false, error: 'not_found' });
   });
 });
