@@ -688,6 +688,13 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     ...entryBase,
+    kind: z.literal('garden_seed_returned'),
+    /** Seed material name at the time. */
+    seed: z.string(),
+    quantity: z.number().int().positive(),
+  }),
+  z.object({
+    ...entryBase,
     kind: z.literal('garden_cleared'),
     plot: z.string(),
     seed: z.string(),

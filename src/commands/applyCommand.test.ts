@@ -311,6 +311,64 @@ const membershipCommands = new Set<CommandType>([
   'character_release',
 ]);
 
+describe('garden settling by the master', () => {
+  const withLevel = (level: number, plots: GameState['garden']['plots']): GameState => {
+    const base = gardenWorkState();
+    return {
+      ...base,
+      slots: {
+        ...base.slots,
+        outer_w: { buildingId: HERB_GARDEN_BUILDING_ID, level, status: 'done' },
+      },
+      garden: { ...base.garden, plots },
+    };
+  };
+  const stockOf = (state: GameState, id: string) =>
+    state.materials.items.find((m) => m.id === id)?.quantity;
+
+  it('settlesOnForcedDowngrade', () => {
+    const start = withLevel(2, { 'canteiro-x-1': { seedId: 'semente', growthTenths: 10 } });
+    const result = runGarden(
+      { type: 'force_building', slotId: 'outer_w', buildingId: HERB_GARDEN_BUILDING_ID, level: 1 },
+      master,
+      start,
+    );
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.garden.plots).toEqual({
+      'canteiro-1': { seedId: 'semente', growthTenths: 10 },
+    });
+  });
+
+  it('settlesAllPlotsWhenRemoved', () => {
+    const start = withLevel(1, {
+      'canteiro-1': { seedId: 'semente', growthTenths: 30 },
+      'canteiro-2': { seedId: 'semente', growthTenths: 10 },
+    });
+    const result = runGarden({ type: 'remove_building', slotId: 'outer_w' }, master, start);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.garden.plots).toEqual({});
+    expect(stockOf(result.state, 'menta')).toBe(4);
+    expect(stockOf(result.state, 'semente')).toBe(3);
+    expect(result.state.log.map((entry) => entry.kind)).toEqual(
+      expect.arrayContaining(['garden_harvested', 'garden_seed_returned']),
+    );
+  });
+
+  it('keepsMudaPlantingsAcrossUpgrade', () => {
+    const start = withLevel(1, { 'muda-1': { seedId: 'semente', growthTenths: 10 } });
+    const result = runGarden(
+      { type: 'force_building', slotId: 'outer_w', buildingId: HERB_GARDEN_BUILDING_ID, level: 2 },
+      master,
+      start,
+    );
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.garden.plots).toEqual({
+      'muda-1': { seedId: 'semente', growthTenths: 10 },
+    });
+    expect(result.state.log.map((entry) => entry.kind)).toEqual(['building_forced']);
+  });
+});
+
 describe('applyCommand', () => {
   it.each(Object.values(validCommands))(
     'applies $type into a state that passes the schema',

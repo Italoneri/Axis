@@ -1,5 +1,6 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState, LogEntry, PlacedBuilding } from '../model/schema';
+import { growGarden, settleGarden } from './Garden';
 import { returnFromMissions } from './Missions';
 import { settleNpcs } from './Npcs';
 import { EMPTY_TALLY, tallyLog, workOneDay, type WorkTally } from './NpcWork';
@@ -55,8 +56,9 @@ function passDay(progress: Progress, catalog: Catalog, day: number): Progress {
   const worked = workOneDay({ ...progress.state, day }, catalog, progress.tally);
   const produced = produceOneDay(worked.state, catalog, progress.production);
   const completed = completeConstructions(produced.state);
+  const gardened = growGarden(settleGarden(completed.state, catalog), catalog);
   return {
-    state: returnFromMissions(settleNpcs(completed.state, catalog)),
+    state: returnFromMissions(settleNpcs(gardened, catalog)),
     tally: worked.tally,
     production: produced.tally,
     completedSlotIds: [...progress.completedSlotIds, ...completed.slotIds],

@@ -1056,6 +1056,8 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return gardenPlantedText(entry, ctx);
     case 'garden_harvested':
       return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${entry.material} na Estufa de Ervas`;
+    case 'garden_seed_returned':
+      return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
     case 'garden_cleared':
       return `${entry.actor ?? 'Alguém'} limpou o canteiro ${entry.plot} (${entry.seed})`;
     case 'mission_created':

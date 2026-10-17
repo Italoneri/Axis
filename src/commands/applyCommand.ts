@@ -10,7 +10,15 @@ import {
   type CharacterFields,
 } from '../systems/Characters';
 import type { DepotDelivery } from '../systems/Depot';
-import { addCrop, clearPlot, harvest, plant, removeCrop, updateCrop } from '../systems/Garden';
+import {
+  addCrop,
+  clearPlot,
+  harvest,
+  plant,
+  removeCrop,
+  settleGarden,
+  updateCrop,
+} from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
@@ -311,13 +319,13 @@ const handlers: Handlers = {
     const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
     if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
-    return { ok: true, state: forceBuilding(state, catalog, order), change };
+    return { ok: true, state: settleGarden(forceBuilding(state, catalog, order), catalog), change };
   },
-  remove_building: ({ slotId }, { state }) => {
+  remove_building: ({ slotId }, { state, catalog }) => {
     if (!state.slots[slotId]) return NOT_FOUND;
     return {
       ok: true,
-      state: removeBuilding(state, slotId),
+      state: settleGarden(removeBuilding(state, slotId), catalog),
       change: { kind: 'building_removed', slotId },
     };
   },

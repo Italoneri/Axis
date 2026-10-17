@@ -46,6 +46,39 @@ describe('advanceDays', () => {
     ]);
   });
 
+  it('settlesGardenWhenUpgradeCompletes', () => {
+    const state = makeState({
+      day: 1,
+      slots: {
+        outer_n: {
+          buildingId: HERB_GARDEN_BUILDING_ID,
+          level: 3,
+          status: 'building',
+          startedOnDay: 1,
+          completesOnDay: 2,
+        },
+      },
+      garden: {
+        crops: [
+          {
+            seedId: 'wood',
+            harvestId: 'iron',
+            plotType: 'estufa',
+            days: 5,
+            yield: 2,
+            rare: false,
+            price: { gold: 1 },
+          },
+        ],
+        plots: { 'estufa-2': { seedId: 'wood', growthTenths: 10 } },
+      },
+    });
+    const { state: next } = advanceDays(state, herbGardenCatalog, 1);
+
+    expect(next.slots['outer_n']?.status).toBe('done');
+    expect(next.garden.plots).toEqual({ 'estufa-1': { seedId: 'wood', growthTenths: 20 } });
+  });
+
   it('rejects non-positive or fractional day counts', () => {
     expect(() => advanceDays(makeState(), testCatalog, 0)).toThrow();
     expect(() => advanceDays(makeState(), testCatalog, 1.5)).toThrow();

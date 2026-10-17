@@ -7,16 +7,19 @@ import {
   clearPlot,
   cropsFor,
   findCrop,
+  growGarden,
   harvest,
   isReady,
   plant,
   plotsInForce,
   removeCrop,
+  settleGarden,
   updateCrop,
   type CropFields,
   type PlantOrder,
 } from './Garden';
 import type { Outcome } from './outcome';
+import { advanceDays } from './TimeSystem';
 import { herbGardenCatalog as catalog, makeState } from './testFixtures';
 
 const placed = (level: number, status: PlacedBuilding['status'] = 'done'): PlacedBuilding =>
@@ -443,5 +446,160 @@ describe('clearPlot', () => {
       plots: { 'canteiro-1': grown('semente_hortela', 3) },
     });
     expect(stateOf(clearPlot(start, catalog, 'canteiro-1')).garden.plots).toEqual({});
+  });
+});
+
+describe('growGarden', () => {
+  const planted = () =>
+    plantingState({ plots: { 'canteiro-1': { seedId: 'semente_hortela', growthTenths: 0 } } });
+  const readyAfter = (days: number) => {
+    const state = advanceDays(planted(), catalog, days).state;
+    const planting = state.garden.plots['canteiro-1'];
+    const crop = findCrop(state, 'semente_hortela');
+    return planting && crop ? isReady(crop, planting) : false;
+  };
+
+  it('growsOneDayPerDay', () => {
+    expect(readyAfter(2)).toBe(false);
+    expect(readyAfter(3)).toBe(true);
+  });
+
+  it('keepsGrowingReadyPlantings', () => {
+    const start = plantingState({ plots: { 'canteiro-1': grown('semente_hortela', 3) } });
+    expect(growGarden(start, catalog).garden.plots['canteiro-1']?.growthTenths).toBe(40);
+  });
+
+  it('doesNotGrowPlotsOutOfForce', () => {
+    const start = plantingState({
+      plots: { 'canteiro-x-1': { seedId: 'semente_hortela', growthTenths: 0 } },
+    });
+    expect(growGarden(start, catalog).garden.plots['canteiro-x-1']?.growthTenths).toBe(0);
+  });
+});
+
+describe('settleGarden', () => {
+  const estufaHerb: Crop = { ...mint, plotType: 'estufa' };
+  const atLevel3 = (plots: Record<string, Planting>, seeds = 0) =>
+    plantingState({ level: 3, seeds, crops: [estufaHerb, moon], plots });
+
+  it('harvestsReadyPlantingAndFreesThePlot', () => {
+    const state = settleGarden(atLevel3({ 'estufa-2': grown('semente_hortela', 3) }), catalog);
+    expect(state.garden.plots).toEqual({});
+    expect(stockOf(state, 'hortela')).toBe(4);
+    expect(state.log.at(-1)).toMatchObject({ kind: 'garden_harvested', quantity: 4 });
+  });
+
+  it('harvestsReadyRareCropOnceAndFreesThePlot', () => {
+    const rare: Crop = { ...moon, plotType: 'estufa' };
+    const start = plantingState({
+      level: 3,
+      crops: [rare],
+      plots: { 'estufa-2': grown('semente_lunar', 5) },
+    });
+    const state = settleGarden(start, catalog);
+    expect(state.garden.plots).toEqual({});
+    expect(stockOf(state, 'flor_lunar')).toBe(1);
+  });
+
+  it('movesGrowingPlantingToFreePlotKeepingGrowth', () => {
+    const state = settleGarden(
+      atLevel3({ 'estufa-2': { seedId: 'semente_hortela', growthTenths: 10 } }),
+      catalog,
+    );
+    expect(state.garden.plots).toEqual({
+      'estufa-1': { seedId: 'semente_hortela', growthTenths: 10 },
+    });
+    expect(state.log).toEqual([]);
+  });
+
+  it('returnsSeedWhenNoPlotIsFree', () => {
+    const start = atLevel3(
+      {
+        'estufa-1': { seedId: 'semente_hortela', growthTenths: 0 },
+        'estufa-2': { seedId: 'semente_hortela', growthTenths: 10 },
+      },
+      1,
+    );
+    const state = settleGarden(start, catalog);
+    expect(state.garden.plots).toEqual({
+      'estufa-1': { seedId: 'semente_hortela', growthTenths: 0 },
+    });
+    expect(stockOf(state, 'semente_hortela')).toBe(2);
+    expect(state.log.at(-1)).toMatchObject({
+      kind: 'garden_seed_returned',
+      seed: 'semente hortela',
+      quantity: 1,
+    });
+  });
+
+  it('returnsNothingWhenSeedMaterialIsGone', () => {
+    const start = plantingState({
+      level: 3,
+      gone: ['semente_hortela'],
+      crops: [estufaHerb],
+      plots: {
+        'estufa-1': { seedId: 'semente_hortela', growthTenths: 0 },
+        'estufa-2': { seedId: 'semente_hortela', growthTenths: 10 },
+      },
+    });
+    const state = settleGarden(start, catalog);
+    expect(Object.keys(state.garden.plots)).toEqual(['estufa-1']);
+    expect(state.log).toEqual([]);
+  });
+
+  it('dropsPlantingsWhoseCropIsGone', () => {
+    const start = plantingState({
+      level: 3,
+      crops: [],
+      plots: { 'estufa-2': { seedId: 'semente_hortela', growthTenths: 10 } },
+    });
+    const state = settleGarden(start, catalog);
+    expect(state.garden.plots).toEqual({});
+    expect(state.log).toEqual([]);
+  });
+
+  it('movesTwoPlantingsToDifferentPlots', () => {
+    const start = plantingState({
+      level: 1,
+      plots: {
+        'canteiro-x-1': { seedId: 'semente_hortela', growthTenths: 10 },
+        'canteiro-x-2': { seedId: 'semente_hortela', growthTenths: 20 },
+        'canteiro-1': { seedId: 'semente_hortela', growthTenths: 0 },
+      },
+    });
+    const state = settleGarden(start, catalog);
+    expect(state.garden.plots).toEqual({
+      'canteiro-1': { seedId: 'semente_hortela', growthTenths: 0 },
+      'canteiro-2': { seedId: 'semente_hortela', growthTenths: 10 },
+      'canteiro-3': { seedId: 'semente_hortela', growthTenths: 20 },
+    });
+  });
+
+  it('movesUsingTheCropsCurrentPlotType', () => {
+    const start = plantingState({
+      level: 1,
+      crops: [{ ...mint, plotType: 'muda' }],
+      plots: { 'canteiro-x-1': { seedId: 'semente_hortela', growthTenths: 10 } },
+    });
+    expect(Object.keys(settleGarden(start, catalog).garden.plots)).toEqual(['muda-1']);
+  });
+
+  it('settlesNothingWhenEveryPlotIsInForce', () => {
+    const start = plantingState({ plots: { 'canteiro-1': grown('semente_hortela', 3) } });
+    expect(settleGarden(start, catalog)).toBe(start);
+  });
+
+  it('settlesEveryPlotWhenTheGardenIsGone', () => {
+    const start = plantingState({
+      level: 0,
+      plots: {
+        'canteiro-1': grown('semente_hortela', 3),
+        'canteiro-2': { seedId: 'semente_hortela', growthTenths: 10 },
+      },
+    });
+    const state = settleGarden(start, catalog);
+    expect(state.garden.plots).toEqual({});
+    expect(stockOf(state, 'hortela')).toBe(4);
+    expect(stockOf(state, 'semente_hortela')).toBe(1);
   });
 });

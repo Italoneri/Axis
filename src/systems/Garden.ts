@@ -191,6 +191,57 @@ function deliver(state: GameState, materialId: string, quantity: number): GameSt
   });
 }
 
+/** One day: every planting in a plot in force gains `GROWTH_TENTHS_PER_DAY` (ready ones keep growing harmlessly). */
+export function growGarden(state: GameState, catalog: Catalog): GameState {
+  const grown = plotsInForce(state, catalog).flatMap((plot) => {
+    const planting = state.garden.plots[plot.id];
+    return planting
+      ? [[plot.id, { ...planting, growthTenths: planting.growthTenths + GROWTH_TENTHS_PER_DAY }]]
+      : [];
+  });
+  return setPlots(state, { ...state.garden.plots, ...Object.fromEntries(grown) });
+}
+
+/**
+ * Plantings in plots outside `plotsInForce` (after an upgrade, a forced level or a removal):
+ * ready → harvested; else moved to the first free plot in force of the crop's type, keeping growth;
+ * else the seed goes back to the stock. Plantings whose crop is gone are dropped.
+ */
+export function settleGarden(state: GameState, catalog: Catalog): GameState {
+  const inForce = new Set(plotsInForce(state, catalog).map((plot) => plot.id));
+  const vanished = Object.keys(state.garden.plots).filter((plotId) => !inForce.has(plotId));
+  return vanished.reduce((current, plotId) => settlePlot(current, catalog, plotId), state);
+}
+
+function settlePlot(state: GameState, catalog: Catalog, plotId: string): GameState {
+  const planting = state.garden.plots[plotId];
+  if (!planting) return state;
+  const crop = findCrop(state, planting.seedId);
+  const cleared = withoutPlot(state, plotId);
+  if (!crop) return cleared;
+  if (isReady(crop, planting)) return withoutPlot(reap(state, [{ plotId, crop }]), plotId);
+  const free = freePlot(cleared, catalog, crop.plotType);
+  return free ? withPlot(cleared, free.id, planting) : returnSeed(cleared, crop.seedId);
+}
+
+function freePlot(state: GameState, catalog: Catalog, plotType: PlotType): PlotDef | undefined {
+  return plotsInForce(state, catalog).find(
+    (plot) => plot.type === plotType && !state.garden.plots[plot.id],
+  );
+}
+
+/** A seed material the master deleted returns nothing. */
+function returnSeed(state: GameState, seedId: string): GameState {
+  const seed = findMaterial(state.materials, seedId);
+  if (!seed) return state;
+  return withLog(addStock(state, seedId, 1), {
+    day: state.day,
+    kind: 'garden_seed_returned',
+    seed: seed.name,
+    quantity: 1,
+  });
+}
+
 /** Empties the plot without harvesting and without giving the seed back. */
 export function clearPlot(state: GameState, catalog: Catalog, plotId: string): Outcome {
   if (!plotsInForce(state, catalog).some((plot) => plot.id === plotId)) {
