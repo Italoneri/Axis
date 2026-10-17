@@ -10,7 +10,7 @@ import {
   type CharacterFields,
 } from '../systems/Characters';
 import type { DepotDelivery } from '../systems/Depot';
-import { addCrop, removeCrop, updateCrop } from '../systems/Garden';
+import { addCrop, clearPlot, harvest, plant, removeCrop, updateCrop } from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
@@ -185,6 +185,9 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'shop_buy',
   'shop_buy_materials',
   'shop_sell',
+  'garden_plant',
+  'garden_harvest',
+  'garden_clear',
 ]);
 
 /** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
@@ -413,6 +416,10 @@ const handlers: Handlers = {
   garden_crop_create: ({ crop }, { state }) => resources(addCrop(state, crop)),
   garden_crop_update: ({ seedId, crop }, { state }) => resources(updateCrop(state, seedId, crop)),
   garden_crop_remove: ({ seedId }, { state }) => resources(removeCrop(state, seedId)),
+  garden_plant: ({ plotId, seedId, buy }, { state, catalog, who }) =>
+    resources(plant(state, catalog, { plotId, seedId, buy }, who)),
+  garden_harvest: ({ plotId }, { state, catalog }) => resources(harvest(state, catalog, plotId)),
+  garden_clear: ({ plotId }, { state, catalog }) => resources(clearPlot(state, catalog, plotId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
 

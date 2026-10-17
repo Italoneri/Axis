@@ -1052,6 +1052,12 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return shopPurchaseText(entry, ctx);
     case 'shop_sold':
       return `${entry.actor ?? 'Alguém'} vendeu ${entry.quantity} ${entry.material} ao Entreposto por ${ctx.gold(entry.bronze)}`;
+    case 'garden_planted':
+      return gardenPlantedText(entry, ctx);
+    case 'garden_harvested':
+      return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${entry.material} na Estufa de Ervas`;
+    case 'garden_cleared':
+      return `${entry.actor ?? 'Alguém'} limpou o canteiro ${entry.plot} (${entry.seed})`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1323,6 +1329,15 @@ function shopPurchaseText(
   const price =
     entry.bronze === 0 ? 'de graça' : `por ${ctx.gold(entry.bronze)} ${walletOf(entry.wallet)}`;
   return `${entry.actor ?? 'Alguém'} comprou ${what} no Entreposto ${price}`;
+}
+
+/** "Thorin plantou Hortelã em canteiro-1 (semente comprada por 2 PB)". */
+function gardenPlantedText(
+  entry: Extract<LogEntry, { kind: 'garden_planted' }>,
+  ctx: TextContext,
+): string {
+  const bought = entry.bronze === 0 ? '' : ` (semente comprada por ${ctx.gold(entry.bronze)})`;
+  return `${entry.actor ?? 'Alguém'} plantou ${entry.seed} em ${entry.plot}${bought}`;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

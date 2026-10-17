@@ -670,6 +670,28 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     quantity: z.number().int().positive(),
     bronze: positiveInt,
   }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_planted'),
+    plot: z.string(),
+    /** Seed material name at the time. */
+    seed: z.string(),
+    /** 0 when the seed was not bought (owned, or the master's). */
+    bronze: positiveInt,
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_harvested'),
+    /** Material name at the time. */
+    material: z.string(),
+    quantity: z.number().int().positive(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_cleared'),
+    plot: z.string(),
+    seed: z.string(),
+  }),
   // Missions: titles and names at the time.
   z.object({
     ...entryBase,

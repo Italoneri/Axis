@@ -174,6 +174,10 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   command('garden_crop_create', { crop: cropSchema }),
   command('garden_crop_update', { seedId: ref, crop: cropFieldsSchema }),
   command('garden_crop_remove', { seedId: ref }),
+  // Herb garden work (players too)
+  command('garden_plant', { plotId: ref, seedId: ref, buy: z.boolean() }),
+  command('garden_harvest', { plotId: ref.optional() }),
+  command('garden_clear', { plotId: ref }),
   command('shop_set_promotion', {
     itemId: ref,
     discountPercent: z.number().int().min(1).max(90).nullable(),

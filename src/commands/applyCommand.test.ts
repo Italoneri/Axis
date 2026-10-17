@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { HERB_GARDEN_BUILDING_ID } from '../model/catalog';
 import { gameStateSchema, type GameState } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
-import { makeState, mission, npc, testCatalog, withIron } from '../systems/testFixtures';
+import {
+  herbGardenCatalog,
+  makeState,
+  mission,
+  npc,
+  testCatalog,
+  withIron,
+} from '../systems/testFixtures';
 import { applyCommand } from './applyCommand';
 import { newId } from './newId';
 import type { CommandContext, CommandType, GameCommand } from './schema';
@@ -217,6 +225,9 @@ const validCommands: Record<CommandType, GameCommand> = {
     crop: { harvestId: 'wood', plotType: 'canteiro', days: 3, yield: 2, rare: true },
   },
   garden_crop_remove: { type: 'garden_crop_remove', seedId: 'iron' },
+  garden_plant: { type: 'garden_plant', plotId: 'canteiro-1', seedId: 'semente', buy: false },
+  garden_harvest: { type: 'garden_harvest', plotId: 'canteiro-2' },
+  garden_clear: { type: 'garden_clear', plotId: 'canteiro-2' },
   shop_set_promotion: { type: 'shop_set_promotion', itemId: 'shop_wood', discountPercent: 20 },
   shop_buy: {
     type: 'shop_buy',
@@ -247,6 +258,48 @@ function run(command: unknown, ctx: CommandContext = master, state = richState()
   return applyCommand(state, testCatalog, command, ctx);
 }
 
+const gardenWork = new Set<CommandType>(['garden_plant', 'garden_harvest', 'garden_clear']);
+
+/** An estufa nv1, two seeds in stock and a ready mint on `canteiro-2`; the rest of the camp as `richState`. */
+function gardenWorkState(): GameState {
+  const base = richState();
+  const material = (id: string, quantity: number) => ({
+    id,
+    name: id,
+    category: 'ores',
+    quantity,
+  });
+  return {
+    ...base,
+    slots: {
+      ...base.slots,
+      outer_w: { buildingId: HERB_GARDEN_BUILDING_ID, level: 1, status: 'done' },
+    },
+    materials: {
+      ...base.materials,
+      items: [...base.materials.items, material('semente', 2), material('menta', 0)],
+    },
+    garden: {
+      crops: [
+        {
+          seedId: 'semente',
+          harvestId: 'menta',
+          plotType: 'canteiro',
+          days: 3,
+          yield: 4,
+          rare: false,
+          price: { bronze: 2 },
+        },
+      ],
+      plots: { 'canteiro-2': { seedId: 'semente', growthTenths: 30 } },
+    },
+  };
+}
+
+function runGarden(command: unknown, ctx: CommandContext, state = gardenWorkState()) {
+  return applyCommand(state, herbGardenCatalog, command, ctx);
+}
+
 /** How the game function links and unlinks players. */
 const joining: CommandContext = {
   actor: { role: 'player', characterId: 'char_new' },
@@ -268,12 +321,34 @@ describe('applyCommand', () => {
           ? { ...richState(), wallets: { camp: { gold: 100 }, characters: { thorin: {} } } }
           : richState();
       const ctx = membershipCommands.has(command.type) ? joining : master;
-      const result = run(command, ctx, state);
+      const result = gardenWork.has(command.type)
+        ? runGarden(command, ctx)
+        : run(command, ctx, state);
       if (!result.ok) throw new Error(`${command.type}: ${result.error}`);
       expect(result.state).not.toBe(state);
       expect(gameStateSchema.safeParse(result.state).success).toBe(true);
     },
   );
+
+  it('playerCanPlantHarvestAndClear', () => {
+    const planted = runGarden(validCommands.garden_plant, thorinPlayer);
+    if (!planted.ok) throw new Error(planted.error);
+    expect(planted.state.garden.plots['canteiro-1']).toEqual({
+      seedId: 'semente',
+      growthTenths: 0,
+    });
+
+    const harvested = runGarden({ type: 'garden_harvest' }, thorinPlayer, planted.state);
+    if (!harvested.ok) throw new Error(harvested.error);
+    expect(harvested.state.materials.items.find((m) => m.id === 'menta')?.quantity).toBe(4);
+    expect(harvested.logged).toMatchObject([
+      { kind: 'garden_harvested', material: 'menta', quantity: 4, actor: 'Thorin' },
+    ]);
+
+    const cleared = runGarden(validCommands.garden_clear, thorinPlayer, harvested.state);
+    if (!cleared.ok) throw new Error(cleared.error);
+    expect(cleared.state.garden.plots['canteiro-2']).toBeUndefined();
+  });
 
   it.each([
     { name: 'non-object', input: 'build' },
@@ -432,6 +507,9 @@ describe('applyCommand permissions', () => {
     'shop_buy',
     'shop_buy_materials',
     'shop_sell',
+    'garden_plant',
+    'garden_harvest',
+    'garden_clear',
   ]);
   const masterOnly = Object.values(validCommands).filter(
     (c) => !playerCommands.has(c.type) && !membershipCommands.has(c.type),
@@ -445,7 +523,10 @@ describe('applyCommand permissions', () => {
   it.each([...playerCommands].map((type) => validCommands[type]))(
     'lets a player run $type',
     (command) => {
-      expect(run(command, thorinPlayer).ok).toBe(true);
+      const result = gardenWork.has(command.type)
+        ? runGarden(command, thorinPlayer)
+        : run(command, thorinPlayer);
+      expect(result.ok).toBe(true);
     },
   );
 
