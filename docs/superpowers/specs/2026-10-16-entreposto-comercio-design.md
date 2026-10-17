@@ -83,7 +83,7 @@ Ferramenta do mestre, aberta pelo Entreposto ou pelas ferramentas do mestre, com
 **Material**
 - Escolhe numa **lista de materiais existentes**. Por dentro, o vínculo é pelo id oculto do material (ex.: `wood`). O mestre cria o material antes, em Materiais, como já faz hoje.
 - O nome e o ícone vêm do material. A foto pode ser trocada.
-- **Um item da loja por material.** A lista não oferece um material que já tenha item. Para fazer desconto, o mestre baixa o preço do item que já existe. **(escolha do Claude)**
+- **Um item da loja por material.** A lista não oferece um material que já tenha item. Para dar desconto, o mestre usa a promoção do item que já existe. **(escolha do Claude)**
 
 **Equipamento**
 - Nome, descrição, foto (upload), tipo do Depósito (`equipamento`, `pocao` ou `outro`).
@@ -92,7 +92,15 @@ Ferramenta do mestre, aberta pelo Entreposto ou pelas ferramentas do mestre, com
 - **Preço**, em moedas.
 - **Estoque:** infinito ou uma quantidade.
 - **Nível mínimo do Entreposto** (1, 2 ou 3).
-- **Destaque de mercador de passagem** (sim ou não). O desconto é o mestre que faz, baixando o preço. **(escolha do Claude: sem campo de desconto separado)**
+- **Destaque de mercador de passagem** (sim ou não).
+- **Promoção** (decisão do Ítalo; a forma é escolha do Claude):
+  - O mestre clica num item da vitrine e escolhe um **desconto em porcentagem**: atalhos de 10%, 25% e 50%, ou um valor de 1 a 90%.
+  - O preço base fica guardado. Tirar a promoção volta o item ao preço normal.
+  - No cartão aparece uma **faixa de promoção** no canto com o desconto (ex.: "−25%"), o preço antigo riscado e o preço novo em destaque.
+  - O preço com desconto é arredondado para baixo em bronze e nunca fica abaixo de 1 Bronze.
+  - Cobrança, confirmação e atalho da construção usam o preço com desconto.
+  - A venda de volta continua usando o preço base, para que a promoção não seja usada para lucrar.
+  - A promoção não acaba sozinha: o mestre tira quando quiser.
 
 O mestre também pode editar, repor estoque, ocultar ou remover um item.
 
