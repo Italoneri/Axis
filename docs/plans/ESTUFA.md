@@ -57,7 +57,7 @@ Erros: `garden_not_built`, `unknown_plot` (não existe no nível em vigor), `plo
 ## Regras
 
 - **Crescimento:** `passDay` soma `GROWTH_TENTHS_PER_DAY` (10 décimos) a cada planta de espaço em vigor. Pronta quando `growthTenths >= days × 10` (`isReady`). O contador (e não "plantada no dia X") deixa o trabalhador futuro só somar décimos.
-- **Plantar:** a semente vem, nesta ordem, do estoque (gasta 1), da graça do mestre (o mestre planta sem pagar nem gastar estoque) ou, para jogador sem semente com `buy: true`, de uma compra pelo acampamento. Sem `buy`: `no_seed`. Rara sem semente: `rare_not_for_sale`. A semente comprada não passa pelo estoque. O tipo do espaço precisa bater com `plotType` (`wrong_plot_type`).
+- **Plantar:** a semente vem, nesta ordem, do estoque (gasta 1), da graça do mestre (sem estoque, o mestre planta sem pagar) ou, para jogador sem semente com `buy: true`, de uma compra pelo acampamento. Sem `buy`: `no_seed`. Rara sem semente: `rare_not_for_sale`. A semente comprada não passa pelo estoque. O tipo do espaço precisa bater com `plotType` (`wrong_plot_type`).
 - **Colher:** entrega `yield` do material de colheita. **Comum (perene):** o espaço continua plantado e o crescimento volta a 0. **Rara:** o espaço fica vazio. Colher já pronta duas vezes é impossível, porque o crescimento zera ou o espaço esvazia. Material de colheita apagado entrega nada.
 - **Colher tudo** (`garden_harvest` sem `plotId`): colhe todos os espaços prontos em vigor, somando por material em um `garden_harvested` cada; `nothing_changed` se não houver nenhum.
 - **Arrancar** (`garden_clear`): esvazia o espaço sem colher, e a semente não volta.
