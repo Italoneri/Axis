@@ -75,7 +75,7 @@ Fica em `state.garden.crops`, no save, como os itens da loja.
 
 1. Clico num espaço vazio. Abre a aba **Sementes** com **todos** os cultivos que cabem nesse tipo de espaço, inclusive os de semente zerada. Cada um mostra a quantidade no estoque, os dias, o rendimento e o selo "Rara" quando for o caso.
 2. Se tenho a semente: **Plantar** gasta 1.
-3. Se não tenho e é comum: **Comprar e plantar · N bronze**. Paga, planta, e a semente comprada não passa pelo estoque. Quem paga é escolhido como no Entreposto: o acampamento ou o próprio personagem. **(escolha do Claude: comprar junto com o plantio, num clique só)**
+3. Se não tenho e é comum: **Comprar e plantar · N bronze**. Paga, planta, e a semente comprada não passa pelo estoque. Quem paga é **sempre o acampamento** (decisão do Ítalo: sementes comuns são gasto do grupo; as raras saem do bolso dos jogadores no Entreposto). Sem bronze suficiente no acampamento, o botão fica desabilitado com o que falta. **(escolha do Claude: comprar junto com o plantio, num clique só)**
 4. Se não tenho e é rara: o botão aparece desabilitado com a dica "Encontrada no Entreposto ou em missões".
 
 ### Crescer
@@ -124,11 +124,11 @@ Quando existir a skill, basta adicionar `jobs` aos níveis da estufa:
 | Comando                                                          | Quem pode        |
 | ---------------------------------------------------------------- | ---------------- |
 | `garden_crop_create`, `garden_crop_update`, `garden_crop_remove` | só o mestre      |
-| `garden_plant` (`plotId`, `seedId`, `buy?: { payer }`)           | jogador e mestre |
+| `garden_plant` (`plotId`, `seedId`, `buy?: true`)                | jogador e mestre |
 | `garden_harvest` (`plotIds`: um ou "colher tudo")                | jogador e mestre |
 | `garden_clear` (`plotId`)                                        | jogador e mestre |
 
-Regras em `src/systems/Garden.ts` (funções puras), validação em `src/commands/schema.ts`, permissão de `payer` em `isAllowed` igual a `shop_buy`. O mestre planta sem pagar, como compra de graça no Entreposto.
+Regras em `src/systems/Garden.ts` (funções puras), validação em `src/commands/schema.ts`. A compra sempre debita o acampamento, então não há `payer` nem regra nova em `isAllowed`. O mestre planta sem pagar, como compra de graça no Entreposto.
 
 Erros: `garden_not_built`, `unknown_plot` (não existe no nível em vigor), `plot_occupied`, `plot_empty`, `not_ready`, `wrong_plot_type`, `unknown_crop`, `no_seed`, `rare_not_for_sale`, `crop_already_exists`, `insufficient_funds`. Remover um cultivo com plantas no chão é recusado (`crop_in_use`). **(escolha do Claude)**
 
@@ -140,7 +140,7 @@ Erros: `garden_not_built`, `unknown_plot` (não existe no nível em vigor), `plo
 
 ## Log
 
-- `garden_planted` (espaço, semente, bronze pago e carteira, quando houver compra)
+- `garden_planted` (espaço, semente, bronze pago pelo acampamento, quando houver compra)
 - `garden_harvested` (material e quantidade somados por comando)
 - `garden_cleared`
 - `building_produced` (somado por avanço)
