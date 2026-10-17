@@ -232,11 +232,20 @@ export class GardenWindow {
       el(
         'div',
         { class: 'garden-seed__info' },
-        el('strong', {}, option.seedName),
+        el(
+          'strong',
+          {},
+          option.seedName,
+          option.crop.rare && el('span', { class: 'garden-seed__badge' }, t.garden.rareBadge),
+        ),
         el(
           'span',
           { class: 'panel__hint' },
-          `${t.garden.seedsOwned(option.owned)} · ${t.garden.yields(option.crop.yield, option.harvestName)}`,
+          [
+            t.garden.seedsOwned(option.owned),
+            t.garden.growDays(option.crop.days),
+            t.garden.yields(option.crop.yield, option.harvestName),
+          ].join(' · '),
         ),
       ),
       this.seedButton(view, option),

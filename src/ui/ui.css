@@ -3560,3 +3560,13 @@ details > summary {
     animation: none;
   }
 }
+
+.garden-seed__badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid #d8ff8a;
+  border-radius: 999px;
+  color: #d8ff8a;
+  font-size: 0.75rem;
+  font-weight: normal;
+}
