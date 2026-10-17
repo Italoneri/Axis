@@ -231,6 +231,7 @@ export const testCatalog = parseCatalog({
     teamSpeed: { k: 160, m: 3, minDays: 1, maxSlowdown: 2 },
   },
   ...seed,
+  garden: { levels: [] },
 });
 
 /** Same content as `createInitialState(testCatalog)`, built by hand so tests can override parts. */
@@ -247,6 +248,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     npcs: [],
     missions: [],
     shop: seed.shop,
+    garden: { crops: [], plots: {} },
     slots: {},
     log: [],
     ...overrides,

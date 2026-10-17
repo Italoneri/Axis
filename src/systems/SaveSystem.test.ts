@@ -22,6 +22,21 @@ describe('createInitialState', () => {
   });
 });
 
+describe('garden in the save', () => {
+  it('startsNewGamesWithAnEmptyGarden', () => {
+    expect(createInitialState(testCatalog).garden).toEqual({ crops: [], plots: {} });
+  });
+
+  it('migratesVersion8SavesWithEmptyGarden', () => {
+    const { garden, ...rest } = makeState();
+    expect(garden).toEqual({ crops: [], plots: {} });
+    const parsed = parseSave(JSON.stringify({ ...rest, version: 8 }), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.version).toBe(SAVE_VERSION);
+    expect(parsed.state.garden).toEqual({ crops: [], plots: {} });
+  });
+});
+
 describe('shop in the save', () => {
   const seedIds = ['shop_wood', 'shop_iron', 'shop_aetherium'];
   const shopIds = (state: { shop: { items: { id: string }[] } }) =>

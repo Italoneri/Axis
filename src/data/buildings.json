@@ -301,8 +301,22 @@
       { "type": "glow", "x": 0.503, "y": 0.334, "color": "#dff4ff", "radius": 0.04, "minLevel": 3 },
       { "type": "glow", "x": 0.5, "y": 0.656, "color": "#9b7dff", "radius": 0.06, "minLevel": 3 },
       { "type": "sparks", "x": 0.5, "y": 0.656, "color": "#c9b8ff", "minLevel": 3 },
-      { "type": "glow", "x": 0.377, "y": 0.578, "color": "#b48cff", "radius": 0.025, "minLevel": 3 },
-      { "type": "glow", "x": 0.627, "y": 0.598, "color": "#b48cff", "radius": 0.025, "minLevel": 3 },
+      {
+        "type": "glow",
+        "x": 0.377,
+        "y": 0.578,
+        "color": "#b48cff",
+        "radius": 0.025,
+        "minLevel": 3
+      },
+      {
+        "type": "glow",
+        "x": 0.627,
+        "y": 0.598,
+        "color": "#b48cff",
+        "radius": 0.025,
+        "minLevel": 3
+      },
       { "type": "glow", "x": 0.388, "y": 0.744, "color": "#b48cff", "radius": 0.025, "minLevel": 3 }
     ],
     "levels": [
@@ -1650,7 +1664,8 @@
         },
         "buildTime": 3,
         "party": "",
-        "axis": ""
+        "axis": "",
+        "produces": { "wood": 3 }
       },
       {
         "cost": {
@@ -1663,6 +1678,7 @@
         "buildTime": 5,
         "party": "",
         "axis": "",
+        "produces": { "wood": 6 },
         "requires": [
           {
             "building": "axis_heart",
@@ -1682,6 +1698,7 @@
         "buildTime": 8,
         "party": "",
         "axis": "",
+        "produces": { "wood": 10 },
         "requires": [
           {
             "building": "axis_heart",

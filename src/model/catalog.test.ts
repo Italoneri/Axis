@@ -61,6 +61,28 @@ describe('shipped game data', () => {
     expect(() => parseCatalog({ ...rawGameData, shop })).toThrow(/nope/);
   });
 
+  describe('garden layout', () => {
+    const plot = { id: 'canteiro-1', type: 'canteiro', x: 0.1, y: 0.1, w: 0.1, h: 0.1 };
+    const parseWith = (levels: { plots: unknown[] }[]) =>
+      parseCatalog({ ...rawGameData, garden: { levels } });
+
+    it('rejectsGardenLayoutWithWrongLevelCount', () => {
+      expect(() => parseWith([{ plots: [plot] }, { plots: [plot] }])).toThrow(/garden/);
+    });
+
+    it('rejectsDuplicatePlotIdsInALevel', () => {
+      const levels = rawGameData.garden.levels.map((level) => ({ plots: [...level.plots, plot] }));
+      expect(() => parseWith(levels)).toThrow(/duplicate garden level 1 plot id "canteiro-1"/);
+    });
+
+    it('rejectsPlotIdReusedWithAnotherType', () => {
+      const [first, ...rest] = rawGameData.garden.levels;
+      if (!first) throw new Error('no garden levels shipped');
+      const retyped = first.plots.map((p) => (p.id === 'muda-1' ? { ...p, type: 'lago' } : p));
+      expect(() => parseWith([{ plots: retyped }, ...rest])).toThrow(/muda-1/);
+    });
+  });
+
   it('has exactly one structure for the core slot', () => {
     expect(gameData.buildings.filter((b) => b.allowedSlots.includes('core'))).toHaveLength(1);
   });

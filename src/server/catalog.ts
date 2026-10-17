@@ -2,6 +2,7 @@ import assets from '../data/assets.json';
 import attributes from '../data/attributes.json';
 import buildings from '../data/buildings.json';
 import currencies from '../data/currencies.json';
+import garden from '../data/garden.json';
 import influence from '../data/influence.json';
 import layout from '../data/layout.json';
 import materials from '../data/materials.json';
@@ -32,4 +33,5 @@ export const serverCatalog = parseCatalog({
   npcs,
   missions,
   shop,
+  garden,
 });
