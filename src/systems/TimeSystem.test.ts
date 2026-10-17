@@ -46,8 +46,17 @@ describe('advanceDays', () => {
     ]);
   });
 
-  it('settlesGardenWhenUpgradeCompletes', () => {
-    const state = makeState({
+  const estufaCrop = {
+    seedId: 'wood',
+    harvestId: 'iron',
+    plotType: 'estufa',
+    days: 5,
+    yield: 2,
+    rare: false,
+    price: { gold: 1 },
+  } as const;
+  const upgradingGarden = (growthTenths: number) =>
+    makeState({
       day: 1,
       slots: {
         outer_n: {
@@ -59,24 +68,24 @@ describe('advanceDays', () => {
         },
       },
       garden: {
-        crops: [
-          {
-            seedId: 'wood',
-            harvestId: 'iron',
-            plotType: 'estufa',
-            days: 5,
-            yield: 2,
-            rare: false,
-            price: { gold: 1 },
-          },
-        ],
-        plots: { 'estufa-2': { seedId: 'wood', growthTenths: 10 } },
+        crops: [estufaCrop],
+        plots: { 'estufa-2': { seedId: 'wood', growthTenths } },
       },
     });
-    const { state: next } = advanceDays(state, herbGardenCatalog, 1);
+
+  it('settlesGardenWhenUpgradeCompletes', () => {
+    const { state: next } = advanceDays(upgradingGarden(10), herbGardenCatalog, 1);
 
     expect(next.slots['outer_n']?.status).toBe('done');
     expect(next.garden.plots).toEqual({ 'estufa-1': { seedId: 'wood', growthTenths: 20 } });
+  });
+
+  it('harvestsPlantingReadyOnTheDayItsPlotVanishes', () => {
+    const { state: next } = advanceDays(upgradingGarden(40), herbGardenCatalog, 1);
+
+    expect(next.garden.plots).toEqual({});
+    expect(next.log).toContainEqual(expect.objectContaining({ kind: 'garden_harvested' }));
+    expect(next.log.some((entry) => entry.kind === 'garden_seed_returned')).toBe(false);
   });
 
   it('rejects non-positive or fractional day counts', () => {

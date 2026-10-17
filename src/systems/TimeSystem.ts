@@ -55,8 +55,9 @@ export function advanceDays(state: GameState, catalog: Catalog, days: number): A
 function passDay(progress: Progress, catalog: Catalog, day: number): Progress {
   const worked = workOneDay({ ...progress.state, day }, catalog, progress.tally);
   const produced = produceOneDay(worked.state, catalog, progress.production);
-  const completed = completeConstructions(produced.state);
-  const gardened = growGarden(settleGarden(completed.state, catalog), catalog);
+  const grown = growGarden(produced.state, catalog);
+  const completed = completeConstructions(grown);
+  const gardened = settleGarden(completed.state, catalog);
   return {
     state: returnFromMissions(settleNpcs(gardened, catalog)),
     tally: worked.tally,
