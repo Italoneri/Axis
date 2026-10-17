@@ -36,6 +36,7 @@ import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
 import { MenuWindow } from './ui/menu/MenuWindow';
+import { ShopWindow } from './ui/shop/ShopWindow';
 import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
 import { WalkingNpcsSetting } from './ui/walkingNpcsSetting';
@@ -147,7 +148,9 @@ async function start(): Promise<void> {
     repository,
     {
       contextFor: (command) =>
-        command.type === 'archive_log' || command.type === 'depot_log'
+        command.type === 'archive_log' ||
+        command.type === 'depot_log' ||
+        command.type === 'shop_buy'
           ? { actor: archiveViewer() }
           : mode.contextFor(command),
       onRefused: (error) => notify(t.errors[error], 'error'),
@@ -193,6 +196,8 @@ async function start(): Promise<void> {
   const openDepot = () => depotWindow.open();
   const menuWindow = new MenuWindow({ game: store, memory });
   const openMenu = () => menuWindow.open();
+  const shopWindow = new ShopWindow({ game: store, session, memory, viewer: archiveViewer });
+  const openShop = () => shopWindow.open();
   hideGate();
 
   store.subscribe((_state, change) => {
@@ -228,7 +233,7 @@ async function start(): Promise<void> {
     store,
     session,
     { store: archive, open: openArchive },
-    { menu: openMenu, missions: () => missionBoard.open() },
+    { menu: openMenu, missions: () => missionBoard.open(), shop: openShop },
     { store: depot, open: openDepot },
   );
 

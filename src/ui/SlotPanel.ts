@@ -15,6 +15,7 @@ import { toBronze } from '../systems/Coins';
 import { findMaterial } from '../systems/Materials';
 import type { ArchiveStore } from '../archiveStore';
 import type { DepotStore } from '../depotStore';
+import { TRADING_POST_BUILDING_ID } from '../systems/Shop';
 import { DEPOT_BUILDING_ID, depotCounts } from '../systems/Depot';
 import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
 import { missionTab } from '../systems/Missions';
@@ -36,6 +37,7 @@ type SelectionListener = (slotId: string | null) => void;
 export interface BuildingWindows {
   menu: () => void;
   missions: () => void;
+  shop: () => void;
 }
 
 /** The Depósito: its store (for the counts) and its window. */
@@ -351,6 +353,7 @@ export class SlotPanel {
     if (placed.buildingId === TAVERN_BUILDING_ID) return [this.menuSection()];
     if (placed.buildingId === GUILD_BUILDING_ID) return [this.missionsSection(state)];
     if (placed.buildingId === DEPOT_BUILDING_ID) return [this.depotSection()];
+    if (placed.buildingId === TRADING_POST_BUILDING_ID) return [this.shopSection()];
     return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
   }
 
@@ -377,6 +380,17 @@ export class SlotPanel {
       el('h3', { class: 'section-title' }, t.menu.title),
       el('p', { class: 'panel__hint' }, t.menu.panelHint),
       button(t.menu.open, this.windows.menu, { primary: true }),
+    );
+  }
+
+  /** O Entreposto, once built: the way into the trade window. */
+  private shopSection(): HTMLElement {
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.shop.title),
+      el('p', { class: 'panel__hint' }, t.shop.panelHint),
+      button(t.shop.open, this.windows.shop, { primary: true }),
     );
   }
 

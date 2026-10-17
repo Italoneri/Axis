@@ -383,3 +383,18 @@ export function categoryManager(
     ),
   );
 }
+
+export function closeButton(label: string, onClose: () => void): HTMLElement {
+  return el(
+    'button',
+    { class: 'btn btn--icon', type: 'button', 'aria-label': label, onclick: onClose },
+    '×',
+  );
+}
+
+/** Esc closes the dialog; the slot panel behind it should stay open. */
+export function keepEscapeInside(dialog: HTMLDialogElement): void {
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') event.stopPropagation();
+  });
+}

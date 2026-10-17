@@ -2935,3 +2935,81 @@ details > summary {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ---------- Entreposto: Comércio ---------- */
+
+.shop-banner {
+  padding: 12px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.shop-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.shop-card--out {
+  opacity: 0.55;
+}
+
+.shop-card--locked {
+  border-style: dashed;
+}
+
+.shop-card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.shop-card__price {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--gold);
+}
+
+.shop-card__old {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.shop-card__stock,
+.shop-card__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.shop-card__ribbon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dialog--shop-confirm {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+}
+
+.shop-confirm__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
