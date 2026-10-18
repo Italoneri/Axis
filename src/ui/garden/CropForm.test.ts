@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cropFormValues, type CropDraft } from './CropForm';
+import { chosenLook, cropFormValues, type CropDraft } from './CropForm';
 
 const draft: CropDraft = {
   seedId: 'seed',
@@ -9,6 +9,7 @@ const draft: CropDraft = {
   yield: 2,
   rare: false,
   price: { bronze: 5 },
+  look: undefined,
 };
 
 describe('cropFormValues', () => {
@@ -49,5 +50,26 @@ describe('cropFormValues', () => {
         rare: true,
       },
     });
+  });
+
+  it('keepsTheChosenLook', () => {
+    const look = { kind: 'flower', hue: 80 } as const;
+    const result = cropFormValues({ ...draft, look });
+    expect(result.ok && result.crop.look).toEqual(look);
+  });
+
+  it('leavesAutomaticCropsWithoutLook', () => {
+    const result = cropFormValues(draft);
+    expect(result.ok && 'look' in result.crop).toBe(false);
+  });
+});
+
+describe('chosenLook', () => {
+  it.each([
+    { mode: 'auto', look: undefined },
+    { mode: 'flower', look: { kind: 'flower', hue: -40 } },
+    { mode: 'foliage', look: { kind: 'foliage', hue: 0 } },
+  ] as const)('turns $mode into its look', ({ mode, look }) => {
+    expect(chosenLook(mode, -40)).toEqual(look);
   });
 });

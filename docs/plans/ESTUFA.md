@@ -30,15 +30,18 @@ Objetivo: a construção **Estufa de Ervas** (`herb_garden`, `HERB_GARDEN_BUILDI
 
 O mestre cria as categorias **Sementes** e **Ervas** nos Materiais e liga uma semente a uma colheita. O jardim não inventa plantas. Um cultivo por semente (`seedId`):
 
-| Campo       | Significado                                                       |
-| ----------- | ----------------------------------------------------------------- |
-| `seedId`    | material da semente                                               |
-| `harvestId` | material entregue na colheita                                     |
-| `plotType`  | tipo de espaço onde pode ser plantada                             |
-| `days`      | dias até ficar pronta (inteiro ≥ 1)                               |
-| `yield`     | quanto cada colheita entrega (inteiro ≥ 1)                        |
-| `rare`      | rara: não se compra no jardim e não rebrota                       |
-| `price`     | preço da semente em moedas; obrigatório se comum, ausente se rara |
+| Campo       | Significado                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------- |
+| `seedId`    | material da semente                                                                                |
+| `harvestId` | material entregue na colheita                                                                      |
+| `plotType`  | tipo de espaço onde pode ser plantada                                                              |
+| `days`      | dias até ficar pronta (inteiro ≥ 1)                                                                |
+| `yield`     | quanto cada colheita entrega (inteiro ≥ 1)                                                         |
+| `rare`      | rara: não se compra no jardim e não rebrota                                                        |
+| `price`     | preço da semente em moedas; obrigatório se comum, ausente se rara                                  |
+| `look`      | opcional: `{ kind: 'foliage' \| 'flower', hue }` (hue inteiro de -180 a 180); ausente = automática |
+
+`look` é a **Aparência** escolhida no formulário (Automática, Folhagem ou Flor com cor). Ausente, `cropLook` sorteia como antes por um hash estável do `seedId`, então saves antigos continuam válidos sem migração. Folhagem guarda `hue: 0` (não tem cor).
 
 `cropsFor` só lista cultivos cujos materiais (semente e colheita) ainda existem, por nome da semente.
 
@@ -111,8 +114,18 @@ Ainda não há `jobs` na estufa. Quando existir a skill de madeiraria/jardinagem
 - `src/ui/garden/GardenWindow.ts`: cabeçalho com **Colher tudo (N)**, a cena, a faixa de baixo e a lista de cartões (telas estreitas). A aba **Cultivos** (só o mestre) usa `CropForm.ts` para criar, editar e remover cultivos.
 - `src/ui/garden/GardenScene.ts`: a cena 16:10 desenhada por código (sem a arte da construção). Moldura de pedra, gramado, dois caminhos em cruz e sombras de árvore; atrás dos espaços, as bancadas do nível em vigor (estufa: madeira com cobertura de vidro e moldura dourada; arcana: laje escura com borda violeta). O que só existe em nível acima aparece tracejado ("Estufa · Nível 2", "Lagos · Nível 3", "Nível 2").
 - Cada espaço é um `<button>` com `aria-label` do estado ("Canteiro 3: Hortelã, faltam 2 dias") e cara própria: canteiro = caixote com terra; muda = vaso de barro; bandeja da estufa = bandeja com 2 vasos redondos; bacia arcana = bacia com anel de runas girando; lago = água animada com borda de pedra.
-- **Plantas montadas por código** a partir de recortes dos renders `nettle_plant` (folhas) e `periwinkle_plant` (flores). Tufos por tipo: canteiro 2×4, muda 1, bandeja 2 (um por vaso), bacia 1, lago 3. Estágio pelo progresso: montinhos de terra, broto (< 0,34), planta jovem (< 0,67), planta cheia (flor em botão) e pronta (florida ou folhagem viçosa). A cara do cultivo (folhagem ou flor, e o tom da flor) vem de um hash estável do `seedId`, sem campo novo no save.
+- **Plantas montadas por código** a partir de recortes dos renders `nettle_plant` (folhas) e `periwinkle_plant` (flores). Tufos por tipo: canteiro 2×4, muda 1, bandeja 2 (um por vaso), bacia 1, lago 3. Estágio pelo progresso: montinhos de terra, broto (< 0,34), planta jovem (< 0,67), planta cheia (flor em botão) e pronta (florida ou folhagem viçosa). A cara do cultivo (folhagem ou flor, e o tom da flor, via `hue-rotate`) vem de `look` quando o mestre escolheu; senão, de um hash estável do `seedId`. A planta desenhada nos espaços é sempre sprite, mesmo com foto no material.
 - **Interação:** tocar num espaço vazio abre a bandeja de sementes do tipo do espaço (estoque "×N", preço com ícone de moeda, "rara" ou sem bronze desabilitados); tocar na semente planta, e **arrastar** a semente planta cada espaço vazio compatível por onde passar (um `garden_plant` por espaço, parando na primeira recusa). Tocar num espaço pronto colhe; segurar e arrastar com a foice colhe todos por onde passar. Tocar numa planta crescendo abre nome, progresso e **Arrancar** com confirmação dentro do popover. Esc e clique fora fecham o popover.
+- **Ícone do cultivo** (`cropIcon`): se o material tiver ícone/foto (`icon`, o mesmo do `set_image` em Materiais), o jardim usa essa imagem pelo caminho de sempre (`pictureOr` em `src/ui/widgets.ts`, que também serve o `thumb()`; fotos enviadas via `GameImages`). De onde vem cada um:
+
+  | Onde aparece                                                           | Material |
+  | ---------------------------------------------------------------------- | -------- |
+  | bandeja de sementes, fantasma ao arrastar, chips "Sementes no estoque" | semente  |
+  | balão de "pronta", ícones que voam ao colher, chips "Colhido"          | colheita |
+
+  Sem imagem no material, fica o sprite (flor tingida ou folha). Foto enviada aparece com o sprite no lugar enquanto carrega; o ícone que voa vai num invólucro para a troca não acontecer no nó animado.
+
+- **Aparência no formulário** (`CropForm.ts`): Automática (padrão), Folhagem ou Flor; 9 botões de cor (o próprio sprite com `hue-rotate`, `aria-label` com o nome e `aria-pressed`) e um controle deslizante de ajuste fino, desabilitados fora de Flor; pré-visualização ao vivo do ícone e de uma planta pronta num vaso. Os giros das cores foram medidos nas pétalas rosa do `flower3`.
 - Efeitos: "+4 Hortelã" subindo e ícones voando até o chip da faixa **Colhido** (o que foi colhido com a janela aberta); terra espirrando ao plantar. A faixa também mostra as **Sementes no estoque**.
 - A janela re-renderiza com o jogo, mas só redesenha os espaços cujo desenho mudou, para não reiniciar as animações. `prefers-reduced-motion` desliga balanço, quique, runas e voo dos ícones.
 - **Telas de até 640px:** a cena some e fica a lista de cartões por espaço. Arrastar sementes exige `touch-action: none` nos espaços, que cobririam quase toda uma cena com rolagem lateral e travariam a rolagem da página no celular.
@@ -125,5 +138,7 @@ Ainda não há `jobs` na estufa. Quando existir a skill de madeiraria/jardinagem
 2. o site.
 
 Sem `supabase db push`: não há migration, tudo fica no `GameState`. O save sobe de 8 para 9; a função precisa vir antes do site para nenhum cliente enviar `garden_*` a um servidor que não os conhece.
+
+**Campo `look` do cultivo:** o schema do cultivo mudou, então de novo `npm run deploy:functions` primeiro (o servidor valida `garden_crop_create`/`garden_crop_update` com o schema novo e recusaria o campo) e depois o site (merge no master). Sem migration SQL e sem subir a versão do save: o campo é opcional.
 
 Depois do deploy, no jogo: o mestre cria as categorias **Sementes** e **Ervas** nos Materiais e os cultivos na aba **Cultivos**.
