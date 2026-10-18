@@ -85,7 +85,12 @@ const percent = (fraction: number) => `${fraction * 100}%`;
 const boxStyle = ({ x, y, w, h }: Rect) =>
   `left:${percent(x)};top:${percent(y)};width:${percent(w)};height:${percent(h)}`;
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const artUrl = (file: string) => `${GARDEN_ART_DIR}/${file}`;
+/**
+ * Absolute URL: inside a CSS custom property a relative url() is resolved
+ * against the stylesheet that uses it (assets/index-*.css in the build), not
+ * against the page, so the textures would 404 on the published site.
+ */
+const artUrl = (file: string) => new URL(`${GARDEN_ART_DIR}/${file}`, document.baseURI).href;
 
 /**
  * The herb garden drawn in code: lawn, paths and benches behind one button per
