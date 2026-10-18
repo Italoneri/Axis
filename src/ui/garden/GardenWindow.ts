@@ -2,15 +2,15 @@ import type { Actor, GameCommand } from '../../commands/schema';
 import type { Crop } from '../../model/schema';
 import { plotLabel } from '../../i18n/plotLabel';
 import { t } from '../../i18n/pt-BR';
-import { artTextureKey, availableArtFiles, pickArtFile } from '../../map/buildingArt';
 import type { GameStore } from '../../store';
 import { fromBronze } from '../../systems/Coins';
-import { gardenLevel, HERB_GARDEN_BUILDING_ID } from '../../systems/Garden';
+import { findMaterial } from '../../systems/Materials';
 import { el } from '../dom';
 import { formatPrice } from '../format';
 import type { MasterAccess } from '../MasterSession';
 import { button, closeButton, confirmButton, keepEscapeInside } from '../widgets';
 import { openCropForm } from './CropForm';
+import { cropIcon, GardenScene, type ReadyView } from './GardenScene';
 import {
   gardenSummary,
   visibleTabs,
@@ -28,20 +28,34 @@ export interface GardenWindowDeps {
 }
 
 /**
- * "Estufa de Ervas": the building's art with one hotspot per plot, and a card
- * list of the same plots on narrow screens. It re-renders with the game, so
- * growth and other players' actions show up while the window is open.
+ * "Estufa de Ervas": the garden scene drawn in code (GardenScene), a strip with
+ * what was harvested and the seeds in stock, and a card list of the same plots
+ * on narrow screens. It re-renders with the game, so growth and other players'
+ * actions show up while the window is open.
  */
 export class GardenWindow {
   private dialog: HTMLDialogElement | null = null;
   private stopWatching: (() => void) | null = null;
+  /** The open card (narrow screens); the scene keeps its own popover. */
   private selectedPlotId: string | null = null;
   private tab: GardenTab = 'garden';
   private readonly header = el('header', { class: 'menu__header' });
   private readonly tabs = el('nav', { class: 'tabs garden-tabs', role: 'tablist' });
   private readonly body = el('div', { class: 'menu__body garden-body' });
+  private readonly scene: GardenScene;
+  private readonly strip = el('div', { class: 'garden-strip' });
+  private readonly cards = el('ul', { class: 'garden-cards' });
+  /** Harvested while the window is open, by harvest material: where the icons fly. */
+  private harvested = new Map<string, number>();
 
   constructor(private readonly deps: GardenWindowDeps) {
+    this.scene = new GardenScene({
+      game: deps.game,
+      viewer: deps.viewer,
+      onHarvest: (view) => this.recordHarvest(view),
+      harvestTarget: (harvestId) =>
+        this.strip.querySelector(`[data-harvest-id="${CSS.escape(harvestId)}"]`),
+    });
     // Leaving the master tools hides the crops tab.
     deps.session.subscribe(() => this.render());
   }
@@ -52,6 +66,7 @@ export class GardenWindow {
     this.dialog = dialog;
     this.selectedPlotId = null;
     this.tab = 'garden';
+    this.harvested = new Map();
     this.stopWatching = this.deps.game.subscribe(() => this.render());
     document.body.append(dialog);
     this.render();
@@ -67,13 +82,34 @@ export class GardenWindow {
       this.body,
     );
     keepEscapeInside(dialog);
+    this.closePopoverOnEscape(dialog);
+    dialog.addEventListener('pointerdown', ({ target }) => {
+      const inside = target instanceof Element && target.closest('.garden-pop, .garden-plot');
+      if (!inside) this.scene.closePopover();
+    });
     dialog.addEventListener('close', () => {
+      this.scene.closePopover();
       this.stopWatching?.();
       this.stopWatching = null;
       dialog.remove();
       this.dialog = null;
     });
     return dialog;
+  }
+
+  /** Esc closes the open popover first, and only then the window. */
+  private closePopoverOnEscape(dialog: HTMLDialogElement): void {
+    let swallowCancel = false;
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !this.scene.hasPopover()) return;
+      event.preventDefault();
+      this.scene.closePopover();
+      swallowCancel = true;
+      setTimeout(() => (swallowCancel = false), 0);
+    });
+    dialog.addEventListener('cancel', (event) => {
+      if (swallowCancel) event.preventDefault();
+    });
   }
 
   private render(): void {
@@ -84,6 +120,7 @@ export class GardenWindow {
     if (!tabs.includes(this.tab)) this.tab = 'garden';
     this.tabs.replaceChildren(...tabs.map((tab) => this.tabButton(tab)));
     if (this.tab === 'crops') {
+      this.scene.closePopover();
       this.renderCrops(dialog);
       return;
     }
@@ -95,17 +132,47 @@ export class GardenWindow {
       el(
         'div',
         { class: 'garden-header__tools' },
-        button(t.garden.harvestAll, () => this.send({ type: 'garden_harvest' }), {
+        button(t.garden.harvestAllCount(ready), () => this.scene.harvestAll(), {
           primary: true,
           disabled: ready === 0,
         }),
         closeButton(t.garden.close, () => dialog.close()),
       ),
     );
-    this.body.replaceChildren(
-      ...(views.length === 0 ? [el('p', { class: 'notice' }, t.garden.notBuilt)] : []),
-      this.stage(views),
-      el('ul', { class: 'garden-cards' }, ...views.map((view) => this.card(view))),
+    if (views.length === 0) {
+      this.body.replaceChildren(el('p', { class: 'notice' }, t.garden.notBuilt));
+      return;
+    }
+    // Taking the scene out and back in would restart the animation of every plant.
+    if (this.scene.root.parentElement !== this.body) {
+      this.body.replaceChildren(this.scene.root, this.strip, this.cards);
+    }
+    this.scene.update(views);
+    this.renderStrip();
+    this.cards.replaceChildren(...views.map((view) => this.card(view)));
+  }
+
+  private recordHarvest(view: ReadyView): void {
+    const { harvestId } = view.crop;
+    this.harvested.set(harvestId, (this.harvested.get(harvestId) ?? 0) + view.crop.yield);
+    this.renderStrip();
+  }
+
+  private renderStrip(): void {
+    const { materials, garden } = this.deps.game.current;
+    const harvested = [...this.harvested].flatMap(([harvestId, quantity]) => {
+      const material = findMaterial(materials, harvestId);
+      const crop = garden.crops.find((candidate) => candidate.harvestId === harvestId);
+      if (!material || !crop) return [];
+      return [chip(cropIcon(crop.seedId), material.name, quantity, harvestId)];
+    });
+    const seeds = garden.crops.flatMap((crop) => {
+      const seed = findMaterial(materials, crop.seedId);
+      return seed ? [chip(cropIcon(crop.seedId), seed.name, seed.quantity)] : [];
+    });
+    this.strip.replaceChildren(
+      stripSection(t.garden.scene.harvestedTitle, harvested, t.garden.scene.nothingHarvested),
+      stripSection(t.garden.scene.seedStockTitle, seeds, t.garden.scene.noSeedStock),
     );
   }
 
@@ -198,55 +265,6 @@ export class GardenWindow {
         return game.dispatch(command) === null;
       },
     });
-  }
-
-  private stage(views: readonly PlotView[]): HTMLElement {
-    const art = this.artUrl();
-    const selected = views.find((view) => view.plot.id === this.selectedPlotId);
-    return el(
-      'div',
-      { class: 'garden-stage' },
-      art && el('img', { class: 'garden-stage__art', src: art, alt: '' }),
-      ...views.map((view) => this.hotspot(view)),
-      selected && this.popover(selected, this.plotPanel(selected)),
-    );
-  }
-
-  /** The same art file the map draws for the level in force. */
-  private artUrl(): string | undefined {
-    const { catalog, current } = this.deps.game;
-    const file = pickArtFile(
-      availableArtFiles(catalog.assets.images),
-      HERB_GARDEN_BUILDING_ID,
-      'outer',
-      gardenLevel(current),
-    );
-    return file === undefined ? undefined : catalog.assets.images[artTextureKey(file)];
-  }
-
-  private hotspot(view: PlotView): HTMLElement {
-    const { plot } = view;
-    const percent = (fraction: number) => `${fraction * 100}%`;
-    return el('button', {
-      class: `garden-plot garden-plot--${plot.type} garden-plot--${view.kind}`,
-      type: 'button',
-      style: `left:${percent(plot.x)};top:${percent(plot.y)};width:${percent(plot.w)};height:${percent(plot.h)}`,
-      'aria-label': `${plotLabel(plot.id)}: ${this.stateText(view)}`,
-      'aria-expanded': String(plot.id === this.selectedPlotId),
-      onclick: () => this.toggle(plot.id),
-    });
-  }
-
-  /** Opens below the plot in the upper half of the art, above it in the lower half. */
-  private popover({ plot }: PlotView, panel: HTMLElement): HTMLElement {
-    const opensBelow = plot.y + plot.h / 2 < 0.55;
-    const left = Math.min(Math.max(plot.x + plot.w / 2, 0.22), 0.78);
-    const anchor = opensBelow ? `top:${(plot.y + plot.h) * 100}%` : `bottom:${(1 - plot.y) * 100}%`;
-    return el(
-      'div',
-      { class: 'garden-popover', style: `left:${left * 100}%;${anchor}`, role: 'dialog' },
-      panel,
-    );
   }
 
   private card(view: PlotView): HTMLElement {
@@ -399,12 +417,37 @@ export class GardenWindow {
     this.render();
   }
 
-  /** Refusals are toasted by the store; the popover only closes once the command went through. */
+  /** Refusals are toasted by the store; the open card only closes once the command went through. */
   private send(command: GameCommand): void {
     if (this.deps.game.dispatch(command) !== null) return;
     this.selectedPlotId = null;
     this.render();
   }
+}
+
+/** `harvestId` marks a chip of the harvested list as the target of the flying icons. */
+function chip(icon: HTMLElement, name: string, quantity: number, harvestId?: string): HTMLElement {
+  return el(
+    'span',
+    {
+      class: quantity > 0 ? 'garden-chip' : 'garden-chip garden-chip--none',
+      'data-harvest-id': harvestId,
+    },
+    icon,
+    name,
+    el('b', {}, t.garden.scene.owned(quantity)),
+  );
+}
+
+function stripSection(title: string, chips: readonly HTMLElement[], empty: string): HTMLElement {
+  return el(
+    'section',
+    { class: 'garden-strip__section' },
+    el('h3', { class: 'garden-strip__title' }, title),
+    chips.length === 0
+      ? el('p', { class: 'panel__hint' }, empty)
+      : el('div', { class: 'garden-strip__chips' }, ...chips),
+  );
 }
 
 function progressBar(progress: number): HTMLElement {

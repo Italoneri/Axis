@@ -533,6 +533,46 @@ export const t = {
     empty: 'Vazio',
     notBuilt: 'A Estufa de Ervas ainda não foi construída.',
     closePopover: 'Fechar',
+    harvestAllCount: (ready: number) => (ready === 0 ? 'Colher tudo' : `Colher tudo (${ready})`),
+    scene: {
+      label: 'Jardim da Estufa de Ervas',
+      locked: {
+        greenhouse: (level: number) => `Estufa · Nível ${level}`,
+        ponds: (level: number) => `Lagos · Nível ${level}`,
+        plot: (level: number) => `Nível ${level}`,
+      },
+      plotAria: {
+        empty: (label: string) => `${label}: vazio. Plantar.`,
+        growing: (label: string, name: string, days: number) =>
+          `${label}: ${name}, ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`,
+        ready: (label: string, name: string, quantity: number) =>
+          `${label}: ${name} pronta. Colher ${quantity}.`,
+      },
+      daysShort: (days: number) => `${days}d`,
+      plantIn: (label: string) => `Plantar em ${label}`,
+      chooseSeed: 'Escolha a semente.',
+      chooseTraySeed: 'Escolha a semente. Uma semente planta os 2 vasos.',
+      dragHint: 'Dica: arraste a semente pelos espaços vazios para plantar vários.',
+      rare: 'rara',
+      rareTitle: (name: string) => `${name}: rara, só com semente`,
+      owned: (n: number) => `×${n}`,
+      seedTitle: {
+        plant: (name: string) => `${name}: do estoque`,
+        buy: (name: string, price: string) => `${name}: comprar pelo acampamento (${price})`,
+        camp_short: (name: string, missing: string) =>
+          `${name}: o acampamento não tem moedas (faltam ${missing})`,
+      },
+      plantedIn: (name: string, label: string) => `${name} em ${label}`,
+      readyIn: (days: number, quantity: number) =>
+        `pronta em ${days === 1 ? '1 dia' : `${days} dias`} · rende ${quantity}`,
+      clearAsk: 'Arrancar? A semente não volta.',
+      cancel: 'Cancelar',
+      harvested: (quantity: number, name: string) => `+${quantity} ${name}`,
+      harvestedTitle: 'Colhido',
+      nothingHarvested: 'Nada colhido ainda.',
+      seedStockTitle: 'Sementes no estoque',
+      noSeedStock: 'Nenhuma semente cadastrada.',
+    },
     tabs: { garden: 'Jardim', crops: 'Cultivos' },
     crops: {
       newCrop: 'Nova planta',
