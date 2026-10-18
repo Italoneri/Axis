@@ -108,13 +108,20 @@ Ainda não há `jobs` na estufa. Quando existir a skill de madeiraria/jardinagem
 ## Interface
 
 - `SlotPanel.extraSections`: seção **Jardim** com resumo e botão **Abrir jardim**, como Taverna e Guilda.
-- `src/ui/garden/GardenWindow.ts`: a arte do nível com um botão por espaço; clicar abre um popover para plantar, colher ou arrancar. No topo, **Colher tudo**. Em telas de até 640px a arte some e fica só a lista de cartões por espaço.
-- Aba **Cultivos** (só o mestre) com `CropForm.ts`: criar, editar e remover cultivos por selects de material.
-- Estado e resumo dos espaços em `gardenViews.ts`; textos em `t.garden`.
+- `src/ui/garden/GardenWindow.ts`: cabeçalho com **Colher tudo (N)**, a cena, a faixa de baixo e a lista de cartões (telas estreitas). A aba **Cultivos** (só o mestre) usa `CropForm.ts` para criar, editar e remover cultivos.
+- `src/ui/garden/GardenScene.ts`: a cena 16:10 desenhada por código (sem a arte da construção). Moldura de pedra, gramado, dois caminhos em cruz e sombras de árvore; atrás dos espaços, as bancadas do nível em vigor (estufa: madeira com cobertura de vidro e moldura dourada; arcana: laje escura com borda violeta). O que só existe em nível acima aparece tracejado ("Estufa · Nível 2", "Lagos · Nível 3", "Nível 2").
+- Cada espaço é um `<button>` com `aria-label` do estado ("Canteiro 3: Hortelã, faltam 2 dias") e cara própria: canteiro = caixote com terra; muda = vaso de barro; bandeja da estufa = bandeja com 2 vasos redondos; bacia arcana = bacia com anel de runas girando; lago = água animada com borda de pedra.
+- **Plantas montadas por código** a partir de recortes dos renders `nettle_plant` (folhas) e `periwinkle_plant` (flores). Tufos por tipo: canteiro 2×4, muda 1, bandeja 2 (um por vaso), bacia 1, lago 3. Estágio pelo progresso: montinhos de terra, broto (< 0,34), planta jovem (< 0,67), planta cheia (flor em botão) e pronta (florida ou folhagem viçosa). A cara do cultivo (folhagem ou flor, e o tom da flor) vem de um hash estável do `seedId`, sem campo novo no save.
+- **Interação:** tocar num espaço vazio abre a bandeja de sementes do tipo do espaço (estoque "×N", preço com ícone de moeda, "rara" ou sem bronze desabilitados); tocar na semente planta, e **arrastar** a semente planta cada espaço vazio compatível por onde passar (um `garden_plant` por espaço, parando na primeira recusa). Tocar num espaço pronto colhe; segurar e arrastar com a foice colhe todos por onde passar. Tocar numa planta crescendo abre nome, progresso e **Arrancar** com confirmação dentro do popover. Esc e clique fora fecham o popover.
+- Efeitos: "+4 Hortelã" subindo e ícones voando até o chip da faixa **Colhido** (o que foi colhido com a janela aberta); terra espirrando ao plantar. A faixa também mostra as **Sementes no estoque**.
+- A janela re-renderiza com o jogo, mas só redesenha os espaços cujo desenho mudou, para não reiniciar as animações. `prefers-reduced-motion` desliga balanço, quique, runas e voo dos ícones.
+- **Telas de até 640px:** a cena some e fica a lista de cartões por espaço. Arrastar sementes exige `touch-action: none` nos espaços, que cobririam quase toda uma cena com rolagem lateral e travariam a rolagem da página no celular.
+- Lógica pura (estágio, hash do visual, tufos, posição do popover, cenário por nível) em `src/ui/garden/sceneLayout.ts`; estado e resumo dos espaços em `gardenViews.ts`; textos em `t.garden`.
+- Texturas e sprites em `public/assets/garden/` (créditos em `src/data/credits.json`): pedra Stone Wall 23 dessaturada, madeira de `wooden_crate_02`, grama Grass004 e terra Ground048 do ambientCG, folhas e flores do Poly Haven. Todas CC0.
 
 ## Ordem de deploy
 
-1. `npm run deploy:functions` (o bundle carrega `garden.json`);
+1. `npm run deploy:functions` (o bundle carrega `garden.json`; o layout novo dos espaços também precisa chegar primeiro ao servidor);
 2. o site.
 
 Sem `supabase db push`: não há migration, tudo fica no `GameState`. O save sobe de 8 para 9; a função precisa vir antes do site para nenhum cliente enviar `garden_*` a um servidor que não os conhece.
