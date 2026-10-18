@@ -36,6 +36,7 @@ import { showToast } from './ui/Toasts';
 import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
 import { MenuWindow } from './ui/menu/MenuWindow';
+import { GardenWindow } from './ui/garden/GardenWindow';
 import { ShopWindow } from './ui/shop/ShopWindow';
 import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
@@ -200,6 +201,7 @@ async function start(): Promise<void> {
   const openMenu = () => menuWindow.open();
   const shopWindow = new ShopWindow({ game: store, session, memory, viewer: archiveViewer });
   const openShop = () => shopWindow.open();
+  const gardenWindow = new GardenWindow({ game: store, session, viewer: archiveViewer });
   hideGate();
 
   store.subscribe((_state, change) => {
@@ -235,7 +237,12 @@ async function start(): Promise<void> {
     store,
     session,
     { store: archive, open: openArchive },
-    { menu: openMenu, missions: () => missionBoard.open(), shop: openShop },
+    {
+      menu: openMenu,
+      missions: () => missionBoard.open(),
+      shop: openShop,
+      garden: () => gardenWindow.open(),
+    },
     { store: depot, open: openDepot },
     archiveViewer,
   );

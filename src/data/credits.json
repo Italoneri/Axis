@@ -17,7 +17,7 @@
       "url": "https://www.sharetextures.com/textures/wall/stone-wall-23",
       "license": "CC0",
       "author": "M.Tolga Arslan",
-      "usedFor": "Muralha e pilares dos portões",
+      "usedFor": "Muralha e pilares dos portões; moldura e caminhos do jardim da Estufa de Ervas",
       "requiresAttribution": false
     },
     {
@@ -29,6 +29,56 @@
       "author": "kjpargeter",
       "usedFor": "Veios dourados e disco azul",
       "requiresAttribution": true
+    },
+    {
+      "id": "garden_grass",
+      "work": "Grass004 (gramado)",
+      "source": "ambientCG",
+      "url": "https://ambientcg.com/a/Grass004",
+      "license": "CC0",
+      "author": "",
+      "usedFor": "Gramado do jardim da Estufa de Ervas",
+      "requiresAttribution": false
+    },
+    {
+      "id": "garden_soil",
+      "work": "Ground048 (terra)",
+      "source": "ambientCG",
+      "url": "https://ambientcg.com/a/Ground048",
+      "license": "CC0",
+      "author": "",
+      "usedFor": "Terra dos canteiros e vasos do jardim da Estufa de Ervas",
+      "requiresAttribution": false
+    },
+    {
+      "id": "wooden_crate_02",
+      "work": "Wooden Crate 02",
+      "source": "Poly Haven",
+      "url": "https://polyhaven.com/a/wooden_crate_02",
+      "license": "CC0",
+      "author": "James Ray Cock, Jurita Burger",
+      "usedFor": "Madeira dos canteiros e bancadas do jardim da Estufa de Ervas",
+      "requiresAttribution": false
+    },
+    {
+      "id": "nettle_plant",
+      "work": "Nettle Plant",
+      "source": "Poly Haven",
+      "url": "https://polyhaven.com/a/nettle_plant",
+      "license": "CC0",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "usedFor": "Folhas das plantas do jardim da Estufa de Ervas",
+      "requiresAttribution": false
+    },
+    {
+      "id": "periwinkle_plant",
+      "work": "Periwinkle Plant",
+      "source": "Poly Haven",
+      "url": "https://polyhaven.com/a/periwinkle_plant",
+      "license": "CC0",
+      "author": "Amal Kumar",
+      "usedFor": "Flores das plantas do jardim da Estufa de Ervas",
+      "requiresAttribution": false
     }
   ],
   "sprites": [

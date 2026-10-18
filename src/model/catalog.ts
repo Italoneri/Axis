@@ -7,6 +7,7 @@ import {
   attributeDefSchema,
   buildingDefSchema,
   currencyDefSchema,
+  gardenLayoutSchema,
   materialsSchema,
   MAX_ATTRIBUTE,
   MAX_SKILL,
@@ -22,6 +23,7 @@ import {
   type AttributeDef,
   type BuildingDef,
   type CurrencyDef,
+  type GardenLayout,
   type JobDef,
   type Materials,
   type MissionsConfig,
@@ -64,10 +66,15 @@ export interface Catalog {
   readonly missions: MissionsConfig;
   /** Dishes the tavern serves; empty where the menu is not shipped (the Edge Function). */
   readonly tavernMenu: TavernMenu;
+  /** Plots of the herb garden, per level (the garden itself is state). */
+  readonly garden: GardenLayout;
 }
 
 /** The building whose panel opens the menu, and whose level unlocks dishes. */
 export const TAVERN_BUILDING_ID = 'tavern';
+
+/** The building whose panel opens the herb garden. */
+export const HERB_GARDEN_BUILDING_ID = 'herb_garden';
 
 /** The building whose panel opens the mission board. */
 export const GUILD_BUILDING_ID = 'guild';
@@ -86,6 +93,7 @@ export interface RawCatalog {
   npcs: unknown;
   missions: unknown;
   shop: unknown;
+  garden: unknown;
   /** Display only, so the server catalog leaves it out. */
   tavernMenu?: unknown;
 }
@@ -117,6 +125,7 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     ).attributes,
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
     missions: parseFile('missions.json', missionsConfigSchema, raw.missions),
+    garden: parseFile('garden.json', gardenLayoutSchema, raw.garden),
     tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
   };
   const problems = findReferenceProblems(catalog);
@@ -205,6 +214,7 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...currencyProblems(catalog.currencies),
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
     ...seedProblems(catalog),
+    ...gardenProblems(catalog),
     ...buildingProblems,
     ...menuProblems(catalog, missingAsset),
     ...(buildingIds.has(catalog.missions.guildBonus.building)
@@ -372,6 +382,29 @@ function seedProblems({ currencies, seed }: Catalog): string[] {
     ...seed.research.entries
       .filter((r) => !researchCategories.has(r.category))
       .map((r) => `research.json: ${r.id} uses unknown category "${r.category}"`),
+  ];
+}
+
+/** One layout entry per herb_garden level; a plot id keeps its type across levels so plantings survive an upgrade. */
+function gardenProblems({ buildings, garden }: Catalog): string[] {
+  const herbGarden = buildings.find((b) => b.id === HERB_GARDEN_BUILDING_ID);
+  const typeById = new Map<string, string>();
+  const reusedWithAnotherType = garden.levels
+    .flatMap((level) => level.plots)
+    .filter((plot) => {
+      const known = typeById.get(plot.id);
+      typeById.set(plot.id, known ?? plot.type);
+      return known !== undefined && known !== plot.type;
+    })
+    .map((plot) => `garden.json: plot "${plot.id}" changes type between levels`);
+  return [
+    ...(herbGarden && herbGarden.levels.length !== garden.levels.length
+      ? [
+          `garden.json: has ${garden.levels.length} levels, ${HERB_GARDEN_BUILDING_ID} has ${herbGarden.levels.length}`,
+        ]
+      : []),
+    ...garden.levels.flatMap((level, i) => duplicates(`garden level ${i + 1} plot`, level.plots)),
+    ...reusedWithAnotherType,
   ];
 }
 

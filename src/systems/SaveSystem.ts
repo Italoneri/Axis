@@ -41,6 +41,7 @@ export function createInitialState(catalog: Catalog): GameState {
     npcs: [],
     missions: [],
     shop,
+    garden: { crops: [], plots: {} },
     slots: {},
     log: [],
   };
@@ -155,6 +156,7 @@ export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   5: (save) => save,
   6: (save) => ({ ...save, missions: [] }),
   7: (save) => ({ ...save, shop: { items: [] } }),
+  8: (save) => ({ ...save, garden: { crops: [], plots: {} } }),
 };
 
 /** Turns a parsed save that came from version N into the rules of N + 1, with the catalog at hand. */

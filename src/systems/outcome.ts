@@ -41,7 +41,24 @@ export type ActionError =
   /** The item is hidden, locked above the Entreposto level, or its material is gone. */
   | 'not_for_sale'
   /** A purchase or sale quantity outside 1..limit. */
-  | 'invalid_quantity';
+  | 'invalid_quantity'
+  /** Garden: the herb garden is not built, so nothing grows. */
+  | 'garden_not_built'
+  /** Garden: no such plot at the level in force. */
+  | 'unknown_plot'
+  | 'plot_occupied'
+  | 'plot_empty'
+  | 'not_ready'
+  /** The crop does not grow in that kind of plot. */
+  | 'wrong_plot_type'
+  /** No seed in stock and the player is not buying one. */
+  | 'no_seed'
+  /** Rare crops have no price and are not sold in the garden. */
+  | 'rare_not_for_sale'
+  /** One crop per seed material. */
+  | 'crop_already_exists'
+  /** A plot still grows the crop. */
+  | 'crop_in_use';
 
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 

@@ -61,6 +61,56 @@ describe('shipped game data', () => {
     expect(() => parseCatalog({ ...rawGameData, shop })).toThrow(/nope/);
   });
 
+  describe('garden layout', () => {
+    const plot = { id: 'canteiro-1', type: 'canteiro', x: 0.1, y: 0.1, w: 0.1, h: 0.1 };
+    const parseWith = (levels: { plots: unknown[] }[]) =>
+      parseCatalog({ ...rawGameData, garden: { levels } });
+
+    it('rejectsGardenLayoutWithWrongLevelCount', () => {
+      expect(() => parseWith([{ plots: [plot] }, { plots: [plot] }])).toThrow(/garden/);
+    });
+
+    it('rejectsDuplicatePlotIdsInALevel', () => {
+      const levels = rawGameData.garden.levels.map((level) => ({ plots: [...level.plots, plot] }));
+      expect(() => parseWith(levels)).toThrow(/duplicate garden level 1 plot id "canteiro-1"/);
+    });
+
+    it('rejectsPlotIdReusedWithAnotherType', () => {
+      const [first, ...rest] = rawGameData.garden.levels;
+      if (!first) throw new Error('no garden levels shipped');
+      const retyped = first.plots.map((p) => (p.id === 'muda-1' ? { ...p, type: 'lago' } : p));
+      expect(() => parseWith([{ plots: retyped }, ...rest])).toThrow(/muda-1/);
+    });
+
+    it('keepsThePlotIdsOfOlderSaves', () => {
+      const canteiros = ['canteiro-1', 'canteiro-2', 'canteiro-3', 'canteiro-4'];
+      const mudas = ['muda-1', 'muda-2', 'muda-3', 'muda-4'];
+      const older = [
+        [...canteiros, ...mudas],
+        [...canteiros, 'canteiro-5', 'canteiro-6', ...mudas, 'estufa-1', 'estufa-2'],
+        [...canteiros, 'canteiro-5', 'canteiro-6', ...mudas, 'estufa-1', 'arcana-1', 'lago-1'],
+      ];
+      const shipped = gameData.garden.levels.map((level) => level.plots.map((p) => p.id));
+      older.forEach((ids, level) => expect(shipped[level]).toEqual(expect.arrayContaining(ids)));
+    });
+
+    it('shipsThePlotCountsOfEachLevel', () => {
+      const counts = gameData.garden.levels.map((level) =>
+        Object.fromEntries(
+          ['canteiro', 'muda', 'estufa', 'arcana', 'lago'].map((type) => [
+            type,
+            level.plots.filter((p) => p.type === type).length,
+          ]),
+        ),
+      );
+      expect(counts).toEqual([
+        { canteiro: 6, muda: 4, estufa: 0, arcana: 0, lago: 0 },
+        { canteiro: 9, muda: 4, estufa: 6, arcana: 0, lago: 0 },
+        { canteiro: 12, muda: 4, estufa: 3, arcana: 4, lago: 2 },
+      ]);
+    });
+  });
+
   it('has exactly one structure for the core slot', () => {
     expect(gameData.buildings.filter((b) => b.allowedSlots.includes('core'))).toHaveLength(1);
   });

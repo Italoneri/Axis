@@ -17,6 +17,7 @@ import { CAMP } from '../systems/Wallets';
 import { findMaterial } from '../systems/Materials';
 import type { ArchiveStore } from '../archiveStore';
 import type { DepotStore } from '../depotStore';
+import { HERB_GARDEN_BUILDING_ID } from '../systems/Garden';
 import { missingPurchase, TRADING_POST_BUILDING_ID } from '../systems/Shop';
 import { DEPOT_BUILDING_ID, depotCounts } from '../systems/Depot';
 import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
@@ -30,6 +31,7 @@ import type { MasterAccess } from './MasterSession';
 import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
 import { abilityColumns, buildingDetails, shortcutModel } from './buildingDetails';
+import { gardenSummary, plotViews } from './garden/gardenViews';
 import { confirmPurchase } from './shop/shopViews';
 import { ResearchArchive } from './resources/ResearchArchive';
 import { button, thumb } from './widgets';
@@ -41,6 +43,7 @@ export interface BuildingWindows {
   menu: () => void;
   missions: () => void;
   shop: () => void;
+  garden: () => void;
 }
 
 /** The Depósito: its store (for the counts) and its window. */
@@ -393,6 +396,7 @@ export class SlotPanel {
     if (placed.buildingId === GUILD_BUILDING_ID) return [this.missionsSection(state)];
     if (placed.buildingId === DEPOT_BUILDING_ID) return [this.depotSection()];
     if (placed.buildingId === TRADING_POST_BUILDING_ID) return [this.shopSection()];
+    if (placed.buildingId === HERB_GARDEN_BUILDING_ID) return [this.gardenSection(state)];
     return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
   }
 
@@ -430,6 +434,19 @@ export class SlotPanel {
       el('h3', { class: 'section-title' }, t.shop.title),
       el('p', { class: 'panel__hint' }, t.shop.panelHint),
       button(t.shop.open, this.windows.shop, { primary: true }),
+    );
+  }
+
+  /** A Estufa de Ervas, once built: the plot counts and the way into the garden window. */
+  private gardenSection(state: GameState): HTMLElement {
+    const summary = gardenSummary(plotViews(state, this.store.catalog));
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.garden.title),
+      el('p', { class: 'panel__hint' }, t.garden.panelHint),
+      el('p', {}, t.garden.counts(summary)),
+      button(t.garden.open, this.windows.garden, { primary: true }),
     );
   }
 

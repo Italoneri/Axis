@@ -8,6 +8,7 @@ import type {
   MissionDifficulty,
   NpcReleaseReason,
   NpcStatus,
+  PlotType,
   ResearchStatus,
 } from '../model/schema';
 import {
@@ -27,6 +28,7 @@ import {
 import { PHOTO_LIMITS, type PhotoError } from '../systems/GameImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
+import { plotLabel } from './plotLabel';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const decimalFormat = new Intl.NumberFormat('pt-BR', {
@@ -506,6 +508,102 @@ export const t = {
     refused: (fileName: string, reason: string) => `${fileName}: ${reason}`,
   },
 
+  garden: {
+    title: '🌿 Estufa de Ervas',
+    open: 'Abrir jardim',
+    close: 'Fechar jardim',
+    panelHint: 'Plante sementes, acompanhe o crescimento e colha ervas para o acampamento.',
+    counts: ({ ready, growing, empty }: { ready: number; growing: number; empty: number }) =>
+      `${ready} prontas · ${growing} crescendo · ${empty} vazias`,
+    harvestAll: 'Colher tudo',
+    harvest: 'Colher',
+    clear: 'Arrancar',
+    plant: 'Plantar',
+    buyAndPlant: (price: string) => `Comprar e plantar (${price})`,
+    rareHint: 'Encontrada no Entreposto ou em missões',
+    rareBadge: 'Rara',
+    growDays: (n: number) => (n === 1 ? '1 dia' : `${n} dias`),
+    campShort: (missing: string) => `Acampamento sem moedas (faltam ${missing})`,
+    seedsOwned: (n: number) => `Estoque: ${n}`,
+    chooseSeed: 'Escolha uma semente',
+    noSeeds: 'Nenhuma semente cadastrada para este canteiro.',
+    daysLeft: (n: number) => (n === 1 ? 'Falta 1 dia' : `Faltam ${n} dias`),
+    ready: 'Pronta para colher',
+    yields: (quantity: number, name: string) => `Rende ${quantity} ${name}`,
+    empty: 'Vazio',
+    notBuilt: 'A Estufa de Ervas ainda não foi construída.',
+    closePopover: 'Fechar',
+    harvestAllCount: (ready: number) => (ready === 0 ? 'Colher tudo' : `Colher tudo (${ready})`),
+    scene: {
+      label: 'Jardim da Estufa de Ervas',
+      locked: {
+        greenhouse: (level: number) => `Estufa · Nível ${level}`,
+        ponds: (level: number) => `Lagos · Nível ${level}`,
+        plot: (level: number) => `Nível ${level}`,
+      },
+      plotAria: {
+        empty: (label: string) => `${label}: vazio. Plantar.`,
+        growing: (label: string, name: string, days: number) =>
+          `${label}: ${name}, ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`,
+        ready: (label: string, name: string, quantity: number) =>
+          `${label}: ${name} pronta. Colher ${quantity}.`,
+      },
+      daysShort: (days: number) => `${days}d`,
+      plantIn: (label: string) => `Plantar em ${label}`,
+      chooseSeed: 'Escolha a semente.',
+      chooseTraySeed: 'Escolha a semente. Uma semente planta os 2 vasos.',
+      dragHint: 'Dica: arraste a semente pelos espaços vazios para plantar vários.',
+      rare: 'rara',
+      rareTitle: (name: string) => `${name}: rara, só com semente`,
+      owned: (n: number) => `×${n}`,
+      seedTitle: {
+        plant: (name: string) => `${name}: do estoque`,
+        buy: (name: string, price: string) => `${name}: comprar pelo acampamento (${price})`,
+        camp_short: (name: string, missing: string) =>
+          `${name}: o acampamento não tem moedas (faltam ${missing})`,
+      },
+      plantedIn: (name: string, label: string) => `${name} em ${label}`,
+      readyIn: (days: number, quantity: number) =>
+        `pronta em ${days === 1 ? '1 dia' : `${days} dias`} · rende ${quantity}`,
+      clearAsk: 'Arrancar? A semente não volta.',
+      cancel: 'Cancelar',
+      harvested: (quantity: number, name: string) => `+${quantity} ${name}`,
+      harvestedTitle: 'Colhido',
+      nothingHarvested: 'Nada colhido ainda.',
+      seedStockTitle: 'Sementes no estoque',
+      noSeedStock: 'Nenhuma semente cadastrada.',
+    },
+    tabs: { garden: 'Jardim', crops: 'Cultivos' },
+    crops: {
+      newCrop: 'Nova planta',
+      newTitle: 'Nova planta',
+      editTitle: 'Editar planta',
+      empty: 'Nenhuma planta cadastrada.',
+      edit: 'Editar',
+      remove: 'Remover',
+      seed: 'Semente',
+      harvest: 'Colheita',
+      plotType: 'Tipo de canteiro',
+      days: 'Dias para crescer',
+      yield: 'Rendimento por colheita',
+      rare: 'Rara (não vendida)',
+      price: 'Preço da semente',
+      noSeeds: 'Todos os materiais já têm uma planta.',
+      save: 'Salvar',
+      cancel: 'Cancelar',
+      close: 'Fechar',
+      uncategorized: 'Sem categoria',
+      removedMaterial: 'material removido',
+      plotTypes: {
+        canteiro: 'Canteiro',
+        muda: 'Muda',
+        estufa: 'Bandeja da estufa',
+        arcana: 'Bacia arcana',
+        lago: 'Lago',
+      } satisfies Record<PlotType, string>,
+    },
+  },
+
   shop: {
     title: '⚖ Entreposto — Comércio',
     open: 'Abrir comércio',
@@ -909,6 +1007,16 @@ export const t = {
     out_of_stock: 'Não há unidades suficientes em estoque.',
     not_for_sale: 'Este item não está à venda.',
     invalid_quantity: 'Informe uma quantidade válida.',
+    garden_not_built: 'A Estufa de Ervas ainda não foi construída.',
+    unknown_plot: 'Esse canteiro não existe neste nível da Estufa.',
+    plot_occupied: 'Esse canteiro já está plantado.',
+    plot_empty: 'Esse canteiro está vazio.',
+    not_ready: 'Essa planta ainda não está pronta para a colheita.',
+    wrong_plot_type: 'Essa planta não cresce nesse tipo de canteiro.',
+    no_seed: 'Não há semente dessa planta no estoque.',
+    rare_not_for_sale: 'Plantas raras não são vendidas aqui.',
+    crop_already_exists: 'Essa semente já tem uma planta cadastrada.',
+    crop_in_use: 'Há canteiros cultivando essa planta. Colha ou limpe antes de remover.',
     forbidden: 'Somente o Mestre pode fazer isso.',
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
@@ -1036,10 +1144,20 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return archiveAction(masterActor(entry), entry.change);
     case 'depot_changed':
       return depotAction(masterActor(entry), entry.change);
+    case 'building_produced':
+      return `${ctx.building(entry.buildingId)} produziu ${entry.quantity} ${entry.material}`;
     case 'shop_purchased':
       return shopPurchaseText(entry, ctx);
     case 'shop_sold':
       return `${entry.actor ?? 'Alguém'} vendeu ${entry.quantity} ${entry.material} ao Entreposto por ${ctx.gold(entry.bronze)}`;
+    case 'garden_planted':
+      return gardenPlantedText(entry, ctx);
+    case 'garden_harvested':
+      return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${entry.material} na Estufa de Ervas`;
+    case 'garden_seed_returned':
+      return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
+    case 'garden_cleared':
+      return `${entry.actor ?? 'Alguém'} limpou ${plotLabel(entry.plot)} (${entry.seed})`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1243,7 +1361,7 @@ function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: Text
   }
 }
 
-type BuildingEntry = Extract<LogEntry, { buildingId: string }>;
+type BuildingEntry = Extract<LogEntry, { buildingId: string; level: number }>;
 
 function buildingAction(entry: BuildingEntry, ctx: TextContext): string {
   const what = `${ctx.buildingAt(entry.buildingId, entry.slotId)} nv. ${entry.level}`;
@@ -1311,6 +1429,15 @@ function shopPurchaseText(
   const price =
     entry.bronze === 0 ? 'de graça' : `por ${ctx.gold(entry.bronze)} ${walletOf(entry.wallet)}`;
   return `${entry.actor ?? 'Alguém'} comprou ${what} no Entreposto ${price}`;
+}
+
+/** "Thorin plantou Hortelã em Canteiro 1 (semente comprada por 2 PB)". */
+function gardenPlantedText(
+  entry: Extract<LogEntry, { kind: 'garden_planted' }>,
+  ctx: TextContext,
+): string {
+  const bought = entry.bronze === 0 ? '' : ` (semente comprada por ${ctx.gold(entry.bronze)})`;
+  return `${entry.actor ?? 'Alguém'} plantou ${entry.seed} em ${plotLabel(entry.plot)}${bought}`;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

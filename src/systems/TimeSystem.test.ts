@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { HERB_GARDEN_BUILDING_ID } from '../model/catalog';
 import { advanceDays, constructionProgress } from './TimeSystem';
-import { makeState, testCatalog } from './testFixtures';
+import { herbGardenCatalog, makeState, testCatalog } from './testFixtures';
 
 const building = (startedOnDay: number, completesOnDay: number, buildingId = 'forge') =>
   ({ buildingId, level: 1, status: 'building', startedOnDay, completesOnDay }) as const;
@@ -26,6 +27,65 @@ describe('advanceDays', () => {
       { day: 6, kind: 'build_completed', buildingId: 'forge', level: 1, slotId: 'a' },
       { day: 6, kind: 'days_advanced', days: 3 },
     ]);
+  });
+
+  it('logsProductionOnceForTheWholeAdvance', () => {
+    const state = makeState({
+      slots: { outer_n: { buildingId: HERB_GARDEN_BUILDING_ID, level: 1, status: 'done' } },
+    });
+    const { state: next } = advanceDays(state, herbGardenCatalog, 3);
+
+    expect(next.log.filter((e) => e.kind === 'building_produced')).toEqual([
+      {
+        day: 4,
+        kind: 'building_produced',
+        buildingId: HERB_GARDEN_BUILDING_ID,
+        material: 'Madeira',
+        quantity: 9,
+      },
+    ]);
+  });
+
+  const estufaCrop = {
+    seedId: 'wood',
+    harvestId: 'iron',
+    plotType: 'estufa',
+    days: 5,
+    yield: 2,
+    rare: false,
+    price: { gold: 1 },
+  } as const;
+  const upgradingGarden = (growthTenths: number) =>
+    makeState({
+      day: 1,
+      slots: {
+        outer_n: {
+          buildingId: HERB_GARDEN_BUILDING_ID,
+          level: 3,
+          status: 'building',
+          startedOnDay: 1,
+          completesOnDay: 2,
+        },
+      },
+      garden: {
+        crops: [estufaCrop],
+        plots: { 'estufa-2': { seedId: 'wood', growthTenths } },
+      },
+    });
+
+  it('settlesGardenWhenUpgradeCompletes', () => {
+    const { state: next } = advanceDays(upgradingGarden(10), herbGardenCatalog, 1);
+
+    expect(next.slots['outer_n']?.status).toBe('done');
+    expect(next.garden.plots).toEqual({ 'estufa-1': { seedId: 'wood', growthTenths: 20 } });
+  });
+
+  it('harvestsPlantingReadyOnTheDayItsPlotVanishes', () => {
+    const { state: next } = advanceDays(upgradingGarden(40), herbGardenCatalog, 1);
+
+    expect(next.garden.plots).toEqual({});
+    expect(next.log).toContainEqual(expect.objectContaining({ kind: 'garden_harvested' }));
+    expect(next.log.some((entry) => entry.kind === 'garden_seed_returned')).toBe(false);
   });
 
   it('rejects non-positive or fractional day counts', () => {

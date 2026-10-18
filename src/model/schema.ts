@@ -93,6 +93,8 @@ export const buildingLevelSchema = z.object({
   requires: z.array(requirementSchema).optional(),
   housing: z.object({ capacity: z.number().int().positive() }).optional(),
   jobs: z.array(jobDefSchema).optional(),
+  /** Materials the structure yields every day by itself, without NPCs. */
+  produces: amountBagSchema.optional(),
 });
 
 /** npcs.json: the negative skill divisor and the post every construction in progress offers. */
@@ -632,6 +634,15 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     /** Material name, research title or building id. */
     target: z.string(),
   }),
+  /** Summary of one advance: what a building produced by itself, in whole units. */
+  z.object({
+    ...entryBase,
+    kind: z.literal('building_produced'),
+    buildingId: z.string(),
+    /** Material name. */
+    material: z.string(),
+    quantity: positiveInt,
+  }),
   z.object({ ...entryBase, kind: z.literal('npc_wages_paid'), bronze: positiveInt }),
   z.object({
     ...entryBase,
@@ -658,6 +669,35 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     material: z.string(),
     quantity: z.number().int().positive(),
     bronze: positiveInt,
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_planted'),
+    plot: z.string(),
+    /** Seed material name at the time. */
+    seed: z.string(),
+    /** 0 when the seed was not bought (owned, or the master's). */
+    bronze: positiveInt,
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_harvested'),
+    /** Material name at the time. */
+    material: z.string(),
+    quantity: z.number().int().positive(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_seed_returned'),
+    /** Seed material name at the time. */
+    seed: z.string(),
+    quantity: z.number().int().positive(),
+  }),
+  z.object({
+    ...entryBase,
+    kind: z.literal('garden_cleared'),
+    plot: z.string(),
+    seed: z.string(),
   }),
   // Missions: titles and names at the time.
   z.object({
@@ -721,7 +761,47 @@ export const shopItemSchema = z.discriminatedUnion('kind', [
 
 export const shopSchema = z.object({ items: z.array(shopItemSchema) });
 
-export const SAVE_VERSION = 8;
+export const plotTypeSchema = z.enum(['canteiro', 'muda', 'estufa', 'arcana', 'lago']);
+
+const unit = z.number().min(0).max(1);
+
+/** Position and size of a plot over the garden art, as fractions of its width and height. */
+export const plotDefSchema = z.object({
+  id: z.string().min(1),
+  type: plotTypeSchema,
+  x: unit,
+  y: unit,
+  w: unit,
+  h: unit,
+});
+
+/** garden.json: one entry per herb_garden level, in order. */
+export const gardenLayoutSchema = z.object({
+  levels: z.array(z.object({ plots: z.array(plotDefSchema) })),
+});
+
+const cropBase = {
+  /** One crop per seed: the seed is the crop's id. */
+  seedId: z.string().min(1),
+  harvestId: z.string().min(1),
+  plotType: plotTypeSchema,
+  days: z.number().int().min(1).max(365),
+  yield: z.number().int().min(1).max(9999),
+};
+
+export const cropSchema = z.discriminatedUnion('rare', [
+  z.object({ ...cropBase, rare: z.literal(false), price: amountBagSchema }),
+  z.object({ ...cropBase, rare: z.literal(true) }),
+]);
+
+export const plantingSchema = z.object({ seedId: z.string().min(1), growthTenths: positiveInt });
+
+export const gardenSchema = z.object({
+  crops: z.array(cropSchema),
+  plots: z.record(z.string(), plantingSchema),
+});
+
+export const SAVE_VERSION = 9;
 
 export const gameStateSchema = z.object({
   version: z.literal(SAVE_VERSION),
@@ -745,6 +825,7 @@ export const gameStateSchema = z.object({
   npcs: z.array(npcSchema),
   missions: z.array(missionSchema),
   shop: shopSchema,
+  garden: gardenSchema,
   slots: z.record(z.string(), placedBuildingSchema),
   log: z.array(logEntrySchema),
 });
@@ -794,3 +875,9 @@ export type LogEntry = z.infer<typeof logEntrySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
 export type ShopItem = z.infer<typeof shopItemSchema>;
 export type Shop = z.infer<typeof shopSchema>;
+export type PlotType = z.infer<typeof plotTypeSchema>;
+export type PlotDef = z.infer<typeof plotDefSchema>;
+export type GardenLayout = z.infer<typeof gardenLayoutSchema>;
+export type Crop = z.infer<typeof cropSchema>;
+export type Planting = z.infer<typeof plantingSchema>;
+export type Garden = z.infer<typeof gardenSchema>;

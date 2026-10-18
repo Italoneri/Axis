@@ -10,6 +10,15 @@ import {
   type CharacterFields,
 } from '../systems/Characters';
 import type { DepotDelivery } from '../systems/Depot';
+import {
+  addCrop,
+  clearPlot,
+  harvest,
+  plant,
+  removeCrop,
+  settleGarden,
+  updateCrop,
+} from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
@@ -128,6 +137,16 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   out_of_stock: true,
   not_for_sale: true,
   invalid_quantity: true,
+  garden_not_built: true,
+  unknown_plot: true,
+  plot_occupied: true,
+  plot_empty: true,
+  not_ready: true,
+  wrong_plot_type: true,
+  no_seed: true,
+  rare_not_for_sale: true,
+  crop_already_exists: true,
+  crop_in_use: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -174,6 +193,9 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'shop_buy',
   'shop_buy_materials',
   'shop_sell',
+  'garden_plant',
+  'garden_harvest',
+  'garden_clear',
 ]);
 
 /** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
@@ -297,13 +319,13 @@ const handlers: Handlers = {
     const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
     if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
-    return { ok: true, state: forceBuilding(state, catalog, order), change };
+    return { ok: true, state: settleGarden(forceBuilding(state, catalog, order), catalog), change };
   },
-  remove_building: ({ slotId }, { state }) => {
+  remove_building: ({ slotId }, { state, catalog }) => {
     if (!state.slots[slotId]) return NOT_FOUND;
     return {
       ok: true,
-      state: removeBuilding(state, slotId),
+      state: settleGarden(removeBuilding(state, slotId), catalog),
       change: { kind: 'building_removed', slotId },
     };
   },
@@ -399,6 +421,14 @@ const handlers: Handlers = {
   shop_item_update: ({ itemId, item }, { state, catalog }) =>
     resources(updateShopItem(state, catalog, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
+  garden_crop_create: ({ crop }, { state, catalog }) => resources(addCrop(state, catalog, crop)),
+  garden_crop_update: ({ seedId, crop }, { state, catalog }) =>
+    resources(updateCrop(state, catalog, seedId, crop)),
+  garden_crop_remove: ({ seedId }, { state }) => resources(removeCrop(state, seedId)),
+  garden_plant: ({ plotId, seedId, buy }, { state, catalog, who }) =>
+    resources(plant(state, catalog, { plotId, seedId, buy }, who)),
+  garden_harvest: ({ plotId }, { state, catalog }) => resources(harvest(state, catalog, plotId)),
+  garden_clear: ({ plotId }, { state, catalog }) => resources(clearPlot(state, catalog, plotId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
 

@@ -1,9 +1,12 @@
-import { parseCatalog } from '../model/catalog';
+import { HERB_GARDEN_BUILDING_ID, parseCatalog, type Catalog } from '../model/catalog';
 import {
   SAVE_VERSION,
+  type BuildingLevel,
   type GameState,
   type Mission,
   type Npc,
+  type PlotDef,
+  type PlotType,
   type ShopItem,
 } from '../model/schema';
 
@@ -231,7 +234,62 @@ export const testCatalog = parseCatalog({
     teamSpeed: { k: 160, m: 3, minDays: 1, maxSlowdown: 2 },
   },
   ...seed,
+  garden: { levels: [] },
 });
+
+const gardenLevel = (wood: number): BuildingLevel => ({
+  cost: { coins: 10 },
+  buildTime: 1,
+  party: '',
+  axis: '',
+  produces: { wood },
+});
+
+const plots = (type: PlotType, count: number, prefix: string = type): PlotDef[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `${prefix}-${i + 1}`,
+    type,
+    x: 0.1,
+    y: 0.1,
+    w: 0.1,
+    h: 0.1,
+  }));
+
+const sharedPlots = [...plots('canteiro', 4), ...plots('muda', 4)];
+
+/** `testCatalog` plus an herb garden that yields 3, 6 and 10 wood a day. */
+export const herbGardenCatalog: Catalog = {
+  ...testCatalog,
+  garden: {
+    levels: [
+      { plots: sharedPlots },
+      {
+        plots: [...sharedPlots, ...plots('canteiro', 2, 'canteiro-x'), ...plots('estufa', 2)],
+      },
+      {
+        plots: [
+          ...sharedPlots,
+          ...plots('canteiro', 2, 'canteiro-x'),
+          ...plots('estufa', 1),
+          ...plots('arcana', 1),
+          ...plots('lago', 1),
+        ],
+      },
+    ],
+  },
+  buildings: [
+    ...testCatalog.buildings,
+    {
+      id: HERB_GARDEN_BUILDING_ID,
+      name: 'Estufa de Ervas',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [gardenLevel(3), gardenLevel(6), gardenLevel(10)],
+    },
+  ],
+};
 
 /** Same content as `createInitialState(testCatalog)`, built by hand so tests can override parts. */
 export function makeState(overrides: Partial<GameState> = {}): GameState {
@@ -247,6 +305,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     npcs: [],
     missions: [],
     shop: seed.shop,
+    garden: { crops: [], plots: {} },
     slots: {},
     log: [],
     ...overrides,
