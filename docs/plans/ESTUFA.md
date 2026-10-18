@@ -11,17 +11,18 @@ Objetivo: a construção **Estufa de Ervas** (`herb_garden`, `HERB_GARDEN_BUILDI
 
 ## Espaços por nível
 
-| Tipo       | Ids                         | Nv1 | Nv2 | Nv3 |
-| ---------- | --------------------------- | --- | --- | --- |
-| `canteiro` | `canteiro-1` … `canteiro-6` | 4   | 6   | 6   |
-| `muda`     | `muda-1` … `muda-4`         | 4   | 4   | 4   |
-| `estufa`   | `estufa-1`, `estufa-2`      | –   | 2   | 1   |
-| `arcana`   | `arcana-1`                  | –   | –   | 1   |
-| `lago`     | `lago-1`                    | –   | –   | 1   |
+| Tipo       | Ids                          | Nv1 | Nv2 | Nv3 |
+| ---------- | ---------------------------- | --- | --- | --- |
+| `canteiro` | `canteiro-1` … `canteiro-12` | 6   | 9   | 12  |
+| `muda`     | `muda-1` … `muda-4`          | 4   | 4   | 4   |
+| `estufa`   | `estufa-1` … `estufa-6`      | –   | 6   | 3   |
+| `arcana`   | `arcana-1` … `arcana-4`      | –   | –   | 4   |
+| `lago`     | `lago-1`, `lago-2`           | –   | –   | 2   |
 
-- Uma bancada (`estufa`, `arcana`) é um espaço só e se planta de uma vez; o `yield` do cultivo já vale pela fileira inteira.
-- `muda` tem os mesmos ids nos três níveis (muda só o lugar na arte), então a planta acompanha sem transferência.
-- No nv3, `estufa-2` deixa de existir e `arcana-1` aparece. É o único caso em que a regra de acerto (abaixo) mexe de verdade em plantas.
+- A caixa (`x`, `y`, `w`, `h`) é relativa à cena do jardim desenhada por código (proporção 16:10), não à arte da construção.
+- Cada `estufa-N` é **uma bandeja com 2 vasos**: um espaço, uma semente, os dois vasos crescem juntos; o `yield` do cultivo vale pela bandeja. Cada `arcana-N` é uma bacia e cada `lago-N` um lago, todos independentes.
+- No nv2 há duas bancadas de estufa (`estufa-1` … `estufa-3` à esquerda, `estufa-4` … `estufa-6` à direita). No nv3 a bancada da direita vira a bancada arcana (`arcana-1` … `arcana-4`) e `estufa-4` … `estufa-6` deixam de existir. É o único caso em que a regra de acerto (abaixo) mexe de verdade em plantas.
+- Os ids das versões anteriores (`canteiro-1` … `canteiro-6`, `muda-1` … `muda-4`, `estufa-1`, `estufa-2`, `arcana-1`, `lago-1`) continuam nos mesmos níveis, então saves antigos não precisam de migração (`catalog.test.ts`).
 - Obra de melhoria em andamento: vale o layout do nível em vigor (`plotsInForce`, via `builtLevel`). Sem a estufa construída, não há espaços.
 - A glicínia do nv3 ficou de fora.
 

@@ -557,8 +557,8 @@ export const t = {
       plotTypes: {
         canteiro: 'Canteiro',
         muda: 'Muda',
-        estufa: 'Bancada da estufa',
-        arcana: 'Bancada arcana',
+        estufa: 'Bandeja da estufa',
+        arcana: 'Bacia arcana',
         lago: 'Lago',
       } satisfies Record<PlotType, string>,
     },
