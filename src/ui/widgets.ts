@@ -74,12 +74,12 @@ export interface ThumbSubject {
  * resolves, otherwise a colored circle with the initial.
  */
 export function thumb(
-  { catalog, images }: ImageSource,
+  source: ImageSource,
   { image, name, color, fallback }: ThumbSubject,
   size: ThumbSize = 'sm',
 ): HTMLElement {
   const className = `thumb thumb--${size}`;
-  const fallbackSrc = resolveImage(catalog, fallback);
+  const fallbackSrc = resolveImage(source.catalog, fallback);
   const placeholder = () =>
     fallbackSrc
       ? el('img', { class: `${className} thumb--fallback`, src: fallbackSrc, alt: '' })
@@ -92,6 +92,19 @@ export function thumb(
           },
           name.trim().charAt(0).toUpperCase() || '?',
         );
+  return pictureOr(source, image, className, placeholder);
+}
+
+/**
+ * <img> of an asset key, a URL or a photo sent in game; the node `placeholder`
+ * builds stands in when there is none, while a photo loads, or if it is gone.
+ */
+export function pictureOr(
+  { catalog, images }: ImageSource,
+  image: string | undefined,
+  className: string,
+  placeholder: () => HTMLElement,
+): HTMLElement {
   if (looksLikeUpload(image)) {
     return images ? uploadedThumb(images, image, className, placeholder()) : placeholder();
   }

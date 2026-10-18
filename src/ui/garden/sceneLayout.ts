@@ -1,4 +1,4 @@
-import type { PlotDef, PlotType } from '../../model/schema';
+import type { Crop, CropLook, PlotDef, PlotType } from '../../model/schema';
 import type { PlotView } from './gardenViews';
 
 /** Sprites and textures of the garden scene (public/assets/garden), loaded only by the HTML window. */
@@ -11,13 +11,6 @@ export interface Rect {
   h: number;
 }
 
-/** Crops are made by the master and have no art: the look comes from a hash of the seed id. */
-export interface CropLook {
-  kind: 'foliage' | 'flower';
-  /** Degrees for `hue-rotate` on the flower sprites. */
-  hue: number;
-}
-
 /** FNV-1a: the same seed id gives the same look on every device and in every session. */
 function hash(text: string): number {
   const mixed = [...text].reduce(
@@ -27,7 +20,9 @@ function hash(text: string): number {
   return mixed >>> 0;
 }
 
-export function cropLook(seedId: string): CropLook {
+/** The master's choice, or a look drawn from the seed id (crops have no art of their own). */
+export function cropLook({ seedId, look }: Pick<Crop, 'seedId' | 'look'>): CropLook {
+  if (look) return look;
   const h = hash(seedId);
   return { kind: h % 2 === 0 ? 'foliage' : 'flower', hue: ((h >>> 8) % 360) - 180 };
 }
@@ -150,10 +145,15 @@ export function plotSignature(view: PlotView): string {
     case 'empty':
       return 'empty';
     case 'ready':
-      return `ready|${view.crop.seedId}|${view.crop.yield}|${view.harvestName}`;
+      return `ready|${lookKey(view.crop)}|${view.crop.yield}|${view.harvestName}`;
     case 'growing':
-      return `growing|${view.crop.seedId}|${view.daysLeft}|${Math.round(view.progress * 100)}|${view.harvestName}`;
+      return `growing|${lookKey(view.crop)}|${view.daysLeft}|${Math.round(view.progress * 100)}|${view.harvestName}`;
   }
+}
+
+function lookKey(crop: Crop): string {
+  const { kind, hue } = cropLook(crop);
+  return `${crop.seedId}|${kind}|${hue}`;
 }
 
 export interface Size {

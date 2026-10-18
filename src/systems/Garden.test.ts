@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HERB_GARDEN_BUILDING_ID } from '../model/catalog';
 import type { Crop, GameState, PlacedBuilding, Planting } from '../model/schema';
-import type { Actor } from '../commands/schema';
+import { gameCommandSchema, type Actor } from '../commands/schema';
 import {
   addCrop,
   clearPlot,
@@ -123,6 +123,44 @@ describe('updateCrop', () => {
       ok: false,
       error: 'not_found',
     });
+  });
+});
+
+describe('crop look', () => {
+  const look = { kind: 'flower', hue: -95 } as const;
+
+  it('keepsTheLookOfANewCrop', () => {
+    const result = addCrop(makeState(), catalog, { ...common, look });
+    if (!result.ok) throw new Error(result.error);
+    expect(findCrop(result.state, 'wood')?.look).toEqual(look);
+  });
+
+  it('changesTheLookOnUpdate', () => {
+    const fields: CropFields = { ...common, look };
+    const result = updateCrop(
+      makeState({ garden: { crops: [common], plots: {} } }),
+      catalog,
+      'wood',
+      fields,
+    );
+    if (!result.ok) throw new Error(result.error);
+    expect(findCrop(result.state, 'wood')?.look).toEqual(look);
+  });
+
+  it.each([
+    { name: 'no look', look: undefined, valid: true },
+    { name: 'a flower', look: { kind: 'flower', hue: 180 }, valid: true },
+    { name: 'a hue past a half turn', look: { kind: 'flower', hue: 181 }, valid: false },
+    { name: 'a broken hue', look: { kind: 'flower', hue: 1.5 }, valid: false },
+    { name: 'an unknown kind', look: { kind: 'tree', hue: 0 }, valid: false },
+  ])('validatesCommandWith $name', ({ look: chosen, valid }) => {
+    const { seedId, ...fields } = common;
+    const crop = chosen ? { ...fields, look: chosen } : fields;
+    const commands = [
+      { type: 'garden_crop_create', crop: { ...crop, seedId } },
+      { type: 'garden_crop_update', seedId, crop },
+    ];
+    commands.forEach((command) => expect(gameCommandSchema.safeParse(command).success).toBe(valid));
   });
 });
 

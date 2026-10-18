@@ -780,6 +780,12 @@ export const gardenLayoutSchema = z.object({
   levels: z.array(z.object({ plots: z.array(plotDefSchema) })),
 });
 
+/** How a crop is drawn in the garden: a leafy plant, or a flower tinted by `hue` (degrees). */
+export const cropLookSchema = z.object({
+  kind: z.enum(['foliage', 'flower']),
+  hue: z.number().int().min(-180).max(180),
+});
+
 const cropBase = {
   /** One crop per seed: the seed is the crop's id. */
   seedId: z.string().min(1),
@@ -787,6 +793,8 @@ const cropBase = {
   plotType: plotTypeSchema,
   days: z.number().int().min(1).max(365),
   yield: z.number().int().min(1).max(9999),
+  /** Chosen by the master; absent = drawn from a hash of the seed id. */
+  look: cropLookSchema.optional(),
 };
 
 export const cropSchema = z.discriminatedUnion('rare', [
@@ -879,5 +887,6 @@ export type PlotType = z.infer<typeof plotTypeSchema>;
 export type PlotDef = z.infer<typeof plotDefSchema>;
 export type GardenLayout = z.infer<typeof gardenLayoutSchema>;
 export type Crop = z.infer<typeof cropSchema>;
+export type CropLook = z.infer<typeof cropLookSchema>;
 export type Planting = z.infer<typeof plantingSchema>;
 export type Garden = z.infer<typeof gardenSchema>;

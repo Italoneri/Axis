@@ -34,21 +34,28 @@ const growing = (progress: number): PlotView => ({
 
 describe('cropLook', () => {
   it('givesTheSameLookToTheSameSeed', () => {
-    expect(cropLook('hortela')).toEqual(cropLook('hortela'));
+    expect(cropLook({ seedId: 'hortela' })).toEqual(cropLook({ seedId: 'hortela' }));
   });
 
   it('keepsTheHueInsideAFullTurn', () => {
-    const hues = ['a', 'hortela', 'lavanda', 'semente-de-lotus'].map((id) => cropLook(id).hue);
+    const hues = ['a', 'hortela', 'lavanda', 'semente-de-lotus'].map(
+      (seedId) => cropLook({ seedId }).hue,
+    );
     hues.forEach((hue) => expect(hue).toBeGreaterThanOrEqual(-180));
     hues.forEach((hue) => expect(hue).toBeLessThan(180));
   });
 
   it('variesBetweenSeeds', () => {
-    const looks = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) =>
-      JSON.stringify(cropLook(id)),
+    const looks = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((seedId) =>
+      JSON.stringify(cropLook({ seedId })),
     );
     expect(new Set(looks).size).toBeGreaterThan(1);
     expect(new Set(looks.map((look) => look.includes('flower'))).size).toBe(2);
+  });
+
+  it('usesTheLookChosenByTheMaster', () => {
+    const look = { kind: 'flower', hue: -40 } as const;
+    expect(cropLook({ seedId: 'hortela', look })).toEqual(look);
   });
 });
 
@@ -80,11 +87,11 @@ describe('plantTufts', () => {
     { type: 'lago', count: 3 },
   ] as const)('places $count tufts in a $type', ({ type, count }) => {
     expect(plantSpots(type)).toHaveLength(count);
-    expect(plantTufts(type, 'young', cropLook('x'))).toHaveLength(count);
+    expect(plantTufts(type, 'young', cropLook({ seedId: 'x' }))).toHaveLength(count);
   });
 
   it('showsMoundsRightAfterPlanting', () => {
-    const tufts = plantTufts('estufa', 'seeded', cropLook('x'));
+    const tufts = plantTufts('estufa', 'seeded', cropLook({ seedId: 'x' }));
     expect(tufts.map((tuft) => tuft.kind)).toEqual(['mound', 'mound']);
   });
 
@@ -110,6 +117,18 @@ describe('plotSignature', () => {
     expect(plotSignature(growing(0.5))).toBe(plotSignature(growing(0.5)));
     expect(plotSignature(growing(0.5))).not.toBe(plotSignature(growing(0.6)));
     expect(plotSignature({ kind: 'empty', plot })).not.toBe(plotSignature(growing(0)));
+  });
+
+  it('changesWhenTheMasterPicksAnotherLook', () => {
+    const recolored: PlotView = {
+      kind: 'ready',
+      plot,
+      crop: { ...crop, look: { kind: 'flower', hue: 90 } },
+      harvestName: 'Hortelã',
+    };
+    expect(plotSignature(recolored)).not.toBe(
+      plotSignature({ ...recolored, crop: { ...crop, look: { kind: 'flower', hue: 0 } } }),
+    );
   });
 });
 

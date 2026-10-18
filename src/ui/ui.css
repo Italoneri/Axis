@@ -3887,6 +3887,12 @@ details > summary {
   filter: saturate(1.35) brightness(1.1);
 }
 
+/* The material's own picture: a seed bag, a harvested herb. */
+.garden-icon--photo {
+  border-radius: 6px;
+  object-fit: cover;
+}
+
 /* ---------- Popover: seed tray, growing plant ---------- */
 
 .garden-pop {
@@ -4041,6 +4047,12 @@ details > summary {
   z-index: 60;
   width: 34px;
   height: 34px;
+  pointer-events: none;
+}
+
+.garden-fx-fly .garden-icon {
+  width: 100%;
+  height: 100%;
 }
 
 .garden-fx-text {
@@ -4302,4 +4314,83 @@ details > summary {
   padding: 8px 12px;
   border: 1px solid rgba(212, 175, 55, 0.18);
   border-radius: 8px;
+}
+
+/* Crop form, "Aparência": the swatches are the flower sprite itself, turned. */
+.crop-look {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 8px;
+}
+
+.crop-look__title {
+  padding: 0 4px;
+  color: var(--gold-soft);
+  font: 600 14px var(--font-display);
+}
+
+.crop-look__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crop-look__swatch {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.crop-look__swatch .garden-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.crop-look__swatch[aria-pressed='true'] {
+  border-color: var(--gold-soft);
+  box-shadow: 0 0 0 2px var(--gold-soft);
+}
+
+.crop-look__swatch:focus-visible,
+.crop-look__range:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 2px;
+}
+
+.crop-look__swatch:disabled,
+.crop-look__range:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.crop-look__range {
+  width: 100%;
+  accent-color: var(--gold-soft);
+}
+
+.crop-look__preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.crop-look__preview > .garden-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.crop-look__preview > .garden-plot {
+  position: relative;
+  width: 76px;
+  height: 76px;
 }

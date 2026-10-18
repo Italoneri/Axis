@@ -159,16 +159,17 @@ export class GardenWindow {
   }
 
   private renderStrip(): void {
-    const { materials, garden } = this.deps.game.current;
+    const { game } = this.deps;
+    const { materials, garden } = game.current;
     const harvested = [...this.harvested].flatMap(([harvestId, quantity]) => {
       const material = findMaterial(materials, harvestId);
       const crop = garden.crops.find((candidate) => candidate.harvestId === harvestId);
       if (!material || !crop) return [];
-      return [chip(cropIcon(crop.seedId), material.name, quantity, harvestId)];
+      return [chip(cropIcon(game, crop, 'harvest'), material.name, quantity, harvestId)];
     });
     const seeds = garden.crops.flatMap((crop) => {
       const seed = findMaterial(materials, crop.seedId);
-      return seed ? [chip(cropIcon(crop.seedId), seed.name, seed.quantity)] : [];
+      return seed ? [chip(cropIcon(game, crop, 'seed'), seed.name, seed.quantity)] : [];
     });
     this.strip.replaceChildren(
       stripSection(t.garden.scene.harvestedTitle, harvested, t.garden.scene.nothingHarvested),

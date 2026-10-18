@@ -2,13 +2,14 @@ import type { Actor, GameCommand } from '../../commands/schema';
 import { plotLabel } from '../../i18n/plotLabel';
 import { t } from '../../i18n/pt-BR';
 import { resolveImage } from '../../model/catalog';
-import type { PlotDef, PlotType } from '../../model/schema';
+import type { Crop, CropLook, PlotDef, PlotType } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { fromBronze } from '../../systems/Coins';
 import { findCrop, gardenLevel } from '../../systems/Garden';
+import { findMaterial } from '../../systems/Materials';
 import { el } from '../dom';
 import { formatPrice } from '../format';
-import { button, closeButton } from '../widgets';
+import { button, closeButton, pictureOr } from '../widgets';
 import {
   cropLook,
   GARDEN_ART_DIR,
@@ -17,6 +18,7 @@ import {
   plantStage,
   plantTufts,
   plotSignature,
+  type PlantStage,
   popoverPosition,
   type Rect,
   type SceneryPiece,
@@ -168,13 +170,13 @@ export class GardenScene {
 
   private drawPlot(view: PlotView): void {
     const entry = this.entries.get(view.plot.id) ?? this.createPlot(view.plot);
-    const signature = plotSignature(view);
+    const signature = `${plotSignature(view)}|${this.harvestPicture(view)}`;
     const becameReady = entry.view.kind === 'growing' && view.kind === 'ready';
     entry.view = view;
     if (entry.signature === signature) return;
     entry.signature = signature;
     const { button: node } = entry;
-    node.replaceChildren(plotBase(view), ...plotBadges(view));
+    node.replaceChildren(plotBase(view), ...this.plotBadges(view));
     node.classList.toggle('is-ready', view.kind === 'ready');
     node.setAttribute('aria-label', plotAria(view));
     if (becameReady) flashClass(node, 'is-popping', READY_POP_MS);
@@ -233,7 +235,12 @@ export class GardenScene {
     if (!event.isPrimary || event.button !== 0 || origin === undefined) return;
     event.preventDefault();
     this.suppressClick = true;
-    const ghost = el('div', { class: 'garden-ghost' }, cropIcon(seedId));
+    const crop = findCrop(this.deps.game.current, seedId);
+    const ghost = el(
+      'div',
+      { class: 'garden-ghost' },
+      crop && cropIcon(this.deps.game, crop, 'seed'),
+    );
     this.startGesture(event, source, {
       kind: 'plant',
       ...gestureBase(event, ghost),
@@ -423,7 +430,8 @@ export class GardenScene {
   }
 
   private seedButton(option: SeedOption): HTMLElement {
-    const { seedId } = option.crop;
+    const { crop } = option;
+    const { seedId } = crop;
     const node = el(
       'button',
       {
@@ -432,7 +440,7 @@ export class GardenScene {
         disabled: !isSowable(option),
         title: this.seedTitle(option),
       },
-      cropIcon(seedId),
+      cropIcon(this.deps.game, crop, 'seed'),
       el('span', { class: 'garden-tray__name' }, option.seedName),
       el('small', { class: 'garden-tray__tag' }, ...this.seedTag(option)),
     );
@@ -510,6 +518,44 @@ export class GardenScene {
     );
   }
 
+  // ---------- Plot badges ----------
+
+  private plotBadges(view: PlotView): HTMLElement[] {
+    switch (view.kind) {
+      case 'empty':
+        return [];
+      case 'growing':
+        return [
+          el(
+            'span',
+            { class: 'garden-status' },
+            el(
+              'span',
+              { class: 'garden-status__bar' },
+              el('i', { style: `width:${view.progress * 100}%` }),
+            ),
+            t.garden.scene.daysShort(view.daysLeft),
+          ),
+        ];
+      case 'ready':
+        return [
+          el('span', { class: 'garden-bubble' }, cropIcon(this.deps.game, view.crop, 'harvest')),
+          ...SPARKS.map(([x, y], i) =>
+            el('span', {
+              class: 'garden-spark',
+              style: `left:${x}%;top:${y}%;animation-delay:${i * 0.45}s`,
+            }),
+          ),
+        ];
+    }
+  }
+
+  /** Part of the plot's signature: the bubble shows the harvest's picture. */
+  private harvestPicture(view: PlotView): string {
+    if (view.kind === 'empty') return '';
+    return findMaterial(this.deps.game.current.materials, view.crop.harvestId)?.icon ?? '';
+  }
+
   // ---------- Effects ----------
 
   private celebrate(view: ReadyView): void {
@@ -552,7 +598,12 @@ export class GardenScene {
     const [x0, y0] = centerOf(from);
     const [x1, y1] = centerOf(to);
     [0, 1, 2].forEach((i) => {
-      const icon = cropIcon(view.crop.seedId, 'garden-fx-fly');
+      // Wrapped: a photo still loading swaps the sprite inside, not the node in flight.
+      const icon = el(
+        'span',
+        { class: 'garden-fx-fly' },
+        cropIcon(this.deps.game, view.crop, 'harvest'),
+      );
       icon.style.left = `${x0 - 17}px`;
       icon.style.top = `${y0 - 17}px`;
       this.overlay().append(icon);
@@ -625,14 +676,30 @@ const PLOT_GROUND: Record<PlotType, () => HTMLElement[]> = {
 function plotBase(view: PlotView): HTMLElement {
   const stage = plantStage(view);
   const plants =
-    stage && view.kind !== 'empty'
-      ? el(
-          'span',
-          { class: 'garden-plants', style: `--hue:${cropLook(view.crop.seedId).hue}deg` },
-          ...plantTufts(view.plot.type, stage, cropLook(view.crop.seedId)).map(tuftNode),
-        )
-      : null;
+    stage && view.kind !== 'empty' ? plantsNode(view.plot.type, stage, cropLook(view.crop)) : null;
   return el('span', { class: 'garden-plot__base' }, ...PLOT_GROUND[view.plot.type](), plants);
+}
+
+function plantsNode(type: PlotType, stage: PlantStage, look: CropLook): HTMLElement {
+  return el(
+    'span',
+    { class: 'garden-plants', style: `--hue:${look.hue}deg` },
+    ...plantTufts(type, stage, look).map(tuftNode),
+  );
+}
+
+/** A ripe plant in a muda pot, drawn as in the garden (outside the scene, so it brings its soil). */
+export function pottedPlant(look: CropLook): HTMLElement {
+  return el(
+    'span',
+    { class: 'garden-plot garden-plot--muda', style: `--tex-soil:url(${artUrl('soil.jpg')})` },
+    el(
+      'span',
+      { class: 'garden-plot__base' },
+      ...PLOT_GROUND.muda(),
+      plantsNode('muda', 'ready', look),
+    ),
+  );
 }
 
 function tuftNode(tuft: Tuft, i: number): HTMLElement {
@@ -657,36 +724,6 @@ function tuftNode(tuft: Tuft, i: number): HTMLElement {
   });
 }
 
-function plotBadges(view: PlotView): HTMLElement[] {
-  switch (view.kind) {
-    case 'empty':
-      return [];
-    case 'growing':
-      return [
-        el(
-          'span',
-          { class: 'garden-status' },
-          el(
-            'span',
-            { class: 'garden-status__bar' },
-            el('i', { style: `width:${view.progress * 100}%` }),
-          ),
-          t.garden.scene.daysShort(view.daysLeft),
-        ),
-      ];
-    case 'ready':
-      return [
-        el('span', { class: 'garden-bubble' }, cropIcon(view.crop.seedId)),
-        ...SPARKS.map(([x, y], i) =>
-          el('span', {
-            class: 'garden-spark',
-            style: `left:${x}%;top:${y}%;animation-delay:${i * 0.45}s`,
-          }),
-        ),
-      ];
-  }
-}
-
 function plotAria(view: PlotView): string {
   const label = plotLabel(view.plot.id);
   const aria = t.garden.scene.plotAria;
@@ -700,12 +737,27 @@ function plotAria(view: PlotView): string {
   }
 }
 
-/** A crop's face in the tray, the bubble and the strip: its flower, or a leaf for foliage. */
-export function cropIcon(seedId: string, className = ''): HTMLImageElement {
-  const look = cropLook(seedId);
+/** Which material lends its picture to a crop's icon. */
+export type CropIconSource = 'seed' | 'harvest';
+
+/**
+ * A crop's face in the tray, the bubble and the strip: the picture of its seed
+ * or harvest material, or its sprite when the material has none (and while a
+ * photo loads).
+ */
+export function cropIcon(game: GameStore, crop: Crop, source: CropIconSource): HTMLElement {
+  const materialId = source === 'seed' ? crop.seedId : crop.harvestId;
+  const picture = findMaterial(game.current.materials, materialId)?.icon;
+  return pictureOr(game, picture, 'garden-icon garden-icon--photo', () =>
+    cropSprite(cropLook(crop)),
+  );
+}
+
+/** The flower tinted by the look's hue, or a leaf for foliage. */
+export function cropSprite(look: CropLook): HTMLImageElement {
   const sprite = look.kind === 'flower' ? 'flower3' : 'leaf0';
   return el('img', {
-    class: `garden-icon garden-icon--${look.kind} ${className}`.trim(),
+    class: `garden-icon garden-icon--${look.kind}`,
     src: artUrl(`${sprite}.png`),
     alt: '',
     draggable: 'false',
