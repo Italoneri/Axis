@@ -445,6 +445,51 @@ describe('garden settling by the master', () => {
   });
 });
 
+describe('lab settling by the master', () => {
+  const stockOf = (state: GameState, id: string) =>
+    state.materials.items.find((m) => m.id === id)?.quantity;
+  const forceLab = (level: number) => ({
+    type: 'force_building',
+    slotId: 'outer_w',
+    buildingId: ARCANE_LAB_BUILDING_ID,
+    level,
+  });
+
+  it('collectsAReadyBrewWhoseStationIsForcedAway', () => {
+    const base = labWorkState();
+    const start = {
+      ...base,
+      slots: {
+        ...base.slots,
+        outer_w: { buildingId: ARCANE_LAB_BUILDING_ID, level: 2, status: 'done' as const },
+      },
+    };
+    const ready = start.lab.stations['alambique-2'];
+    if (!ready) throw new Error('no ready brew');
+    const moved = { ...start, lab: { ...start.lab, stations: { 'alambique-3': ready } } };
+    const result = runLab(forceLab(1), master, moved);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.lab.stations).toEqual({});
+    expect(stockOf(result.state, 'iron')).toBe(11);
+    expect(result.state.log.map((entry) => entry.kind)).toContain('lab_collected');
+  });
+
+  it('refundsBrewsWhenTheLabIsRemoved', () => {
+    const base = labWorkState();
+    const ready = base.lab.stations['alambique-2'];
+    if (!ready) throw new Error('no ready brew');
+    const start = {
+      ...base,
+      lab: { ...base.lab, stations: { 'alambique-1': { ...ready, progressTenths: 0 } } },
+    };
+    const result = runLab({ type: 'remove_building', slotId: 'outer_w' }, master, start);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.lab.stations).toEqual({});
+    expect(stockOf(result.state, 'wood')).toBe(6);
+    expect(result.state.log.map((entry) => entry.kind)).toContain('lab_ingredients_returned');
+  });
+});
+
 describe('applyCommand', () => {
   it.each(Object.values(validCommands))(
     'applies $type into a state that passes the schema',

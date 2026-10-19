@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HERB_GARDEN_BUILDING_ID } from '../model/catalog';
+import { ARCANE_LAB_BUILDING_ID, HERB_GARDEN_BUILDING_ID } from '../model/catalog';
+import type { Brew } from '../model/schema';
+import { brew } from './Lab';
 import { advanceDays, constructionProgress } from './TimeSystem';
-import { herbGardenCatalog, makeState, testCatalog } from './testFixtures';
+import { arcaneLabCatalog, herbGardenCatalog, makeState, testCatalog } from './testFixtures';
 
 const building = (startedOnDay: number, completesOnDay: number, buildingId = 'forge') =>
   ({ buildingId, level: 1, status: 'building', startedOnDay, completesOnDay }) as const;
@@ -86,6 +88,62 @@ describe('advanceDays', () => {
     expect(next.garden.plots).toEqual({});
     expect(next.log).toContainEqual(expect.objectContaining({ kind: 'garden_harvested' }));
     expect(next.log.some((entry) => entry.kind === 'garden_seed_returned')).toBe(false);
+  });
+
+  describe('lab', () => {
+    const tonic: Brew = {
+      recipeId: 'r-tonic',
+      outputId: 'iron',
+      outputQty: 1,
+      days: 2,
+      spent: [{ materialId: 'wood', quantity: 1 }],
+      progressTenths: 0,
+    };
+    /** A lab nv1 whose nv2 works finish on day 2, brewing on `alambique-1`. */
+    const upgradingLab = makeState({
+      day: 1,
+      slots: {
+        outer_n: {
+          buildingId: ARCANE_LAB_BUILDING_ID,
+          level: 2,
+          status: 'building',
+          startedOnDay: 1,
+          completesOnDay: 2,
+        },
+      },
+      lab: {
+        recipes: [
+          {
+            id: 'r-elixir',
+            outputId: 'aetherium',
+            outputQty: 1,
+            ingredients: [{ materialId: 'wood', quantity: 1 }],
+            stationType: 'caldeirao',
+            days: 1,
+            hidden: false,
+          },
+        ],
+        stations: { 'alambique-1': tonic },
+      },
+    });
+    const order = { stationId: 'caldeirao-1', recipeId: 'r-elixir' };
+    const master = { role: 'master' } as const;
+
+    it('advancesBrewsEachDay', () => {
+      const { state: next } = advanceDays(upgradingLab, arcaneLabCatalog, 1);
+      expect(next.lab.stations['alambique-1']?.progressTenths).toBe(10);
+    });
+
+    it('opensUpgradeStationsOnlyAfterTheWorksFinish', () => {
+      expect(brew(upgradingLab, arcaneLabCatalog, order, master)).toEqual({
+        ok: false,
+        error: 'unknown_station',
+      });
+      const { state: next } = advanceDays(upgradingLab, arcaneLabCatalog, 1);
+      expect(next.slots['outer_n']?.status).toBe('done');
+      expect(next.lab.stations['alambique-1']).toBeDefined();
+      expect(brew(next, arcaneLabCatalog, order, master).ok).toBe(true);
+    });
   });
 
   it('rejects non-positive or fractional day counts', () => {

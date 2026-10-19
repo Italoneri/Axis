@@ -218,6 +218,65 @@ export function discard(state: GameState, catalog: Catalog, stationId: string): 
   );
 }
 
+/** One day: every brew in a station in force gains `BREW_TENTHS_PER_DAY` (ready ones keep going harmlessly). */
+export function brewLab(state: GameState, catalog: Catalog): GameState {
+  const advanced = stationsInForce(state, catalog).flatMap((station) => {
+    const brewing = state.lab.stations[station.id];
+    return brewing
+      ? [[station.id, { ...brewing, progressTenths: brewing.progressTenths + BREW_TENTHS_PER_DAY }]]
+      : [];
+  });
+  return advanced.length === 0
+    ? state
+    : setStations(state, { ...state.lab.stations, ...Object.fromEntries(advanced) });
+}
+
+/**
+ * Brews in stations outside `stationsInForce` (a forced lower level or a removal; upgrades keep every station):
+ * ready → collected; else moved to the first free station in force of the same type, keeping progress;
+ * else what was spent goes back to the stock.
+ */
+export function settleLab(state: GameState, catalog: Catalog): GameState {
+  const inForce = new Set(stationsInForce(state, catalog).map((station) => station.id));
+  const vanished = Object.keys(state.lab.stations).filter((id) => !inForce.has(id));
+  return vanished.reduce((current, id) => settleStation(current, catalog, id), state);
+}
+
+function settleStation(state: GameState, catalog: Catalog, stationId: string): GameState {
+  const brewing = state.lab.stations[stationId];
+  if (!brewing) return state;
+  if (isBrewReady(brewing)) return bottle(state, [stationId]);
+  const cleared = withoutStation(state, stationId);
+  const type = stationTypeOf(catalog, stationId);
+  const free = stationsInForce(cleared, catalog).find(
+    (station) => station.type === type && !cleared.lab.stations[station.id],
+  );
+  return free ? withStation(cleared, free.id, brewing) : refund(cleared, stationId, brewing.spent);
+}
+
+/** The type a station id has in lab.json (the catalog keeps it the same across levels). */
+function stationTypeOf(catalog: Catalog, stationId: string): StationType | undefined {
+  return catalog.lab.levels
+    .flatMap((level) => level.stations)
+    .find((station) => station.id === stationId)?.type;
+}
+
+/** Gives back what the brew took; materials the master deleted return nothing. */
+function refund(state: GameState, stationId: string, spent: readonly Portion[]): GameState {
+  const returned = spent.filter((p) => findMaterial(state.materials, p.materialId) !== undefined);
+  if (returned.length === 0) return state;
+  const restocked = returned.reduce(
+    (current, p) => addStock(current, p.materialId, p.quantity),
+    state,
+  );
+  return withLog(restocked, {
+    day: state.day,
+    kind: 'lab_ingredients_returned',
+    station: stationId,
+    ingredients: namedPortions(state, returned),
+  });
+}
+
 function withStation(state: GameState, stationId: string, brewing: Brew): GameState {
   return setStations(state, { ...state.lab.stations, [stationId]: brewing });
 }

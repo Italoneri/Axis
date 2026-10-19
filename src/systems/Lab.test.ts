@@ -5,11 +5,13 @@ import type { Brew, GameState, PlacedBuilding, Recipe } from '../model/schema';
 import {
   addRecipe,
   brew,
+  brewLab,
   collect,
   discard,
   findRecipe,
   recipesFor,
   removeRecipe,
+  settleLab,
   stationsInForce,
   updateRecipe,
   type RecipeFields,
@@ -411,5 +413,122 @@ describe('discard', () => {
     { name: 'unknown station', stationId: 'caldeirao-1', error: 'unknown_station' },
   ])('refuses: $name', ({ stationId, error }) => {
     expect(discard(labState(1), catalog, stationId)).toEqual({ ok: false, error });
+  });
+});
+
+describe('brewLab', () => {
+  it('progressesOneDay', () => {
+    const start = withStations(labState(1), { 'alambique-1': curaBrew(3) });
+    expect(brewLab(start, catalog).lab.stations['alambique-1']?.progressTenths).toBe(13);
+  });
+
+  it('readyAfterDays', () => {
+    const start = withStations(labState(1), { 'alambique-1': { ...curaBrew(0), days: 3 } });
+    const days = [1, 2, 3].reduce((state) => brewLab(state, catalog), start);
+    expect(collect(days, catalog, 'alambique-1').ok).toBe(true);
+  });
+
+  it('leavesStationsOutsideTheLevelInForce', () => {
+    const start = withStations(labState(1), { 'caldeirao-1': curaBrew(3) });
+    expect(brewLab(start, catalog).lab.stations['caldeirao-1']?.progressTenths).toBe(3);
+  });
+});
+
+describe('settleLab', () => {
+  const at = (level: number, stations: Record<string, Brew>, stock = {}) =>
+    withStations(labState(level, { stock }), stations);
+
+  it('keepsBrewsInStationsInForce', () => {
+    const start = at(1, { 'alambique-1': curaBrew(3) });
+    expect(settleLab(start, catalog)).toBe(start);
+  });
+
+  it('settlesOnForcedDowngrade: ready is collected', () => {
+    const state = settleLab(at(1, { 'alambique-3': curaBrew(10) }), catalog);
+    expect(state.lab.stations).toEqual({});
+    expect(stockOf(state, 'cura')).toBe(2);
+  });
+
+  it('settlesOnForcedDowngrade: brewing moves to a free station of its type', () => {
+    const state = settleLab(
+      at(1, { 'alambique-1': curaBrew(1), 'alambique-3': curaBrew(4) }),
+      catalog,
+    );
+    expect(state.lab.stations).toEqual({
+      'alambique-1': curaBrew(1),
+      'alambique-2': curaBrew(4),
+    });
+  });
+
+  it('settlesOnForcedDowngrade: no free station refunds what was spent', () => {
+    const state = settleLab(
+      at(1, {
+        'alambique-1': curaBrew(1),
+        'alambique-2': curaBrew(1),
+        'alambique-3': curaBrew(4),
+      }),
+      catalog,
+    );
+    expect(Object.keys(state.lab.stations)).toEqual(['alambique-1', 'alambique-2']);
+    expect(stockOf(state, 'hortela')).toBe(3);
+    expect(stockOf(state, 'camomila')).toBe(1);
+    expect(state.log.at(-1)).toEqual({
+      day: 1,
+      kind: 'lab_ingredients_returned',
+      station: 'alambique-3',
+      ingredients: [
+        { material: 'Hortelã', quantity: 3 },
+        { material: 'Camomila', quantity: 1 },
+      ],
+    });
+  });
+
+  it('settlesAllStationsWhenRemoved', () => {
+    const state = settleLab(
+      at(0, { 'alambique-1': curaBrew(10), 'caldeirao-1': curaBrew(2) }),
+      catalog,
+    );
+    expect(state.lab.stations).toEqual({});
+    expect(stockOf(state, 'cura')).toBe(2);
+    expect(stockOf(state, 'hortela')).toBe(3);
+  });
+
+  it('refundSkipsDeletedIngredient', () => {
+    const start = at(0, { 'alambique-1': curaBrew(2) });
+    const withoutHortela = {
+      ...start,
+      materials: {
+        ...start.materials,
+        items: start.materials.items.filter((m) => m.id !== 'hortela'),
+      },
+    };
+    const state = settleLab(withoutHortela, catalog);
+    expect(stockOf(state, 'camomila')).toBe(1);
+    expect(state.log.at(-1)).toMatchObject({
+      kind: 'lab_ingredients_returned',
+      ingredients: [{ material: 'Camomila', quantity: 1 }],
+    });
+  });
+
+  it('refundsOnlyWhatMasterSpent', () => {
+    const brewed = stateOf(
+      brew(
+        labState(1, { stock: { hortela: 1 }, recipes: [cura] }),
+        catalog,
+        { stationId: 'alambique-1', recipeId: 'r-cura' },
+        master,
+      ),
+    );
+    const removed = { ...brewed, slots: {} };
+    const state = settleLab(removed, catalog);
+    expect(stockOf(state, 'hortela')).toBe(1);
+    expect(stockOf(state, 'camomila')).toBe(0);
+  });
+
+  it('dropsAnEmptyRefundWithoutALogLine', () => {
+    const start = at(0, { 'alambique-1': { ...curaBrew(2), spent: [] } });
+    const state = settleLab(start, catalog);
+    expect(state.lab.stations).toEqual({});
+    expect(state.log).toEqual(start.log);
   });
 });

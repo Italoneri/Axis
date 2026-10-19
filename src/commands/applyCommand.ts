@@ -20,7 +20,15 @@ import {
   updateCrop,
 } from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
-import { addRecipe, brew, collect, discard, removeRecipe, updateRecipe } from '../systems/Lab';
+import {
+  addRecipe,
+  brew,
+  collect,
+  discard,
+  removeRecipe,
+  settleLab,
+  updateRecipe,
+} from '../systems/Lab';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
   addMaterial,
@@ -247,6 +255,11 @@ export function applyCommand(
   return { ok: true, state: next, change: outcome.change, logged };
 }
 
+/** A level the master forced or a removal may leave plantings and brews where no plot or station is. */
+function settleBuildings(state: GameState, catalog: Catalog): GameState {
+  return settleLab(settleGarden(state, catalog), catalog);
+}
+
 /** Undefined for an anonymous player (offline, before logins exist). */
 export function actorName(state: GameState, { actor }: CommandContext): string | undefined {
   if (actor.role === 'master') return MASTER_ACTOR;
@@ -330,13 +343,14 @@ const handlers: Handlers = {
     const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
     if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
-    return { ok: true, state: settleGarden(forceBuilding(state, catalog, order), catalog), change };
+    const forced = forceBuilding(state, catalog, order);
+    return { ok: true, state: settleBuildings(forced, catalog), change };
   },
   remove_building: ({ slotId }, { state, catalog }) => {
     if (!state.slots[slotId]) return NOT_FOUND;
     return {
       ok: true,
-      state: settleGarden(removeBuilding(state, slotId), catalog),
+      state: settleBuildings(removeBuilding(state, slotId), catalog),
       change: { kind: 'building_removed', slotId },
     };
   },
