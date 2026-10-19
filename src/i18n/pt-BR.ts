@@ -1427,6 +1427,8 @@ export function jobEffectText(effect: JobEffect, tenthsPerDay: number, ctx: Text
       return `${signed} de progresso por dia`;
     case 'construction':
       return `obra ${tenthsPerDay < 0 ? 'atrasada' : 'adiantada'} em ${amount} dia por dia`;
+    case 'brewing':
+      return `preparos ${tenthsPerDay < 0 ? 'atrasados' : 'adiantados'} em ${amount} dia por dia`;
     case 'bonus':
       return effect.text;
     default:
@@ -1492,6 +1494,8 @@ function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: Text
         : `${npc} avançou a pesquisa '${target}' em ${amount}%`;
     case 'construction':
       return `${npc} ${hindered ? 'atrasou' : 'adiantou'} a obra de ${ctx.building(target)} em ${t.days(amount)}`;
+    case 'brewing':
+      return `${npc} ${hindered ? 'atrasou' : 'adiantou'} os preparos de ${ctx.building(target)} em ${t.days(amount)}`;
     default:
       return assertNever(entry.effect);
   }

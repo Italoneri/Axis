@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands/applyCommand';
 import type { GameCommand } from '../commands/schema';
-import type { GameState, Npc } from '../model/schema';
+import { ARCANE_LAB_BUILDING_ID, type Catalog } from '../model/catalog';
+import type { Brew, GameState, JobDef, Npc } from '../model/schema';
 import { createInitialState } from './SaveSystem';
 import { advanceDays } from './TimeSystem';
-import { makeState, npc, testCatalog, withIron } from './testFixtures';
+import { arcaneLabCatalog, makeState, npc, testCatalog, withIron } from './testFixtures';
 
 const research = {
   id: 'runes',
@@ -271,5 +272,80 @@ describe('NPCs with negative skills', () => {
       ['Gus', 6],
       ['Tom', -6],
     ]);
+  });
+});
+
+describe('NPCs supervising lab brews', () => {
+  const supervise: JobDef = {
+    activity: 'supervisionar',
+    name: 'Supervisionar preparos',
+    skill: 'research',
+    effect: { type: 'brewing', perDay: 1 },
+  };
+  const catalog: Catalog = {
+    ...arcaneLabCatalog,
+    buildings: arcaneLabCatalog.buildings.map((b) =>
+      b.id === ARCANE_LAB_BUILDING_ID
+        ? { ...b, levels: b.levels.map((level) => ({ ...level, jobs: [supervise] })) }
+        : b,
+    ),
+  };
+  const brewing = (progressTenths: number): Brew => ({
+    recipeId: 'r',
+    outputId: 'iron',
+    outputQty: 1,
+    days: 9,
+    spent: [],
+    progressTenths,
+  });
+  const alchemist = (skill: number) =>
+    npc({
+      id: 'lia',
+      name: 'Lia',
+      skills: { research: skill },
+      home: 'outer_e',
+      job: { slotId: 'outer_w', activityId: 'supervisionar', carry: 0 },
+      status: 'trabalhando',
+    });
+  const labWith = (stations: Record<string, Brew>, worker: Npc) =>
+    base({
+      slots: {
+        ...base().slots,
+        outer_w: { buildingId: ARCANE_LAB_BUILDING_ID, level: 2, status: 'done' },
+      },
+      npcs: [worker],
+      lab: { recipes: [], stations },
+    });
+  const progressOf = (state: GameState) =>
+    Object.fromEntries(
+      Object.entries(state.lab.stations).map(([id, brew]) => [id, brew.progressTenths]),
+    );
+
+  it('speedsEveryBrewInTheLab', () => {
+    const start = labWith({ 'alambique-1': brewing(0), 'caldeirao-1': brewing(30) }, alchemist(0));
+    const next = advanceDays(start, catalog, 1).state;
+    expect(progressOf(next)).toEqual({ 'alambique-1': 20, 'caldeirao-1': 50 });
+    expect(worked(next)).toEqual([
+      {
+        day: 2,
+        kind: 'npc_worked',
+        npc: 'Lia',
+        effect: 'brewing',
+        amount: 1,
+        target: 'arcane_lab',
+      },
+    ]);
+  });
+
+  it('slowsBrewsWithoutGoingBelowZero', () => {
+    const start = labWith({ 'alambique-1': brewing(30), 'alambique-2': brewing(0) }, alchemist(-5));
+    const next = advanceDays(start, catalog, 1).state;
+    expect(progressOf(next)).toEqual({ 'alambique-1': 30, 'alambique-2': 10 });
+  });
+
+  it('doesNothingWithoutBrews', () => {
+    const next = advanceDays(labWith({}, alchemist(0)), catalog, 1).state;
+    expect(worked(next)).toEqual([]);
+    expect(next.npcs[0]?.job?.carry).toBe(0);
   });
 });

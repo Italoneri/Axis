@@ -64,6 +64,8 @@ export const jobEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('research'), perDay }),
   /** Days taken off the construction the NPC works on. */
   z.object({ type: z.literal('construction'), perDay }),
+  /** Days added to every brew in the arcane lab (taken away when the worker hinders). */
+  z.object({ type: z.literal('brewing'), perDay }),
   /** Shown among the active bonuses while the post is filled; `penalty` replaces it when a worker hinders. */
   z.object({
     type: z.literal('bonus'),
@@ -625,13 +627,13 @@ export const logEntrySchema = z.discriminatedUnion('kind', [
     ...entryBase,
     kind: z.literal('npc_worked'),
     npc: z.string(),
-    effect: z.enum(['produce', 'research', 'construction']),
+    effect: z.enum(['produce', 'research', 'construction', 'brewing']),
     /** Negative when the NPC hindered: material spoiled, research lost, days of delay. */
     amount: z
       .number()
       .int()
       .refine((n) => n !== 0),
-    /** Material name, research title or building id. */
+    /** Material name, research title or building id (the lab for brewing). */
     target: z.string(),
   }),
   /** Summary of one advance: what a building produced by itself, in whole units. */

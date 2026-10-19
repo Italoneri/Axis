@@ -660,6 +660,12 @@
             "name": "Destilar",
             "skill": "alchemy",
             "effect": { "type": "produce", "material": "aetherium", "perDay": 1 }
+          },
+          {
+            "activity": "supervisionar",
+            "name": "Supervisionar preparos",
+            "skill": "alchemy",
+            "effect": { "type": "brewing", "perDay": 1 }
           }
         ],
         "requires": [{ "building": "axis_heart", "minLevel": 1 }]
@@ -675,6 +681,12 @@
             "name": "Destilar",
             "skill": "alchemy",
             "effect": { "type": "produce", "material": "aetherium", "perDay": 2 }
+          },
+          {
+            "activity": "supervisionar",
+            "name": "Supervisionar preparos",
+            "skill": "alchemy",
+            "effect": { "type": "brewing", "perDay": 1 }
           }
         ],
         "requires": [{ "building": "axis_heart", "minLevel": 2 }]

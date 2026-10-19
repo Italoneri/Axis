@@ -231,6 +231,20 @@ export function brewLab(state: GameState, catalog: Catalog): GameState {
     : setStations(state, { ...state.lab.stations, ...Object.fromEntries(advanced) });
 }
 
+/** A supervising NPC: `units` days more (or less) on every brew, never below 0. Same state when nothing moved. */
+export function hastenBrews(state: GameState, units: number): GameState {
+  const shift = units * BREW_TENTHS_PER_DAY;
+  const entries = Object.entries(state.lab.stations);
+  const shifted = entries.map(([id, brewing]): [string, Brew] => [
+    id,
+    { ...brewing, progressTenths: Math.max(0, brewing.progressTenths + shift) },
+  ]);
+  const moved = shifted.some(
+    ([id, brewing]) => brewing.progressTenths !== state.lab.stations[id]?.progressTenths,
+  );
+  return moved ? setStations(state, Object.fromEntries(shifted)) : state;
+}
+
 /**
  * Brews in stations outside `stationsInForce` (a forced lower level or a removal; upgrades keep every station):
  * ready → collected; else moved to the first free station in force of the same type, keeping progress;

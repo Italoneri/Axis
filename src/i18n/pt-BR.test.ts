@@ -63,8 +63,15 @@ describe('npc work log', () => {
     { effect: 'research', amount: -2, text: "Gus fez a pesquisa 'Runas' regredir 2%" },
     { effect: 'construction', amount: 1, text: 'Gus adiantou a obra de forge em 1 dia' },
     { effect: 'construction', amount: -2, text: 'Gus atrasou a obra de forge em 2 dias' },
+    { effect: 'brewing', amount: 1, text: 'Gus adiantou os preparos de arcane_lab em 1 dia' },
+    { effect: 'brewing', amount: -2, text: 'Gus atrasou os preparos de arcane_lab em 2 dias' },
   ] as const)('reads $effect $amount as "$text"', ({ effect, amount, text }) => {
-    const target = { produce: 'Ferro', research: 'Runas', construction: 'forge' }[effect];
+    const target = {
+      produce: 'Ferro',
+      research: 'Runas',
+      construction: 'forge',
+      brewing: 'arcane_lab',
+    }[effect];
     const entry = { day: 5, kind: 'npc_worked', npc: 'Gus', effect, amount, target } as const;
     expect(logEntryText(entry, ctx)).toBe(`Dia 5 — ${text}`);
   });
@@ -87,6 +94,11 @@ describe('jobEffectText', () => {
       effect: { type: 'construction', perDay: 1 },
       tenths: 15,
       text: 'obra adiantada em 1,5 dia por dia',
+    },
+    {
+      effect: { type: 'brewing', perDay: 1 },
+      tenths: -5,
+      text: 'preparos atrasados em 0,5 dia por dia',
     },
     {
       effect: { type: 'construction', perDay: 1 },
