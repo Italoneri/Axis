@@ -37,6 +37,7 @@ import { mountTopBar } from './ui/TopBar';
 import './ui/ui.css';
 import { MenuWindow } from './ui/menu/MenuWindow';
 import { GardenWindow } from './ui/garden/GardenWindow';
+import { LabWindow } from './ui/lab/LabWindow';
 import { ShopWindow } from './ui/shop/ShopWindow';
 import { MissionBoard } from './ui/missions/MissionBoard';
 import { UiMemory } from './ui/uiMemory';
@@ -202,6 +203,12 @@ async function start(): Promise<void> {
   const shopWindow = new ShopWindow({ game: store, session, memory, viewer: archiveViewer });
   const openShop = () => shopWindow.open();
   const gardenWindow = new GardenWindow({ game: store, session, viewer: archiveViewer });
+  const labWindow = new LabWindow({
+    game: store,
+    session,
+    viewer: archiveViewer,
+    openGarden: () => gardenWindow.open(),
+  });
   hideGate();
 
   store.subscribe((_state, change) => {
@@ -242,6 +249,7 @@ async function start(): Promise<void> {
       missions: () => missionBoard.open(),
       shop: openShop,
       garden: () => gardenWindow.open(),
+      lab: () => labWindow.open(),
     },
     { store: depot, open: openDepot },
     archiveViewer,

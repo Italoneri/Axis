@@ -12,7 +12,7 @@ export interface Rect {
 }
 
 /** FNV-1a: the same seed id gives the same look on every device and in every session. */
-function hash(text: string): number {
+export function hash(text: string): number {
   const mixed = [...text].reduce(
     (h, char) => Math.imul(h ^ (char.codePointAt(0) ?? 0), 0x01000193),
     0x811c9dc5,

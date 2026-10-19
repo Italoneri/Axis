@@ -20,6 +20,15 @@ import {
   updateCrop,
 } from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
+import {
+  addRecipe,
+  brew,
+  collect,
+  discard,
+  removeRecipe,
+  settleLab,
+  updateRecipe,
+} from '../systems/Lab';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
   addMaterial,
@@ -147,6 +156,13 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   rare_not_for_sale: true,
   crop_already_exists: true,
   crop_in_use: true,
+  lab_not_built: true,
+  unknown_station: true,
+  station_busy: true,
+  station_empty: true,
+  wrong_station_type: true,
+  missing_ingredients: true,
+  recipe_already_exists: true,
   forbidden: true,
   invalid_command: true,
   blocked: true,
@@ -196,6 +212,9 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'garden_plant',
   'garden_harvest',
   'garden_clear',
+  'lab_brew',
+  'lab_collect',
+  'lab_discard',
 ]);
 
 /** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
@@ -234,6 +253,11 @@ export function applyCommand(
   const log = trimLog([...state.log, ...logged]);
   const next = { ...settled, log, revision: state.revision + 1 };
   return { ok: true, state: next, change: outcome.change, logged };
+}
+
+/** A level the master forced or a removal may leave plantings and brews where no plot or station is. */
+function settleBuildings(state: GameState, catalog: Catalog): GameState {
+  return settleLab(settleGarden(state, catalog), catalog);
 }
 
 /** Undefined for an anonymous player (offline, before logins exist). */
@@ -319,13 +343,14 @@ const handlers: Handlers = {
     const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
     if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
-    return { ok: true, state: settleGarden(forceBuilding(state, catalog, order), catalog), change };
+    const forced = forceBuilding(state, catalog, order);
+    return { ok: true, state: settleBuildings(forced, catalog), change };
   },
   remove_building: ({ slotId }, { state, catalog }) => {
     if (!state.slots[slotId]) return NOT_FOUND;
     return {
       ok: true,
-      state: settleGarden(removeBuilding(state, slotId), catalog),
+      state: settleBuildings(removeBuilding(state, slotId), catalog),
       change: { kind: 'building_removed', slotId },
     };
   },
@@ -429,6 +454,14 @@ const handlers: Handlers = {
     resources(plant(state, catalog, { plotId, seedId, buy }, who)),
   garden_harvest: ({ plotId }, { state, catalog }) => resources(harvest(state, catalog, plotId)),
   garden_clear: ({ plotId }, { state, catalog }) => resources(clearPlot(state, catalog, plotId)),
+  lab_recipe_create: ({ id, recipe }, { state }) => resources(addRecipe(state, { ...recipe, id })),
+  lab_recipe_update: ({ recipeId, recipe }, { state }) =>
+    resources(updateRecipe(state, recipeId, recipe)),
+  lab_recipe_remove: ({ recipeId }, { state }) => resources(removeRecipe(state, recipeId)),
+  lab_brew: ({ stationId, recipeId }, { state, catalog, who }) =>
+    resources(brew(state, catalog, { stationId, recipeId }, who)),
+  lab_collect: ({ stationId }, { state, catalog }) => resources(collect(state, catalog, stationId)),
+  lab_discard: ({ stationId }, { state, catalog }) => resources(discard(state, catalog, stationId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
 

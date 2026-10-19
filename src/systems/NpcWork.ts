@@ -1,6 +1,7 @@
-import { goldInBronze, type Catalog } from '../model/catalog';
+import { ARCANE_LAB_BUILDING_ID, goldInBronze, type Catalog } from '../model/catalog';
 import type { GameState, JobEffect, LogEntry, NpcJob } from '../model/schema';
 import { goldToBronze, pay } from './Coins';
+import { hastenBrews } from './Lab';
 import { findPost, isOnDuty, postYieldTenths } from './Npcs';
 import { CAMP, setWallet } from './Wallets';
 
@@ -127,6 +128,8 @@ function deliver(state: GameState, { effect, job, units }: DeliveryOrder): Deliv
       return shiftResearch(state, job.researchId, units);
     case 'construction':
       return shiftConstruction(state, job.slotId, units);
+    case 'brewing':
+      return shiftBrews(state, units);
     default:
       return assertNever(effect);
   }
@@ -170,6 +173,14 @@ function shiftConstruction(state: GameState, slotId: string, units: number): Del
   const amount = placed.completesOnDay - completesOnDay;
   const slots = { ...state.slots, [slotId]: { ...placed, completesOnDay } };
   return { state: { ...state, slots }, amount, target: placed.buildingId };
+}
+
+/** Every brew in the lab gains (or loses) `units` days; nothing to do without brews. */
+function shiftBrews(state: GameState, units: number): Delivered {
+  const next = hastenBrews(state, units);
+  return next === state
+    ? { state, amount: 0 }
+    : { state: next, amount: units, target: ARCANE_LAB_BUILDING_ID };
 }
 
 function setCarry(state: GameState, npcId: string, carry: number): GameState {

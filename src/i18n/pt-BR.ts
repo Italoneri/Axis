@@ -9,6 +9,7 @@ import type {
   NpcReleaseReason,
   NpcStatus,
   PlotType,
+  StationType,
   ResearchStatus,
 } from '../model/schema';
 import {
@@ -29,6 +30,7 @@ import { PHOTO_LIMITS, type PhotoError } from '../systems/GameImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 import { plotLabel } from './plotLabel';
+import { stationLabel } from './stationLabel';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const decimalFormat = new Intl.NumberFormat('pt-BR', {
@@ -624,6 +626,105 @@ export const t = {
     },
   },
 
+  lab: {
+    title: '⚗ Laboratório Arcano',
+    open: 'Abrir laboratório',
+    close: 'Fechar laboratório',
+    panelHint: 'Prepare poções com as ervas da Estufa nas bancadas do laboratório.',
+    counts: ({ ready, brewing, free }: { ready: number; brewing: number; free: number }) =>
+      `${ready} ${ready === 1 ? 'pronta' : 'prontas'} · ${brewing} preparando · ${free} ${free === 1 ? 'livre' : 'livres'}`,
+    collectAllCount: (ready: number) =>
+      ready === 0 ? 'Recolher tudo' : `Recolher tudo (${ready})`,
+    notBuilt: 'O Laboratório Arcano ainda não foi construído.',
+    stationAria: {
+      free: (label: string) => `${label}: livre. Preparar.`,
+      brewing: (label: string, name: string, days: number) =>
+        `${label}: ${name}, ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`,
+      ready: (label: string, name: string, quantity: number) =>
+        `${label}: ${name} pronta. Recolher ${quantity}.`,
+    },
+    tabs: { lab: 'Oficina', recipes: 'Receitas' },
+    collect: 'Recolher',
+    brew: 'Preparar',
+    discard: 'Descartar',
+    free: 'Livre',
+    ready: 'Pronta para recolher',
+    daysLeft: (n: number) => (n === 1 ? 'Falta 1 dia' : `Faltam ${n} dias`),
+    brewDays: (n: number) => (n === 1 ? '1 dia' : `${n} dias`),
+    yields: (quantity: number) => `Rende ${quantity}`,
+    missing: (names: readonly string[]) => `Falta ${listText(names)}`,
+    closePopover: 'Fechar',
+    scene: {
+      label: 'Oficina do Laboratório Arcano',
+      stationTypes: {
+        alambique: 'Alambique',
+        caldeirao: 'Caldeirão',
+        circulo: 'Círculo',
+      } satisfies Record<StationType, string>,
+      locked: (name: string, level: number) => `${name} · Nível ${level}`,
+      daysShort: (days: number) => `${days}d`,
+      brewIn: (label: string) => `Preparar em ${label}`,
+      chooseRecipe: 'Escolha a receita.',
+      noRecipes: 'Nenhuma receita conhecida para esta bancada.',
+      hiddenBadge: 'Oculta',
+      gardenBadge: 'Estufa',
+      have: (have: number, need: number) => `${have}/${need}`,
+      plantHint: 'Plante na Estufa de Ervas',
+      openGarden: 'Abrir jardim',
+      brewingIn: (name: string, label: string) => `${name} em ${label}`,
+      readyIn: (days: number, quantity: number) =>
+        `pronta em ${days === 1 ? '1 dia' : `${days} dias`} · rende ${quantity}`,
+      discardAsk: 'Descartar? Os ingredientes não voltam.',
+      cancel: 'Cancelar',
+      collected: (quantity: number, name: string) => `+${quantity} ${name}`,
+      collectedTitle: 'Recolhido',
+      nothingCollected: 'Nada recolhido ainda.',
+      ingredientsTitle: 'Ingredientes no estoque',
+      noIngredients: 'Nenhuma receita conhecida ainda.',
+      owned: (n: number) => `×${n}`,
+    },
+    recipes: {
+      newRecipe: 'Nova receita',
+      newTitle: 'Nova receita',
+      editTitle: 'Editar receita',
+      empty:
+        'Nenhuma receita cadastrada. Crie a categoria Poções nos Materiais e cadastre a primeira.',
+      edit: 'Editar',
+      remove: 'Remover',
+      removeAsk: 'Remover? Preparos em andamento terminam.',
+      reveal: 'Revelar',
+      hide: 'Ocultar',
+      potion: 'Poção',
+      ingredients: 'Ingredientes',
+      ingredient: 'Ingrediente',
+      quantity: 'Quantidade',
+      addIngredient: '+ Ingrediente',
+      removeIngredient: 'Remover ingrediente',
+      stationType: 'Tipo de bancada',
+      days: 'Dias para ficar pronta',
+      yield: 'Poções por preparo',
+      ownColor: 'Cor própria do líquido',
+      color: 'Cor do líquido',
+      preview: 'Como aparece no frasco',
+      hidden: 'Oculta para os jogadores',
+      hiddenHint: 'Revele quando o grupo descobrir a receita, por exemplo numa pesquisa.',
+      save: 'Salvar',
+      cancel: 'Cancelar',
+      close: 'Fechar',
+      removedMaterial: 'material removido',
+      summary: (days: number, quantity: number) =>
+        `${days === 1 ? '1 dia' : `${days} dias`} · rende ${quantity}`,
+      reasons: {
+        missing_material: 'Escolha a poção e o material de cada ingrediente.',
+        no_ingredients: 'Adicione pelo menos um ingrediente.',
+        too_many_ingredients: 'Uma receita tem no máximo 6 ingredientes.',
+        repeated_ingredient: 'Cada material aparece uma vez só; some as quantidades.',
+        output_among_ingredients: 'A poção não pode ser ingrediente dela mesma.',
+        out_of_range: 'Dias de 1 a 365; quantidades de 1 a 9999.',
+      },
+    },
+  },
+
   shop: {
     title: '⚖ Entreposto — Comércio',
     open: 'Abrir comércio',
@@ -1031,12 +1132,19 @@ export const t = {
     unknown_plot: 'Esse canteiro não existe neste nível da Estufa.',
     plot_occupied: 'Esse canteiro já está plantado.',
     plot_empty: 'Esse canteiro está vazio.',
-    not_ready: 'Essa planta ainda não está pronta para a colheita.',
+    not_ready: 'Ainda não está pronto para recolher.',
     wrong_plot_type: 'Essa planta não cresce nesse tipo de canteiro.',
     no_seed: 'Não há semente dessa planta no estoque.',
     rare_not_for_sale: 'Plantas raras não são vendidas aqui.',
     crop_already_exists: 'Essa semente já tem uma planta cadastrada.',
     crop_in_use: 'Há canteiros cultivando essa planta. Colha ou limpe antes de remover.',
+    lab_not_built: 'O Laboratório Arcano ainda não foi construído.',
+    unknown_station: 'Essa bancada não existe neste nível do Laboratório.',
+    station_busy: 'Essa bancada já está preparando algo.',
+    station_empty: 'Essa bancada está livre.',
+    wrong_station_type: 'Essa receita não é preparada nesse tipo de bancada.',
+    missing_ingredients: 'Faltam ingredientes no estoque para essa receita.',
+    recipe_already_exists: 'Essa receita já está cadastrada.',
     forbidden: 'Somente o Mestre pode fazer isso.',
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
@@ -1178,6 +1286,14 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
     case 'garden_cleared':
       return `${entry.actor ?? 'Alguém'} limpou ${plotLabel(entry.plot)} (${entry.seed})`;
+    case 'lab_brewed':
+      return labBrewedText(entry);
+    case 'lab_collected':
+      return `${entry.actor ?? 'Alguém'} recolheu ${entry.quantity} ${entry.material} no Laboratório Arcano`;
+    case 'lab_discarded':
+      return `${entry.actor ?? 'Alguém'} descartou ${entry.material} de ${stationLabel(entry.station)}`;
+    case 'lab_ingredients_returned':
+      return `O Laboratório Arcano devolveu ${portionsText(entry.ingredients)} ao estoque (${stationLabel(entry.station)})`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1311,6 +1427,8 @@ export function jobEffectText(effect: JobEffect, tenthsPerDay: number, ctx: Text
       return `${signed} de progresso por dia`;
     case 'construction':
       return `obra ${tenthsPerDay < 0 ? 'atrasada' : 'adiantada'} em ${amount} dia por dia`;
+    case 'brewing':
+      return `preparos ${tenthsPerDay < 0 ? 'atrasados' : 'adiantados'} em ${amount} dia por dia`;
     case 'bonus':
       return effect.text;
     default:
@@ -1376,6 +1494,8 @@ function npcWorkText(entry: Extract<LogEntry, { kind: 'npc_worked' }>, ctx: Text
         : `${npc} avançou a pesquisa '${target}' em ${amount}%`;
     case 'construction':
       return `${npc} ${hindered ? 'atrasou' : 'adiantou'} a obra de ${ctx.building(target)} em ${t.days(amount)}`;
+    case 'brewing':
+      return `${npc} ${hindered ? 'atrasou' : 'adiantou'} os preparos de ${ctx.building(target)} em ${t.days(amount)}`;
     default:
       return assertNever(entry.effect);
   }
@@ -1458,6 +1578,16 @@ function gardenPlantedText(
 ): string {
   const bought = entry.bronze === 0 ? '' : ` (semente comprada por ${ctx.gold(entry.bronze)})`;
   return `${entry.actor ?? 'Alguém'} plantou ${entry.seed} em ${plotLabel(entry.plot)}${bought}`;
+}
+
+/** "Thorin começou Poção de Cura em Alambique 2 (3 Hortelã e 1 Camomila)"; the master may spend nothing. */
+function labBrewedText(entry: Extract<LogEntry, { kind: 'lab_brewed' }>): string {
+  const spent = entry.ingredients.length === 0 ? '' : ` (${portionsText(entry.ingredients)})`;
+  return `${entry.actor ?? 'Alguém'} começou ${entry.material} em ${stationLabel(entry.station)}${spent}`;
+}
+
+function portionsText(portions: readonly { material: string; quantity: number }[]): string {
+  return listText(portions.map((p) => `${p.quantity} ${p.material}`));
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

@@ -1,6 +1,7 @@
 import type { Catalog } from '../model/catalog';
 import type { GameState, LogEntry, PlacedBuilding } from '../model/schema';
 import { growGarden, settleGarden } from './Garden';
+import { brewLab, settleLab } from './Lab';
 import { returnFromMissions } from './Missions';
 import { settleNpcs } from './Npcs';
 import { EMPTY_TALLY, tallyLog, workOneDay, type WorkTally } from './NpcWork';
@@ -55,11 +56,15 @@ export function advanceDays(state: GameState, catalog: Catalog, days: number): A
 function passDay(progress: Progress, catalog: Catalog, day: number): Progress {
   const worked = workOneDay({ ...progress.state, day }, catalog, progress.tally);
   const produced = produceOneDay(worked.state, catalog, progress.production);
+  // Growth and brewing run on the layout of the day, before the works that finish today change it.
   const grown = growGarden(produced.state, catalog);
-  const completed = completeConstructions(grown);
+  const brewed = brewLab(grown, catalog);
+  const completed = completeConstructions(brewed);
   const gardened = settleGarden(completed.state, catalog);
+  // Works only raise levels, so this is a safeguard: brews really move after force/remove (applyCommand).
+  const settled = settleLab(gardened, catalog);
   return {
-    state: returnFromMissions(settleNpcs(gardened, catalog)),
+    state: returnFromMissions(settleNpcs(settled, catalog)),
     tally: worked.tally,
     production: produced.tally,
     completedSlotIds: [...progress.completedSlotIds, ...completed.slotIds],

@@ -1,4 +1,9 @@
-import { HERB_GARDEN_BUILDING_ID, parseCatalog, type Catalog } from '../model/catalog';
+import {
+  ARCANE_LAB_BUILDING_ID,
+  HERB_GARDEN_BUILDING_ID,
+  parseCatalog,
+  type Catalog,
+} from '../model/catalog';
 import {
   SAVE_VERSION,
   type BuildingLevel,
@@ -8,6 +13,8 @@ import {
   type PlotDef,
   type PlotType,
   type ShopItem,
+  type StationDef,
+  type StationType,
 } from '../model/schema';
 
 const currencies = [
@@ -235,6 +242,7 @@ export const testCatalog = parseCatalog({
   },
   ...seed,
   garden: { levels: [] },
+  lab: { levels: [] },
 });
 
 const gardenLevel = (wood: number): BuildingLevel => ({
@@ -291,6 +299,48 @@ export const herbGardenCatalog: Catalog = {
   ],
 };
 
+const stations = (type: StationType, count: number): StationDef[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `${type}-${i + 1}`,
+    type,
+    x: 0.1,
+    y: 0.1,
+    w: 0.1,
+    h: 0.1,
+  }));
+
+const labLevel: BuildingLevel = { cost: { coins: 10 }, buildTime: 1, party: '', axis: '' };
+
+/** `testCatalog` plus an arcane lab with the shipped station counts (2 / 3+1 / 4+2+1). */
+export const arcaneLabCatalog: Catalog = {
+  ...testCatalog,
+  lab: {
+    levels: [
+      { stations: stations('alambique', 2) },
+      { stations: [...stations('alambique', 3), ...stations('caldeirao', 1)] },
+      {
+        stations: [
+          ...stations('alambique', 4),
+          ...stations('caldeirao', 2),
+          ...stations('circulo', 1),
+        ],
+      },
+    ],
+  },
+  buildings: [
+    ...testCatalog.buildings,
+    {
+      id: ARCANE_LAB_BUILDING_ID,
+      name: 'Laboratório Arcano',
+      description: '',
+      icon: 'i',
+      sprite: 's',
+      allowedSlots: ['outer'],
+      levels: [labLevel, labLevel, labLevel],
+    },
+  ],
+};
+
 /** Same content as `createInitialState(testCatalog)`, built by hand so tests can override parts. */
 export function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
@@ -306,6 +356,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     missions: [],
     shop: seed.shop,
     garden: { crops: [], plots: {} },
+    lab: { recipes: [], stations: {} },
     slots: {},
     log: [],
     ...overrides,

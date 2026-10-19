@@ -18,6 +18,7 @@ import { findMaterial } from '../systems/Materials';
 import type { ArchiveStore } from '../archiveStore';
 import type { DepotStore } from '../depotStore';
 import { HERB_GARDEN_BUILDING_ID } from '../systems/Garden';
+import { ARCANE_LAB_BUILDING_ID } from '../systems/Lab';
 import { missingPurchase, TRADING_POST_BUILDING_ID } from '../systems/Shop';
 import { DEPOT_BUILDING_ID, depotCounts } from '../systems/Depot';
 import { ARCHIVE_BUILDING_ID, archiveCounts } from '../systems/Archive';
@@ -32,6 +33,7 @@ import { renderMasterSlotControls } from './MasterSlotControls';
 import { renderSlotNpcs } from './SlotNpcs';
 import { abilityColumns, buildingDetails, shortcutModel } from './buildingDetails';
 import { gardenSummary, plotViews } from './garden/gardenViews';
+import { labSummary, stationViews } from './lab/labViews';
 import { confirmPurchase } from './shop/shopViews';
 import { ResearchArchive } from './resources/ResearchArchive';
 import { button, thumb } from './widgets';
@@ -44,6 +46,7 @@ export interface BuildingWindows {
   missions: () => void;
   shop: () => void;
   garden: () => void;
+  lab: () => void;
 }
 
 /** The Depósito: its store (for the counts) and its window. */
@@ -397,6 +400,7 @@ export class SlotPanel {
     if (placed.buildingId === DEPOT_BUILDING_ID) return [this.depotSection()];
     if (placed.buildingId === TRADING_POST_BUILDING_ID) return [this.shopSection()];
     if (placed.buildingId === HERB_GARDEN_BUILDING_ID) return [this.gardenSection(state)];
+    if (placed.buildingId === ARCANE_LAB_BUILDING_ID) return [this.labSection(state)];
     return placed.buildingId === ARCHIVE_BUILDING_ID ? [this.recordsSection()] : [];
   }
 
@@ -447,6 +451,19 @@ export class SlotPanel {
       el('p', { class: 'panel__hint' }, t.garden.panelHint),
       el('p', {}, t.garden.counts(summary)),
       button(t.garden.open, this.windows.garden, { primary: true }),
+    );
+  }
+
+  /** O Laboratório Arcano, once built: the station counts and the way into the workshop. */
+  private labSection(state: GameState): HTMLElement {
+    const summary = labSummary(stationViews(state, this.store.catalog));
+    return el(
+      'section',
+      { class: 'card' },
+      el('h3', { class: 'section-title' }, t.lab.title),
+      el('p', { class: 'panel__hint' }, t.lab.panelHint),
+      el('p', {}, t.lab.counts(summary)),
+      button(t.lab.open, this.windows.lab, { primary: true }),
     );
   }
 
