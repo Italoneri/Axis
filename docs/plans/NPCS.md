@@ -23,12 +23,13 @@ Objetivo: o mestre cria NPCs (ex.: **Bianca, maga**) com habilidades. Eles **mor
 
 ### Tipos de efeito
 
-| Tipo           | Campos               | O que faz por dia                                                      | Com rendimento negativo                   |
-| -------------- | -------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
-| `produce`      | `material`, `perDay` | soma unidades ao material (ignorado se o mestre apagou o material)     | consome o estoque, sem passar de 0        |
-| `research`     | `perDay`             | soma pontos percentuais à pesquisa escolhida na designação, até 100%   | faz a pesquisa regredir, sem passar de 0% |
-| `construction` | `perDay`             | adianta a obra do posto (nunca termina antes do dia que está passando) | atrasa a obra (`completesOnDay` cresce)   |
-| `bonus`        | `text`, `penalty?`   | aparece em Bônus ativos enquanto o posto estiver ocupado               | mostra o `penalty`; sem ele, o bônus some |
+| Tipo           | Campos               | O que faz por dia                                                                | Com rendimento negativo                   |
+| -------------- | -------------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
+| `produce`      | `material`, `perDay` | soma unidades ao material (ignorado se o mestre apagou o material)               | consome o estoque, sem passar de 0        |
+| `research`     | `perDay`             | soma pontos percentuais à pesquisa escolhida na designação, até 100%             | faz a pesquisa regredir, sem passar de 0% |
+| `construction` | `perDay`             | adianta a obra do posto (nunca termina antes do dia que está passando)           | atrasa a obra (`completesOnDay` cresce)   |
+| `brewing`      | `perDay`             | soma dias a **cada** preparo do Laboratório Arcano (`docs/plans/LABORATORIO.md`) | atrasa os preparos, sem passar de 0       |
+| `bonus`        | `text`, `penalty?`   | aparece em Bônus ativos enquanto o posto estiver ocupado                         | mostra o `penalty`; sem ele, o bônus some |
 
 ### Rendimento
 
@@ -40,7 +41,7 @@ Habilidade de **-10 a 15**; ausente vale 0, e uma habilidade diferente da do pos
 
 O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`, `round(base × tabela[habilidade])` acima de 10, ou `round(base × habilidade × 10 / divisor)`), o que deixa a conta exata e determinística (sem soma de floats). A interface mostra uma casa decimal ("Bianca: +3,4 de progresso por dia", "-2,0 Ferro por dia" em vermelho).
 
-**Fração acumulada:** cada vaga ocupada (o `job` do NPC) guarda os décimos ainda não entregues (`carry`, -9 a 9, com o sinal do rendimento). A cada dia, `décimos = rendimento + carry`; entregam-se `trunc(décimos / 10)` unidades inteiras (material, ponto de pesquisa ou dia de obra) e o resto, com sinal, fica para o dia seguinte. Se o alvo bloquear a entrega (estoque zerado, pesquisa em 0% ou 100%, obra que termina hoje), a fração é descartada. Trocar de posto ou editar as habilidades do NPC zera a fração.
+**Fração acumulada:** cada vaga ocupada (o `job` do NPC) guarda os décimos ainda não entregues (`carry`, -9 a 9, com o sinal do rendimento). A cada dia, `décimos = rendimento + carry`; entregam-se `trunc(décimos / 10)` unidades inteiras (material, ponto de pesquisa, dia de obra ou dia de preparo) e o resto, com sinal, fica para o dia seguinte. Se o alvo bloquear a entrega (estoque zerado, pesquisa em 0% ou 100%, obra que termina hoje, laboratório sem preparo), a fração é descartada. Trocar de posto ou editar as habilidades do NPC zera a fração.
 
 **Vários NPCs no mesmo posto** contam separados: um bom e um ruim se compensam.
 
@@ -48,18 +49,19 @@ O valor é guardado em **décimos inteiros** (`round(base × (10 + habilidade))`
 
 "Por anel": 3/6/8 vagas no anel externo, 2/4/6 no interno (`postSlots`).
 
-| Construção         | Moradia | Posto (habilidade)     | Vagas    | Efeito (base)              |
-| ------------------ | ------- | ---------------------- | -------- | -------------------------- |
-| Alojamento (até 4) | 6/14/14 | —                      | —        | —                          |
-| Torre dos Magos    | —       | Estudar (Pesquisa)     | por anel | research 1/1/2             |
-| Taverna            | —       | Cozinhar (Gastronomia) | por anel | bonus (texto e penalidade) |
-| Forja              | —       | Forjar (Ferraria)      | por anel | produce Ferro 1/2/3        |
-| Biblioteca         | —       | Pesquisar (Pesquisa)   | por anel | research 1/1/2             |
-| Arquivo            | —       | Catalogar (Pesquisa)   | por anel | research 1                 |
-| Enfermaria         | —       | Tratar (Medicina)      | por anel | bonus (texto e penalidade) |
-| Santuário          | —       | Cuidar (Medicina)      | por anel | bonus (texto e penalidade) |
-| Laboratório Arcano | —       | Destilar (Alquimia)    | por anel | produce Aetherium 1/1/2    |
-| Obra em andamento  | —       | Construir (Construção) | 2        | construction 1             |
+| Construção         | Moradia | Posto (habilidade)                | Vagas          | Efeito (base)              |
+| ------------------ | ------- | --------------------------------- | -------------- | -------------------------- |
+| Alojamento (até 4) | 6/14/14 | —                                 | —              | —                          |
+| Torre dos Magos    | —       | Estudar (Pesquisa)                | por anel       | research 1/1/2             |
+| Taverna            | —       | Cozinhar (Gastronomia)            | por anel       | bonus (texto e penalidade) |
+| Forja              | —       | Forjar (Ferraria)                 | por anel       | produce Ferro 1/2/3        |
+| Biblioteca         | —       | Pesquisar (Pesquisa)              | por anel       | research 1/1/2             |
+| Arquivo            | —       | Catalogar (Pesquisa)              | por anel       | research 1                 |
+| Enfermaria         | —       | Tratar (Medicina)                 | por anel       | bonus (texto e penalidade) |
+| Santuário          | —       | Cuidar (Medicina)                 | por anel       | bonus (texto e penalidade) |
+| Laboratório Arcano | —       | Destilar (Alquimia)               | por anel       | produce Aetherium 1/1/2    |
+| Laboratório Arcano | —       | Supervisionar preparos (Alquimia) | por anel, nv2+ | brewing 1                  |
+| Obra em andamento  | —       | Construir (Construção)            | 2              | construction 1             |
 
 ## Modelo (`GameState.npcs`, save versão 6)
 
