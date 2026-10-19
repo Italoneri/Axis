@@ -58,7 +58,18 @@ export type ActionError =
   /** One crop per seed material. */
   | 'crop_already_exists'
   /** A plot still grows the crop. */
-  | 'crop_in_use';
+  | 'crop_in_use'
+  /** Lab: the arcane lab is not built, so nothing brews. */
+  | 'lab_not_built'
+  /** Lab: no such station at the level in force. */
+  | 'unknown_station'
+  | 'station_busy'
+  | 'station_empty'
+  /** The recipe is brewed on another kind of station. */
+  | 'wrong_station_type'
+  /** A player brewing without every ingredient in stock. */
+  | 'missing_ingredients'
+  | 'recipe_already_exists';
 
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 
