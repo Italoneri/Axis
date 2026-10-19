@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HERB_GARDEN_BUILDING_ID } from '../model/catalog';
-import { gameStateSchema, type GameState } from '../model/schema';
+import { ARCANE_LAB_BUILDING_ID, HERB_GARDEN_BUILDING_ID } from '../model/catalog';
+import { gameStateSchema, type GameState, type Recipe } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
 import {
+  arcaneLabCatalog,
   herbGardenCatalog,
   makeState,
   mission,
@@ -75,8 +76,20 @@ function richState(): GameState {
       mission({ id: 'contrato', title: 'Contrato' }),
       mission({ id: 'escolta', title: 'Escolta', progress: { status: 'grupo', startedOnDay: 2 } }),
     ],
+    lab: { recipes: [ironTonic], stations: {} },
   };
 }
+
+/** Turns 2 wood into 1 iron on an alambique; revealed to players. */
+const ironTonic: Recipe = {
+  id: 'r-tonic',
+  outputId: 'iron',
+  outputQty: 1,
+  ingredients: [{ materialId: 'wood', quantity: 2 }],
+  stationType: 'alambique',
+  days: 1,
+  hidden: false,
+};
 
 const thorin = { kind: 'character', characterId: 'thorin' } as const;
 const draft = {
@@ -228,6 +241,34 @@ const validCommands: Record<CommandType, GameCommand> = {
   garden_plant: { type: 'garden_plant', plotId: 'canteiro-1', seedId: 'semente', buy: false },
   garden_harvest: { type: 'garden_harvest', plotId: 'canteiro-2' },
   garden_clear: { type: 'garden_clear', plotId: 'canteiro-2' },
+  lab_recipe_create: {
+    type: 'lab_recipe_create',
+    id: 'recipe_1',
+    recipe: {
+      outputId: 'wood',
+      outputQty: 2,
+      ingredients: [{ materialId: 'aetherium', quantity: 1 }],
+      stationType: 'caldeirao',
+      days: 3,
+      hidden: true,
+    },
+  },
+  lab_recipe_update: {
+    type: 'lab_recipe_update',
+    recipeId: 'r-tonic',
+    recipe: {
+      outputId: 'iron',
+      outputQty: 1,
+      ingredients: [{ materialId: 'wood', quantity: 2 }],
+      stationType: 'alambique',
+      days: 1,
+      hidden: true,
+    },
+  },
+  lab_recipe_remove: { type: 'lab_recipe_remove', recipeId: 'r-tonic' },
+  lab_brew: { type: 'lab_brew', stationId: 'alambique-1', recipeId: 'r-tonic' },
+  lab_collect: { type: 'lab_collect', stationId: 'alambique-2' },
+  lab_discard: { type: 'lab_discard', stationId: 'alambique-2' },
   shop_set_promotion: { type: 'shop_set_promotion', itemId: 'shop_wood', discountPercent: 20 },
   shop_buy: {
     type: 'shop_buy',
@@ -298,6 +339,41 @@ function gardenWorkState(): GameState {
 
 function runGarden(command: unknown, ctx: CommandContext, state = gardenWorkState()) {
   return applyCommand(state, herbGardenCatalog, command, ctx);
+}
+
+const labWork = new Set<CommandType>(['lab_brew', 'lab_collect', 'lab_discard']);
+
+/** A lab nv1, 4 wood in stock and a ready tonic on `alambique-2`; the rest of the camp as `richState`. */
+function labWorkState(): GameState {
+  const base = richState();
+  return {
+    ...base,
+    slots: {
+      ...base.slots,
+      outer_w: { buildingId: ARCANE_LAB_BUILDING_ID, level: 1, status: 'done' },
+    },
+    materials: {
+      ...base.materials,
+      items: base.materials.items.map((m) => (m.id === 'wood' ? { ...m, quantity: 4 } : m)),
+    },
+    lab: {
+      recipes: [ironTonic],
+      stations: {
+        'alambique-2': {
+          recipeId: 'r-tonic',
+          outputId: 'iron',
+          outputQty: 1,
+          days: 1,
+          spent: ironTonic.ingredients,
+          progressTenths: 10,
+        },
+      },
+    },
+  };
+}
+
+function runLab(command: unknown, ctx: CommandContext, state = labWorkState()) {
+  return applyCommand(state, arcaneLabCatalog, command, ctx);
 }
 
 /** How the game function links and unlinks players. */
@@ -381,12 +457,55 @@ describe('applyCommand', () => {
       const ctx = membershipCommands.has(command.type) ? joining : master;
       const result = gardenWork.has(command.type)
         ? runGarden(command, ctx)
-        : run(command, ctx, state);
+        : labWork.has(command.type)
+          ? runLab(command, ctx)
+          : run(command, ctx, state);
       if (!result.ok) throw new Error(`${command.type}: ${result.error}`);
       expect(result.state).not.toBe(state);
       expect(gameStateSchema.safeParse(result.state).success).toBe(true);
     },
   );
+
+  it('playerCanBrewCollectAndDiscard', () => {
+    const brewed = runLab(validCommands.lab_brew, thorinPlayer);
+    if (!brewed.ok) throw new Error(brewed.error);
+    expect(brewed.state.lab.stations['alambique-1']?.progressTenths).toBe(0);
+    expect(brewed.logged).toMatchObject([{ kind: 'lab_brewed', actor: 'Thorin' }]);
+
+    const collected = runLab({ type: 'lab_collect' }, thorinPlayer, brewed.state);
+    if (!collected.ok) throw new Error(collected.error);
+    expect(collected.logged).toMatchObject([
+      { kind: 'lab_collected', material: 'Ferro', quantity: 1, actor: 'Thorin' },
+    ]);
+
+    const discarded = runLab(validCommands.lab_discard, thorinPlayer, brewed.state);
+    if (!discarded.ok) throw new Error(discarded.error);
+    expect(discarded.state.lab.stations['alambique-2']).toBeUndefined();
+  });
+
+  it.each(['lab_recipe_create', 'lab_recipe_update', 'lab_recipe_remove'] as const)(
+    'playerCannotRun %s',
+    (type) => {
+      expect(run(validCommands[type], thorinPlayer)).toEqual({ ok: false, error: 'forbidden' });
+    },
+  );
+
+  it.each([
+    {
+      name: 'repeated ingredient',
+      ingredients: [
+        { materialId: 'wood', quantity: 1 },
+        { materialId: 'wood', quantity: 2 },
+      ],
+    },
+    { name: 'potion among its ingredients', ingredients: [{ materialId: 'iron', quantity: 1 }] },
+  ])('refusesRecipeWith $name', ({ ingredients }) => {
+    const command = {
+      ...validCommands.lab_recipe_update,
+      recipe: { ...ironTonic, id: undefined, ingredients },
+    };
+    expect(run(command)).toEqual({ ok: false, error: 'invalid_command' });
+  });
 
   it('playerCanPlantHarvestAndClear', () => {
     const planted = runGarden(validCommands.garden_plant, thorinPlayer);
@@ -568,6 +687,9 @@ describe('applyCommand permissions', () => {
     'garden_plant',
     'garden_harvest',
     'garden_clear',
+    'lab_brew',
+    'lab_collect',
+    'lab_discard',
   ]);
   const masterOnly = Object.values(validCommands).filter(
     (c) => !playerCommands.has(c.type) && !membershipCommands.has(c.type),
@@ -583,7 +705,9 @@ describe('applyCommand permissions', () => {
     (command) => {
       const result = gardenWork.has(command.type)
         ? runGarden(command, thorinPlayer)
-        : run(command, thorinPlayer);
+        : labWork.has(command.type)
+          ? runLab(command, thorinPlayer)
+          : run(command, thorinPlayer);
       expect(result.ok).toBe(true);
     },
   );

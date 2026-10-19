@@ -14,6 +14,7 @@ import {
   researchSchema,
   shopItemSchema,
   npcAttributesSchema,
+  recipeFieldsSchema,
   skillLevelSchema,
 } from '../model/schema';
 import { IMAGE_KINDS } from '../systems/GameImages';
@@ -178,6 +179,14 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   command('garden_plant', { plotId: ref, seedId: ref, buy: z.boolean() }),
   command('garden_harvest', { plotId: ref.optional() }),
   command('garden_clear', { plotId: ref }),
+  // Arcane lab recipes (master only)
+  command('lab_recipe_create', { id: newRecordId, recipe: recipeFieldsSchema }),
+  command('lab_recipe_update', { recipeId: ref, recipe: recipeFieldsSchema }),
+  command('lab_recipe_remove', { recipeId: ref }),
+  // Arcane lab work (players too)
+  command('lab_brew', { stationId: ref, recipeId: ref }),
+  command('lab_collect', { stationId: ref.optional() }),
+  command('lab_discard', { stationId: ref }),
   command('shop_set_promotion', {
     itemId: ref,
     discountPercent: z.number().int().min(1).max(90).nullable(),

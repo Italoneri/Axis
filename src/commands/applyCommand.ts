@@ -20,6 +20,7 @@ import {
   updateCrop,
 } from '../systems/Garden';
 import { setWorldInfluence } from '../systems/Influence';
+import { addRecipe, brew, collect, discard, removeRecipe, updateRecipe } from '../systems/Lab';
 import { forceBuilding, removeBuilding } from '../systems/MasterSystem';
 import {
   addMaterial,
@@ -203,6 +204,9 @@ const PLAYER_COMMANDS: ReadonlySet<CommandType> = new Set([
   'garden_plant',
   'garden_harvest',
   'garden_clear',
+  'lab_brew',
+  'lab_collect',
+  'lab_discard',
 ]);
 
 /** Run by the server's join and unlink flows only (see `CommandContext.membership`). */
@@ -436,6 +440,14 @@ const handlers: Handlers = {
     resources(plant(state, catalog, { plotId, seedId, buy }, who)),
   garden_harvest: ({ plotId }, { state, catalog }) => resources(harvest(state, catalog, plotId)),
   garden_clear: ({ plotId }, { state, catalog }) => resources(clearPlot(state, catalog, plotId)),
+  lab_recipe_create: ({ id, recipe }, { state }) => resources(addRecipe(state, { ...recipe, id })),
+  lab_recipe_update: ({ recipeId, recipe }, { state }) =>
+    resources(updateRecipe(state, recipeId, recipe)),
+  lab_recipe_remove: ({ recipeId }, { state }) => resources(removeRecipe(state, recipeId)),
+  lab_brew: ({ stationId, recipeId }, { state, catalog, who }) =>
+    resources(brew(state, catalog, { stationId, recipeId }, who)),
+  lab_collect: ({ stationId }, { state, catalog }) => resources(collect(state, catalog, stationId)),
+  lab_discard: ({ stationId }, { state, catalog }) => resources(discard(state, catalog, stationId)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
 
