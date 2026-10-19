@@ -4394,3 +4394,653 @@ details > summary {
   width: 76px;
   height: 76px;
 }
+
+/* ---------- Laboratório Arcano: oficina ---------- */
+
+/*
+ * Drawn in code, no art: a dark flagstone floor lit by two candles, shelves of
+ * bottles on the back wall. Station boxes are % of the 16:10 scene (lab.json).
+ * The window chrome, popover, badges and strip reuse the garden's classes.
+ */
+.lab-scene {
+  --arcane: #9b6bff;
+  --arcane-soft: #b48cff;
+  --candle: #ffb35c;
+  --copper: #b87333;
+  position: relative;
+  flex-shrink: 0;
+  width: min(100%, calc((100dvh - 280px) * 1.6));
+  min-width: 560px;
+  aspect-ratio: 16 / 10;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.32) 0 2px, transparent 2px 12.5%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.26) 0 2px, transparent 2px 9%),
+    linear-gradient(#2b2531, #18151c);
+  box-shadow: 0 0 0 1px var(--border);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lab-scenery {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lab-wall {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 17%;
+  background: linear-gradient(#1a141c, #2a2027);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+}
+
+.lab-shelf {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  border-bottom: 5px solid #5a3b22;
+}
+
+.lab-bottle {
+  position: relative;
+  width: 6%;
+  height: calc(var(--tall) * 78%);
+  border-radius: 40% 40% 18% 18% / 26% 26% 10% 10%;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--h) 50% 30% / 0.9),
+    hsl(var(--h) 60% 52% / 0.9) 45%,
+    hsl(var(--h) 50% 34% / 0.9)
+  );
+}
+
+.lab-bottle::before {
+  position: absolute;
+  bottom: 100%;
+  left: 32%;
+  width: 36%;
+  height: 22%;
+  border-radius: 2px 2px 0 0;
+  background: #8a6a4a;
+  content: '';
+}
+
+.lab-candle {
+  position: absolute;
+  top: 6.5%;
+  width: 1.4%;
+  height: 8%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #d9cbb0, #f6ecd6 50%, #c9b896);
+}
+
+.lab-candle i {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 180%;
+  aspect-ratio: 1 / 2;
+  border-radius: 50% 50% 45% 45% / 65% 65% 35% 35%;
+  background: radial-gradient(ellipse at 50% 75%, #fff6d0, var(--candle) 55%, transparent 72%);
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  animation: lab-flicker 2.4s ease-in-out infinite;
+}
+
+.lab-candle + .lab-candle i {
+  animation-delay: -1.1s;
+}
+
+@keyframes lab-flicker {
+  30% {
+    transform: translateX(-50%) scale(0.92, 1.08) rotate(-3deg);
+  }
+  60% {
+    transform: translateX(-50%) scale(1.05, 0.94) rotate(2deg);
+  }
+}
+
+.lab-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 45% at 49% 10%, rgba(255, 179, 92, 0.2), transparent);
+}
+
+.lab-locked {
+  font-size: 11px;
+}
+
+/* ---------- Stations ---------- */
+
+.lab-station {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lab-station:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+
+.lab-station__base {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transition: filter 0.2s;
+}
+
+.lab-station[data-stage='idle'] .lab-station__base {
+  filter: saturate(0.55) brightness(0.78);
+}
+
+.lab-station:hover .lab-station__base {
+  filter: brightness(1.12) drop-shadow(0 0 6px rgba(212, 175, 55, 0.6));
+}
+
+.lab-station[aria-expanded='true'] .lab-station__base {
+  filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 9px rgba(212, 175, 55, 0.8));
+}
+
+.lab-station[data-stage='ready'] .lab-station__base {
+  animation: lab-ready 1.8s ease-in-out infinite;
+}
+
+@keyframes lab-ready {
+  50% {
+    filter: brightness(1.15) drop-shadow(0 0 12px var(--liquid, var(--arcane)));
+  }
+}
+
+.lab-station.is-popping .lab-station__base {
+  animation: lab-pop 0.6s ease-out;
+}
+
+@keyframes lab-pop {
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+.lab-liquid {
+  position: absolute;
+  display: block;
+  background: var(--liquid, transparent);
+}
+
+/* Alambique: a wooden table, a glass flask over a small burner, a copper coil. */
+.lab-table {
+  position: absolute;
+  inset: auto 0 0;
+  height: 32%;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(#7a4f2d, #4b2f1a 30%, #3a2414);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 220, 170, 0.25),
+    0 6px 10px rgba(0, 0, 0, 0.5);
+}
+
+.lab-flask {
+  position: absolute;
+  bottom: 38%;
+  left: 10%;
+  width: 50%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid rgba(220, 240, 255, 0.5);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgba(255, 255, 255, 0.28),
+    rgba(180, 210, 230, 0.08) 45%
+  );
+}
+
+.lab-flask .lab-liquid {
+  inset: 48% 0 0;
+  opacity: 0.85;
+}
+
+.lab-coil {
+  position: absolute;
+  right: 6%;
+  bottom: 32%;
+  width: 30%;
+  height: 46%;
+  border: 3px solid var(--copper);
+  border-left: 0;
+  border-radius: 0 40% 40% 0;
+  background: repeating-linear-gradient(transparent 0 9px, rgba(184, 115, 51, 0.85) 9px 12px);
+}
+
+.lab-coil::before {
+  position: absolute;
+  top: -3px;
+  right: 100%;
+  width: 90%;
+  height: 3px;
+  background: var(--copper);
+  content: '';
+}
+
+.lab-burner {
+  position: absolute;
+  bottom: 32%;
+  left: 27%;
+  width: 16%;
+  height: 7%;
+  border-radius: 2px;
+  background: #3b3b42;
+}
+
+.lab-burner::before {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 70%;
+  aspect-ratio: 1 / 1.6;
+  border-radius: 50% 50% 40% 40% / 70% 70% 30% 30%;
+  background: radial-gradient(ellipse at 50% 80%, #bfe6ff, #4f8cff 45%, transparent 70%);
+  opacity: 0;
+  transform: translateX(-50%);
+  content: '';
+}
+
+.lab-station:not([data-stage='idle']) .lab-burner::before {
+  opacity: 1;
+  animation: lab-flicker 1.2s ease-in-out infinite;
+}
+
+/* Caldeirão: an iron pot over embers. */
+.lab-embers {
+  position: absolute;
+  inset: auto 14% 2%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #ff7a2f, #9b2a10 55%, transparent 72%);
+  opacity: 0.25;
+}
+
+.lab-station:not([data-stage='idle']) .lab-embers {
+  opacity: 1;
+  animation: lab-embers 1.6s ease-in-out infinite;
+}
+
+@keyframes lab-embers {
+  50% {
+    filter: brightness(1.35);
+  }
+}
+
+.lab-cauldron {
+  position: absolute;
+  inset: auto 8% 12%;
+  height: 62%;
+  overflow: hidden;
+  border-radius: 16% 16% 46% 46% / 12% 12% 58% 58%;
+  background: radial-gradient(ellipse at 40% 35%, #4a4a52, #16161b 70%);
+  box-shadow:
+    inset 0 -8px 14px rgba(0, 0, 0, 0.6),
+    0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+.lab-cauldron::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 9%;
+  border-radius: 50%;
+  background: #5b5b64;
+  content: '';
+}
+
+.lab-cauldron .lab-liquid {
+  inset: 4% 9% auto;
+  height: 18%;
+  border-radius: 50%;
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* Círculo: runes turning on the floor around a floating orb. */
+.lab-circle {
+  position: absolute;
+  inset: 22% 2% 4%;
+  border: 2px solid rgba(155, 107, 255, 0.55);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 6px rgba(155, 107, 255, 0.08),
+    0 0 18px rgba(155, 107, 255, 0.25);
+}
+
+.lab-circle::before {
+  position: absolute;
+  inset: 18%;
+  border: 1px solid rgba(180, 140, 255, 0.45);
+  border-radius: 50%;
+  content: '';
+}
+
+/* A square ring squashed into the ellipse of the floor circle; each rune sits at the top of a turned box. */
+.lab-runes {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 92%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scaleX(var(--squash, 1.7));
+}
+
+.lab-runes i {
+  position: absolute;
+  inset: 0;
+  color: var(--arcane-soft);
+  font: normal 12px/1 var(--font-body);
+  text-align: center;
+  text-shadow: 0 0 6px var(--arcane);
+  transform: rotate(var(--a));
+}
+
+.lab-station:not([data-stage='idle']) .lab-runes {
+  animation: lab-spin 24s linear infinite;
+}
+
+@keyframes lab-spin {
+  from {
+    transform: translate(-50%, -50%) scaleX(var(--squash, 1.7)) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) scaleX(var(--squash, 1.7)) rotate(360deg);
+  }
+}
+
+.lab-orb {
+  position: absolute;
+  top: 59%;
+  left: 50%;
+  width: 22%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(180, 140, 255, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -80%);
+}
+
+.lab-orb .lab-liquid {
+  inset: 0;
+  background: radial-gradient(circle at 35% 30%, #ffffff88, var(--liquid, transparent) 60%);
+}
+
+.lab-station:not([data-stage='idle']) .lab-orb {
+  animation: lab-hover 2.6s ease-in-out infinite;
+}
+
+@keyframes lab-hover {
+  50% {
+    transform: translate(-50%, -100%);
+  }
+}
+
+/* Bubbles and steam: brewing only; boiling is faster and steams. */
+.lab-bubbles {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.lab-station:is([data-stage='simmer'], [data-stage='boil']) .lab-bubbles {
+  display: block;
+}
+
+.lab-bubbles i {
+  position: absolute;
+  bottom: 8%;
+  left: calc(16% + var(--i) * 19%);
+  width: 10%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 0;
+  animation: lab-bubble 1.8s ease-in infinite;
+  animation-delay: calc(var(--i) * -0.45s);
+}
+
+.lab-cauldron .lab-bubbles i {
+  bottom: 74%;
+}
+
+.lab-station[data-stage='boil'] .lab-bubbles i {
+  animation-duration: 0.95s;
+}
+
+@keyframes lab-bubble {
+  15% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-260%) scale(0.6);
+  }
+}
+
+.lab-steam {
+  position: absolute;
+  top: -12%;
+  left: 18%;
+  display: none;
+  width: 40%;
+  height: 40%;
+}
+
+.lab-station--caldeirao .lab-steam {
+  top: 4%;
+  left: 30%;
+}
+
+.lab-station[data-stage='boil'] .lab-steam {
+  display: block;
+}
+
+.lab-steam i {
+  position: absolute;
+  bottom: 0;
+  left: 30%;
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(230, 230, 240, 0.35);
+  filter: blur(4px);
+  opacity: 0;
+  animation: lab-steam 2.6s ease-out infinite;
+}
+
+.lab-steam i + i {
+  left: 45%;
+  animation-delay: -1.3s;
+}
+
+@keyframes lab-steam {
+  20% {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-120%) scale(1.8);
+  }
+}
+
+/* ---------- Potions: icons, tray, strip ---------- */
+
+.lab-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.lab-icon--photo {
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.lab-icon--flask {
+  width: 22px;
+  height: 28px;
+  margin: 2px 5px;
+  border: 2px solid rgba(220, 240, 255, 0.7);
+  border-radius: 38% 38% 46% 46% / 26% 26% 60% 60%;
+  background: linear-gradient(to top, var(--liquid) 0 58%, rgba(220, 240, 255, 0.14) 58%);
+}
+
+.garden-bubble .lab-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.garden-bubble .lab-icon--flask {
+  width: 16px;
+  height: 21px;
+  margin: 0;
+}
+
+.garden-chip .lab-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.garden-chip .lab-icon--flask {
+  width: 13px;
+  height: 17px;
+  margin: 0 2px;
+}
+
+.lab-pop {
+  width: 360px;
+}
+
+.lab-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.lab-recipe {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.lab-recipe__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.lab-recipe__meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lab-recipe__ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lab-ingredient {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lab-ingredient.is-missing {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.lab-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.lab-ingredient .lab-badge {
+  margin-left: 0;
+}
+
+.lab-badge--garden {
+  border-color: #d8ff8a;
+  color: #d8ff8a;
+}
+
+.lab-pop__garden {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lab-fx-text {
+  color: var(--arcane-soft);
+}
+
+@media (max-width: 640px) {
+  .lab-scene {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-candle i,
+  .lab-station[data-stage] .lab-station__base,
+  .lab-station.is-popping .lab-station__base,
+  .lab-station:not([data-stage='idle']) .lab-burner::before,
+  .lab-station:not([data-stage='idle']) .lab-embers,
+  .lab-station:not([data-stage='idle']) .lab-runes,
+  .lab-station:not([data-stage='idle']) .lab-orb,
+  .lab-bubbles i,
+  .lab-steam i {
+    animation: none;
+  }
+
+  .lab-station:is([data-stage='simmer'], [data-stage='boil']) .lab-bubbles,
+  .lab-station[data-stage='boil'] .lab-steam {
+    display: none;
+  }
+
+  .lab-station[data-stage='ready'] .lab-station__base {
+    filter: drop-shadow(0 0 9px var(--liquid, var(--arcane)));
+  }
+}
