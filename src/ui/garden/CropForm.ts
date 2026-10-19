@@ -289,7 +289,7 @@ function lookPicker(seed: HTMLSelectElement, initial: CropLook | undefined): Loo
 }
 
 /** Materials grouped by category, so "Sementes" and "Ervas" stand out. */
-function materialSelect(
+export function materialSelect(
   label: string,
   state: GameState,
   materials: GameState['materials']['items'],

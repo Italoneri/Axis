@@ -1,3 +1,4 @@
+import { newId } from '../../commands/newId';
 import type { Actor, GameCommand } from '../../commands/schema';
 import { stationLabel } from '../../i18n/stationLabel';
 import { t } from '../../i18n/pt-BR';
@@ -8,8 +9,18 @@ import { findMaterial } from '../../systems/Materials';
 import { el } from '../dom';
 import type { MasterAccess } from '../MasterSession';
 import { button, closeButton, confirmButton, keepEscapeInside } from '../widgets';
+import type { Recipe, StationType } from '../../model/schema';
+import { stationTypeSchema } from '../../model/schema';
 import { LabScene, potionIcon, progressBar, recipeRow, type ReadyView } from './LabScene';
-import { labSummary, recipeOptions, stationViews, type StationView } from './labViews';
+import {
+  labSummary,
+  recipeOptions,
+  stationViews,
+  visibleTabs,
+  type LabTab,
+  type StationView,
+} from './labViews';
+import { openRecipeForm } from './RecipeForm';
 
 export interface LabWindowDeps {
   game: GameStore;
@@ -29,7 +40,9 @@ export class LabWindow {
   private stopWatching: (() => void) | null = null;
   /** The open card (narrow screens); the scene keeps its own popover. */
   private selectedStationId: string | null = null;
+  private tab: LabTab = 'lab';
   private readonly header = el('header', { class: 'menu__header' });
+  private readonly tabs = el('nav', { class: 'tabs garden-tabs', role: 'tablist' });
   private readonly body = el('div', { class: 'menu__body garden-body' });
   private readonly scene: LabScene;
   private readonly strip = el('div', { class: 'garden-strip' });
@@ -47,7 +60,7 @@ export class LabWindow {
       gardenBuilt: () => gardenLevel(deps.game.current) > 0,
       openGarden: () => this.openGarden(),
     });
-    // Leaving the master tools hides the hidden recipes.
+    // Leaving the master tools hides the recipes tab and the hidden recipes.
     deps.session.subscribe(() => this.render());
   }
 
@@ -56,6 +69,7 @@ export class LabWindow {
     const dialog = this.buildDialog();
     this.dialog = dialog;
     this.selectedStationId = null;
+    this.tab = 'lab';
     this.collected = new Map();
     this.stopWatching = this.deps.game.subscribe(() => this.render());
     document.body.append(dialog);
@@ -73,6 +87,7 @@ export class LabWindow {
       'dialog',
       { class: 'dialog dialog--menu dialog--garden', 'aria-label': t.lab.title },
       this.header,
+      this.tabs,
       this.body,
     );
     keepEscapeInside(dialog);
@@ -110,6 +125,14 @@ export class LabWindow {
     const dialog = this.dialog;
     if (!dialog) return;
     const { game } = this.deps;
+    const tabs = visibleTabs(this.isMaster());
+    if (!tabs.includes(this.tab)) this.tab = 'lab';
+    this.tabs.replaceChildren(...tabs.map((tab) => this.tabButton(tab)));
+    if (this.tab === 'recipes') {
+      this.scene.closePopover();
+      this.renderRecipes(dialog);
+      return;
+    }
     const views = stationViews(game.current, game.catalog);
     if (!views.some((view) => view.station.id === this.selectedStationId)) {
       this.selectedStationId = null;
@@ -138,6 +161,124 @@ export class LabWindow {
     this.scene.update(views);
     this.renderStrip();
     this.cards.replaceChildren(...views.map((view) => this.card(view)));
+  }
+
+  private tabButton(tab: LabTab): HTMLElement {
+    const isActive = tab === this.tab;
+    return el(
+      'button',
+      {
+        class: isActive ? 'tab tab--active' : 'tab',
+        type: 'button',
+        role: 'tab',
+        'aria-selected': String(isActive),
+        onclick: () => {
+          this.tab = tab;
+          this.render();
+        },
+      },
+      t.lab.tabs[tab],
+    );
+  }
+
+  private isMaster(): boolean {
+    return this.deps.viewer().role === 'master';
+  }
+
+  // ---------- Recipes (master) ----------
+
+  private renderRecipes(dialog: HTMLDialogElement): void {
+    const { recipes } = this.deps.game.current.lab;
+    this.header.replaceChildren(
+      el('h2', { class: 'panel__title' }, t.lab.title),
+      el(
+        'div',
+        { class: 'garden-header__tools' },
+        button(t.lab.recipes.newRecipe, () => this.editRecipe(), { primary: true }),
+        closeButton(t.lab.close, () => dialog.close()),
+      ),
+    );
+    if (recipes.length === 0) {
+      this.body.replaceChildren(el('p', { class: 'panel__hint' }, t.lab.recipes.empty));
+      return;
+    }
+    this.body.replaceChildren(
+      ...stationTypeSchema.options.flatMap((type) => this.recipeGroup(type, recipes)),
+    );
+  }
+
+  private recipeGroup(type: StationType, recipes: readonly Recipe[]): HTMLElement[] {
+    const ofType = recipes.filter((recipe) => recipe.stationType === type);
+    if (ofType.length === 0) return [];
+    return [
+      el(
+        'section',
+        { class: 'lab-recipe-group' },
+        el('h3', { class: 'garden-strip__title' }, t.lab.scene.stationTypes[type]),
+        el('ul', { class: 'garden-crops' }, ...ofType.map((recipe) => this.recipeItem(recipe))),
+      ),
+    ];
+  }
+
+  private recipeItem(recipe: Recipe): HTMLElement {
+    const { game } = this.deps;
+    const name = (id: string) =>
+      findMaterial(game.current.materials, id)?.name ?? t.lab.recipes.removedMaterial;
+    const texts = t.lab.recipes;
+    const ingredients = recipe.ingredients
+      .map((i) => `${i.quantity} ${name(i.materialId)}`)
+      .join(' + ');
+    return el(
+      'li',
+      { class: 'garden-crop' },
+      potionIcon(game, recipe),
+      el(
+        'div',
+        { class: 'garden-seed__info lab-recipe-item__info' },
+        el(
+          'strong',
+          {},
+          name(recipe.outputId),
+          recipe.hidden && el('span', { class: 'lab-badge' }, t.lab.scene.hiddenBadge),
+        ),
+        el('span', { class: 'panel__hint' }, ingredients),
+        el('span', { class: 'panel__hint' }, texts.summary(recipe.days, recipe.outputQty)),
+      ),
+      el(
+        'div',
+        { class: 'row' },
+        button(recipe.hidden ? texts.reveal : texts.hide, () => this.toggleHidden(recipe)),
+        button(texts.edit, () => this.editRecipe(recipe)),
+        confirmButton(
+          texts.remove,
+          () => void game.dispatch({ type: 'lab_recipe_remove', recipeId: recipe.id }),
+          texts.removeAsk,
+        ),
+      ),
+    );
+  }
+
+  private toggleHidden(recipe: Recipe): void {
+    const { id, ...fields } = recipe;
+    void this.deps.game.dispatch({
+      type: 'lab_recipe_update',
+      recipeId: id,
+      recipe: { ...fields, hidden: !recipe.hidden },
+    });
+  }
+
+  private editRecipe(recipe?: Recipe): void {
+    const { game } = this.deps;
+    openRecipeForm({
+      state: game.current,
+      ...(recipe ? { recipe } : {}),
+      save: (fields) => {
+        const command: GameCommand = recipe
+          ? { type: 'lab_recipe_update', recipeId: recipe.id, recipe: fields }
+          : { type: 'lab_recipe_create', id: newId('recipe'), recipe: fields };
+        return game.dispatch(command) === null;
+      },
+    });
   }
 
   private recordCollect(view: ReadyView): void {

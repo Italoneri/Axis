@@ -5044,3 +5044,80 @@ details > summary {
     filter: drop-shadow(0 0 9px var(--liquid, var(--arcane)));
   }
 }
+
+/* ---------- Laboratório Arcano: receitas (mestre) ---------- */
+
+.lab-recipe-group + .lab-recipe-group {
+  margin-top: 12px;
+}
+
+.lab-recipe-item__info {
+  flex: 1;
+}
+
+.recipe-form__ingredients {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 8px;
+}
+
+.recipe-form__ingredients > .btn {
+  align-self: flex-start;
+}
+
+.recipe-form__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipe-form__row {
+  display: grid;
+  grid-template-columns: 1fr 96px auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.recipe-form__look {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.recipe-form__color {
+  width: 44px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  background: none;
+}
+
+.recipe-form__color:disabled {
+  opacity: 0.4;
+}
+
+.recipe-form__preview {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.recipe-form__reason:empty {
+  display: none;
+}
+
+.recipe-form__reason {
+  color: var(--danger);
+}
