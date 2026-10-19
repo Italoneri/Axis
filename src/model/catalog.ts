@@ -26,6 +26,7 @@ import {
   type CurrencyDef,
   type GardenLayout,
   type LabLayout,
+  type StationDef,
   type JobDef,
   type Materials,
   type MissionsConfig,
@@ -418,18 +419,27 @@ function gardenProblems({ buildings, garden }: Catalog): string[] {
   ];
 }
 
-/** One layout entry per arcane_lab level; a station keeps its type and never vanishes on an upgrade, so brews survive it. */
+/**
+ * One layout entry per arcane_lab level. A station keeps its type and its box and never vanishes
+ * on an upgrade, so brews survive it and the outlines of later stations never overlap.
+ */
 function labProblems({ buildings, lab }: Catalog): string[] {
   const arcaneLab = buildings.find((b) => b.id === ARCANE_LAB_BUILDING_ID);
-  const typeById = new Map<string, string>();
-  const reusedWithAnotherType = lab.levels
+  const firstById = new Map<string, StationDef>();
+  const changed = lab.levels
     .flatMap((level) => level.stations)
-    .filter((station) => {
-      const known = typeById.get(station.id);
-      typeById.set(station.id, known ?? station.type);
-      return known !== undefined && known !== station.type;
-    })
-    .map((station) => `lab.json: station "${station.id}" changes type between levels`);
+    .flatMap((station) => {
+      const first = firstById.get(station.id);
+      if (!first) firstById.set(station.id, station);
+      if (!first) return [];
+      const moved = (['x', 'y', 'w', 'h'] as const).some((k) => first[k] !== station[k]);
+      return [
+        ...(first.type !== station.type
+          ? [`lab.json: station "${station.id}" changes type between levels`]
+          : []),
+        ...(moved ? [`lab.json: station "${station.id}" moves between levels`] : []),
+      ];
+    });
   const vanished = lab.levels.slice(1).flatMap((level, i) => {
     const ids = new Set(level.stations.map((s) => s.id));
     return (lab.levels[i]?.stations ?? [])
@@ -443,7 +453,7 @@ function labProblems({ buildings, lab }: Catalog): string[] {
         ]
       : []),
     ...lab.levels.flatMap((level, i) => duplicates(`lab level ${i + 1} station`, level.stations)),
-    ...reusedWithAnotherType,
+    ...changed,
     ...vanished,
   ];
 }

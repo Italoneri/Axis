@@ -136,6 +136,15 @@ describe('shipped game data', () => {
       expect(() => parseWith(levels)).toThrow(/alambique-1" changes type/);
     });
 
+    it('stationKeepsItsBoxAcrossLevels', () => {
+      const levels = rawGameData.lab.levels.map((level, i) => ({
+        stations: level.stations.map((s) =>
+          i === 1 && s.id === 'alambique-1' ? { ...s, x: 0.5 } : s,
+        ),
+      }));
+      expect(() => parseWith(levels)).toThrow(/alambique-1" moves between levels/);
+    });
+
     it('noStationVanishesOnUpgrade', () => {
       const levels = rawGameData.lab.levels.map((level, i) => ({
         stations: level.stations.filter((s) => !(i === 1 && s.id === 'alambique-2')),

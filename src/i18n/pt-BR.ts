@@ -625,6 +625,26 @@ export const t = {
     },
   },
 
+  lab: {
+    title: '⚗ Laboratório Arcano',
+    open: 'Abrir laboratório',
+    close: 'Fechar laboratório',
+    panelHint: 'Prepare poções com as ervas da Estufa nas bancadas do laboratório.',
+    counts: ({ ready, brewing, free }: { ready: number; brewing: number; free: number }) =>
+      `${ready} ${ready === 1 ? 'pronta' : 'prontas'} · ${brewing} preparando · ${free} ${free === 1 ? 'livre' : 'livres'}`,
+    collectAllCount: (ready: number) =>
+      ready === 0 ? 'Recolher tudo' : `Recolher tudo (${ready})`,
+    notBuilt: 'O Laboratório Arcano ainda não foi construído.',
+    stationAria: {
+      free: (label: string) => `${label}: livre. Preparar.`,
+      brewing: (label: string, name: string, days: number) =>
+        `${label}: ${name}, ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`,
+      ready: (label: string, name: string, quantity: number) =>
+        `${label}: ${name} pronta. Recolher ${quantity}.`,
+    },
+    tabs: { lab: 'Oficina', recipes: 'Receitas' },
+  },
+
   shop: {
     title: '⚖ Entreposto — Comércio',
     open: 'Abrir comércio',

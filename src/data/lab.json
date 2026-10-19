@@ -2,16 +2,16 @@
   "levels": [
     {
       "stations": [
-        { "id": "alambique-1", "type": "alambique", "x": 0.22, "y": 0.24, "w": 0.14, "h": 0.32 },
-        { "id": "alambique-2", "type": "alambique", "x": 0.64, "y": 0.24, "w": 0.14, "h": 0.32 }
+        { "id": "alambique-1", "type": "alambique", "x": 0.06, "y": 0.2, "w": 0.14, "h": 0.3 },
+        { "id": "alambique-2", "type": "alambique", "x": 0.29, "y": 0.2, "w": 0.14, "h": 0.3 }
       ]
     },
     {
       "stations": [
-        { "id": "alambique-1", "type": "alambique", "x": 0.12, "y": 0.22, "w": 0.14, "h": 0.32 },
-        { "id": "alambique-2", "type": "alambique", "x": 0.43, "y": 0.22, "w": 0.14, "h": 0.32 },
-        { "id": "alambique-3", "type": "alambique", "x": 0.74, "y": 0.22, "w": 0.14, "h": 0.32 },
-        { "id": "caldeirao-1", "type": "caldeirao", "x": 0.42, "y": 0.6, "w": 0.16, "h": 0.3 }
+        { "id": "alambique-1", "type": "alambique", "x": 0.06, "y": 0.2, "w": 0.14, "h": 0.3 },
+        { "id": "alambique-2", "type": "alambique", "x": 0.29, "y": 0.2, "w": 0.14, "h": 0.3 },
+        { "id": "alambique-3", "type": "alambique", "x": 0.57, "y": 0.2, "w": 0.14, "h": 0.3 },
+        { "id": "caldeirao-1", "type": "caldeirao", "x": 0.08, "y": 0.6, "w": 0.17, "h": 0.3 }
       ]
     },
     {
