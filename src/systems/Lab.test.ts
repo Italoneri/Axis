@@ -74,7 +74,14 @@ const mana: Recipe = {
   hidden: true,
 };
 
-const fieldsOf = ({ id: _id, ...fields }: Recipe): RecipeFields => fields;
+const fieldsOf = (recipe: Recipe): RecipeFields => ({
+  outputId: recipe.outputId,
+  outputQty: recipe.outputQty,
+  ingredients: recipe.ingredients,
+  stationType: recipe.stationType,
+  days: recipe.days,
+  hidden: recipe.hidden,
+});
 
 describe('stationsInForce', () => {
   it.each([
