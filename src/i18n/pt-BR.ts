@@ -29,6 +29,7 @@ import { PHOTO_LIMITS, type PhotoError } from '../systems/GameImages';
 import type { BlockReason } from '../systems/BuildSystem';
 import { MASTER_ACTOR, type CommandError } from '../commands/applyCommand';
 import { plotLabel } from './plotLabel';
+import { stationLabel } from './stationLabel';
 
 const percentFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const decimalFormat = new Intl.NumberFormat('pt-BR', {
@@ -1178,6 +1179,14 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
       return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
     case 'garden_cleared':
       return `${entry.actor ?? 'Alguém'} limpou ${plotLabel(entry.plot)} (${entry.seed})`;
+    case 'lab_brewed':
+      return labBrewedText(entry);
+    case 'lab_collected':
+      return `${entry.actor ?? 'Alguém'} recolheu ${entry.quantity} ${entry.material} no Laboratório Arcano`;
+    case 'lab_discarded':
+      return `${entry.actor ?? 'Alguém'} descartou ${entry.material} de ${stationLabel(entry.station)}`;
+    case 'lab_ingredients_returned':
+      return `O Laboratório Arcano devolveu ${portionsText(entry.ingredients)} ao estoque (${stationLabel(entry.station)})`;
     case 'mission_created':
     case 'mission_updated':
     case 'mission_removed':
@@ -1458,6 +1467,16 @@ function gardenPlantedText(
 ): string {
   const bought = entry.bronze === 0 ? '' : ` (semente comprada por ${ctx.gold(entry.bronze)})`;
   return `${entry.actor ?? 'Alguém'} plantou ${entry.seed} em ${plotLabel(entry.plot)}${bought}`;
+}
+
+/** "Thorin começou Poção de Cura em Alambique 2 (3 Hortelã e 1 Camomila)"; the master may spend nothing. */
+function labBrewedText(entry: Extract<LogEntry, { kind: 'lab_brewed' }>): string {
+  const spent = entry.ingredients.length === 0 ? '' : ` (${portionsText(entry.ingredients)})`;
+  return `${entry.actor ?? 'Alguém'} começou ${entry.material} em ${stationLabel(entry.station)}${spent}`;
+}
+
+function portionsText(portions: readonly { material: string; quantity: number }[]): string {
+  return listText(portions.map((p) => `${p.quantity} ${p.material}`));
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

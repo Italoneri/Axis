@@ -235,6 +235,7 @@ export const testCatalog = parseCatalog({
   },
   ...seed,
   garden: { levels: [] },
+  lab: { levels: [] },
 });
 
 const gardenLevel = (wood: number): BuildingLevel => ({
@@ -306,6 +307,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     missions: [],
     shop: seed.shop,
     garden: { crops: [], plots: {} },
+    lab: { recipes: [], stations: {} },
     slots: {},
     log: [],
     ...overrides,

@@ -111,6 +111,56 @@ describe('shipped game data', () => {
     });
   });
 
+  describe('lab layout', () => {
+    const station = { id: 'alambique-1', type: 'alambique', x: 0.1, y: 0.1, w: 0.1, h: 0.1 };
+    const parseWith = (levels: { stations: unknown[] }[]) =>
+      parseCatalog({ ...rawGameData, lab: { levels } });
+
+    it('labLevelsMatchBuilding', () => {
+      expect(() => parseWith([{ stations: [station] }])).toThrow(/lab\.json: has 1 levels/);
+    });
+
+    it('rejectsDuplicateStationIdsInALevel', () => {
+      const levels = rawGameData.lab.levels.map((level) => ({
+        stations: [...level.stations, station],
+      }));
+      expect(() => parseWith(levels)).toThrow(/duplicate lab level 1 station id "alambique-1"/);
+    });
+
+    it('stationKeepsTypeAcrossLevels', () => {
+      const levels = rawGameData.lab.levels.map((level, i) => ({
+        stations: level.stations.map((s) =>
+          i === 2 && s.id === 'alambique-1' ? { ...s, type: 'circulo' } : s,
+        ),
+      }));
+      expect(() => parseWith(levels)).toThrow(/alambique-1" changes type/);
+    });
+
+    it('noStationVanishesOnUpgrade', () => {
+      const levels = rawGameData.lab.levels.map((level, i) => ({
+        stations: level.stations.filter((s) => !(i === 1 && s.id === 'alambique-2')),
+      }));
+      expect(() => parseWith(levels)).toThrow(/alambique-2" of level 1 is missing from level 2/);
+    });
+
+    it('shipsTheStationsOfEachLevel', () => {
+      const ids = gameData.lab.levels.map((level) => level.stations.map((s) => s.id).sort());
+      expect(ids).toEqual([
+        ['alambique-1', 'alambique-2'],
+        ['alambique-1', 'alambique-2', 'alambique-3', 'caldeirao-1'],
+        [
+          'alambique-1',
+          'alambique-2',
+          'alambique-3',
+          'alambique-4',
+          'caldeirao-1',
+          'caldeirao-2',
+          'circulo-1',
+        ],
+      ]);
+    });
+  });
+
   it('has exactly one structure for the core slot', () => {
     expect(gameData.buildings.filter((b) => b.allowedSlots.includes('core'))).toHaveLength(1);
   });

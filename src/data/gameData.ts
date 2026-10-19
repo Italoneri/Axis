@@ -7,6 +7,7 @@ import buildings from './buildings.json';
 import currencies from './currencies.json';
 import garden from './garden.json';
 import influence from './influence.json';
+import lab from './lab.json';
 import layout from './layout.json';
 import materials from './materials.json';
 import missions from './missions.json';
@@ -32,6 +33,7 @@ export const rawGameData = {
   missions,
   shop,
   garden,
+  lab,
   tavernMenu,
 };
 

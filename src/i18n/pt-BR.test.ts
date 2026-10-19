@@ -7,6 +7,7 @@ import {
   t,
   type TextContext,
 } from './pt-BR';
+import type { LogEntry } from '../model/schema';
 
 const ctx: TextContext = {
   building: (id) => id,
@@ -252,5 +253,69 @@ describe('shop sale log', () => {
     expect(logEntryText(entry, goldCtx)).toBe(
       'Dia 5 — Thorin vendeu 10 Madeira ao Entreposto por 15 PB',
     );
+  });
+});
+
+describe('lab log', () => {
+  const ingredients = [
+    { material: 'Hortelã', quantity: 3 },
+    { material: 'Camomila', quantity: 1 },
+  ];
+  const cases: { entry: LogEntry; text: string }[] = [
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'lab_brewed',
+        station: 'alambique-2',
+        material: 'Poção de Cura',
+        ingredients,
+      },
+      text: 'Thorin começou Poção de Cura em Alambique 2 (3 Hortelã e 1 Camomila)',
+    },
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'lab_brewed',
+        station: 'circulo-1',
+        material: 'Essência',
+        ingredients: [],
+      },
+      text: 'Thorin começou Essência em Círculo de transmutação 1',
+    },
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'lab_collected',
+        material: 'Poção de Cura',
+        quantity: 2,
+      },
+      text: 'Thorin recolheu 2 Poção de Cura no Laboratório Arcano',
+    },
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'lab_discarded',
+        station: 'caldeirao-1',
+        material: 'Elixir de Mana',
+      },
+      text: 'Thorin descartou Elixir de Mana de Caldeirão 1',
+    },
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'lab_ingredients_returned',
+        station: 'caldeirao-2',
+        ingredients,
+      },
+      text: 'O Laboratório Arcano devolveu 3 Hortelã e 1 Camomila ao estoque (Caldeirão 2)',
+    },
+  ];
+  it.each(cases)('writes $entry.kind', ({ entry, text }) => {
+    expect(logEntryText(entry, ctx)).toBe(`Dia 5 — ${text}`);
   });
 });

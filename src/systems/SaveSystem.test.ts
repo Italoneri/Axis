@@ -37,6 +37,21 @@ describe('garden in the save', () => {
   });
 });
 
+describe('lab in the save', () => {
+  it('startsNewGamesWithAnEmptyLab', () => {
+    expect(createInitialState(testCatalog).lab).toEqual({ recipes: [], stations: {} });
+  });
+
+  it('migrates9to10AddsEmptyLab', () => {
+    const { lab, ...rest } = makeState();
+    expect(lab).toEqual({ recipes: [], stations: {} });
+    const parsed = parseSave(JSON.stringify({ ...rest, version: 9 }), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.version).toBe(SAVE_VERSION);
+    expect(parsed.state.lab).toEqual({ recipes: [], stations: {} });
+  });
+});
+
 describe('shop in the save', () => {
   const seedIds = ['shop_wood', 'shop_iron', 'shop_aetherium'];
   const shopIds = (state: { shop: { items: { id: string }[] } }) =>

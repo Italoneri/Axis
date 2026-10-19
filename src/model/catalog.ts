@@ -8,6 +8,7 @@ import {
   buildingDefSchema,
   currencyDefSchema,
   gardenLayoutSchema,
+  labLayoutSchema,
   materialsSchema,
   MAX_ATTRIBUTE,
   MAX_SKILL,
@@ -24,6 +25,7 @@ import {
   type BuildingDef,
   type CurrencyDef,
   type GardenLayout,
+  type LabLayout,
   type JobDef,
   type Materials,
   type MissionsConfig,
@@ -68,6 +70,8 @@ export interface Catalog {
   readonly tavernMenu: TavernMenu;
   /** Plots of the herb garden, per level (the garden itself is state). */
   readonly garden: GardenLayout;
+  /** Brewing stations of the arcane lab, per level (the brews are state). */
+  readonly lab: LabLayout;
 }
 
 /** The building whose panel opens the menu, and whose level unlocks dishes. */
@@ -75,6 +79,9 @@ export const TAVERN_BUILDING_ID = 'tavern';
 
 /** The building whose panel opens the herb garden. */
 export const HERB_GARDEN_BUILDING_ID = 'herb_garden';
+
+/** The building whose panel opens the potion workshop. */
+export const ARCANE_LAB_BUILDING_ID = 'arcane_lab';
 
 /** The building whose panel opens the mission board. */
 export const GUILD_BUILDING_ID = 'guild';
@@ -94,6 +101,7 @@ export interface RawCatalog {
   missions: unknown;
   shop: unknown;
   garden: unknown;
+  lab: unknown;
   /** Display only, so the server catalog leaves it out. */
   tavernMenu?: unknown;
 }
@@ -126,6 +134,7 @@ export function parseCatalog(raw: RawCatalog): Catalog {
     npcs: parseFile('npcs.json', npcsConfigSchema, raw.npcs),
     missions: parseFile('missions.json', missionsConfigSchema, raw.missions),
     garden: parseFile('garden.json', gardenLayoutSchema, raw.garden),
+    lab: parseFile('lab.json', labLayoutSchema, raw.lab),
     tavernMenu: parseFile('tavern_menu.json', tavernMenuSchema, raw.tavernMenu ?? { items: [] }),
   };
   const problems = findReferenceProblems(catalog);
@@ -215,6 +224,7 @@ function findReferenceProblems(catalog: Catalog): string[] {
     ...catalog.currencies.flatMap((c) => missingAsset(c.id, c.icon)),
     ...seedProblems(catalog),
     ...gardenProblems(catalog),
+    ...labProblems(catalog),
     ...buildingProblems,
     ...menuProblems(catalog, missingAsset),
     ...(buildingIds.has(catalog.missions.guildBonus.building)
@@ -405,6 +415,36 @@ function gardenProblems({ buildings, garden }: Catalog): string[] {
       : []),
     ...garden.levels.flatMap((level, i) => duplicates(`garden level ${i + 1} plot`, level.plots)),
     ...reusedWithAnotherType,
+  ];
+}
+
+/** One layout entry per arcane_lab level; a station keeps its type and never vanishes on an upgrade, so brews survive it. */
+function labProblems({ buildings, lab }: Catalog): string[] {
+  const arcaneLab = buildings.find((b) => b.id === ARCANE_LAB_BUILDING_ID);
+  const typeById = new Map<string, string>();
+  const reusedWithAnotherType = lab.levels
+    .flatMap((level) => level.stations)
+    .filter((station) => {
+      const known = typeById.get(station.id);
+      typeById.set(station.id, known ?? station.type);
+      return known !== undefined && known !== station.type;
+    })
+    .map((station) => `lab.json: station "${station.id}" changes type between levels`);
+  const vanished = lab.levels.slice(1).flatMap((level, i) => {
+    const ids = new Set(level.stations.map((s) => s.id));
+    return (lab.levels[i]?.stations ?? [])
+      .filter((s) => !ids.has(s.id))
+      .map((s) => `lab.json: station "${s.id}" of level ${i + 1} is missing from level ${i + 2}`);
+  });
+  return [
+    ...(arcaneLab && arcaneLab.levels.length !== lab.levels.length
+      ? [
+          `lab.json: has ${lab.levels.length} levels, ${ARCANE_LAB_BUILDING_ID} has ${arcaneLab.levels.length}`,
+        ]
+      : []),
+    ...lab.levels.flatMap((level, i) => duplicates(`lab level ${i + 1} station`, level.stations)),
+    ...reusedWithAnotherType,
+    ...vanished,
   ];
 }
 
