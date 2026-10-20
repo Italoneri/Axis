@@ -50,6 +50,7 @@ export interface ArchiveRowsChange extends ArchiveRows {
 
 const topicRowSchema = z.object({
   id: z.string(),
+  parent_id: z.string().nullable(),
   name: z.string(),
   icon: z.string().nullable(),
   position: z.number().int(),
@@ -81,6 +82,7 @@ type NoteRow = z.infer<typeof noteRowSchema>;
 export function topicToRow(topic: ArchiveTopic): TopicRow {
   return {
     id: topic.id,
+    parent_id: topic.parentId,
     name: topic.name,
     icon: topic.icon ?? null,
     position: topic.order,
@@ -111,6 +113,7 @@ export function noteToRow(note: ArchiveNote): NoteRow {
 function topicFromRow(row: TopicRow): unknown {
   return {
     id: row.id,
+    parentId: row.parent_id,
     name: row.name,
     ...(row.icon ? { icon: row.icon } : {}),
     order: row.position,

@@ -577,7 +577,7 @@ describe('version 5 saves: housing only in the Alojamento', () => {
 
 describe('save file with the archive', () => {
   const archive: Archive = {
-    topics: [{ id: 'npcs', name: 'NPCs', order: 0, authorId: 'mestre', deletedAt: null }],
+    topics: [{ id: 'npcs', parentId: null, name: 'NPCs', order: 0, authorId: 'mestre', deletedAt: null }],
     notes: [],
   };
 

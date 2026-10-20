@@ -10,6 +10,10 @@ import {
   EMPTY_ARCHIVE,
   searchNotes,
   topicNotes,
+  topicPath,
+  topicSubtreeIds,
+  topicTree,
+  type TopicNode,
   visibleArchive,
   type Archive,
   type ArchiveImage,
@@ -24,7 +28,7 @@ const bia: Actor = { role: 'player', characterId: 'bia' };
 const NOW = '2026-10-11T12:00:00.000Z';
 
 function topic(id: string, name: string, order = 0): ArchiveTopic {
-  return { id, name, order, authorId: 'thorin', deletedAt: null };
+  return { id, parentId: null, name, order, authorId: 'thorin', deletedAt: null };
 }
 
 function note(id: string, topicId: string, extra: Partial<ArchiveNote> = {}): ArchiveNote {
@@ -79,9 +83,13 @@ const fields = {
 
 describe('archive permissions', () => {
   it('lets a player create, edit and remove topics and notes of anyone', () => {
-    const created = applied({ type: 'topic_create', id: 'pets', name: ' Pets ', icon: '🐾' }, bia);
+    const created = applied(
+      { type: 'topic_create', id: 'pets', name: ' Pets ', icon: '🐾', parentId: null },
+      bia,
+    );
     expect(created.archive.topics.at(-1)).toEqual({
       id: 'pets',
+      parentId: null,
       name: 'Pets',
       icon: '🐾',
       order: 3,
@@ -156,7 +164,9 @@ describe('archive permissions', () => {
   );
 
   it('asks an offline player to pick a character before writing', () => {
-    expect(run({ type: 'topic_create', id: 'a', name: 'A' }, { role: 'player' })).toEqual({
+    expect(
+      run({ type: 'topic_create', id: 'a', name: 'A', parentId: null }, { role: 'player' }),
+    ).toEqual({
       ok: false,
       error: 'no_author',
     });
@@ -313,7 +323,7 @@ describe('archive rules', () => {
   });
 
   it('refuses duplicate topic names and unknown commands', () => {
-    expect(run({ type: 'topic_create', id: 'n2', name: 'npcs' }, thorin)).toEqual({
+    expect(run({ type: 'topic_create', id: 'n2', name: 'npcs', parentId: null }, thorin)).toEqual({
       ok: false,
       error: 'duplicate_name',
     });
@@ -428,5 +438,120 @@ describe('note images', () => {
 
   it('finds notes by their image captions', () => {
     expect(searchNotes(withImages, 'portao oito').map((n) => n.id)).toEqual(['zolt']);
+  });
+});
+
+describe('sub-topics', () => {
+  const reino = { ...topic('reino', 'Reino Humano', 0) };
+  const divindade = { ...topic('divindade', 'Divindade', 1), parentId: 'reino' };
+  const enganacao = { ...topic('enganacao', 'Deusa da Enganação', 2), parentId: 'divindade' };
+  const tree: Archive = {
+    topics: [reino, divindade, enganacao, { ...topic('elfos', 'Elfos', 3) }],
+    notes: [note('lyra', 'enganacao')],
+  };
+  const shape = (nodes: TopicNode[]): unknown[] =>
+    nodes.map((node) => [node.topic.id, ...shape(node.children)]);
+
+  it('shows topics as a tree with their paths and branches', () => {
+    expect(shape(topicTree(tree))).toEqual([['reino', ['divindade', ['enganacao']]], ['elfos']]);
+    expect(topicPath(tree, 'enganacao').map((t) => t.id)).toEqual([
+      'reino',
+      'divindade',
+      'enganacao',
+    ]);
+    expect([...topicSubtreeIds(tree, 'divindade')]).toEqual(['divindade', 'enganacao']);
+  });
+
+  it('shows at the top a topic whose parent is missing or that loops back to itself', () => {
+    const odd: Archive = {
+      notes: [],
+      topics: [
+        { ...topic('a', 'A', 0), parentId: 'b' },
+        { ...topic('b', 'B', 1), parentId: 'a' },
+        { ...topic('c', 'C', 2), parentId: 'a' },
+        { ...topic('orfao', 'Órfão', 3), parentId: 'sumiu' },
+      ],
+    };
+    expect(shape(topicTree(odd))).toEqual([['a', ['c']], ['b'], ['orfao']]);
+  });
+
+  it('creates a sub-topic, allowing a name repeated only under another parent', () => {
+    const created = applied(
+      { type: 'topic_create', id: 'div-elfos', name: 'Divindade', parentId: 'elfos' },
+      thorin,
+      tree,
+    );
+    expect(created.archive.topics.at(-1)).toMatchObject({ parentId: 'elfos', name: 'Divindade' });
+
+    const twin = { type: 'topic_create', id: 'x', name: 'divindade', parentId: 'reino' } as const;
+    expect(run(twin, thorin, tree)).toEqual({ ok: false, error: 'duplicate_name' });
+    const lost = { type: 'topic_create', id: 'x', name: 'X', parentId: 'sumiu' } as const;
+    expect(run(lost, thorin, tree)).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it.each([
+    ['itself', 'divindade', 'invalid_parent'],
+    ['a topic below it', 'enganacao', 'invalid_parent'],
+    ['a topic not in use', 'sumiu', 'not_found'],
+  ] as const)('refuses moving a topic under %s', (_case, parentId, error) => {
+    const command = { type: 'topic_update', topicId: 'divindade', name: 'Divindade', parentId } as const;
+    expect(run(command, thorin, tree)).toEqual({ ok: false, error });
+  });
+
+  it('moves a topic with everything below it, logged as an edit', () => {
+    const moved = applied(
+      { type: 'topic_update', topicId: 'divindade', name: 'Divindade', parentId: 'elfos' },
+      thorin,
+      tree,
+    );
+    expect(shape(topicTree(moved.archive))).toEqual([
+      ['reino'],
+      ['elfos', ['divindade', ['enganacao']]],
+    ]);
+    expect(moved.change).toEqual({ target: 'topic', action: 'edited', title: 'Divindade' });
+  });
+
+  it('reorders a topic among its siblings only', () => {
+    const shifted = applied(
+      { type: 'topic_shift', topicId: 'elfos', direction: 'up' },
+      thorin,
+      tree,
+    ).archive;
+    expect(shape(topicTree(shifted))).toEqual([['elfos'], ['reino', ['divindade', ['enganacao']]]]);
+    const alone = { type: 'topic_shift', topicId: 'divindade', direction: 'up' } as const;
+    expect(applied(alone, thorin, tree).archive).toBe(tree);
+  });
+
+  it('refuses to trash a topic with sub-topics in use', () => {
+    expect(run({ type: 'topic_remove', topicId: 'reino' }, thorin, tree)).toEqual({
+      ok: false,
+      error: 'category_not_empty',
+    });
+  });
+
+  it('brings the trashed topics above back with a restored topic or note', () => {
+    let trashed = applied({ type: 'note_remove', noteId: 'lyra' }, thorin, tree).archive;
+    for (const topicId of ['enganacao', 'divindade', 'reino']) {
+      trashed = applied({ type: 'topic_remove', topicId }, thorin, trashed).archive;
+    }
+    const byNote = applied({ type: 'note_restore', noteId: 'lyra' }, bia, trashed).archive;
+    expect(shape(topicTree(byNote))).toEqual([['reino', ['divindade', ['enganacao']]], ['elfos']]);
+    const byTopic = applied({ type: 'topic_restore', topicId: 'divindade' }, bia, trashed).archive;
+    expect(shape(topicTree(byTopic))).toEqual([['reino', ['divindade']], ['elfos']]);
+  });
+
+  it('moves to the top what was under a topic deleted for good', () => {
+    const odd: Archive = {
+      notes: [],
+      topics: [{ ...reino, deletedAt: NOW }, divindade],
+    };
+    const emptied = applied({ type: 'trash_empty' }, master, odd).archive;
+    expect(emptied.topics).toEqual([{ ...divindade, parentId: null }]);
+  });
+
+  it('reads topics saved before sub-topics as top topics', () => {
+    const old = { id: 'reino', name: 'Reino', order: 0, authorId: 'mestre', deletedAt: null };
+    const parsed = parseArchive({ topics: [old], notes: [] });
+    expect(parsed.ok && parsed.archive.topics[0]?.parentId).toBeNull();
   });
 });

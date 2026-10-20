@@ -8,12 +8,16 @@ import {
   MASTER_AUTHOR,
   searchNotes,
   topicNotes,
+  topicPath,
+  topicTree,
   trashedNotes,
   trashedTopics,
   type Archive,
   type ArchiveCommand,
   type ArchiveNote,
   type ArchiveTopic,
+  type NoteFields,
+  type TopicNode,
 } from '../../systems/Archive';
 import { el } from '../dom';
 import type { UiMemory } from '../uiMemory';
@@ -27,6 +31,7 @@ import {
   topicEditor,
   topicName,
   trashView,
+  type TopicChoice,
 } from './archiveViews';
 
 const TOPIC_MEMORY_KEY = 'archive.topic';
@@ -59,6 +64,8 @@ export class ArchiveWindow {
   /** Phones show one column at a time. */
   private step: 'topics' | 'notes' = 'topics';
   private readonly expanded = new Set<string>();
+  /** Topics whose sub-topics show in the tree. */
+  private readonly openTopics = new Set<string>();
   /** Files uploaded by the open note editor and not saved yet. */
   private dropUnsaved: (() => Promise<void>) | null = null;
   private readonly cleanups: (() => void)[] = [];
@@ -83,6 +90,7 @@ export class ArchiveWindow {
   open(): void {
     if (this.dialog) return;
     this.topicId = this.deps.memory.get(TOPIC_MEMORY_KEY) ?? null;
+    if (this.topicId) this.revealTopic(this.topicId);
     this.pane = { kind: 'topic' };
     this.step = this.topicId ? 'notes' : 'topics';
     const dialog = this.buildDialog();
@@ -146,7 +154,7 @@ export class ArchiveWindow {
     if (this.topicId && !topics.some((topic) => topic.id === this.topicId)) this.topicId = null;
     this.layout.dataset.step = this.step;
     this.renderCharacter();
-    this.topicsColumn.replaceChildren(...this.topicItems(archive, topics));
+    this.topicsColumn.replaceChildren(...this.topicItems(archive));
     this.notesColumn.replaceChildren(...this.rightColumn(archive, topics));
   }
 
@@ -169,22 +177,22 @@ export class ArchiveWindow {
 
   // ---------------------------------------------------------------- left column
 
-  private topicItems(archive: Archive, topics: readonly ArchiveTopic[]): HTMLElement[] {
+  private topicItems(archive: Archive): HTMLElement[] {
     const trashCount = trashedTopics(archive).length + trashedNotes(archive).length;
+    const tree = topicTree(archive);
+    const ownCounts = new Map(
+      activeTopics(archive).map((topic) => [topic.id, topicNotes(archive, topic.id).length]),
+    );
     const list =
-      topics.length === 0
+      tree.length === 0
         ? el('p', { class: 'panel__hint' }, t.archive.noTopics)
-        : el(
-            'ul',
-            { class: 'archive__topic-items' },
-            ...topics.map((topic) => this.topicItem(topic, topicNotes(archive, topic.id).length)),
-          );
+        : this.topicBranch(tree, ownCounts, 'archive__topic-items');
     return [
       el(
         'div',
         { class: 'row archive__topics-bar' },
         el('h3', { class: 'section-title' }, t.archive.topics),
-        button(t.archive.newTopic, () => this.editTopic(null)),
+        button(t.archive.newTopic, () => this.editTopic(null, null)),
       ),
       list,
       el(
@@ -199,22 +207,51 @@ export class ArchiveWindow {
     ];
   }
 
-  private topicItem(topic: ArchiveTopic, count: number): HTMLElement {
+  private topicBranch(
+    nodes: readonly TopicNode[],
+    ownCounts: ReadonlyMap<string, number>,
+    className: string,
+  ): HTMLElement {
+    return el('ul', { class: className }, ...nodes.map((node) => this.topicItem(node, ownCounts)));
+  }
+
+  private topicItem(node: TopicNode, ownCounts: ReadonlyMap<string, number>): HTMLElement {
+    const { topic, children } = node;
     const isCurrent = topic.id === this.topicId && this.pane.kind !== 'trash';
+    const isOpen = this.openTopics.has(topic.id);
+    const name = topicName(topic);
     return el(
       'li',
       {},
       el(
-        'button',
-        {
-          class: 'archive__topic',
-          type: 'button',
-          'aria-current': isCurrent ? 'true' : undefined,
-          onclick: () => this.selectTopic(topic.id),
-        },
-        el('span', { class: 'archive__topic-name' }, topicName(topic)),
-        el('span', { class: 'archive__count' }, String(count)),
+        'div',
+        { class: 'archive__topic-row' },
+        children.length > 0
+          ? el(
+              'button',
+              {
+                class: 'archive__topic-toggle',
+                type: 'button',
+                'aria-expanded': String(isOpen),
+                'aria-label': isOpen ? t.archive.collapseTopic(name) : t.archive.expandTopic(name),
+                onclick: () => this.toggleTopic(topic.id),
+              },
+              isOpen ? '▾' : '▸',
+            )
+          : el('span', { class: 'archive__topic-toggle', 'aria-hidden': 'true' }),
+        el(
+          'button',
+          {
+            class: 'archive__topic',
+            type: 'button',
+            'aria-current': isCurrent ? 'true' : undefined,
+            onclick: () => this.selectTopic(topic.id),
+          },
+          el('span', { class: 'archive__topic-name' }, name),
+          el('span', { class: 'archive__count' }, String(subtreeCount(node, ownCounts))),
+        ),
       ),
+      isOpen && children.length > 0 && this.topicBranch(children, ownCounts, 'archive__subtopics'),
     );
   }
 
@@ -227,24 +264,27 @@ export class ArchiveWindow {
       t.archive.backToTopics,
     );
     if (this.pane.kind === 'editor') return [back, this.pane.node];
-    if (this.search.value.trim()) return [back, ...this.searchResults(archive, topics)];
+    if (this.search.value.trim()) return [back, ...this.searchResults(archive)];
     if (this.pane.kind === 'trash') return [back, ...this.trash(archive)];
     const topic = topics.find((item) => item.id === this.topicId);
     if (!topic) return [back, el('p', { class: 'panel__hint' }, t.archive.pickTopic)];
-    return [back, this.topicHeader(topic), this.noteList(topicNotes(archive, topic.id), topics)];
+    return [back, this.topicHeader(archive, topic), this.noteList(topicNotes(archive, topic.id))];
   }
 
-  private topicHeader(topic: ArchiveTopic): HTMLElement {
+  private topicHeader(archive: Archive, topic: ArchiveTopic): HTMLElement {
+    const above = topicPath(archive, topic.id).slice(0, -1).map(topicName);
     return el(
       'header',
       { class: 'archive__topic-header' },
+      above.length > 0 && el('p', { class: 'archive__topic-path' }, t.archive.topicPath(above)),
       el('h3', { class: 'archive__topic-title' }, topicName(topic)),
       el(
         'div',
         { class: 'row row--wrap' },
         button(t.archive.newNote, () => this.editNote(null), { primary: true }),
         button(t.archive.paste, () => this.pasteInto(topic)),
-        button(t.archive.renameTopic, () => this.editTopic(topic)),
+        button(t.archive.newSubtopic, () => this.editTopic(null, topic.id)),
+        button(t.archive.renameTopic, () => this.editTopic(topic, topic.parentId)),
         button(
           '↑',
           () => void this.run({ type: 'topic_shift', topicId: topic.id, direction: 'up' }),
@@ -263,27 +303,23 @@ export class ArchiveWindow {
     );
   }
 
+  /** `topicPaths` labels each note with its topic (search results). */
   private noteList(
     notes: readonly ArchiveNote[],
-    topics: readonly ArchiveTopic[],
-    withTopicLabel = false,
+    topicPaths?: ReadonlyMap<string, string>,
   ): HTMLElement {
     if (notes.length === 0) return el('p', { class: 'panel__hint' }, t.archive.emptyTopic);
-    const nameOf = new Map(topics.map((topic) => [topic.id, topicName(topic)]));
     return el(
       'ul',
       { class: 'archive__note-list' },
       ...notes.map((note) =>
         noteCard(note, {
           isExpanded: this.expanded.has(note.id),
-          otherTopics: topics.filter((topic) => topic.id !== note.topicId),
           authorName: (id) => this.authorName(id),
-          topicLabel: withTopicLabel ? nameOf.get(note.topicId) : undefined,
+          topicLabel: topicPaths?.get(note.topicId),
           onToggle: () => this.toggle(note.id),
           onEdit: () => this.editNote(note),
-          onMove: (topicId) => void this.run({ type: 'note_move', noteId: note.id, topicId }),
           onShift: (direction) => void this.run({ type: 'note_shift', noteId: note.id, direction }),
-          onRemove: () => void this.run({ type: 'note_remove', noteId: note.id }),
           images: {
             url: (image, variant) => this.deps.archive.imageUrl(note.id, image, variant),
             open: (index) =>
@@ -296,16 +332,21 @@ export class ArchiveWindow {
     );
   }
 
-  private searchResults(archive: Archive, topics: readonly ArchiveTopic[]): HTMLElement[] {
+  private searchResults(archive: Archive): HTMLElement[] {
     const found = searchNotes(archive, this.search.value);
+    const paths = new Map(topicChoices(topicTree(archive)).map(({ id, path }) => [id, path]));
     return [
       el('p', { class: 'panel__hint' }, t.archive.searchResults(found.length)),
-      this.noteList(found, topics, true),
+      this.noteList(found, paths),
     ];
   }
 
   private trash(archive: Archive): HTMLElement[] {
-    const names = new Map(archive.topics.map((topic) => [topic.id, topicName(topic)]));
+    const names = new Map([
+      ...archive.topics.map((topic): [string, string] => [topic.id, topicName(topic)]),
+      // Topics in use read with their whole path.
+      ...topicChoices(topicTree(archive)).map(({ id, path }): [string, string] => [id, path]),
+    ]);
     return trashView({
       topics: trashedTopics(archive),
       notes: trashedNotes(archive),
@@ -333,10 +374,28 @@ export class ArchiveWindow {
   }
 
   private selectTopic(topicId: string): void {
-    this.topicId = topicId;
-    this.deps.memory.set(TOPIC_MEMORY_KEY, topicId);
+    this.focusTopic(topicId);
+    this.openTopics.add(topicId);
     this.search.value = '';
     this.showPane({ kind: 'topic' });
+  }
+
+  /** Makes `topicId` the topic shown, with the tree open down to it. */
+  private focusTopic(topicId: string): void {
+    this.topicId = topicId;
+    this.deps.memory.set(TOPIC_MEMORY_KEY, topicId);
+    this.revealTopic(topicId);
+  }
+
+  private revealTopic(topicId: string): void {
+    const above = topicPath(this.deps.archive.current, topicId).slice(0, -1);
+    above.forEach((topic) => this.openTopics.add(topic.id));
+  }
+
+  private toggleTopic(topicId: string): void {
+    if (this.openTopics.has(topicId)) this.openTopics.delete(topicId);
+    else this.openTopics.add(topicId);
+    this.render();
   }
 
   private showPane(pane: Pane): void {
@@ -361,18 +420,21 @@ export class ArchiveWindow {
     this.render();
   }
 
-  private editTopic(topic: ArchiveTopic | null): void {
+  private editTopic(topic: ArchiveTopic | null, parentId: string | null): void {
+    // Neither the topic itself nor anything below it can hold it.
+    const skip = new Set(topic ? [topic.id] : []);
     const node = topicEditor({
       topic,
+      parentId,
+      parents: topicChoices(topicTree(this.deps.archive.current), skip),
       onCancel: () => this.closeEditor(),
-      onSave: async ({ name, icon }) => {
+      onSave: async (fields) => {
         const id = topic?.id ?? newId('topic');
         const command: ArchiveCommand = topic
-          ? { type: 'topic_update', topicId: id, name, icon }
-          : { type: 'topic_create', id, name, icon };
+          ? { type: 'topic_update', topicId: id, ...fields }
+          : { type: 'topic_create', id, ...fields };
         if (!(await this.run(command))) return;
-        this.topicId = id;
-        this.deps.memory.set(TOPIC_MEMORY_KEY, id);
+        this.focusTopic(id);
         this.closeEditor();
       },
     });
@@ -380,7 +442,7 @@ export class ArchiveWindow {
   }
 
   private editNote(note: ArchiveNote | null): void {
-    const topicId = this.topicId;
+    const topicId = note?.topicId ?? this.topicId;
     if (!topicId) return;
     this.dropUnsavedImages();
     // Known before saving: images are uploaded under the note while it is edited.
@@ -397,19 +459,34 @@ export class ArchiveWindow {
       note,
       day: this.deps.game.current.day,
       isMaster: this.isMaster,
+      topicId,
+      topics: topicChoices(topicTree(this.deps.archive.current)),
       attachments,
       onCancel: () => this.closeEditor(),
-      onSave: async (fields) => {
-        const command: ArchiveCommand = note
-          ? { type: 'note_update', noteId: id, ...fields }
-          : { type: 'note_create', id, topicId, ...fields };
-        if (!(await this.run(command))) return;
+      onRemove: async () => {
+        if (await this.run({ type: 'note_remove', noteId: id })) this.closeEditor();
+      },
+      onSave: async (fields, targetId) => {
+        if (!(await this.saveNote(note, id, fields, targetId))) return;
         this.dropUnsaved = null;
         this.expanded.add(id);
+        if (targetId !== topicId) this.focusTopic(targetId);
         this.closeEditor();
       },
     });
     this.showPane({ kind: 'editor', node });
+  }
+
+  /** The move only applies once the edit is saved, so a refused edit moves nothing. */
+  private async saveNote(
+    note: ArchiveNote | null,
+    id: string,
+    fields: NoteFields,
+    topicId: string,
+  ): Promise<boolean> {
+    if (!note) return this.run({ type: 'note_create', id, topicId, ...fields });
+    if (!(await this.run({ type: 'note_update', noteId: id, ...fields }))) return false;
+    return note.topicId === topicId || this.run({ type: 'note_move', noteId: id, topicId });
   }
 
   private dropUnsavedImages(): void {
@@ -438,4 +515,27 @@ export class ArchiveWindow {
     });
     this.showPane({ kind: 'editor', node });
   }
+}
+
+function subtreeCount(node: TopicNode, ownCounts: ReadonlyMap<string, number>): number {
+  return node.children.reduce(
+    (sum, child) => sum + subtreeCount(child, ownCounts),
+    ownCounts.get(node.topic.id) ?? 0,
+  );
+}
+
+/** Every topic of the tree in reading order, labeled with its path; `skip` leaves out whole branches. */
+function topicChoices(
+  nodes: readonly TopicNode[],
+  skip: ReadonlySet<string> = new Set(),
+  above: readonly string[] = [],
+): TopicChoice[] {
+  return nodes.flatMap((node) => {
+    if (skip.has(node.topic.id)) return [];
+    const path = [...above, topicName(node.topic)];
+    return [
+      { id: node.topic.id, path: t.archive.topicPath(path) },
+      ...topicChoices(node.children, skip, path),
+    ];
+  });
 }

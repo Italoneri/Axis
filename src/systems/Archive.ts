@@ -22,6 +22,8 @@ export const noteVisibilitySchema = z.enum(['todos', 'mestre']);
 
 export const archiveTopicSchema = z.object({
   id: recordId,
+  /** The topic it sits under; null at the top. Archives from before sub-topics read as top. */
+  parentId: recordId.nullable().default(null),
   name: z.string().trim().min(1).max(TITLE_LIMIT),
   /** An emoji, shown before the name. */
   icon: z.string().max(16).optional(),
@@ -99,7 +101,11 @@ const noteFields = {
   // Checked by the rules, so too many images is reported as such, not as a bad command.
   images: z.array(archiveImageSchema).max(100),
 };
-const topicFields = { name: z.string(), icon: z.string().max(16).optional() };
+const topicFields = {
+  name: z.string(),
+  icon: z.string().max(16).optional(),
+  parentId: recordId.nullable(),
+};
 
 const command = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
   z.object({ type: z.literal(type), ...shape });
@@ -142,6 +148,8 @@ export type ArchiveError =
   | 'duplicate_id'
   | 'not_found'
   | 'category_not_empty'
+  /** A topic cannot go inside itself or one of its sub-topics. */
+  | 'invalid_parent'
   | 'forbidden'
   | 'too_long'
   | 'too_many_images'
@@ -194,6 +202,71 @@ const byOrder = (a: { order: number }, b: { order: number }) => a.order - b.orde
 /** Topics in use, in display order. */
 export function activeTopics(archive: Archive): ArchiveTopic[] {
   return archive.topics.filter((topic) => topic.deletedAt === null).sort(byOrder);
+}
+
+export interface TopicNode {
+  topic: ArchiveTopic;
+  children: TopicNode[];
+}
+
+/** Topics in use as the tree the window shows, each level in display order. */
+export function topicTree(archive: Archive): TopicNode[] {
+  const parents = shownParents(archive);
+  const build = (parentId: string | null): TopicNode[] =>
+    activeTopics(archive)
+      .filter((topic) => parents.get(topic.id) === parentId)
+      .map((topic) => ({ topic, children: build(topic.id) }));
+  return build(null);
+}
+
+/** From the top topic down to `topicId` (included); empty when it is not in use. */
+export function topicPath(archive: Archive, topicId: string): ArchiveTopic[] {
+  const parents = shownParents(archive);
+  const byId = new Map(activeTopics(archive).map((topic) => [topic.id, topic]));
+  const path: ArchiveTopic[] = [];
+  for (let id: string | null = topicId; id !== null; id = parents.get(id) ?? null) {
+    const topic = byId.get(id);
+    if (!topic) break;
+    path.unshift(topic);
+  }
+  return path;
+}
+
+/** `topicId` and every topic in use below it. */
+export function topicSubtreeIds(archive: Archive, topicId: string): Set<string> {
+  const parents = shownParents(archive);
+  const ids = new Set([topicId]);
+  // Parents are a forest, so walking up from each topic always ends.
+  for (const topic of activeTopics(archive)) {
+    for (let id = parents.get(topic.id) ?? null; id !== null; id = parents.get(id) ?? null) {
+      if (id === topicId) ids.add(topic.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * The parent each topic in use shows under: null at the top, also when its
+ * parent is not in use or when walking up leads back to it (a loop written by
+ * hand straight into the database), so every topic in use is always reachable.
+ */
+function shownParents(archive: Archive): Map<string, string | null> {
+  const active = new Map(activeTopics(archive).map((topic) => [topic.id, topic]));
+  const parentOf = (topic: ArchiveTopic) =>
+    topic.parentId !== null && active.has(topic.parentId) ? topic.parentId : null;
+  const loopsBack = (topic: ArchiveTopic) => {
+    const seen = new Set<string>();
+    for (let id = parentOf(topic); id !== null && !seen.has(id);) {
+      if (id === topic.id) return true;
+      seen.add(id);
+      const parent = active.get(id);
+      id = parent ? parentOf(parent) : null;
+    }
+    return false;
+  };
+  return new Map(
+    [...active.values()].map((topic) => [topic.id, loopsBack(topic) ? null : parentOf(topic)]),
+  );
 }
 
 /** A topic's notes in display order: pinned first, then by order, then oldest first. */
@@ -325,11 +398,13 @@ const done = (archive: Archive, change: ArchiveChange | null): ArchiveOutcome =>
 });
 
 const handlers: Handlers = {
-  topic_create: ({ id, name, icon }, { archive, authorId }) => {
-    const error = idError(id, archive.topics) ?? topicNameError(archive, name);
+  topic_create: ({ id, name, icon, parentId }, { archive, authorId }) => {
+    if (parentId !== null && !findActiveTopic(archive, parentId)) return fail('not_found');
+    const error = idError(id, archive.topics) ?? topicNameError(archive, name, parentId);
     if (error) return fail(error);
     const topic: ArchiveTopic = {
       id,
+      parentId,
       name: name.trim(),
       ...iconField(icon),
       order: nextOrder(archive.topics),
@@ -340,27 +415,34 @@ const handlers: Handlers = {
     return done({ ...archive, topics: [...archive.topics, topic] }, change);
   },
 
-  topic_update: ({ topicId, name, icon }, { archive }) => {
+  topic_update: ({ topicId, name, icon, parentId }, { archive }) => {
     const topic = findActiveTopic(archive, topicId);
     if (!topic) return fail('not_found');
-    const error = topicNameError(archive, name, topicId);
+    const error =
+      parentError(archive, topicId, parentId) ?? topicNameError(archive, name, parentId, topicId);
     if (error) return fail(error);
-    const { id, order, authorId, deletedAt } = topic;
+    const { id, authorId, deletedAt } = topic;
+    const isMoving = parentId !== topic.parentId;
     const next: ArchiveTopic = {
       id,
-      order,
+      parentId,
+      // Goes last among its new siblings.
+      order: isMoving ? nextOrder(archive.topics) : topic.order,
       authorId,
       deletedAt,
       name: name.trim(),
       ...iconField(icon),
     };
-    if (next.name === topic.name && next.icon === topic.icon) return unchanged(archive);
+    if (!isMoving && next.name === topic.name && next.icon === topic.icon) {
+      return unchanged(archive);
+    }
+    // Moving under another topic reads as an edit: the log entries are checked by the server.
     const change = { target: 'topic', action: 'edited', title: next.name } as const;
     return done(replaceTopic(archive, next), change);
   },
 
   topic_shift: ({ topicId, direction }, { archive }) => {
-    const topics = activeTopics(archive);
+    const topics = siblingTopics(archive, topicId);
     const reordered = shift(topics, topicId, direction);
     if (!reordered) return fail('not_found');
     if (reordered === topics) return unchanged(archive);
@@ -375,9 +457,9 @@ const handlers: Handlers = {
     const topic = findActiveTopic(archive, topicId);
     if (!topic) return fail('not_found');
     // Counts every note, the master's too: a player is refused without learning why.
-    if (archive.notes.some((n) => n.topicId === topicId && n.deletedAt === null)) {
-      return fail('category_not_empty');
-    }
+    const hasNotes = archive.notes.some((n) => n.topicId === topicId && n.deletedAt === null);
+    const hasTopics = archive.topics.some((t) => t.parentId === topicId && t.deletedAt === null);
+    if (hasNotes || hasTopics) return fail('category_not_empty');
     const next = replaceTopic(archive, { ...topic, deletedAt: ctx.now });
     return done(next, { target: 'topic', action: 'removed', title: topic.name });
   },
@@ -385,10 +467,9 @@ const handlers: Handlers = {
   topic_restore: ({ topicId }, { archive }) => {
     const topic = archive.topics.find((t) => t.id === topicId && t.deletedAt !== null);
     if (!topic) return fail('not_found');
-    const error = topicNameError(archive, topic.name, topicId);
-    if (error) return fail(error);
-    const next = replaceTopic(archive, { ...topic, deletedAt: null });
-    return done(next, { target: 'topic', action: 'restored', title: topic.name });
+    const restored = restoreWithParents(archive, topic);
+    if (typeof restored === 'string') return fail(restored);
+    return done(restored, { target: 'topic', action: 'restored', title: topic.name });
   },
 
   note_create: ({ id, topicId, ...fields }, { archive, ctx, authorId }) => {
@@ -483,8 +564,8 @@ const handlers: Handlers = {
     const topic = note && archive.topics.find((t) => t.id === note.topicId);
     if (!note || !topic) return fail('not_found');
     // A note never sits in a topic that is in the trash: the topic comes back with it.
-    const withTopic =
-      topic.deletedAt === null ? archive : replaceTopic(archive, { ...topic, deletedAt: null });
+    const withTopic = restoreWithParents(archive, topic);
+    if (typeof withTopic === 'string') return fail(withTopic);
     const next = replaceNote(withTopic, { ...note, deletedAt: null });
     return done(next, noteChange(note, 'restored'));
   },
@@ -528,12 +609,19 @@ const handlers: Handlers = {
 
   trash_empty: (_command, { archive, ctx }) => {
     if (ctx.viewer.role !== 'master') return fail('forbidden');
-    const topics = archive.topics.filter((topic) => topic.deletedAt === null);
-    const kept = new Set(topics.map((topic) => topic.id));
-    const notes = archive.notes.filter((n) => n.deletedAt === null && kept.has(n.topicId));
-    if (topics.length === archive.topics.length && notes.length === archive.notes.length) {
+    const kept = new Set(
+      archive.topics.filter((topic) => topic.deletedAt === null).map((topic) => topic.id),
+    );
+    if (kept.size === archive.topics.length && !archive.notes.some((n) => n.deletedAt !== null)) {
       return unchanged(archive);
     }
+    // Same as the database: a topic whose parent is gone for good moves to the top.
+    const topics = archive.topics
+      .filter((topic) => kept.has(topic.id))
+      .map((topic) =>
+        topic.parentId === null || kept.has(topic.parentId) ? topic : { ...topic, parentId: null },
+      );
+    const notes = archive.notes.filter((n) => n.deletedAt === null && kept.has(n.topicId));
     return done({ topics, notes }, { target: 'trash', action: 'emptied' });
   },
 };
@@ -542,16 +630,72 @@ function idError(id: string, taken: readonly { id: string }[]): ArchiveError | n
   return taken.some((other) => other.id === id) ? 'duplicate_id' : null;
 }
 
-/** Same rule as the categories: not blank, not repeated (ignoring case and spaces). */
-function topicNameError(archive: Archive, name: string, ownId?: string): ArchiveError | null {
+/** Not blank, not repeated among its siblings (ignoring case and spaces). */
+function topicNameError(
+  archive: Archive,
+  name: string,
+  parentId: string | null,
+  ownId?: string,
+): ArchiveError | null {
   const trimmed = name.trim();
   if (!trimmed) return 'empty_name';
   if (trimmed.length > TITLE_LIMIT) return 'too_long';
   const lower = trimmed.toLocaleLowerCase('pt-BR');
   const clash = activeTopics(archive).some(
-    (topic) => topic.id !== ownId && topic.name.toLocaleLowerCase('pt-BR') === lower,
+    (topic) =>
+      topic.id !== ownId &&
+      topic.parentId === parentId &&
+      topic.name.toLocaleLowerCase('pt-BR') === lower,
   );
   return clash ? 'duplicate_name' : null;
+}
+
+/** The new parent of `topicId` must be in use and not the topic itself nor one below it. */
+function parentError(
+  archive: Archive,
+  topicId: string,
+  parentId: string | null,
+): ArchiveError | null {
+  if (parentId === null) return null;
+  if (!findActiveTopic(archive, parentId)) return 'not_found';
+  return topicSubtreeIds(archive, topicId).has(parentId) ? 'invalid_parent' : null;
+}
+
+/** Topics in use shown beside `topicId` (itself included), in display order. */
+function siblingTopics(archive: Archive, topicId: string): ArchiveTopic[] {
+  const parentId = topicPath(archive, topicId).at(-2)?.id ?? null;
+  const level = (nodes: TopicNode[]): TopicNode[] =>
+    parentId === null
+      ? nodes
+      : nodes.flatMap((node) =>
+          node.topic.id === parentId ? node.children : level(node.children),
+        );
+  return level(topicTree(archive)).map((node) => node.topic);
+}
+
+/**
+ * The archive with `topic` and the trashed topics above it back in use, so
+ * nothing in use ever sits under a topic in the trash. A topic whose parent
+ * is gone for good comes back as it is (it shows at the top).
+ */
+function restoreWithParents(archive: Archive, topic: ArchiveTopic): Archive | ArchiveError {
+  const byId = new Map(archive.topics.map((t) => [t.id, t]));
+  const chain: ArchiveTopic[] = [];
+  for (let current = topic; current.deletedAt !== null;) {
+    if (chain.includes(current)) break;
+    chain.push(current);
+    const parent = current.parentId === null ? undefined : byId.get(current.parentId);
+    if (!parent) break;
+    current = parent;
+  }
+  let next = archive;
+  // Top down, so each name is checked among the siblings it will really have.
+  for (const restored of chain.reverse()) {
+    const error = topicNameError(next, restored.name, restored.parentId, restored.id);
+    if (error) return error;
+    next = replaceTopic(next, { ...restored, deletedAt: null });
+  }
+  return next;
 }
 
 function findActiveTopic(archive: Archive, id: string): ArchiveTopic | undefined {
