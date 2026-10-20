@@ -1097,7 +1097,8 @@ export const t = {
       badge: '🔗',
       seedOf: (crop: string) => `Semente de ${crop}`,
       harvestOf: (crop: string) => `Colheita de ${crop}`,
-      potionOf: (recipe: string) => `Poção de ${recipe}`,
+      potionOf: (count: number) =>
+        count === 1 ? 'Poção de 1 receita' : `Poção de ${count} receitas`,
       ingredientOf: (count: number) =>
         count === 1 ? 'Ingrediente de 1 receita' : `Ingrediente de ${count} receitas`,
       removeAsk: (uses: string) =>

@@ -4,6 +4,7 @@ import { MASTER_ACTOR } from '../../commands/applyCommand';
 import { t } from '../../i18n/pt-BR';
 import type { GameStore } from '../../store';
 import { MASTER_AUTHOR } from '../../systems/Archive';
+import { depotSnapshot, hasLinks, itemLinks } from '../../systems/Stock';
 import {
   activeSections,
   privateOwners,
@@ -24,6 +25,7 @@ import {
   depotTrashView,
   itemCard,
   itemEditor,
+  linkLabels,
   sectionEditor,
   sectionName,
   type MoveTarget,
@@ -324,6 +326,7 @@ export class DepotWindow {
           authorName: (id) => this.authorName(id),
           sectionLabel: withSectionLabel && section ? this.targetLabel(section) : undefined,
           isPrivate: section !== undefined && section.ownerId !== null,
+          links: this.linksOf(item.id),
           onToggle: () => this.toggle(item.id),
           onEdit: () => this.editItem(item),
           onAdjust: (delta) => void this.run({ type: 'item_adjust', itemId: item.id, delta }),
@@ -333,6 +336,13 @@ export class DepotWindow {
         });
       }),
     );
+  }
+
+  /** What in the garden and the lab uses the item, read from the game. */
+  private linksOf(itemId: string): string[] {
+    const state = this.deps.game.current;
+    const links = itemLinks(state, itemId);
+    return hasLinks(links) ? linkLabels(state, links, depotSnapshot(this.deps.depot.current)) : [];
   }
 
   /** Every other section in use, the private ones labelled with their area. */

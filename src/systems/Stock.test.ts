@@ -3,6 +3,8 @@ import type { StockRef } from '../model/schema';
 import type { Depot, DepotItem } from './Depot';
 import {
   depotSnapshot,
+  hasLinks,
+  itemLinks,
   lostName,
   parseRefKey,
   refExists,
@@ -135,5 +137,50 @@ describe('sumMoves', () => {
         { itemId: 'a', delta: -1, mode: 'strict' },
       ]),
     ).toThrow(/a/);
+  });
+});
+
+describe('itemLinks', () => {
+  const mint = {
+    id: 'c1',
+    seed: { source: 'depot', itemId: 'cavalo' },
+    harvest: { source: 'material', materialId: 'iron' },
+    plotType: 'canteiro',
+    days: 1,
+    yield: 1,
+    rare: true,
+  } as const;
+  const recipe = (id: string, output: StockRef, ingredient: StockRef) => ({
+    id,
+    output,
+    outputQty: 1,
+    ingredients: [{ ref: ingredient, quantity: 1 }],
+    stationType: 'alambique' as const,
+    days: 1,
+    hidden: false,
+  });
+  const linked = withIron(1, {
+    garden: { crops: [mint], plots: {} },
+    lab: {
+      recipes: [
+        recipe('r1', cavalo, iron),
+        recipe('r2', iron, cavalo),
+        recipe('r3', { source: 'material', materialId: 'wood' }, cavalo),
+      ],
+      stations: {},
+    },
+  });
+
+  it('findsEveryCropAndRecipeThatUsesTheItem', () => {
+    const links = itemLinks(linked, 'cavalo');
+    expect(links.seedOf.map((c) => c.id)).toEqual(['c1']);
+    expect(links.harvestOf).toEqual([]);
+    expect(links.outputOf.map((r) => r.id)).toEqual(['r1']);
+    expect(links.ingredientOf.map((r) => r.id)).toEqual(['r2', 'r3']);
+  });
+
+  it('findsNothingForAnUnlinkedItem', () => {
+    expect(hasLinks(itemLinks(linked, 'lixo'))).toBe(false);
+    expect(hasLinks(itemLinks(linked, 'cavalo'))).toBe(true);
   });
 });

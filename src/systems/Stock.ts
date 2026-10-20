@@ -1,4 +1,10 @@
-import { stockRefKey, type GameState, type StockRef } from '../model/schema';
+import {
+  stockRefKey,
+  type Crop,
+  type GameState,
+  type Recipe,
+  type StockRef,
+} from '../model/schema';
 import type { Actor } from '../commands/schema';
 import { groupItem, type Depot } from './Depot';
 import { addStock, findMaterial } from './Materials';
@@ -146,4 +152,28 @@ export function gainStock(
   if (!item) return { state, stock: [], name: lostName(ref.itemId, depot), lost: { lost: true } };
   const move = { itemId: item.id, delta: quantity, mode: 'strict' } as const;
   return { state, stock: [move], name: item.name, lost: {} };
+}
+
+/** What in the garden and the lab points at a depot item (the 🔗 on its card). */
+export interface ItemLinks {
+  seedOf: Crop[];
+  harvestOf: Crop[];
+  outputOf: Recipe[];
+  ingredientOf: Recipe[];
+}
+
+export function itemLinks(state: GameState, itemId: string): ItemLinks {
+  const isItem = (ref: StockRef) => ref.source === 'depot' && ref.itemId === itemId;
+  const { crops } = state.garden;
+  const { recipes } = state.lab;
+  return {
+    seedOf: crops.filter((crop) => isItem(crop.seed)),
+    harvestOf: crops.filter((crop) => isItem(crop.harvest)),
+    outputOf: recipes.filter((recipe) => isItem(recipe.output)),
+    ingredientOf: recipes.filter((recipe) => recipe.ingredients.some((i) => isItem(i.ref))),
+  };
+}
+
+export function hasLinks(links: ItemLinks): boolean {
+  return Object.values(links).some((list) => list.length > 0);
 }
