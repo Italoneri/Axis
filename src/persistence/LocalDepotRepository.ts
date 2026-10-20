@@ -57,7 +57,8 @@ export class LocalDepotRepository implements DepotRepository {
     return () => events.removeEventListener('storage', listener);
   }
 
-  private read(): Depot {
+  /** The stored depot, read now (the offline game commits its stock moves through it). */
+  read(): Depot {
     const text = this.storage.getItem(DEPOT_STORAGE_KEY);
     if (text === null) return EMPTY_DEPOT;
     const parsed = parseStoredText(text);
@@ -69,7 +70,7 @@ export class LocalDepotRepository implements DepotRepository {
     return EMPTY_DEPOT;
   }
 
-  private write(depot: Depot): void {
+  write(depot: Depot): void {
     this.storage.setItem(DEPOT_STORAGE_KEY, JSON.stringify(depot));
   }
 }

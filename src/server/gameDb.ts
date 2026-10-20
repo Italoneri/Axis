@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { LogEntry } from '../model/schema';
 import type { DepotDelivery } from '../systems/Depot';
+import type { DepotItemView, DepotSnapshot, StockMove } from '../systems/Stock';
 
 // The database as the Edge Function needs it. Every call is a SQL function in
 // supabase/migrations, executable only with the service role.
@@ -22,6 +23,16 @@ export interface GameUpdate {
   entries: readonly LogEntry[];
 }
 
+export const stockCommitStatuses = ['ok', 'conflict', 'stock_short', 'stock_missing'] as const;
+/** `conflict`: the revision moved on or a row the rules read changed since. */
+export type StockCommitStatus = (typeof stockCommitStatuses)[number];
+
+export interface StockUpdate extends GameUpdate {
+  moves: readonly StockMove[];
+  /** The rows the rules read: the commit refuses when any of them changed since. */
+  reads: DepotSnapshot;
+}
+
 export interface GameDb {
   /** Null when the game does not exist or the user is not in it (indistinguishable on purpose). */
   loadForMember(gameId: string, userId: string): Promise<MemberGame | null>;
@@ -29,6 +40,10 @@ export interface GameDb {
   commitUpdate(update: GameUpdate): Promise<boolean>;
   /** commitUpdate plus the depot rows, in one transaction; false on revision conflict. */
   commitPurchase(update: GameUpdate & { delivery: DepotDelivery }): Promise<boolean>;
+  /** The group depot items among `itemIds`, as the rules read them; private ones never. */
+  loadDepotItems(gameId: string, itemIds: readonly string[]): Promise<DepotItemView[]>;
+  /** commitUpdate plus the depot moves, in one transaction; any refusal changes nothing. */
+  commitWithStock(update: StockUpdate): Promise<StockCommitStatus>;
   /** Creates the game with `ownerId` as its master; returns the game id. */
   createGame(name: string, state: unknown, ownerId: string): Promise<string>;
   createInvite(invite: NewInvite): Promise<string>;
@@ -154,6 +169,18 @@ export function rpcGameDb(client: RpcClient): GameDb {
     commitUpdate: (update) => call('commit_game_update', updateArgs(update), z.boolean()),
     commitPurchase: ({ delivery, ...update }) =>
       call('commit_shop_purchase', { ...updateArgs(update), delivery }, z.boolean()),
+    loadDepotItems: (gameId, itemIds) =>
+      call('load_depot_items', { target_game: gameId, item_ids: itemIds }, depotItemsSchema),
+    commitWithStock: ({ moves, reads, ...update }) =>
+      call(
+        'commit_game_stock',
+        {
+          ...updateArgs(update),
+          moves,
+          reads: reads.map(({ id, updatedAt, live }) => ({ id, updatedAt, live })),
+        },
+        z.enum(stockCommitStatuses),
+      ),
     createGame: (name, state, ownerId) =>
       call('create_game', { game_name: name, initial_state: state, owner: ownerId }, z.uuid()),
     createInvite: (invite) =>
@@ -223,6 +250,18 @@ export function rpcGameDb(client: RpcClient): GameDb {
       ),
   };
 }
+
+const depotItemsSchema = z.array(
+  z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      quantity: z.number().int(),
+      live: z.boolean(),
+      updated_at: z.string(),
+    })
+    .transform(({ updated_at, ...item }) => ({ ...item, updatedAt: updated_at })),
+);
 
 const joinPeekSchema = z.union([
   z.object({ status: z.enum(joinLinkRefusals) }),

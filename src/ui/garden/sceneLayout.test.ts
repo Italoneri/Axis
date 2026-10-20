@@ -4,6 +4,7 @@ import type { Crop, PlotDef } from '../../model/schema';
 import {
   cropLook,
   gardenScenery,
+  hash,
   plantSpots,
   plantStage,
   plantTufts,
@@ -14,8 +15,9 @@ import type { PlotView } from './gardenViews';
 
 const plot: PlotDef = { id: 'canteiro-1', type: 'canteiro', x: 0.4, y: 0.4, w: 0.1, h: 0.1 };
 const crop: Crop = {
-  seedId: 'hortela',
-  harvestId: 'erva',
+  id: 'hortela',
+  seed: { source: 'material', materialId: 'hortela' },
+  harvest: { source: 'material', materialId: 'erva' },
   plotType: 'canteiro',
   days: 3,
   yield: 2,
@@ -34,20 +36,34 @@ const growing = (progress: number): PlotView => ({
 
 describe('cropLook', () => {
   it('givesTheSameLookToTheSameSeed', () => {
-    expect(cropLook({ seedId: 'hortela' })).toEqual(cropLook({ seedId: 'hortela' }));
+    expect(cropLook({ seed: { source: 'material', materialId: 'hortela' } })).toEqual(
+      cropLook({ seed: { source: 'material', materialId: 'hortela' } }),
+    );
   });
 
   it('keepsTheHueInsideAFullTurn', () => {
     const hues = ['a', 'hortela', 'lavanda', 'semente-de-lotus'].map(
-      (seedId) => cropLook({ seedId }).hue,
+      (materialId) => cropLook({ seed: { source: 'material', materialId } }).hue,
     );
     hues.forEach((hue) => expect(hue).toBeGreaterThanOrEqual(-180));
     hues.forEach((hue) => expect(hue).toBeLessThan(180));
   });
 
+  it('drawsMaterialSeedsByIdAndDepotSeedsByKey', () => {
+    expect(cropLook({ seed: { source: 'material', materialId: 'hortela' } })).toEqual(
+      cropLook({ seed: { source: 'material', materialId: 'hortela' } }),
+    );
+    const byKey = cropLook({ seed: { source: 'depot', itemId: 'hortela' } });
+    const h = hash('d:hortela');
+    expect(byKey).toEqual({
+      kind: h % 2 === 0 ? 'foliage' : 'flower',
+      hue: ((h >>> 8) % 360) - 180,
+    });
+  });
+
   it('variesBetweenSeeds', () => {
-    const looks = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((seedId) =>
-      JSON.stringify(cropLook({ seedId })),
+    const looks = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((materialId) =>
+      JSON.stringify(cropLook({ seed: { source: 'material', materialId } })),
     );
     expect(new Set(looks).size).toBeGreaterThan(1);
     expect(new Set(looks.map((look) => look.includes('flower'))).size).toBe(2);
@@ -55,7 +71,7 @@ describe('cropLook', () => {
 
   it('usesTheLookChosenByTheMaster', () => {
     const look = { kind: 'flower', hue: -40 } as const;
-    expect(cropLook({ seedId: 'hortela', look })).toEqual(look);
+    expect(cropLook({ seed: { source: 'material', materialId: 'hortela' }, look })).toEqual(look);
   });
 });
 
@@ -87,11 +103,17 @@ describe('plantTufts', () => {
     { type: 'lago', count: 3 },
   ] as const)('places $count tufts in a $type', ({ type, count }) => {
     expect(plantSpots(type)).toHaveLength(count);
-    expect(plantTufts(type, 'young', cropLook({ seedId: 'x' }))).toHaveLength(count);
+    expect(
+      plantTufts(type, 'young', cropLook({ seed: { source: 'material', materialId: 'x' } })),
+    ).toHaveLength(count);
   });
 
   it('showsMoundsRightAfterPlanting', () => {
-    const tufts = plantTufts('estufa', 'seeded', cropLook({ seedId: 'x' }));
+    const tufts = plantTufts(
+      'estufa',
+      'seeded',
+      cropLook({ seed: { source: 'material', materialId: 'x' } }),
+    );
     expect(tufts.map((tuft) => tuft.kind)).toEqual(['mound', 'mound']);
   });
 

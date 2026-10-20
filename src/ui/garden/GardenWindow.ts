@@ -1,13 +1,23 @@
+import { newId } from '../../commands/newId';
 import type { Actor, GameCommand } from '../../commands/schema';
-import type { Crop } from '../../model/schema';
+import type { Crop, StockRef } from '../../model/schema';
 import { plotLabel } from '../../i18n/plotLabel';
 import { t } from '../../i18n/pt-BR';
 import type { GameStore } from '../../store';
 import { fromBronze } from '../../systems/Coins';
-import { findMaterial } from '../../systems/Materials';
+import { EMPTY_DEPOT } from '../../systems/Depot';
+import {
+  depotSnapshot,
+  refExists,
+  refKey,
+  refName,
+  refQuantity,
+  type DepotSnapshot,
+} from '../../systems/Stock';
 import { el } from '../dom';
 import { formatPrice } from '../format';
 import type { MasterAccess } from '../MasterSession';
+import type { DepotSource } from '../stock/StockPicker';
 import { button, closeButton, confirmButton, keepEscapeInside } from '../widgets';
 import { openCropForm } from './CropForm';
 import { cropIcon, GardenScene, type ReadyView } from './GardenScene';
@@ -25,6 +35,8 @@ export interface GardenWindowDeps {
   game: GameStore;
   session: MasterAccess;
   viewer: () => Actor;
+  /** The depot store: seeds and harvests linked to group items count from it. */
+  depot?: DepotSource | undefined;
 }
 
 /**
@@ -45,16 +57,17 @@ export class GardenWindow {
   private readonly scene: GardenScene;
   private readonly strip = el('div', { class: 'garden-strip' });
   private readonly cards = el('ul', { class: 'garden-cards' });
-  /** Harvested while the window is open, by harvest material: where the icons fly. */
-  private harvested = new Map<string, number>();
+  /** Harvested while the window is open, by `refKey` of the harvest: where the icons fly. */
+  private harvested = new Map<string, { ref: StockRef; quantity: number; crop: Crop }>();
 
   constructor(private readonly deps: GardenWindowDeps) {
     this.scene = new GardenScene({
       game: deps.game,
       viewer: deps.viewer,
+      depot: () => this.snapshot(),
       onHarvest: (view) => this.recordHarvest(view),
-      harvestTarget: (harvestId) =>
-        this.strip.querySelector(`[data-harvest-id="${CSS.escape(harvestId)}"]`),
+      harvestTarget: (harvestKey) =>
+        this.strip.querySelector(`[data-harvest-id="${CSS.escape(harvestKey)}"]`),
     });
     // Leaving the master tools hides the crops tab.
     deps.session.subscribe(() => this.render());
@@ -67,7 +80,12 @@ export class GardenWindow {
     this.selectedPlotId = null;
     this.tab = 'garden';
     this.harvested = new Map();
-    this.stopWatching = this.deps.game.subscribe(() => this.render());
+    const stopGame = this.deps.game.subscribe(() => this.render());
+    const stopDepot = this.deps.depot?.subscribe(() => this.render());
+    this.stopWatching = () => {
+      stopGame();
+      stopDepot?.();
+    };
     document.body.append(dialog);
     this.render();
     dialog.showModal();
@@ -124,7 +142,7 @@ export class GardenWindow {
       this.renderCrops(dialog);
       return;
     }
-    const views = plotViews(game.current, game.catalog);
+    const views = plotViews(game.current, game.catalog, this.snapshot());
     if (!views.some((view) => view.plot.id === this.selectedPlotId)) this.selectedPlotId = null;
     const { ready } = gardenSummary(views);
     this.header.replaceChildren(
@@ -152,24 +170,32 @@ export class GardenWindow {
     this.cards.replaceChildren(...views.map((view) => this.card(view)));
   }
 
+  /** The group depot as the rules see it; empty until the depot store loads. */
+  private snapshot(): DepotSnapshot {
+    return depotSnapshot(this.deps.depot?.current ?? EMPTY_DEPOT);
+  }
+
   private recordHarvest(view: ReadyView): void {
-    const { harvestId } = view.crop;
-    this.harvested.set(harvestId, (this.harvested.get(harvestId) ?? 0) + view.crop.yield);
+    const { crop } = view;
+    const key = refKey(crop.harvest);
+    const quantity = (this.harvested.get(key)?.quantity ?? 0) + crop.yield;
+    this.harvested.set(key, { ref: crop.harvest, quantity, crop });
     this.renderStrip();
   }
 
+  /** Harvests of this visit, then every seed in stock, materials and depot items alike. */
   private renderStrip(): void {
     const { game } = this.deps;
-    const { materials, garden } = game.current;
-    const harvested = [...this.harvested].flatMap(([harvestId, quantity]) => {
-      const material = findMaterial(materials, harvestId);
-      const crop = garden.crops.find((candidate) => candidate.harvestId === harvestId);
-      if (!material || !crop) return [];
-      return [chip(cropIcon(game, crop, 'harvest'), material.name, quantity, harvestId)];
+    const state = game.current;
+    const depot = this.snapshot();
+    const harvested = [...this.harvested].flatMap(([key, { ref, quantity, crop }]) => {
+      const name = refName(ref, state, depot);
+      return name === undefined ? [] : [chip(cropIcon(game, crop, 'harvest'), name, quantity, key)];
     });
-    const seeds = garden.crops.flatMap((crop) => {
-      const seed = findMaterial(materials, crop.seedId);
-      return seed ? [chip(cropIcon(game, crop, 'seed'), seed.name, seed.quantity)] : [];
+    const seeds = state.garden.crops.flatMap((crop) => {
+      const name = refName(crop.seed, state, depot);
+      const owned = refQuantity(crop.seed, state, depot);
+      return name === undefined ? [] : [chip(cropIcon(game, crop, 'seed'), name, owned)];
     });
     this.strip.replaceChildren(
       stripSection(t.garden.scene.harvestedTitle, harvested, t.garden.scene.nothingHarvested),
@@ -219,23 +245,27 @@ export class GardenWindow {
 
   private cropRow(crop: Crop): HTMLElement {
     const { game } = this.deps;
-    const name = (id: string) =>
-      game.current.materials.items.find((material) => material.id === id)?.name ??
-      t.garden.crops.removedMaterial;
+    const state = game.current;
+    const depot = this.snapshot();
+    const name = (ref: StockRef) =>
+      refName(ref, state, depot) ??
+      (ref.source === 'depot' ? t.depot.stock.removed : t.garden.crops.removedMaterial);
+    const isBroken = !refExists(crop.seed, state, depot) || !refExists(crop.harvest, state, depot);
     return el(
       'li',
       { class: 'garden-crop' },
       el(
         'div',
         { class: 'garden-seed__info' },
-        el('strong', {}, `${name(crop.seedId)} → ${name(crop.harvestId)}`),
+        el('strong', {}, `${name(crop.seed)} → ${name(crop.harvest)}`),
+        isBroken && el('span', { class: 'garden-seed__badge' }, t.garden.crops.brokenLink),
         el(
           'span',
           { class: 'panel__hint' },
           [
             t.garden.crops.plotTypes[crop.plotType],
             t.garden.growDays(crop.days),
-            t.garden.yields(crop.yield, name(crop.harvestId)),
+            t.garden.yields(crop.yield, name(crop.harvest)),
             crop.rare ? t.garden.rareBadge : formatPrice(game.catalog, crop.price),
           ].join(' · '),
         ),
@@ -246,7 +276,7 @@ export class GardenWindow {
         button(t.garden.crops.edit, () => this.editCrop(crop)),
         confirmButton(
           t.garden.crops.remove,
-          () => void game.dispatch({ type: 'garden_crop_remove', seedId: crop.seedId }),
+          () => void game.dispatch({ type: 'garden_crop_remove', cropId: crop.id }),
         ),
       ),
     );
@@ -258,11 +288,11 @@ export class GardenWindow {
       state: game.current,
       catalog: game.catalog,
       ...(crop ? { crop } : {}),
-      save: (next) => {
-        const { seedId, ...fields } = next;
+      depot: this.deps.depot,
+      save: (fields) => {
         const command: GameCommand = crop
-          ? { type: 'garden_crop_update', seedId, crop: fields }
-          : { type: 'garden_crop_create', crop: next };
+          ? { type: 'garden_crop_update', cropId: crop.id, crop: fields }
+          : { type: 'garden_crop_create', id: newId('crop'), crop: fields };
         return game.dispatch(command) === null;
       },
     });
@@ -348,7 +378,10 @@ export class GardenWindow {
 
   private seedList(view: PlotView): HTMLElement {
     const { game } = this.deps;
-    const options = seedOptions(game.current, game.catalog, view.plot.type, this.deps.viewer());
+    const options = seedOptions(game.current, game.catalog, view.plot.type, {
+      actor: this.deps.viewer(),
+      depot: this.snapshot(),
+    });
     if (options.length === 0) return el('p', { class: 'panel__hint' }, t.garden.noSeeds);
     return el(
       'ul',
@@ -389,7 +422,7 @@ export class GardenWindow {
       this.send({
         type: 'garden_plant',
         plotId: view.plot.id,
-        seedId: option.crop.seedId,
+        cropId: option.crop.id,
         buy,
       });
     switch (option.action) {
@@ -426,13 +459,13 @@ export class GardenWindow {
   }
 }
 
-/** `harvestId` marks a chip of the harvested list as the target of the flying icons. */
-function chip(icon: HTMLElement, name: string, quantity: number, harvestId?: string): HTMLElement {
+/** `harvestKey` marks a chip of the harvested list as the target of the flying icons. */
+function chip(icon: HTMLElement, name: string, quantity: number, harvestKey?: string): HTMLElement {
   return el(
     'span',
     {
       class: quantity > 0 ? 'garden-chip' : 'garden-chip garden-chip--none',
-      'data-harvest-id': harvestId,
+      'data-harvest-id': harvestKey,
     },
     icon,
     name,

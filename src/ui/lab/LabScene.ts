@@ -1,10 +1,11 @@
 import type { Actor, GameCommand } from '../../commands/schema';
 import { stationLabel } from '../../i18n/stationLabel';
 import { t } from '../../i18n/pt-BR';
-import type { StationDef, StationType } from '../../model/schema';
+import type { StationDef, StationType, StockRef } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { labLevel } from '../../systems/Lab';
 import { findMaterial } from '../../systems/Materials';
+import { refKey, type DepotSnapshot } from '../../systems/Stock';
 import { el } from '../dom';
 import { popoverPosition, type Rect } from '../garden/sceneLayout';
 import { button, closeButton, pictureOr } from '../widgets';
@@ -25,10 +26,12 @@ type FreeView = Extract<StationView, { kind: 'free' }>;
 export interface LabSceneDeps {
   game: GameStore;
   viewer: () => Actor;
+  /** The group depot items as the rules see them: potions and ingredients linked there. */
+  depot: () => DepotSnapshot;
   /** Runs once per station after a collect went through, before its icons fly. */
   onCollect: (view: ReadyView) => void;
-  /** The chip the collected icons fly to (it bumps when they land). */
-  collectTarget: (outputId: string) => HTMLElement | null;
+  /** The chip the collected icons fly to (it bumps when they land), by `refKey` of the potion. */
+  collectTarget: (outputKey: string) => HTMLElement | null;
   /** The Estufa is built, so a missing herb can be planted there. */
   gardenBuilt: () => boolean;
   openGarden: () => void;
@@ -225,7 +228,10 @@ export class LabScene {
   }
 
   private optionsFor(stationType: StationType): RecipeOption[] {
-    return recipeOptions(this.deps.game.current, stationType, this.deps.viewer());
+    return recipeOptions(this.deps.game.current, stationType, {
+      actor: this.deps.viewer(),
+      depot: this.deps.depot(),
+    });
   }
 
   private recipeTray(view: FreeView, options: readonly RecipeOption[]): HTMLElement {
@@ -312,7 +318,7 @@ export class LabScene {
   /** Part of the station's signature: the bubble shows the potion's picture. */
   private potionPicture(view: StationView): string {
     if (view.kind === 'free') return '';
-    return findMaterial(this.deps.game.current.materials, view.brew.outputId)?.icon ?? '';
+    return pictureOf(this.deps.game, view.brew.output) ?? '';
   }
 
   // ---------- Effects ----------
@@ -338,7 +344,7 @@ export class LabScene {
 
   private flyIcons(view: ReadyView): void {
     const from = this.entries.get(view.station.id)?.button;
-    const to = this.deps.collectTarget(view.brew.outputId);
+    const to = this.deps.collectTarget(refKey(view.brew.output));
     if (!from || !to) return;
     const [x0, y0] = centerOf(from);
     const [x1, y1] = centerOf(to);
@@ -360,14 +366,14 @@ export class LabScene {
       );
       flight.onfinish = () => {
         icon.remove();
-        if (i === 2) this.bump(view.brew.outputId);
+        if (i === 2) this.bump(refKey(view.brew.output));
       };
     });
   }
 
   /** Looked up again: the strip may have been redrawn while the icons flew. */
-  private bump(outputId: string): void {
-    const target = this.deps.collectTarget(outputId);
+  private bump(outputKey: string): void {
+    const target = this.deps.collectTarget(outputKey);
     if (target) flashClass(target, 'is-bumping', 400);
   }
 
@@ -459,15 +465,21 @@ function stationBase(view: StationView): HTMLElement {
 /** The potion's picture, or a little flask of its liquid color while it has none. */
 export function potionIcon(
   game: GameStore,
-  { outputId, color }: { outputId: string; color?: string | undefined },
+  { output, color }: { output: StockRef; color?: string | undefined },
 ): HTMLElement {
-  const picture = findMaterial(game.current.materials, outputId)?.icon;
-  return pictureOr(game, picture, 'lab-icon lab-icon--photo', () =>
+  return pictureOr(game, pictureOf(game, output), 'lab-icon lab-icon--photo', () =>
     el('span', {
       class: 'lab-icon lab-icon--flask',
-      style: `--liquid:${liquidColor({ outputId, color })}`,
+      style: `--liquid:${liquidColor({ output, color })}`,
     }),
   );
+}
+
+/** A material's photo; depot items have none, so they draw the flask. */
+function pictureOf(game: GameStore, ref: StockRef): string | undefined {
+  return ref.source === 'material'
+    ? findMaterial(game.current.materials, ref.materialId)?.icon
+    : undefined;
 }
 
 /** One recipe in the tray (and in the narrow-screen cards). */

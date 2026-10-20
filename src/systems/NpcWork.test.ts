@@ -51,7 +51,7 @@ function base(overrides: Partial<GameState> = {}): GameState {
 }
 
 const iron = (state: GameState) => state.materials.items.find((m) => m.id === 'iron')?.quantity;
-const advance = (state: GameState, days: number) => advanceDays(state, testCatalog, days).state;
+const advance = (state: GameState, days: number) => advanceDays(state, testCatalog, days, []).state;
 
 describe('NPC work on advanceDays', () => {
   it('accumulates the fraction and delivers whole units (1,4 per day)', () => {
@@ -126,7 +126,7 @@ describe('NPC work on advanceDays', () => {
       npcs: [builder],
     });
     // Day 2: paid, then 2 days off (6 → 4). Day 3: 4 → 3, so it completes on day 3.
-    const { state: next, completedSlotIds } = advanceDays(state, testCatalog, 3);
+    const { state: next, completedSlotIds } = advanceDays(state, testCatalog, 3, []);
     expect(completedSlotIds).toEqual(['outer_s']);
     expect(next.wallets.camp).toEqual({ gold: 98 });
     expect(next.log.map((e) => e.kind)).toEqual([
@@ -292,7 +292,7 @@ describe('NPCs supervising lab brews', () => {
   };
   const brewing = (progressTenths: number): Brew => ({
     recipeId: 'r',
-    outputId: 'iron',
+    output: { source: 'material', materialId: 'iron' },
     outputQty: 1,
     days: 9,
     spent: [],
@@ -323,7 +323,7 @@ describe('NPCs supervising lab brews', () => {
 
   it('speedsEveryBrewInTheLab', () => {
     const start = labWith({ 'alambique-1': brewing(0), 'caldeirao-1': brewing(30) }, alchemist(0));
-    const next = advanceDays(start, catalog, 1).state;
+    const next = advanceDays(start, catalog, 1, []).state;
     expect(progressOf(next)).toEqual({ 'alambique-1': 20, 'caldeirao-1': 50 });
     expect(worked(next)).toEqual([
       {
@@ -339,12 +339,12 @@ describe('NPCs supervising lab brews', () => {
 
   it('slowsBrewsWithoutGoingBelowZero', () => {
     const start = labWith({ 'alambique-1': brewing(30), 'alambique-2': brewing(0) }, alchemist(-5));
-    const next = advanceDays(start, catalog, 1).state;
+    const next = advanceDays(start, catalog, 1, []).state;
     expect(progressOf(next)).toEqual({ 'alambique-1': 30, 'alambique-2': 10 });
   });
 
   it('doesNothingWithoutBrews', () => {
-    const next = advanceDays(labWith({}, alchemist(0)), catalog, 1).state;
+    const next = advanceDays(labWith({}, alchemist(0)), catalog, 1, []).state;
     expect(worked(next)).toEqual([]);
     expect(next.npcs[0]?.job?.carry).toBe(0);
   });

@@ -1,6 +1,9 @@
-import type { DepotDelivery } from '../systems/Depot';
+import { applyStock, type Depot, type DepotDelivery } from '../systems/Depot';
+import { depotSnapshot } from '../systems/Stock';
 import type {
   GameDb,
+  StockCommitStatus,
+  StockUpdate,
   InviteAcceptance,
   JoinPeek,
   JoinStatus,
@@ -34,8 +37,12 @@ export class MemoryDb implements GameDb {
   joinLinks: JoinLink[] = [];
   names = new Map<string, string>();
   deliveries: DepotDelivery[] = [];
+  /** The depot tables of each game. */
+  depots = new Map<string, Depot>();
   /** The command stored with each accepted update, as the game_log row would keep it. */
   loggedCommands: unknown[] = [];
+  /** The log entries of each accepted update. */
+  loggedEntries: unknown[] = [];
   private nextId = 1;
 
   private uuid(): string {
@@ -53,10 +60,12 @@ export class MemoryDb implements GameDb {
     expectedRevision,
     state,
     command,
+    entries,
   }: Parameters<GameDb['commitUpdate']>[0]) {
     const game = this.games.get(gameId);
     if (!game || game.revision !== expectedRevision) return Promise.resolve(false);
     this.loggedCommands.push(command);
+    this.loggedEntries.push(entries);
     this.games.set(gameId, { state, revision: expectedRevision + 1 });
     return Promise.resolve(true);
   }
@@ -65,6 +74,58 @@ export class MemoryDb implements GameDb {
     if (!(await this.commitUpdate(update))) return false;
     this.deliveries.push(delivery);
     return true;
+  }
+
+  loadDepotItems(gameId: string, itemIds: readonly string[]) {
+    return Promise.resolve([...depotSnapshot(this.depotOf(gameId), itemIds)]);
+  }
+
+  /** Same order as commit_game_stock: the reads, the revision, then the moves, all or nothing. */
+  async commitWithStock({ moves, reads, ...update }: StockUpdate): Promise<StockCommitStatus> {
+    const depot = this.depotOf(update.gameId);
+    const now = depotSnapshot(
+      depot,
+      reads.map((item) => item.id),
+    );
+    const isUnchanged = reads.every((read) => {
+      const row = now.find((item) => item.id === read.id);
+      return row?.updatedAt === read.updatedAt && row.live === read.live;
+    });
+    if (!isUnchanged) return 'conflict';
+    if (this.games.get(update.gameId)?.revision !== update.expectedRevision) return 'conflict';
+    const moved = applyStock(depot, moves, new Date().toISOString());
+    if (!moved.ok) return moved.error;
+    await this.commitUpdate(update);
+    this.depots.set(update.gameId, moved.depot);
+    return 'ok';
+  }
+
+  /** Another player's change straight in the tables, between a read and a commit (tests). */
+  takeQuietly(gameId: string, itemId: string, quantity: number): void {
+    this.changeItem(gameId, itemId, (item) => ({ ...item, quantity: item.quantity - quantity }));
+  }
+
+  trashQuietly(gameId: string, itemId: string): void {
+    this.changeItem(gameId, itemId, (item) => ({ ...item, deletedAt: new Date().toISOString() }));
+  }
+
+  renameQuietly(gameId: string, itemId: string, name: string): void {
+    const updatedAt = new Date(Date.now() + 1000).toISOString();
+    this.changeItem(gameId, itemId, (item) => ({ ...item, name, updatedAt }));
+  }
+
+  private changeItem(
+    gameId: string,
+    itemId: string,
+    change: (item: Depot['items'][number]) => Depot['items'][number],
+  ) {
+    const depot = this.depotOf(gameId);
+    const items = depot.items.map((item) => (item.id === itemId ? change(item) : item));
+    this.depots.set(gameId, { ...depot, items });
+  }
+
+  private depotOf(gameId: string): Depot {
+    return this.depots.get(gameId) ?? { sections: [], items: [] };
   }
 
   createGame(name: string, state: unknown, ownerId: string): Promise<string> {

@@ -2924,6 +2924,24 @@ details > summary {
   font-weight: 600;
 }
 
+.depot-item--out .archive-note__title,
+.depot-item--out .depot-item__quantity {
+  color: var(--muted);
+}
+
+.depot-item__out {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.depot-item__links {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .depot-item__stepper {
   display: flex;
   gap: 4px;
@@ -5120,4 +5138,27 @@ details > summary {
 
 .recipe-form__reason {
   color: var(--danger);
+}
+
+/* One select for crop and recipe ends: depot sections and materials, plus "+ Criar no Depósito". */
+.stock-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stock-picker .input {
+  min-width: 0;
+}
+
+.stock-picker__create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stock-picker__create[hidden],
+.stock-picker__create .input[hidden] {
+  display: none;
 }

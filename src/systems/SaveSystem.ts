@@ -159,7 +159,54 @@ export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   7: (save) => ({ ...save, shop: { items: [] } }),
   8: (save) => ({ ...save, garden: { crops: [], plots: {} } }),
   9: (save) => ({ ...save, lab: { recipes: [], stations: {} } }),
+  // Crops and recipes point at a material or a depot item; old ones all used materials.
+  10: (save) => ({ ...save, garden: toStockRefGarden(save.garden), lab: toStockRefLab(save.lab) }),
 };
+
+const materialRef = (materialId: unknown) => ({ source: 'material', materialId });
+const jsonRecordSchema = z.record(z.string(), z.unknown());
+/** The schema reports whatever is malformed after the migration; here a bad part just reads as empty. */
+const recordOf = (value: unknown): SaveJson => {
+  const parsed = jsonRecordSchema.safeParse(value);
+  return parsed.success ? parsed.data : {};
+};
+const listOf = (value: unknown): SaveJson[] => (Array.isArray(value) ? value.map(recordOf) : []);
+const mapValues = (value: unknown, fn: (entry: SaveJson) => SaveJson): SaveJson =>
+  Object.fromEntries(Object.entries(recordOf(value)).map(([k, v]) => [k, fn(recordOf(v))]));
+
+function toStockRefGarden(garden: unknown): SaveJson {
+  const { crops, plots } = recordOf(garden);
+  return {
+    crops: listOf(crops).map(({ seedId, harvestId, ...crop }) => ({
+      ...crop,
+      id: seedId,
+      seed: materialRef(seedId),
+      harvest: materialRef(harvestId),
+    })),
+    plots: mapValues(plots, ({ seedId, ...planting }) => ({ ...planting, cropId: seedId })),
+  };
+}
+
+function toStockRefLab(lab: unknown): SaveJson {
+  const portions = (list: unknown) =>
+    listOf(list).map(({ materialId, ...portion }) => ({
+      ...portion,
+      ref: materialRef(materialId),
+    }));
+  const { recipes, stations } = recordOf(lab);
+  return {
+    recipes: listOf(recipes).map(({ outputId, ingredients, ...recipe }) => ({
+      ...recipe,
+      output: materialRef(outputId),
+      ingredients: portions(ingredients),
+    })),
+    stations: mapValues(stations, ({ outputId, spent, ...brew }) => ({
+      ...brew,
+      output: materialRef(outputId),
+      spent: portions(spent),
+    })),
+  };
+}
 
 /** Turns a parsed save that came from version N into the rules of N + 1, with the catalog at hand. */
 type CatalogMigration = (state: GameState, catalog: Catalog) => GameState;

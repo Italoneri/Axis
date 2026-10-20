@@ -536,6 +536,8 @@ export const t = {
     notBuilt: 'A Estufa de Ervas ainda não foi construída.',
     closePopover: 'Fechar',
     harvestAllCount: (ready: number) => (ready === 0 ? 'Colher tudo' : `Colher tudo (${ready})`),
+    /** A crop or recipe end whose material or depot item is gone. */
+    missingItem: 'item removido',
     scene: {
       label: 'Jardim da Estufa de Ervas',
       locked: {
@@ -596,6 +598,7 @@ export const t = {
       close: 'Fechar',
       uncategorized: 'Sem categoria',
       removedMaterial: 'material removido',
+      brokenLink: 'item do Depósito removido: os jogadores não veem esta planta',
       look: {
         title: 'Aparência',
         kind: 'Tipo de planta',
@@ -712,6 +715,7 @@ export const t = {
       cancel: 'Cancelar',
       close: 'Fechar',
       removedMaterial: 'material removido',
+      brokenLink: '⚠ item do Depósito removido: os jogadores não veem esta receita',
       summary: (days: number, quantity: number) =>
         `${days === 1 ? '1 dia' : `${days} dias`} · rende ${quantity}`,
       reasons: {
@@ -1088,6 +1092,31 @@ export const t = {
     trashedItem: (name: string, section: string) => `${name} (em ${section})`,
     restore: 'Restaurar',
     emptyTrash: 'Esvaziar lixeira',
+    outOfStock: 'em falta',
+    linked: {
+      badge: '🔗',
+      seedOf: (crop: string) => `Semente de ${crop}`,
+      harvestOf: (crop: string) => `Colheita de ${crop}`,
+      potionOf: (count: number) =>
+        count === 1 ? 'Poção de 1 receita' : `Poção de ${count} receitas`,
+      ingredientOf: (count: number) =>
+        count === 1 ? 'Ingrediente de 1 receita' : `Ingrediente de ${count} receitas`,
+      removeAsk: (uses: string) =>
+        `Este item está ligado à Estufa/Laboratório (${uses}). Removido, isso para de funcionar até o mestre religar. Remover mesmo assim?`,
+    },
+    stock: {
+      section: (name: string) => `Depósito › ${name}`,
+      option: (name: string, quantity: number) => `${name} ×${quantity.toLocaleString('pt-BR')}`,
+      sameAsMaterial: (name: string, quantity: number) =>
+        `${name} (Depósito) ×${quantity.toLocaleString('pt-BR')}`,
+      removed: '⚠ item do Depósito removido',
+      create: '+ Criar no Depósito',
+      createTitle: 'Novo item no Depósito do grupo',
+      newSection: '+ Nova seção',
+      newSectionName: 'Nome da nova seção',
+      notLoaded: 'O Depósito ainda não carregou.',
+      created: 'Item criado com 0 no Depósito.',
+    },
     errors: {
       empty_name: 'Informe um nome.',
       duplicate_name: 'Já existe uma seção com esse nome nesta área.',
@@ -1096,7 +1125,7 @@ export const t = {
       category_not_empty: 'A seção ainda tem itens. Mova-os ou remova-os antes.',
       forbidden: 'Você não pode fazer isso.',
       too_long: `Nome até ${NAME_LIMIT} caracteres e observações até ${ITEM_NOTES_LIMIT.toLocaleString('pt-BR')}.`,
-      invalid_quantity: `A quantidade vai de 1 a ${QUANTITY_LIMIT.toLocaleString('pt-BR')}. Para zerar, remova o item.`,
+      invalid_quantity: `A quantidade vai de 0 a ${QUANTITY_LIMIT.toLocaleString('pt-BR')}.`,
       invalid_command: 'Ação inválida. Confira os valores informados.',
       no_author: 'Escolha seu personagem antes de mexer no depósito.',
     } satisfies Record<DepotError, string>,
@@ -1149,6 +1178,7 @@ export const t = {
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
     conflict: 'O jogo mudou em outro lugar; sua última ação foi desfeita.',
+    stock_missing: 'O item ligado foi removido do Depósito.',
   } satisfies Record<CommandError, string>,
 } as const;
 
@@ -1281,15 +1311,15 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'garden_planted':
       return gardenPlantedText(entry, ctx);
     case 'garden_harvested':
-      return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${entry.material} na Estufa de Ervas`;
+      return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${stockName(entry.material)} na Estufa de Ervas${lostText(entry)}`;
     case 'garden_seed_returned':
-      return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
+      return `A Estufa de Ervas devolveu ${entry.quantity} ${stockName(entry.seed)} ao estoque${lostText(entry)}`;
     case 'garden_cleared':
       return `${entry.actor ?? 'Alguém'} limpou ${plotLabel(entry.plot)} (${entry.seed})`;
     case 'lab_brewed':
       return labBrewedText(entry);
     case 'lab_collected':
-      return `${entry.actor ?? 'Alguém'} recolheu ${entry.quantity} ${entry.material} no Laboratório Arcano`;
+      return `${entry.actor ?? 'Alguém'} recolheu ${entry.quantity} ${stockName(entry.material)} no Laboratório Arcano${lostText(entry)}`;
     case 'lab_discarded':
       return `${entry.actor ?? 'Alguém'} descartou ${entry.material} de ${stationLabel(entry.station)}`;
     case 'lab_ingredients_returned':
@@ -1586,8 +1616,25 @@ function labBrewedText(entry: Extract<LogEntry, { kind: 'lab_brewed' }>): string
   return `${entry.actor ?? 'Alguém'} começou ${entry.material} em ${stationLabel(entry.station)}${spent}`;
 }
 
-function portionsText(portions: readonly { material: string; quantity: number }[]): string {
-  return listText(portions.map((p) => `${p.quantity} ${p.material}`));
+function portionsText(
+  portions: readonly { material: string; quantity: number; lost?: true | undefined }[],
+): string {
+  return listText(
+    portions.map(
+      (p) =>
+        `${p.quantity} ${stockName(p.material)}${p.lost ? ' (perdido: item removido do Depósito)' : ''}`,
+    ),
+  );
+}
+
+/** A delivery to a depot item that was gone: it reached nobody. */
+function lostText(entry: { lost?: true | undefined }): string {
+  return entry.lost ? ', mas o item foi removido do Depósito: perdido' : '';
+}
+
+/** Names snapshotted by the garden and the lab; '' when the item was gone before it had one here. */
+function stockName(name: string): string {
+  return name || t.garden.missingItem;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {

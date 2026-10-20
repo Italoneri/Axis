@@ -1,10 +1,11 @@
 import type { Brew } from '../../model/schema';
+import { refHashKey } from '../../systems/Stock';
 import { hash } from '../garden/sceneLayout';
 import type { StationView } from './labViews';
 
-/** The master's color, or a hue drawn from the potion id (potions have no art of their own). */
-export function liquidColor({ outputId, color }: Pick<Brew, 'outputId' | 'color'>): string {
-  return color ?? `hsl(${hash(outputId) % 360} 70% 55%)`;
+/** The master's color, or a hue drawn from the potion (potions have no art of their own). */
+export function liquidColor({ output, color }: Pick<Brew, 'output' | 'color'>): string {
+  return color ?? `hsl(${hash(refHashKey(output)) % 360} 70% 55%)`;
 }
 
 export type BrewStage = 'idle' | 'simmer' | 'boil' | 'ready';

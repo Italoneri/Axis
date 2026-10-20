@@ -1,4 +1,5 @@
 import type { GameState, LogEntry } from '../model/schema';
+import type { StockMove } from './Stock';
 
 /** Expected refusals of master and player actions; the UI turns them into messages. */
 export type ActionError =
@@ -74,7 +75,23 @@ export type ActionError =
 export type Outcome = { ok: true; state: GameState } | { ok: false; error: ActionError };
 
 export const ok = (state: GameState): Outcome => ({ ok: true, state });
-export const fail = (error: ActionError): Outcome => ({ ok: false, error });
+
+/** A state plus the depot moves that must be committed with it (garden and lab). */
+export interface Stocked {
+  state: GameState;
+  stock: StockMove[];
+}
+
+export type StockedOutcome = ({ ok: true } & Stocked) | Failure;
+
+export const stocked = (state: GameState, stock: StockMove[] = []): StockedOutcome => ({
+  ok: true,
+  state,
+  stock,
+});
+export type Failure = { ok: false; error: ActionError };
+
+export const fail = (error: ActionError): Failure => ({ ok: false, error });
 
 /**
  * The save keeps only the latest entries so it does not grow forever. In phase 3

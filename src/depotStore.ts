@@ -1,7 +1,9 @@
 import type { Actor } from './commands/schema';
 import type { DepotChange } from './model/schema';
 import type { DepotRepository } from './persistence/DepotRepository';
+import type { StockMove } from './systems/Stock';
 import {
+  applyStock,
   EMPTY_DEPOT,
   visibleDepot,
   type Depot,
@@ -88,6 +90,16 @@ export class DepotStore {
         return false;
       }
     });
+  }
+
+  /**
+   * Shows the garden and lab moves of a command still being saved; `reload`
+   * once it settles brings back what is really stored. Nothing is written here.
+   */
+  preview(moves: readonly StockMove[]): void {
+    const now = this.hooks.now?.() ?? new Date().toISOString();
+    const moved = applyStock(this.depot, moves, now);
+    if (moved.ok) this.show(moved.depot);
   }
 
   /** Re-reads the stored depot (when the window opens, to catch up with missed changes). */

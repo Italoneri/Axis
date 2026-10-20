@@ -443,7 +443,8 @@ export class SlotPanel {
 
   /** A Estufa de Ervas, once built: the plot counts and the way into the garden window. */
   private gardenSection(state: GameState): HTMLElement {
-    const summary = gardenSummary(plotViews(state, this.store.catalog));
+    // Only the counts are shown, and they do not depend on the depot.
+    const summary = gardenSummary(plotViews(state, this.store.catalog, []));
     return el(
       'section',
       { class: 'card' },
@@ -456,7 +457,7 @@ export class SlotPanel {
 
   /** O Laboratório Arcano, once built: the station counts and the way into the workshop. */
   private labSection(state: GameState): HTMLElement {
-    const summary = labSummary(stationViews(state, this.store.catalog));
+    const summary = labSummary(stationViews(state, this.store.catalog, []));
     return el(
       'section',
       { class: 'card' },

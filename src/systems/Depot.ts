@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Actor } from '../commands/schema';
 import { depotItemKindSchema, NAME_LIMIT, type DepotChange } from '../model/schema';
 import { MASTER_AUTHOR, normalizeForSearch } from './Archive';
+import type { StockMove } from './Stock';
 
 // Depósito: sections and items kept outside the GameState, like the
 // Arquivo (see docs/plans/DEPOSITO.md). A section belongs to the group
@@ -19,7 +20,7 @@ const author = z.string().min(1);
 const timestamp = z.string().min(1);
 /** null: the group's shared depot; a character id: that character's private area. */
 const ownerSchema = z.string().min(1).max(64).nullable();
-const quantitySchema = z.number().int().min(1).max(QUANTITY_LIMIT);
+const quantitySchema = z.number().int().min(0).max(QUANTITY_LIMIT);
 
 export const itemKindSchema = depotItemKindSchema;
 
@@ -223,6 +224,41 @@ export function itemOwner(
   item: Pick<DepotItem, 'sectionId'>,
 ): string | null | undefined {
   return depot.sections.find((section) => section.id === item.sectionId)?.ownerId;
+}
+
+/** An item of the group's depot that is in use: the only kind the garden and the lab may touch. */
+export function groupItem(depot: Depot, itemId: string): DepotItem | undefined {
+  const item = depot.items.find((i) => i.id === itemId && i.deletedAt === null);
+  const section = item && depot.sections.find((s) => s.id === item.sectionId);
+  return section?.ownerId === null && section.deletedAt === null ? item : undefined;
+}
+
+export type StockOutcome =
+  /** `lost`: gains that found no item in use (trashed, private or gone) and were dropped. */
+  | { ok: true; depot: Depot; lost: string[] }
+  | { ok: false; error: 'stock_short' | 'stock_missing'; itemId: string };
+
+/**
+ * Applies the garden and lab moves to the group's depot, all or nothing (see
+ * docs/plans/DEPOSITO.md). Spends refuse a missing item; strict spends refuse
+ * a shortage, clamp spends take what is there; gains stop at QUANTITY_LIMIT.
+ */
+export function applyStock(depot: Depot, moves: readonly StockMove[], now: string): StockOutcome {
+  let next = depot;
+  const lost: string[] = [];
+  for (const { itemId, delta, mode } of moves) {
+    const item = groupItem(next, itemId);
+    if (!item && delta < 0) return { ok: false, error: 'stock_missing', itemId };
+    if (!item) {
+      lost.push(itemId);
+      continue;
+    }
+    const wanted = item.quantity + delta;
+    if (wanted < 0 && mode === 'strict') return { ok: false, error: 'stock_short', itemId };
+    const quantity = Math.min(QUANTITY_LIMIT, Math.max(0, wanted));
+    if (quantity !== item.quantity) next = replaceItem(next, { ...item, quantity, updatedAt: now });
+  }
+  return { ok: true, depot: next, lost };
 }
 
 export const SHOP_SECTION_NAME = 'Compras do Entreposto';
@@ -451,7 +487,7 @@ const handlers: Handlers = {
     if (!found) return fail('not_found');
     if (delta === 0) return unchanged(depot);
     const quantity = found.item.quantity + delta;
-    if (quantity < 1 || quantity > QUANTITY_LIMIT) return fail('invalid_quantity');
+    if (quantity < 0 || quantity > QUANTITY_LIMIT) return fail('invalid_quantity');
     const next = { ...found.item, quantity, editedBy: authorId, updatedAt: ctx.now };
     return done(replaceItem(depot, next), itemChange(next, 'edited', found.section));
   },
@@ -533,7 +569,7 @@ function sectionNameError(
 function itemFieldsError({ name, quantity, notes }: ItemFields): DepotError | null {
   if (!name.trim()) return 'empty_name';
   if (name.trim().length > NAME_LIMIT || notes.length > ITEM_NOTES_LIMIT) return 'too_long';
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > QUANTITY_LIMIT) {
+  if (!Number.isInteger(quantity) || quantity < 0 || quantity > QUANTITY_LIMIT) {
     return 'invalid_quantity';
   }
   return null;

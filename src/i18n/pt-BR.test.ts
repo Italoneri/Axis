@@ -326,6 +326,44 @@ describe('lab log', () => {
       },
       text: 'O Laboratório Arcano devolveu 3 Hortelã e 1 Camomila ao estoque (Caldeirão 2)',
     },
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'garden_harvested',
+        material: 'Hortelã',
+        quantity: 3,
+        lost: true,
+      },
+      text: 'Thorin colheu 3 Hortelã na Estufa de Ervas, mas o item foi removido do Depósito: perdido',
+    },
+    {
+      entry: {
+        day: 5,
+        actor: 'Thorin',
+        kind: 'lab_collected',
+        material: 'Porção de cavalo',
+        quantity: 2,
+        lost: true,
+      },
+      text: 'Thorin recolheu 2 Porção de cavalo no Laboratório Arcano, mas o item foi removido do Depósito: perdido',
+    },
+    {
+      entry: { day: 5, kind: 'garden_seed_returned', seed: 'Semente', quantity: 1, lost: true },
+      text: 'A Estufa de Ervas devolveu 1 Semente ao estoque, mas o item foi removido do Depósito: perdido',
+    },
+    {
+      entry: {
+        day: 5,
+        kind: 'lab_ingredients_returned',
+        station: 'caldeirao-2',
+        ingredients: [
+          { material: 'Hortelã', quantity: 3, lost: true },
+          { material: 'Camomila', quantity: 1 },
+        ],
+      },
+      text: 'O Laboratório Arcano devolveu 3 Hortelã (perdido: item removido do Depósito) e 1 Camomila ao estoque (Caldeirão 2)',
+    },
   ];
   it.each(cases)('writes $entry.kind', ({ entry, text }) => {
     expect(logEntryText(entry, ctx)).toBe(`Dia 5 — ${text}`);

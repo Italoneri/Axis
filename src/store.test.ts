@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GameCommand } from './commands/schema';
 import type { GameState } from './model/schema';
-import type { GameRepository } from './persistence/GameRepository';
+import { HERB_GARDEN_BUILDING_ID } from './model/catalog';
+import type { GameRepository, SubmitResult } from './persistence/GameRepository';
 import { LocalRepository } from './persistence/LocalRepository';
 import { GameStore, type StoreHooks } from './store';
 import { parseSave, STORAGE_KEY } from './systems/SaveSystem';
-import { makeState, memoryStorage, testCatalog } from './systems/testFixtures';
+import { herbGardenCatalog, makeState, memoryStorage, testCatalog } from './systems/testFixtures';
 
 const deposit: GameCommand = { type: 'deposit', characterId: 'thorin', coins: { gold: 2 } };
 const advance: GameCommand = { type: 'advance_days', days: 1 };
@@ -154,5 +155,88 @@ describe('GameStore', () => {
 
     expect(store.current).toEqual(remote);
     expect(listener).toHaveBeenCalledWith(remote, { kind: 'loaded' }, []);
+  });
+});
+
+describe('GameStore and the depot', () => {
+  const crop = {
+    id: 'crop_hortela',
+    seed: { source: 'depot', itemId: 'sem' },
+    harvest: { source: 'depot', itemId: 'erva' },
+    plotType: 'canteiro',
+    days: 1,
+    yield: 3,
+    rare: true,
+  } as const;
+  const plant: GameCommand = {
+    type: 'garden_plant',
+    plotId: 'canteiro-1',
+    cropId: 'crop_hortela',
+    buy: false,
+  };
+  const depot = [
+    { id: 'sem', name: 'Semente', quantity: 1, live: true, updatedAt: 'x' },
+    { id: 'erva', name: 'Hortelã', quantity: 0, live: true, updatedAt: 'x' },
+  ];
+  const state = makeState({
+    slots: { outer_n: { buildingId: HERB_GARDEN_BUILDING_ID, level: 1, status: 'done' } },
+    garden: { crops: [crop], plots: {} },
+  });
+
+  function depotHooks() {
+    const events: string[] = [];
+    const base = hooks();
+    return {
+      ...base,
+      events,
+      contextFor: () => ({ actor: { role: 'player', characterId: 'thorin' }, depot }) as const,
+      onStock: (moves: readonly unknown[]) => events.push(`preview:${JSON.stringify(moves)}`),
+      onStockSettled: () => events.push('settled'),
+    };
+  }
+
+  function repository(answer: SubmitResult): GameRepository {
+    return {
+      load: () => Promise.resolve(state),
+      submit: () => Promise.resolve(answer),
+      subscribe: () => () => undefined,
+    };
+  }
+
+  it('previewsTheMovesAndSettlesAfterTheSave', async () => {
+    const storeHooks = depotHooks();
+    const saved = { ...state, revision: 1 };
+    const store = await GameStore.open(
+      herbGardenCatalog,
+      repository({ ok: true, state: saved }),
+      storeHooks,
+    );
+    expect(store.dispatch(plant)).toBeNull();
+    expect(storeHooks.events).toEqual(['preview:[{"itemId":"sem","delta":-1,"mode":"strict"}]']);
+    await store.whenSynced();
+    expect(storeHooks.events.at(-1)).toBe('settled');
+  });
+
+  it('rollsTheDepotPreviewBackWhenTheServerRefuses', async () => {
+    const storeHooks = depotHooks();
+    const refused: SubmitResult = { ok: false, reason: 'refused', error: 'no_seed' };
+    const store = await GameStore.open(herbGardenCatalog, repository(refused), storeHooks);
+    store.dispatch(plant);
+    await store.whenSynced();
+    expect(storeHooks.refused).toEqual(['no_seed']);
+    expect(store.current.garden.plots).toEqual({});
+    expect(storeHooks.events.at(-1)).toBe('settled');
+  });
+
+  it('leavesTheDepotAloneForOtherCommands', async () => {
+    const storeHooks = depotHooks();
+    const store = await GameStore.open(
+      herbGardenCatalog,
+      repository({ ok: true, state: { ...state, revision: 1 } }),
+      storeHooks,
+    );
+    store.dispatch({ type: 'advance_days', days: 1 });
+    await store.whenSynced();
+    expect(storeHooks.events).toEqual([]);
   });
 });

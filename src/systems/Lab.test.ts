@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ARCANE_LAB_BUILDING_ID } from '../model/catalog';
 import type { Actor } from '../commands/schema';
-import type { Brew, GameState, PlacedBuilding, Recipe } from '../model/schema';
+import type { Brew, GameState, PlacedBuilding, Recipe, StockRef } from '../model/schema';
 import {
   addRecipe,
   brew,
@@ -16,8 +16,13 @@ import {
   updateRecipe,
   type RecipeFields,
 } from './Lab';
-import type { Outcome } from './outcome';
+import type { StockedOutcome } from './outcome';
+import type { DepotSnapshot } from './Stock';
 import { arcaneLabCatalog as catalog, makeState } from './testFixtures';
+
+const material = (materialId: string): StockRef => ({ source: 'material', materialId });
+const item = (itemId: string): StockRef => ({ source: 'depot', itemId });
+const NO_DEPOT: DepotSnapshot = [];
 
 const placed = (level: number, status: PlacedBuilding['status'] = 'done'): PlacedBuilding =>
   ({
@@ -60,11 +65,11 @@ interface LabStateOptions {
 
 const cura: Recipe = {
   id: 'r-cura',
-  outputId: 'cura',
+  output: material('cura'),
   outputQty: 2,
   ingredients: [
-    { materialId: 'hortela', quantity: 3 },
-    { materialId: 'camomila', quantity: 1 },
+    { ref: material('hortela'), quantity: 3 },
+    { ref: material('camomila'), quantity: 1 },
   ],
   stationType: 'alambique',
   days: 1,
@@ -73,16 +78,16 @@ const cura: Recipe = {
 
 const mana: Recipe = {
   id: 'r-mana',
-  outputId: 'mana',
+  output: material('mana'),
   outputQty: 3,
-  ingredients: [{ materialId: 'aetherium', quantity: 1 }],
+  ingredients: [{ ref: material('aetherium'), quantity: 1 }],
   stationType: 'caldeirao',
   days: 3,
   hidden: true,
 };
 
 const fieldsOf = (recipe: Recipe): RecipeFields => ({
-  outputId: recipe.outputId,
+  output: recipe.output,
   outputQty: recipe.outputQty,
   ingredients: recipe.ingredients,
   stationType: recipe.stationType,
@@ -110,49 +115,58 @@ describe('stationsInForce', () => {
 
 describe('recipe catalog', () => {
   it('addsARecipe', () => {
-    const outcome = addRecipe(labState(1), cura);
+    const outcome = addRecipe(labState(1), cura, NO_DEPOT);
     if (!outcome.ok) throw new Error(outcome.error);
     expect(findRecipe(outcome.state, 'r-cura')).toEqual(cura);
   });
 
   it.each([
-    { name: 'unknown output', recipe: { ...cura, outputId: 'nope' }, error: 'not_found' },
+    { name: 'unknown output', recipe: { ...cura, output: material('nope') }, error: 'not_found' },
     {
       name: 'unknown ingredient',
-      recipe: { ...cura, ingredients: [{ materialId: 'nope', quantity: 1 }] },
+      recipe: { ...cura, ingredients: [{ ref: material('nope'), quantity: 1 }] },
       error: 'not_found',
     },
   ])('refuses $name', ({ recipe, error }) => {
-    expect(addRecipe(labState(1), recipe)).toEqual({ ok: false, error });
+    expect(addRecipe(labState(1), recipe, NO_DEPOT)).toEqual({ ok: false, error });
   });
 
   it('refusesASecondRecipeWithTheSameId', () => {
-    expect(addRecipe(labState(1, { recipes: [cura] }), cura)).toEqual({
+    expect(addRecipe(labState(1, { recipes: [cura] }), cura, NO_DEPOT)).toEqual({
       ok: false,
       error: 'recipe_already_exists',
     });
   });
 
   it('updatesARecipe', () => {
-    const outcome = updateRecipe(labState(1, { recipes: [cura] }), 'r-cura', {
-      ...fieldsOf(cura),
-      days: 4,
-      hidden: true,
-    });
+    const outcome = updateRecipe(
+      labState(1, { recipes: [cura] }),
+      'r-cura',
+      {
+        ...fieldsOf(cura),
+        days: 4,
+        hidden: true,
+      },
+      NO_DEPOT,
+    );
     if (!outcome.ok) throw new Error(outcome.error);
     expect(findRecipe(outcome.state, 'r-cura')).toEqual({ ...cura, days: 4, hidden: true });
   });
 
   it.each([
     { name: 'unknown recipe', recipeId: 'nope', fields: fieldsOf(cura) },
-    { name: 'unknown output', recipeId: 'r-cura', fields: { ...fieldsOf(cura), outputId: 'x' } },
+    {
+      name: 'unknown output',
+      recipeId: 'r-cura',
+      fields: { ...fieldsOf(cura), output: material('x') },
+    },
     {
       name: 'unknown ingredient',
       recipeId: 'r-cura',
-      fields: { ...fieldsOf(cura), ingredients: [{ materialId: 'x', quantity: 1 }] },
+      fields: { ...fieldsOf(cura), ingredients: [{ ref: material('x'), quantity: 1 }] },
     },
   ])('refusesUpdateWith $name', ({ recipeId, fields }) => {
-    expect(updateRecipe(labState(1, { recipes: [cura] }), recipeId, fields)).toEqual({
+    expect(updateRecipe(labState(1, { recipes: [cura] }), recipeId, fields, NO_DEPOT)).toEqual({
       ok: false,
       error: 'not_found',
     });
@@ -170,12 +184,12 @@ describe('recipe catalog', () => {
 });
 
 describe('recipesFor', () => {
-  const tonico: Recipe = { ...cura, id: 'r-tonico', outputId: 'mana', hidden: false };
+  const tonico: Recipe = { ...cura, id: 'r-tonico', output: material('mana'), hidden: false };
   const recipes = [cura, tonico, mana];
   const ids = (list: readonly Recipe[]) => list.map((r) => r.id);
 
   it('listsTheStationTypeSortedByOutputName', () => {
-    expect(ids(recipesFor(labState(1, { recipes }), 'alambique', false))).toEqual([
+    expect(ids(recipesFor(labState(1, { recipes }), 'alambique', false, NO_DEPOT))).toEqual([
       'r-tonico',
       'r-cura',
     ]);
@@ -190,15 +204,17 @@ describe('recipesFor', () => {
         items: state.materials.items.filter((m) => m.id !== 'camomila'),
       },
     };
-    expect(recipesFor(withoutCamomila, 'alambique', true)).toEqual([]);
+    expect(recipesFor(withoutCamomila, 'alambique', true, NO_DEPOT)).toEqual([]);
   });
 
   it('hidesHiddenRecipesFromPlayers', () => {
-    expect(recipesFor(labState(2, { recipes }), 'caldeirao', false)).toEqual([]);
+    expect(recipesFor(labState(2, { recipes }), 'caldeirao', false, NO_DEPOT)).toEqual([]);
   });
 
   it('masterSeesHiddenRecipes', () => {
-    expect(ids(recipesFor(labState(2, { recipes }), 'caldeirao', true))).toEqual(['r-mana']);
+    expect(ids(recipesFor(labState(2, { recipes }), 'caldeirao', true, NO_DEPOT))).toEqual([
+      'r-mana',
+    ]);
   });
 });
 
@@ -206,7 +222,7 @@ const player: Actor = { role: 'player', characterId: 'thorin' };
 const master: Actor = { role: 'master' };
 const stockOf = (state: GameState, id: string) =>
   state.materials.items.find((m) => m.id === id)?.quantity;
-const stateOf = (outcome: Outcome): GameState => {
+const stateOf = (outcome: StockedOutcome): GameState => {
   if (!outcome.ok) throw new Error(outcome.error);
   return outcome.state;
 };
@@ -214,7 +230,7 @@ const stateOf = (outcome: Outcome): GameState => {
 /** The copy a station keeps of `cura` once brewed with the full recipe. */
 const curaBrew = (progressTenths: number): Brew => ({
   recipeId: 'r-cura',
-  outputId: 'cura',
+  output: material('cura'),
   outputQty: 2,
   days: 1,
   spent: cura.ingredients,
@@ -229,7 +245,7 @@ const withStations = (state: GameState, stations: Record<string, Brew>): GameSta
 describe('brew', () => {
   const stocked = { hortela: 5, camomila: 1, aetherium: 2 };
   const order = { stationId: 'alambique-1', recipeId: 'r-cura' };
-  const brewed = (state: GameState) => stateOf(brew(state, catalog, order, player));
+  const brewed = (state: GameState) => stateOf(brew(state, catalog, order, player, NO_DEPOT));
 
   it('brewsWithEveryIngredient', () => {
     const state = brewed(labState(1, { stock: stocked, recipes: [cura] }));
@@ -250,7 +266,7 @@ describe('brew', () => {
 
   it('brewSpendsAllOrNothing', () => {
     const start = labState(1, { stock: { hortela: 5 }, recipes: [cura] });
-    expect(brew(start, catalog, order, player)).toEqual({
+    expect(brew(start, catalog, order, player, NO_DEPOT)).toEqual({
       ok: false,
       error: 'missing_ingredients',
     });
@@ -258,21 +274,24 @@ describe('brew', () => {
 
   it('masterBrewsWithoutStock', () => {
     const start = labState(1, { stock: { hortela: 2 }, recipes: [cura] });
-    const state = stateOf(brew(start, catalog, order, master));
+    const state = stateOf(brew(start, catalog, order, master, NO_DEPOT));
     expect(state.lab.stations['alambique-1']?.spent).toEqual([
-      { materialId: 'hortela', quantity: 2 },
+      { ref: material('hortela'), quantity: 2 },
     ]);
     expect(stockOf(state, 'hortela')).toBe(0);
   });
 
   it('playerCannotBrewHiddenRecipe', () => {
     const start = labState(1, { stock: stocked, recipes: [{ ...cura, hidden: true }] });
-    expect(brew(start, catalog, order, player)).toEqual({ ok: false, error: 'not_found' });
+    expect(brew(start, catalog, order, player, NO_DEPOT)).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
   });
 
   it('masterBrewsHiddenRecipe', () => {
     const start = labState(1, { stock: stocked, recipes: [{ ...cura, hidden: true }] });
-    expect(brew(start, catalog, order, master).ok).toBe(true);
+    expect(brew(start, catalog, order, master, NO_DEPOT).ok).toBe(true);
   });
 
   it.each([
@@ -292,14 +311,17 @@ describe('brew', () => {
     },
   ])('refuses: $name', ({ level, order, error }) => {
     const start = labState(level, { stock: stocked, recipes: [cura, mana] });
-    expect(brew(start, catalog, order, master)).toEqual({ ok: false, error });
+    expect(brew(start, catalog, order, master, NO_DEPOT)).toEqual({ ok: false, error });
   });
 
   it('refusesBusyStation', () => {
     const start = withStations(labState(1, { stock: stocked, recipes: [cura] }), {
       'alambique-1': curaBrew(0),
     });
-    expect(brew(start, catalog, order, player)).toEqual({ ok: false, error: 'station_busy' });
+    expect(brew(start, catalog, order, player, NO_DEPOT)).toEqual({
+      ok: false,
+      error: 'station_busy',
+    });
   });
 
   it('refusesStationAboveLevelInForceDuringUpgrade', () => {
@@ -309,20 +331,23 @@ describe('brew', () => {
       recipes: [{ ...mana, hidden: false }],
     });
     const order = { stationId: 'caldeirao-1', recipeId: 'r-mana' };
-    expect(brew(start, catalog, order, player)).toEqual({ ok: false, error: 'unknown_station' });
+    expect(brew(start, catalog, order, player, NO_DEPOT)).toEqual({
+      ok: false,
+      error: 'unknown_station',
+    });
   });
 
   it('editingRecipeKeepsRunningBrew', () => {
     const brewing = brewed(labState(1, { stock: stocked, recipes: [cura] }));
     const fields = { ...fieldsOf(cura), outputQty: 9, days: 7 };
-    const edited = stateOf(updateRecipe(brewing, 'r-cura', fields));
+    const edited = stateOf(updateRecipe(brewing, 'r-cura', fields, NO_DEPOT));
     expect(edited.lab.stations['alambique-1']).toEqual(curaBrew(0));
   });
 
   it('hidingRecipeKeepsRunningBrew', () => {
     const brewing = brewed(labState(1, { stock: stocked, recipes: [cura] }));
     const fields = { ...fieldsOf(cura), hidden: true };
-    const hidden = stateOf(updateRecipe(brewing, 'r-cura', fields));
+    const hidden = stateOf(updateRecipe(brewing, 'r-cura', fields, NO_DEPOT));
     expect(hidden.lab.stations['alambique-1']).toEqual(curaBrew(0));
   });
 
@@ -331,7 +356,7 @@ describe('brew', () => {
     const removed = stateOf(removeRecipe(brewing, 'r-cura'));
     expect(removed.lab.stations['alambique-1']).toEqual(curaBrew(0));
     const ready = withStations(removed, { 'alambique-1': curaBrew(10) });
-    expect(stockOf(stateOf(collect(ready, catalog, 'alambique-1')), 'cura')).toBe(2);
+    expect(stockOf(stateOf(collect(ready, catalog, 'alambique-1', NO_DEPOT)), 'cura')).toBe(2);
   });
 });
 
@@ -340,7 +365,7 @@ describe('collect', () => {
 
   it('collectsAReadyStation', () => {
     const start = withStations(labState(1), { 'alambique-1': ready });
-    const state = stateOf(collect(start, catalog, 'alambique-1'));
+    const state = stateOf(collect(start, catalog, 'alambique-1', NO_DEPOT));
     expect(state.lab.stations).toEqual({});
     expect(stockOf(state, 'cura')).toBe(2);
     expect(state.log.at(-1)).toEqual({
@@ -361,15 +386,17 @@ describe('collect', () => {
     { name: 'empty', stations: {}, stationId: 'alambique-1', error: 'station_empty' },
     { name: 'unknown station', stations: {}, stationId: 'circulo-1', error: 'unknown_station' },
   ])('refuses: $name', ({ stations, stationId, error }) => {
-    expect(collect(withStations(labState(1), stations), catalog, stationId)).toEqual({
+    expect(collect(withStations(labState(1), stations), catalog, stationId, NO_DEPOT)).toEqual({
       ok: false,
       error,
     });
   });
 
   it('collectsMissingOutputAsNothing', () => {
-    const start = withStations(labState(1), { 'alambique-1': { ...ready, outputId: 'gone' } });
-    const state = stateOf(collect(start, catalog, 'alambique-1'));
+    const start = withStations(labState(1), {
+      'alambique-1': { ...ready, output: material('gone') },
+    });
+    const state = stateOf(collect(start, catalog, 'alambique-1', NO_DEPOT));
     expect(state.lab.stations).toEqual({});
     expect(state.log).toEqual(start.log);
   });
@@ -380,7 +407,7 @@ describe('collect', () => {
       'alambique-2': curaBrew(5),
       'alambique-3': ready,
     });
-    const state = stateOf(collect(start, catalog, undefined));
+    const state = stateOf(collect(start, catalog, undefined, NO_DEPOT));
     expect(Object.keys(state.lab.stations)).toEqual(['alambique-2']);
     expect(stockOf(state, 'cura')).toBe(4);
     expect(state.log.filter((e) => e.kind === 'lab_collected')).toEqual([
@@ -390,14 +417,17 @@ describe('collect', () => {
 
   it('collectAllWithNothingReady', () => {
     const start = withStations(labState(1), { 'alambique-1': curaBrew(5) });
-    expect(collect(start, catalog, undefined)).toEqual({ ok: false, error: 'nothing_changed' });
+    expect(collect(start, catalog, undefined, NO_DEPOT)).toEqual({
+      ok: false,
+      error: 'nothing_changed',
+    });
   });
 });
 
 describe('discard', () => {
   it('emptiesTheStationWithoutRefund', () => {
     const start = withStations(labState(1), { 'alambique-1': curaBrew(5) });
-    const state = stateOf(discard(start, catalog, 'alambique-1'));
+    const state = stateOf(discard(start, catalog, 'alambique-1', NO_DEPOT));
     expect(state.lab.stations).toEqual({});
     expect(stockOf(state, 'hortela')).toBe(0);
     expect(state.log.at(-1)).toEqual({
@@ -412,7 +442,7 @@ describe('discard', () => {
     { name: 'empty', stationId: 'alambique-1', error: 'station_empty' },
     { name: 'unknown station', stationId: 'caldeirao-1', error: 'unknown_station' },
   ])('refuses: $name', ({ stationId, error }) => {
-    expect(discard(labState(1), catalog, stationId)).toEqual({ ok: false, error });
+    expect(discard(labState(1), catalog, stationId, NO_DEPOT)).toEqual({ ok: false, error });
   });
 });
 
@@ -425,7 +455,7 @@ describe('brewLab', () => {
   it('readyAfterDays', () => {
     const start = withStations(labState(1), { 'alambique-1': { ...curaBrew(0), days: 3 } });
     const days = [1, 2, 3].reduce((state) => brewLab(state, catalog), start);
-    expect(collect(days, catalog, 'alambique-1').ok).toBe(true);
+    expect(collect(days, catalog, 'alambique-1', NO_DEPOT).ok).toBe(true);
   });
 
   it('leavesStationsOutsideTheLevelInForce', () => {
@@ -440,11 +470,11 @@ describe('settleLab', () => {
 
   it('keepsBrewsInStationsInForce', () => {
     const start = at(1, { 'alambique-1': curaBrew(3) });
-    expect(settleLab(start, catalog)).toBe(start);
+    expect(settleLab(start, catalog, NO_DEPOT).state).toBe(start);
   });
 
   it('settlesOnForcedDowngrade: ready is collected', () => {
-    const state = settleLab(at(1, { 'alambique-3': curaBrew(10) }), catalog);
+    const state = settleLab(at(1, { 'alambique-3': curaBrew(10) }), catalog, NO_DEPOT).state;
     expect(state.lab.stations).toEqual({});
     expect(stockOf(state, 'cura')).toBe(2);
   });
@@ -453,7 +483,8 @@ describe('settleLab', () => {
     const state = settleLab(
       at(1, { 'alambique-1': curaBrew(1), 'alambique-3': curaBrew(4) }),
       catalog,
-    );
+      NO_DEPOT,
+    ).state;
     expect(state.lab.stations).toEqual({
       'alambique-1': curaBrew(1),
       'alambique-2': curaBrew(4),
@@ -468,7 +499,8 @@ describe('settleLab', () => {
         'alambique-3': curaBrew(4),
       }),
       catalog,
-    );
+      NO_DEPOT,
+    ).state;
     expect(Object.keys(state.lab.stations)).toEqual(['alambique-1', 'alambique-2']);
     expect(stockOf(state, 'hortela')).toBe(3);
     expect(stockOf(state, 'camomila')).toBe(1);
@@ -487,7 +519,8 @@ describe('settleLab', () => {
     const state = settleLab(
       at(0, { 'alambique-1': curaBrew(10), 'caldeirao-1': curaBrew(2) }),
       catalog,
-    );
+      NO_DEPOT,
+    ).state;
     expect(state.lab.stations).toEqual({});
     expect(stockOf(state, 'cura')).toBe(2);
     expect(stockOf(state, 'hortela')).toBe(3);
@@ -502,7 +535,7 @@ describe('settleLab', () => {
         items: start.materials.items.filter((m) => m.id !== 'hortela'),
       },
     };
-    const state = settleLab(withoutHortela, catalog);
+    const state = settleLab(withoutHortela, catalog, NO_DEPOT).state;
     expect(stockOf(state, 'camomila')).toBe(1);
     expect(state.log.at(-1)).toMatchObject({
       kind: 'lab_ingredients_returned',
@@ -517,18 +550,172 @@ describe('settleLab', () => {
         catalog,
         { stationId: 'alambique-1', recipeId: 'r-cura' },
         master,
+        NO_DEPOT,
       ),
     );
     const removed = { ...brewed, slots: {} };
-    const state = settleLab(removed, catalog);
+    const state = settleLab(removed, catalog, NO_DEPOT).state;
     expect(stockOf(state, 'hortela')).toBe(1);
     expect(stockOf(state, 'camomila')).toBe(0);
   });
 
   it('dropsAnEmptyRefundWithoutALogLine', () => {
     const start = at(0, { 'alambique-1': { ...curaBrew(2), spent: [] } });
-    const state = settleLab(start, catalog);
+    const state = settleLab(start, catalog, NO_DEPOT).state;
     expect(state.lab.stations).toEqual({});
     expect(state.log).toEqual(start.log);
+  });
+});
+
+describe('lab with depot items', () => {
+  const NOW = '2026-10-19T12:00:00.000Z';
+  const view = (id: string, name: string, quantity: number, live = true) => ({
+    id,
+    name,
+    quantity,
+    live,
+    updatedAt: NOW,
+  });
+  /** Poção de cavalo (depot) from 3 Hortelã (depot) and 1 Camomila (material). */
+  const cavalo: Recipe = {
+    id: 'r-cavalo',
+    output: item('pocao_cavalo'),
+    outputQty: 2,
+    ingredients: [
+      { ref: item('erva'), quantity: 3 },
+      { ref: material('camomila'), quantity: 1 },
+    ],
+    stationType: 'alambique',
+    days: 1,
+    hidden: false,
+  };
+  const depot = (herbs: number, potionLive = true): DepotSnapshot => [
+    view('erva', 'Hortelã do jardim', herbs),
+    view('pocao_cavalo', 'Porção de cavalo', 0, potionLive),
+  ];
+  const order = { stationId: 'alambique-1', recipeId: 'r-cavalo' };
+  const start = (camomila = 1) => labState(1, { stock: { camomila }, recipes: [cavalo] });
+  const brewing = (progressTenths: number, spent = cavalo.ingredients): Brew => ({
+    recipeId: 'r-cavalo',
+    output: cavalo.output,
+    outputQty: 2,
+    days: 1,
+    spent,
+    progressTenths,
+  });
+  const stockedOf = (outcome: StockedOutcome) => {
+    if (!outcome.ok) throw new Error(outcome.error);
+    return outcome;
+  };
+
+  it('addsARecipeLinkedToExistingItems', () => {
+    const outcome = stockedOf(addRecipe(labState(1), cavalo, depot(0)));
+    expect(findRecipe(outcome.state, 'r-cavalo')).toEqual(cavalo);
+  });
+
+  it.each([
+    { name: 'an unknown output item', snapshot: [view('erva', 'Hortelã', 0)] },
+    { name: 'a trashed ingredient item', snapshot: [view('erva', 'Hortelã', 0, false)] },
+  ])('refusesRecipeWith $name', ({ snapshot }) => {
+    expect(addRecipe(labState(1), cavalo, snapshot)).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it('hidesRecipesWhoseItemIsGone', () => {
+    const state = start();
+    expect(recipesFor(state, 'alambique', false, depot(0)).map((r) => r.id)).toEqual(['r-cavalo']);
+    expect(recipesFor(state, 'alambique', true, depot(0, false))).toEqual([]);
+  });
+
+  it('playerBrewsAMixedRecipe', () => {
+    const outcome = stockedOf(brew(start(), catalog, order, player, depot(3)));
+    expect(outcome.stock).toEqual([{ itemId: 'erva', delta: -3, mode: 'strict' }]);
+    expect(stockOf(outcome.state, 'camomila')).toBe(0);
+    expect(outcome.state.lab.stations['alambique-1']).toEqual(brewing(0));
+    expect(outcome.state.log.at(-1)).toEqual({
+      day: 1,
+      kind: 'lab_brewed',
+      station: 'alambique-1',
+      material: 'Porção de cavalo',
+      ingredients: [
+        { material: 'Hortelã do jardim', quantity: 3 },
+        { material: 'Camomila', quantity: 1 },
+      ],
+    });
+  });
+
+  it('refusesAPlayerShortOfADepotIngredient', () => {
+    expect(brew(start(), catalog, order, player, depot(2))).toEqual({
+      ok: false,
+      error: 'missing_ingredients',
+    });
+  });
+
+  it('masterClampsDepotSpend', () => {
+    const outcome = stockedOf(brew(start(0), catalog, order, master, depot(1)));
+    expect(outcome.stock).toEqual([{ itemId: 'erva', delta: -1, mode: 'clamp' }]);
+    expect(outcome.state.lab.stations['alambique-1']?.spent).toEqual([
+      { ref: item('erva'), quantity: 1 },
+    ]);
+  });
+
+  it('collectsIntoTheDepotItem', () => {
+    const ready = withStations(start(), { 'alambique-1': brewing(10) });
+    const outcome = stockedOf(collect(ready, catalog, 'alambique-1', depot(0)));
+    expect(outcome.stock).toEqual([{ itemId: 'pocao_cavalo', delta: 2, mode: 'strict' }]);
+    expect(outcome.state.log.at(-1)).toEqual({
+      day: 1,
+      kind: 'lab_collected',
+      material: 'Porção de cavalo',
+      quantity: 2,
+    });
+  });
+
+  it('logsACollectForATrashedItemAsLost', () => {
+    const ready = withStations(start(), { 'alambique-1': brewing(10) });
+    const outcome = stockedOf(collect(ready, catalog, 'alambique-1', depot(0, false)));
+    expect(outcome.stock).toEqual([]);
+    expect(outcome.state.lab.stations).toEqual({});
+    expect(outcome.state.log.at(-1)).toEqual({
+      day: 1,
+      kind: 'lab_collected',
+      material: 'Porção de cavalo',
+      quantity: 2,
+      lost: true,
+    });
+  });
+
+  it('settleRefundsDepotIngredients', () => {
+    const removed = withStations(labState(0, { stock: { camomila: 0 } }), {
+      'alambique-1': brewing(2),
+    });
+    const settled = settleLab(removed, catalog, depot(0));
+    expect(settled.stock).toEqual([{ itemId: 'erva', delta: 3, mode: 'strict' }]);
+    expect(stockOf(settled.state, 'camomila')).toBe(1);
+    expect(settled.state.log.at(-1)).toMatchObject({
+      kind: 'lab_ingredients_returned',
+      ingredients: [
+        { material: 'Hortelã do jardim', quantity: 3 },
+        { material: 'Camomila', quantity: 1 },
+      ],
+    });
+  });
+
+  it('logsARefundToATrashedItemAsLost', () => {
+    const removed = withStations(labState(0), { 'alambique-1': brewing(2) });
+    const trashed = [view('erva', 'Hortelã do jardim', 0, false)];
+    const settled = settleLab(removed, catalog, trashed);
+    expect(settled.stock).toEqual([]);
+    expect(settled.state.log.at(-1)).toMatchObject({
+      ingredients: [
+        { material: 'Hortelã do jardim', quantity: 3, lost: true },
+        { material: 'Camomila', quantity: 1 },
+      ],
+    });
+  });
+
+  it('discardsNamingTheDepotPotion', () => {
+    const busy = withStations(start(), { 'alambique-1': brewing(5) });
+    const outcome = stockedOf(discard(busy, catalog, 'alambique-1', depot(0)));
+    expect(outcome.state.log.at(-1)).toMatchObject({ material: 'Porção de cavalo' });
   });
 });

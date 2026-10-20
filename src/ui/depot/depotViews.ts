@@ -1,4 +1,5 @@
 import { t } from '../../i18n/pt-BR';
+import type { GameState } from '../../model/schema';
 import {
   ITEM_KINDS,
   ITEM_NOTES_LIMIT,
@@ -9,6 +10,7 @@ import {
   type ItemFields,
   type ItemKind,
 } from '../../systems/Depot';
+import { refName, type DepotSnapshot, type ItemLinks } from '../../systems/Stock';
 import { el } from '../dom';
 import { button, confirmButton, field, selectInput } from '../widgets';
 
@@ -27,6 +29,8 @@ export interface ItemCardDeps {
   /** Shown above the name in search results. */
   sectionLabel?: string | undefined;
   isPrivate: boolean;
+  /** What in the garden and the lab uses the item ("Semente de Hortelã"); empty when nothing. */
+  links: readonly string[];
   onToggle: () => void;
   onEdit: () => void;
   onAdjust: (delta: number) => void;
@@ -38,9 +42,10 @@ export interface ItemCardDeps {
 export function itemCard(item: DepotItem, deps: ItemCardDeps): HTMLElement {
   const author = deps.authorName(item.authorId);
   const editor = item.editedBy && deps.authorName(item.editedBy);
+  const isOut = item.quantity === 0;
   return el(
     'li',
-    { class: 'archive-note depot-item' },
+    { class: isOut ? 'archive-note depot-item depot-item--out' : 'archive-note depot-item' },
     el(
       'div',
       { class: 'depot-item__head' },
@@ -58,12 +63,19 @@ export function itemCard(item: DepotItem, deps: ItemCardDeps): HTMLElement {
           { class: 'archive-note__title' },
           `${t.depot.kindIcons[item.kind]} ${item.name}`,
           el('span', { class: 'depot-item__quantity' }, ` ${t.depot.quantity(item.quantity)}`),
+          isOut && el('span', { class: 'depot-item__out' }, ` ${t.depot.outOfStock}`),
         ),
         el(
           'span',
           { class: 'archive-note__meta' },
           `${t.depot.kinds[item.kind]} · ${t.depot.byline(author, editor || undefined)}`,
           deps.isPrivate && el('span', { class: 'archive-note__secret' }, t.depot.privateBadge),
+          deps.links.length > 0 &&
+            el(
+              'span',
+              { class: 'depot-item__links', title: deps.links.join(' · ') },
+              `${t.depot.linked.badge} ${deps.links.join(' · ')}`,
+            ),
         ),
       ),
       el(
@@ -71,7 +83,7 @@ export function itemCard(item: DepotItem, deps: ItemCardDeps): HTMLElement {
         { class: 'depot-item__stepper' },
         button('−', () => deps.onAdjust(-1), {
           title: t.depot.decrease,
-          disabled: item.quantity <= 1,
+          disabled: item.quantity <= 0,
         }),
         button('+', () => deps.onAdjust(1), {
           title: t.depot.increase,
@@ -104,8 +116,27 @@ function itemActions(deps: ItemCardDeps): HTMLElement {
     button('↓', () => deps.onShift('down'), { title: t.depot.moveDown }),
     canMove && moveSelect,
     canMove && button(t.depot.move, () => deps.onMove(moveSelect.value)),
-    confirmButton(t.depot.remove, deps.onRemove),
+    deps.links.length > 0
+      ? confirmButton(
+          t.depot.remove,
+          deps.onRemove,
+          t.depot.linked.removeAsk(deps.links.join(', ')),
+        )
+      : confirmButton(t.depot.remove, deps.onRemove),
   );
+}
+
+/** The 🔗 texts of an item: crops by the other end's name, recipes by count. */
+export function linkLabels(state: GameState, links: ItemLinks, depot: DepotSnapshot): string[] {
+  const texts = t.depot.linked;
+  const nameOf = (ref: Parameters<typeof refName>[0]) =>
+    refName(ref, state, depot) ?? t.garden.missingItem;
+  return [
+    ...links.seedOf.map((crop) => texts.seedOf(nameOf(crop.harvest))),
+    ...links.harvestOf.map((crop) => texts.harvestOf(nameOf(crop.seed))),
+    ...(links.outputOf.length > 0 ? [texts.potionOf(links.outputOf.length)] : []),
+    ...(links.ingredientOf.length > 0 ? [texts.ingredientOf(links.ingredientOf.length)] : []),
+  ];
 }
 
 export function sectionName(section: Pick<DepotSection, 'name' | 'icon'>): string {
@@ -140,7 +171,7 @@ export function itemEditor({ item, onSave, onCancel }: ItemEditorOptions): HTMLE
   const quantity = el('input', {
     class: 'input archive-editor__number',
     type: 'number',
-    min: '1',
+    min: '0',
     max: String(QUANTITY_LIMIT),
     step: '1',
     required: true,

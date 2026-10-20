@@ -6,10 +6,14 @@ import {
   type CropLook,
   type GameState,
   type PlotType,
+  type StockRef,
 } from '../../model/schema';
 import type { CoinBag } from '../../systems/Coins';
+import type { CropFields } from '../../systems/Garden';
+import { parseRefKey, refKey } from '../../systems/Stock';
 import { el } from '../dom';
 import { priceInputs } from '../shop/ShopItemForm';
+import { stockPicker, type DepotAccess } from '../stock/StockPicker';
 import { button, closeButton, field, keepEscapeInside, numberInput } from '../widgets';
 import { cropSprite, pottedPlant } from './GardenScene';
 import { cropLook } from './sceneLayout';
@@ -18,8 +22,9 @@ const DAYS_RANGE = { min: 1, max: 365 } as const;
 const YIELD_RANGE = { min: 1, max: 9999 } as const;
 
 export interface CropDraft {
-  seedId: string;
-  harvestId: string;
+  /** Picker values: `m:<materialId>`, `d:<itemId>` or '' while unchosen. */
+  seedKey: string;
+  harvestKey: string;
   plotType: PlotType;
   days: number;
   yield: number;
@@ -30,13 +35,15 @@ export interface CropDraft {
 }
 
 export type CropFormResult =
-  { ok: true; crop: Crop } | { ok: false; reason: 'missing_material' | 'empty_price' };
+  { ok: true; crop: CropFields } | { ok: false; reason: 'missing_material' | 'empty_price' };
 
 /** A rare crop has no price, so whatever is typed there is dropped. */
 export function cropFormValues(form: CropDraft): CropFormResult {
-  if (form.seedId === '' || form.harvestId === '') return { ok: false, reason: 'missing_material' };
-  const { seedId, harvestId, plotType, days, yield: quantity, look } = form;
-  const base = { seedId, harvestId, plotType, days, yield: quantity, ...(look ? { look } : {}) };
+  const seed = parseRefKey(form.seedKey);
+  const harvest = parseRefKey(form.harvestKey);
+  if (!seed || !harvest) return { ok: false, reason: 'missing_material' };
+  const { plotType, days, yield: quantity, look } = form;
+  const base = { seed, harvest, plotType, days, yield: quantity, ...(look ? { look } : {}) };
   if (form.rare) return { ok: true, crop: { ...base, rare: true } };
   const hasPrice = Object.values(form.price).some((amount) => amount > 0);
   if (!hasPrice) return { ok: false, reason: 'empty_price' };
@@ -62,7 +69,7 @@ const FLOWER_COLORS: readonly { id: FlowerColor; hue: number }[] = [
   { id: 'violeta', hue: -30 },
 ];
 
-/** `auto` keeps no look, so the garden goes on drawing one from the seed id. Foliage has no color. */
+/** `auto` keeps no look, so the garden goes on drawing one from the seed. Foliage has no color. */
 export function chosenLook(mode: LookMode, hue: number): CropLook | undefined {
   if (mode === 'auto') return undefined;
   return mode === 'flower' ? { kind: 'flower', hue } : { kind: 'foliage', hue: 0 };
@@ -75,28 +82,41 @@ function isWithin(value: number, { min, max }: { min: number; max: number }): bo
 export interface CropFormOptions {
   state: GameState;
   catalog: Catalog;
-  /** Present when editing; its seed is the crop's identity and cannot change. */
+  /** Present when editing. */
   crop?: Crop;
+  /** The group depot, to link items and create them; absent: materials only. */
+  depot?: DepotAccess | undefined;
   /** Saves the crop and returns whether it now exists. */
-  save(crop: Crop): boolean;
+  save(crop: CropFields): boolean;
 }
 
 /** Modal form of a crop. It closes when `save` accepts the crop. */
-export function openCropForm({ state, catalog, crop, save }: CropFormOptions): void {
+export function openCropForm({ state, catalog, crop, depot, save }: CropFormOptions): void {
   const texts = t.garden.crops;
-  const taken = new Set(state.garden.crops.map((existing) => existing.seedId));
-  const freeSeeds = state.materials.items.filter(
-    (material) => material.id === crop?.seedId || !taken.has(material.id),
+  // One crop per seed: seeds of the other crops are not offered.
+  const taken = new Set(
+    state.garden.crops.flatMap((other) => (other.id === crop?.id ? [] : [refKey(other.seed)])),
   );
-
-  const seed = materialSelect(texts.seed, state, freeSeeds, crop?.seedId ?? '');
-  seed.disabled = crop !== undefined;
-  const harvest = materialSelect(
-    texts.harvest,
+  const refreshAll = () => pickers.forEach((picker) => picker.refresh());
+  const seedPicker = stockPicker({
+    label: texts.seed,
     state,
-    state.materials.items,
-    crop?.harvestId ?? '',
-  );
+    depot,
+    value: crop?.seed,
+    allows: (key) => !taken.has(key),
+    onCreated: refreshAll,
+  });
+  const harvestPicker = stockPicker({
+    label: texts.harvest,
+    state,
+    depot,
+    value: crop?.harvest,
+    onCreated: refreshAll,
+  });
+  const pickers = [seedPicker, harvestPicker];
+  const seed = seedPicker.select;
+  const harvest = harvestPicker.select;
+  const hasFreeSeeds = () => seed.options.length > 1;
   const plotType = el(
     'select',
     { class: 'input', 'aria-label': texts.plotType },
@@ -112,15 +132,15 @@ export function openCropForm({ state, catalog, crop, save }: CropFormOptions): v
   const quantity = numberInput({ ...YIELD_RANGE, value: crop?.yield ?? 1, label: texts.yield });
   const rare = el('input', { type: 'checkbox', checked: crop?.rare ?? false });
   const prices = priceInputs(catalog, crop && !crop.rare ? crop.price : undefined);
-  const look = lookPicker(seed, crop?.look);
+  const look = lookPicker(seed, seedPicker.read, crop?.look);
   const pricePart = el('div', { class: 'field' }, el('span', {}, texts.price), prices.element);
   const noSeeds = el('p', { class: 'panel__hint' }, texts.noSeeds);
   const submitButton = el('button', { class: 'btn btn--primary', type: 'submit' }, texts.save);
 
   const read = () =>
     cropFormValues({
-      seedId: seed.value,
-      harvestId: harvest.value,
+      seedKey: seed.value,
+      harvestKey: harvest.value,
       plotType: parsePlotType(plotType.value),
       days: Number(days.value),
       yield: Number(quantity.value),
@@ -130,7 +150,7 @@ export function openCropForm({ state, catalog, crop, save }: CropFormOptions): v
     });
   const sync = () => {
     pricePart.hidden = rare.checked;
-    noSeeds.hidden = freeSeeds.length > 0;
+    noSeeds.hidden = hasFreeSeeds();
     submitButton.disabled =
       !read().ok ||
       !isWithin(Number(days.value), DAYS_RANGE) ||
@@ -160,9 +180,9 @@ export function openCropForm({ state, catalog, crop, save }: CropFormOptions): v
           if (result.ok && save(result.crop)) dialog.close();
         },
       },
-      field(texts.seed, seed),
+      field(texts.seed, seedPicker.element),
       noSeeds,
-      field(texts.harvest, harvest),
+      field(texts.harvest, harvestPicker.element),
       field(texts.plotType, plotType),
       field(texts.days, days),
       field(texts.yield, quantity),
@@ -194,11 +214,16 @@ interface LookPicker {
  * icon and a ripe plant as the garden draws them. The automatic preview
  * follows the seed picked above.
  */
-function lookPicker(seed: HTMLSelectElement, initial: CropLook | undefined): LookPicker {
+function lookPicker(
+  seed: HTMLSelectElement,
+  readSeed: () => StockRef | undefined,
+  initial: CropLook | undefined,
+): LookPicker {
+  const drawn = () => cropLook({ seed: readSeed() ?? NO_SEED });
   const texts = t.garden.crops.look;
   let mode: LookMode = initial?.kind ?? 'auto';
   // Starting from the drawn hue keeps the flower's color when "Flor" is picked.
-  let hue = initial?.hue ?? cropLook({ seedId: seed.value }).hue;
+  let hue = initial?.hue ?? drawn().hue;
   const modes = LOOK_MODES.map((value) => ({
     value,
     input: el('input', { type: 'radio', name: 'crop-look-kind', value, checked: value === mode }),
@@ -240,7 +265,7 @@ function lookPicker(seed: HTMLSelectElement, initial: CropLook | undefined): Loo
     range.disabled = !isFlower;
     range.value = String(hue);
     hint.hidden = mode !== 'auto';
-    const shown = chosenLook(mode, hue) ?? cropLook({ seedId: seed.value });
+    const shown = chosenLook(mode, hue) ?? drawn();
     preview.replaceChildren(cropSprite(shown), pottedPlant(shown));
   };
   modes.forEach(({ value, input }) =>
@@ -288,33 +313,8 @@ function lookPicker(seed: HTMLSelectElement, initial: CropLook | undefined): Loo
   return { element, read: () => chosenLook(mode, hue) };
 }
 
-/** Materials grouped by category, so "Sementes" and "Ervas" stand out. */
-export function materialSelect(
-  label: string,
-  state: GameState,
-  materials: GameState['materials']['items'],
-  value: string,
-): HTMLSelectElement {
-  const option = (material: { id: string; name: string }) =>
-    el('option', { value: material.id, selected: material.id === value }, material.name);
-  const groups = state.materials.categories.flatMap((category) => {
-    const members = materials.filter((material) => material.category === category.id);
-    return members.length === 0
-      ? []
-      : [el('optgroup', { label: category.name }, ...members.map(option))];
-  });
-  const known = new Set(state.materials.categories.map((category) => category.id));
-  const orphans = materials.filter((material) => !known.has(material.category));
-  return el(
-    'select',
-    { class: 'input', 'aria-label': label },
-    el('option', { value: '', selected: value === '' }, '—'),
-    ...groups,
-    ...(orphans.length > 0
-      ? [el('optgroup', { label: t.garden.crops.uncategorized }, ...orphans.map(option))]
-      : []),
-  );
-}
+/** Before a seed is picked, the preview draws from an empty id, as it always did. */
+const NO_SEED: StockRef = { source: 'material', materialId: '' };
 
 function parsePlotType(value: string): PlotType {
   return plotTypeSchema.safeParse(value).data ?? 'canteiro';

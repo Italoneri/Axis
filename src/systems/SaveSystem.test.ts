@@ -52,6 +52,129 @@ describe('lab in the save', () => {
   });
 });
 
+describe('stock refs in the save', () => {
+  const v10 = (garden: unknown, lab: unknown) =>
+    JSON.stringify({ ...makeState(), version: 10, garden, lab });
+
+  it('migrates10to11', () => {
+    const garden = {
+      crops: [
+        {
+          seedId: 'wood',
+          harvestId: 'iron',
+          plotType: 'canteiro',
+          days: 2,
+          yield: 3,
+          rare: false,
+          price: { gold: 1 },
+          look: { kind: 'flower', hue: 30 },
+        },
+        {
+          seedId: 'aetherium',
+          harvestId: 'iron',
+          plotType: 'arcana',
+          days: 5,
+          yield: 1,
+          rare: true,
+        },
+      ],
+      plots: { p1: { seedId: 'wood', growthTenths: 7 } },
+    };
+    const lab = {
+      recipes: [
+        {
+          id: 'r1',
+          outputId: 'aetherium',
+          outputQty: 2,
+          ingredients: [
+            { materialId: 'iron', quantity: 1 },
+            { materialId: 'wood', quantity: 3 },
+          ],
+          stationType: 'caldeirao',
+          days: 2,
+          color: '#aabbcc',
+          hidden: false,
+        },
+      ],
+      stations: {
+        s1: {
+          recipeId: 'r1',
+          outputId: 'aetherium',
+          outputQty: 2,
+          days: 2,
+          spent: [{ materialId: 'iron', quantity: 1 }],
+          progressTenths: 10,
+        },
+      },
+    };
+    const parsed = parseSave(v10(garden, lab), testCatalog);
+    if (!parsed.ok) throw new Error(parsed.error);
+    const material = (materialId: string) => ({ source: 'material', materialId });
+    expect(parsed.state.garden).toEqual({
+      crops: [
+        {
+          id: 'wood',
+          seed: material('wood'),
+          harvest: material('iron'),
+          plotType: 'canteiro',
+          days: 2,
+          yield: 3,
+          rare: false,
+          price: { gold: 1 },
+          look: { kind: 'flower', hue: 30 },
+        },
+        {
+          id: 'aetherium',
+          seed: material('aetherium'),
+          harvest: material('iron'),
+          plotType: 'arcana',
+          days: 5,
+          yield: 1,
+          rare: true,
+        },
+      ],
+      plots: { p1: { cropId: 'wood', growthTenths: 7 } },
+    });
+    expect(parsed.state.lab).toEqual({
+      recipes: [
+        {
+          id: 'r1',
+          output: material('aetherium'),
+          outputQty: 2,
+          ingredients: [
+            { ref: material('iron'), quantity: 1 },
+            { ref: material('wood'), quantity: 3 },
+          ],
+          stationType: 'caldeirao',
+          days: 2,
+          color: '#aabbcc',
+          hidden: false,
+        },
+      ],
+      stations: {
+        s1: {
+          recipeId: 'r1',
+          output: material('aetherium'),
+          outputQty: 2,
+          days: 2,
+          spent: [{ ref: material('iron'), quantity: 1 }],
+          progressTenths: 10,
+        },
+      },
+    });
+  });
+
+  it('migrates an empty garden and lab from version 10', () => {
+    const parsed = parseSave(
+      v10({ crops: [], plots: {} }, { recipes: [], stations: {} }),
+      testCatalog,
+    );
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.garden).toEqual({ crops: [], plots: {} });
+    expect(parsed.state.lab).toEqual({ recipes: [], stations: {} });
+  });
+});
+
 describe('shop in the save', () => {
   const seedIds = ['shop_wood', 'shop_iron', 'shop_aetherium'];
   const shopIds = (state: { shop: { items: { id: string }[] } }) =>

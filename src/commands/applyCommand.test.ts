@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ARCANE_LAB_BUILDING_ID, HERB_GARDEN_BUILDING_ID } from '../model/catalog';
 import { gameStateSchema, type GameState, type Recipe } from '../model/schema';
 import { LOG_LIMIT } from '../systems/outcome';
+import type { DepotSnapshot } from '../systems/Stock';
 import {
   arcaneLabCatalog,
   herbGardenCatalog,
@@ -26,8 +27,9 @@ function richState(): GameState {
     garden: {
       crops: [
         {
-          seedId: 'iron',
-          harvestId: 'wood',
+          id: 'iron',
+          seed: { source: 'material', materialId: 'iron' },
+          harvest: { source: 'material', materialId: 'wood' },
           plotType: 'muda',
           days: 2,
           yield: 1,
@@ -83,9 +85,9 @@ function richState(): GameState {
 /** Turns 2 wood into 1 iron on an alambique; revealed to players. */
 const ironTonic: Recipe = {
   id: 'r-tonic',
-  outputId: 'iron',
+  output: { source: 'material', materialId: 'iron' },
   outputQty: 1,
-  ingredients: [{ materialId: 'wood', quantity: 2 }],
+  ingredients: [{ ref: { source: 'material', materialId: 'wood' }, quantity: 2 }],
   stationType: 'alambique',
   days: 1,
   hidden: false,
@@ -222,9 +224,10 @@ const validCommands: Record<CommandType, GameCommand> = {
   shop_item_remove: { type: 'shop_item_remove', itemId: 'shop_iron' },
   garden_crop_create: {
     type: 'garden_crop_create',
+    id: 'crop_wood',
     crop: {
-      seedId: 'wood',
-      harvestId: 'iron',
+      seed: { source: 'material', materialId: 'wood' },
+      harvest: { source: 'material', materialId: 'iron' },
       plotType: 'canteiro',
       days: 3,
       yield: 2,
@@ -234,20 +237,27 @@ const validCommands: Record<CommandType, GameCommand> = {
   },
   garden_crop_update: {
     type: 'garden_crop_update',
-    seedId: 'iron',
-    crop: { harvestId: 'wood', plotType: 'canteiro', days: 3, yield: 2, rare: true },
+    cropId: 'iron',
+    crop: {
+      seed: { source: 'material', materialId: 'iron' },
+      harvest: { source: 'material', materialId: 'wood' },
+      plotType: 'canteiro',
+      days: 3,
+      yield: 2,
+      rare: true,
+    },
   },
-  garden_crop_remove: { type: 'garden_crop_remove', seedId: 'iron' },
-  garden_plant: { type: 'garden_plant', plotId: 'canteiro-1', seedId: 'semente', buy: false },
+  garden_crop_remove: { type: 'garden_crop_remove', cropId: 'iron' },
+  garden_plant: { type: 'garden_plant', plotId: 'canteiro-1', cropId: 'semente', buy: false },
   garden_harvest: { type: 'garden_harvest', plotId: 'canteiro-2' },
   garden_clear: { type: 'garden_clear', plotId: 'canteiro-2' },
   lab_recipe_create: {
     type: 'lab_recipe_create',
     id: 'recipe_1',
     recipe: {
-      outputId: 'wood',
+      output: { source: 'material', materialId: 'wood' },
       outputQty: 2,
-      ingredients: [{ materialId: 'aetherium', quantity: 1 }],
+      ingredients: [{ ref: { source: 'material', materialId: 'aetherium' }, quantity: 1 }],
       stationType: 'caldeirao',
       days: 3,
       hidden: true,
@@ -257,9 +267,9 @@ const validCommands: Record<CommandType, GameCommand> = {
     type: 'lab_recipe_update',
     recipeId: 'r-tonic',
     recipe: {
-      outputId: 'iron',
+      output: { source: 'material', materialId: 'iron' },
       outputQty: 1,
-      ingredients: [{ materialId: 'wood', quantity: 2 }],
+      ingredients: [{ ref: { source: 'material', materialId: 'wood' }, quantity: 2 }],
       stationType: 'alambique',
       days: 1,
       hidden: true,
@@ -323,8 +333,9 @@ function gardenWorkState(): GameState {
     garden: {
       crops: [
         {
-          seedId: 'semente',
-          harvestId: 'menta',
+          id: 'semente',
+          seed: { source: 'material', materialId: 'semente' },
+          harvest: { source: 'material', materialId: 'menta' },
           plotType: 'canteiro',
           days: 3,
           yield: 4,
@@ -332,7 +343,7 @@ function gardenWorkState(): GameState {
           price: { bronze: 2 },
         },
       ],
-      plots: { 'canteiro-2': { seedId: 'semente', growthTenths: 30 } },
+      plots: { 'canteiro-2': { cropId: 'semente', growthTenths: 30 } },
     },
   };
 }
@@ -361,7 +372,7 @@ function labWorkState(): GameState {
       stations: {
         'alambique-2': {
           recipeId: 'r-tonic',
-          outputId: 'iron',
+          output: { source: 'material', materialId: 'iron' },
           outputQty: 1,
           days: 1,
           spent: ironTonic.ingredients,
@@ -403,7 +414,7 @@ describe('garden settling by the master', () => {
     state.materials.items.find((m) => m.id === id)?.quantity;
 
   it('settlesOnForcedDowngrade', () => {
-    const start = withLevel(2, { 'canteiro-x-1': { seedId: 'semente', growthTenths: 10 } });
+    const start = withLevel(2, { 'canteiro-x-1': { cropId: 'semente', growthTenths: 10 } });
     const result = runGarden(
       { type: 'force_building', slotId: 'outer_w', buildingId: HERB_GARDEN_BUILDING_ID, level: 1 },
       master,
@@ -411,14 +422,14 @@ describe('garden settling by the master', () => {
     );
     if (!result.ok) throw new Error(result.error);
     expect(result.state.garden.plots).toEqual({
-      'canteiro-1': { seedId: 'semente', growthTenths: 10 },
+      'canteiro-1': { cropId: 'semente', growthTenths: 10 },
     });
   });
 
   it('settlesAllPlotsWhenRemoved', () => {
     const start = withLevel(1, {
-      'canteiro-1': { seedId: 'semente', growthTenths: 30 },
-      'canteiro-2': { seedId: 'semente', growthTenths: 10 },
+      'canteiro-1': { cropId: 'semente', growthTenths: 30 },
+      'canteiro-2': { cropId: 'semente', growthTenths: 10 },
     });
     const result = runGarden({ type: 'remove_building', slotId: 'outer_w' }, master, start);
     if (!result.ok) throw new Error(result.error);
@@ -431,7 +442,7 @@ describe('garden settling by the master', () => {
   });
 
   it('keepsMudaPlantingsAcrossUpgrade', () => {
-    const start = withLevel(1, { 'muda-1': { seedId: 'semente', growthTenths: 10 } });
+    const start = withLevel(1, { 'muda-1': { cropId: 'semente', growthTenths: 10 } });
     const result = runGarden(
       { type: 'force_building', slotId: 'outer_w', buildingId: HERB_GARDEN_BUILDING_ID, level: 2 },
       master,
@@ -439,7 +450,7 @@ describe('garden settling by the master', () => {
     );
     if (!result.ok) throw new Error(result.error);
     expect(result.state.garden.plots).toEqual({
-      'muda-1': { seedId: 'semente', growthTenths: 10 },
+      'muda-1': { cropId: 'semente', growthTenths: 10 },
     });
     expect(result.state.log.map((entry) => entry.kind)).toEqual(['building_forced']);
   });
@@ -539,11 +550,14 @@ describe('applyCommand', () => {
     {
       name: 'repeated ingredient',
       ingredients: [
-        { materialId: 'wood', quantity: 1 },
-        { materialId: 'wood', quantity: 2 },
+        { ref: { source: 'material', materialId: 'wood' }, quantity: 1 },
+        { ref: { source: 'material', materialId: 'wood' }, quantity: 2 },
       ],
     },
-    { name: 'potion among its ingredients', ingredients: [{ materialId: 'iron', quantity: 1 }] },
+    {
+      name: 'potion among its ingredients',
+      ingredients: [{ ref: { source: 'material', materialId: 'iron' }, quantity: 1 }],
+    },
   ])('refusesRecipeWith $name', ({ ingredients }) => {
     const command = {
       ...validCommands.lab_recipe_update,
@@ -556,7 +570,7 @@ describe('applyCommand', () => {
     const planted = runGarden(validCommands.garden_plant, thorinPlayer);
     if (!planted.ok) throw new Error(planted.error);
     expect(planted.state.garden.plots['canteiro-1']).toEqual({
-      seedId: 'semente',
+      cropId: 'semente',
       growthTenths: 0,
     });
 
@@ -1035,5 +1049,122 @@ describe('newId', () => {
   it('refuses to create a record twice with the same id', () => {
     const command = { type: 'add_material_category', id: 'ores', name: 'Outra' };
     expect(run(command)).toEqual({ ok: false, error: 'duplicate_id' });
+  });
+});
+
+describe('garden and lab with the group depot', () => {
+  const NOW = '2026-10-19T12:00:00.000Z';
+  const view = (id: string, name: string, quantity: number, live = true) => ({
+    id,
+    name,
+    quantity,
+    live,
+    updatedAt: NOW,
+  });
+  const depotCrop = {
+    seed: { source: 'depot', itemId: 'sem' },
+    harvest: { source: 'depot', itemId: 'erva' },
+    plotType: 'canteiro',
+    days: 1,
+    yield: 3,
+    rare: true,
+  } as const;
+  const create = { type: 'garden_crop_create', id: 'crop_hortela', crop: depotCrop };
+  const withDepot = (depot: DepotSnapshot): CommandContext => ({ ...thorinPlayer, depot });
+  const asMaster = (depot: DepotSnapshot): CommandContext => ({ ...master, depot });
+  const items = [view('sem', 'Semente de Hortelã', 1), view('erva', 'Hortelã', 0)];
+
+  function planted() {
+    const created = runGarden(create, asMaster(items));
+    if (!created.ok) throw new Error(created.error);
+    return created.state;
+  }
+
+  it('createsACropForExistingItems', () => {
+    expect(runGarden(create, asMaster(items)).ok).toBe(true);
+  });
+
+  it('refusesACropForAnItemTheDepotDoesNotHave', () => {
+    expect(runGarden(create, asMaster([view('erva', 'Hortelã', 0)]))).toEqual({
+      ok: false,
+      error: 'not_found',
+    });
+    expect(runGarden(create, master)).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it('returnsTheStockMovesWithTheNewState', () => {
+    const plant = {
+      type: 'garden_plant',
+      plotId: 'canteiro-1',
+      cropId: 'crop_hortela',
+      buy: false,
+    };
+    const outcome = runGarden(plant, withDepot(items), planted());
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(outcome.stock).toEqual([{ itemId: 'sem', delta: -1, mode: 'strict' }]);
+    expect(outcome.logged).toEqual([
+      expect.objectContaining({
+        kind: 'garden_planted',
+        seed: 'Semente de Hortelã',
+        actor: 'Thorin',
+      }),
+    ]);
+  });
+
+  it('logsAHarvestIntoARemovedItemAsLostWithItsName', () => {
+    const state = planted();
+    const ready = {
+      ...state,
+      garden: {
+        ...state.garden,
+        plots: { 'canteiro-1': { cropId: 'crop_hortela', growthTenths: 10 } },
+      },
+    };
+    const trashed = [view('sem', 'Semente de Hortelã', 1), view('erva', 'Hortelã', 0, false)];
+    const outcome = runGarden(
+      { type: 'garden_harvest', plotId: 'canteiro-1' },
+      withDepot(trashed),
+      ready,
+    );
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(outcome.stock).toEqual([]);
+    expect(outcome.logged).toEqual([
+      {
+        day: 3,
+        kind: 'garden_harvested',
+        material: 'Hortelã',
+        quantity: 3,
+        lost: true,
+        actor: 'Thorin',
+      },
+    ]);
+  });
+
+  it('keepsLoggedNamesWhenTheItemIsRenamedLater', () => {
+    const plant = {
+      type: 'garden_plant',
+      plotId: 'canteiro-1',
+      cropId: 'crop_hortela',
+      buy: false,
+    };
+    const first = runGarden(plant, withDepot(items), planted());
+    if (!first.ok) throw new Error(first.error);
+    const renamed = [view('sem', 'Semente velha', 1), view('erva', 'Menta', 0)];
+    const cleared = runGarden(
+      { type: 'garden_clear', plotId: 'canteiro-1' },
+      withDepot(renamed),
+      first.state,
+    );
+    if (!cleared.ok) throw new Error(cleared.error);
+    const seeds = cleared.state.log.flatMap((e) =>
+      e.kind === 'garden_planted' || e.kind === 'garden_cleared' ? [e.seed] : [],
+    );
+    expect(seeds).toEqual(['Semente de Hortelã', 'Semente velha']);
+  });
+
+  it('keepsMovesEmptyForCommandsOutsideTheGardenAndTheLab', () => {
+    const outcome = run({ type: 'adjust_material', materialId: 'iron', delta: 1 });
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(outcome.stock).toEqual([]);
   });
 });

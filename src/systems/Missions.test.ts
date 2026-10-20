@@ -71,7 +71,7 @@ function sendAndResolve(
   state = board(),
 ): GameState {
   const sent = ok(sendNpcsOnMission(state, testCatalog, { missionId: 'caca', npcIds }));
-  const back = advanceDays(sent, testCatalog, 3).state;
+  const back = advanceDays(sent, testCatalog, 3, []).state;
   return ok(
     resolveMission(back, testCatalog, {
       missionId: 'caca',
@@ -192,9 +192,9 @@ describe('missions with NPCs', () => {
     const sent = ok(
       sendNpcsOnMission(board(), testCatalog, { missionId: 'caca', npcIds: ['caio'] }),
     );
-    const early = advanceDays(sent, testCatalog, 2).state;
+    const early = advanceDays(sent, testCatalog, 2, []).state;
     expect(missionOf(early)?.progress.status).toBe('npcs');
-    const back = advanceDays(sent, testCatalog, 5).state;
+    const back = advanceDays(sent, testCatalog, 5, []).state;
     expect(missionOf(back)?.progress.status).toBe('aguardando');
     expect(back.log).toContainEqual({ day: 8, kind: 'mission_returned', title: 'Caçada' });
     // Still away until the master decides.

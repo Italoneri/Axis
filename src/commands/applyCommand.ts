@@ -40,7 +40,16 @@ import {
   updateMaterial,
   type MaterialFields,
 } from '../systems/Materials';
-import { ok, trimLog, withLog, type ActionError, type Outcome } from '../systems/outcome';
+import {
+  ok,
+  trimLog,
+  withLog,
+  type ActionError,
+  type Outcome,
+  type Stocked,
+  type StockedOutcome,
+} from '../systems/outcome';
+import { sumMoves, type DepotSnapshot, type StockMove } from '../systems/Stock';
 import {
   addResearch,
   addResearchCategory,
@@ -116,7 +125,9 @@ export type CommandError =
   | 'invalid_command'
   | 'blocked'
   /** Raised by the store when the stored game kept changing under a local change. */
-  | 'conflict';
+  | 'conflict'
+  /** A depot item a command spends from was removed or made private before the commit. */
+  | 'stock_missing';
 
 /** Every error, so answers from the server can be checked at runtime (the Record keeps it exhaustive). */
 const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
@@ -167,6 +178,7 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   invalid_command: true,
   blocked: true,
   conflict: true,
+  stock_missing: true,
 };
 
 export function isCommandError(value: unknown): value is CommandError {
@@ -174,7 +186,8 @@ export function isCommandError(value: unknown): value is CommandError {
 }
 
 type Refusal = { ok: false; error: CommandError; reasons?: BlockReason[] };
-type HandlerOutcome = { ok: true; state: GameState; change: StateChange } | Refusal;
+type HandlerOutcome =
+  { ok: true; state: GameState; change: StateChange; stock?: StockMove[] } | Refusal;
 
 export type CommandOutcome =
   | {
@@ -183,6 +196,11 @@ export type CommandOutcome =
       change: StateChange;
       /** Entries this command added, already stamped with its actor. */
       logged: LogEntry[];
+      /**
+       * Moves of group depot items to commit together with `state`, one per
+       * item. Empty for everything but the garden and the lab.
+       */
+      stock: StockMove[];
     }
   /** `reasons` explains a `blocked` construction. */
   | Refusal;
@@ -240,10 +258,12 @@ export function applyCommand(
   const command = parsed.data;
   if (!isAllowed(command, ctx)) return { ok: false, error: 'forbidden' };
   const actor = actorName(state, ctx);
-  const outcome = run(command.type, command, { state, catalog, actor, who: ctx.actor });
+  const depot = ctx.depot ?? [];
+  const outcome = run(command.type, command, { state, catalog, actor, who: ctx.actor, depot });
   if (!outcome.ok) return outcome;
+  const stock = sumMoves(outcome.stock ?? []);
   // A no-op keeps the very same state (and revision), so nothing needs saving.
-  if (outcome.state === state) return { ...outcome, logged: [] };
+  if (outcome.state === state) return { ...outcome, logged: [], stock };
 
   // Any change may leave NPCs in a home or post that no longer exists, or a mission without them.
   const settled = settleMissions(settleNpcs(outcome.state, catalog));
@@ -252,12 +272,14 @@ export function applyCommand(
     .map((entry) => (actor ? { ...entry, actor } : entry));
   const log = trimLog([...state.log, ...logged]);
   const next = { ...settled, log, revision: state.revision + 1 };
-  return { ok: true, state: next, change: outcome.change, logged };
+  return { ok: true, state: next, change: outcome.change, logged, stock };
 }
 
 /** A level the master forced or a removal may leave plantings and brews where no plot or station is. */
-function settleBuildings(state: GameState, catalog: Catalog): GameState {
-  return settleLab(settleGarden(state, catalog), catalog);
+function settleBuildings(state: GameState, catalog: Catalog, depot: DepotSnapshot): Stocked {
+  const gardened = settleGarden(state, catalog, depot);
+  const settled = settleLab(gardened.state, catalog, depot);
+  return { state: settled.state, stock: [...gardened.stock, ...settled.stock] };
 }
 
 /** Undefined for an anonymous player (offline, before logins exist). */
@@ -290,6 +312,8 @@ interface World {
   actor: string | undefined;
   /** Who runs it, for rules that depend on the role. */
   who: Actor;
+  /** The group depot items the command references, read before it ran. */
+  depot: DepotSnapshot;
 }
 type Handlers = { [K in CommandType]: (command: CommandOf[K], world: World) => HandlerOutcome };
 
@@ -317,6 +341,13 @@ function resources(outcome: Outcome): HandlerOutcome {
   return { ok: true, state: outcome.state, change: { kind: 'resources_changed' } };
 }
 
+/** Garden and lab: resources whose depot items change with the commit. */
+function stocked(outcome: StockedOutcome): HandlerOutcome {
+  if (!outcome.ok) return outcome;
+  const { state, stock } = outcome;
+  return { ok: true, state, stock, change: { kind: 'resources_changed' } };
+}
+
 const handlers: Handlers = {
   build: ({ slotId, buildingId }, { state, catalog }) => {
     if (!findSlot(catalog, slotId) || !findBuilding(catalog, buildingId)) return NOT_FOUND;
@@ -330,12 +361,12 @@ const handlers: Handlers = {
     if (!result.ok) return { ok: false, error: 'blocked', reasons: result.reasons };
     return { ok: true, state: result.state, change: { kind: 'construction_started', slotId } };
   },
-  advance_days: ({ days }, { state, catalog }) => {
-    const result = advanceDays(state, catalog, days);
+  advance_days: ({ days }, { state, catalog, depot }) => {
+    const result = advanceDays(state, catalog, days, depot);
     const change = { kind: 'days_advanced', completedSlotIds: result.completedSlotIds } as const;
-    return { ok: true, state: result.state, change };
+    return { ok: true, state: result.state, change, stock: result.stock };
   },
-  force_building: (order, { state, catalog }) => {
+  force_building: (order, { state, catalog, depot }) => {
     const def = findBuilding(catalog, order.buildingId);
     if (!findSlot(catalog, order.slotId) || !def) return NOT_FOUND;
     if (order.level > def.levels.length) return { ok: false, error: 'invalid_command' };
@@ -343,16 +374,13 @@ const handlers: Handlers = {
     const isNewCopy = state.slots[order.slotId]?.buildingId !== def.id;
     if (isNewCopy && !hasRoomFor(state, def)) return { ok: false, error: 'building_limit' };
     const change = { kind: 'building_forced', slotId: order.slotId } as const;
-    const forced = forceBuilding(state, catalog, order);
-    return { ok: true, state: settleBuildings(forced, catalog), change };
+    const forced = settleBuildings(forceBuilding(state, catalog, order), catalog, depot);
+    return { ok: true, ...forced, change };
   },
-  remove_building: ({ slotId }, { state, catalog }) => {
+  remove_building: ({ slotId }, { state, catalog, depot }) => {
     if (!state.slots[slotId]) return NOT_FOUND;
-    return {
-      ok: true,
-      state: settleBuildings(removeBuilding(state, slotId), catalog),
-      change: { kind: 'building_removed', slotId },
-    };
+    const removed = settleBuildings(removeBuilding(state, slotId), catalog, depot);
+    return { ok: true, ...removed, change: { kind: 'building_removed', slotId } };
   },
 
   adjust_coins: ({ wallet, delta }, { state, catalog }) =>
@@ -446,22 +474,28 @@ const handlers: Handlers = {
   shop_item_update: ({ itemId, item }, { state, catalog }) =>
     resources(updateShopItem(state, catalog, itemId, item)),
   shop_item_remove: ({ itemId }, { state }) => resources(removeShopItem(state, itemId)),
-  garden_crop_create: ({ crop }, { state, catalog }) => resources(addCrop(state, catalog, crop)),
-  garden_crop_update: ({ seedId, crop }, { state, catalog }) =>
-    resources(updateCrop(state, catalog, seedId, crop)),
-  garden_crop_remove: ({ seedId }, { state }) => resources(removeCrop(state, seedId)),
-  garden_plant: ({ plotId, seedId, buy }, { state, catalog, who }) =>
-    resources(plant(state, catalog, { plotId, seedId, buy }, who)),
-  garden_harvest: ({ plotId }, { state, catalog }) => resources(harvest(state, catalog, plotId)),
-  garden_clear: ({ plotId }, { state, catalog }) => resources(clearPlot(state, catalog, plotId)),
-  lab_recipe_create: ({ id, recipe }, { state }) => resources(addRecipe(state, { ...recipe, id })),
-  lab_recipe_update: ({ recipeId, recipe }, { state }) =>
-    resources(updateRecipe(state, recipeId, recipe)),
-  lab_recipe_remove: ({ recipeId }, { state }) => resources(removeRecipe(state, recipeId)),
-  lab_brew: ({ stationId, recipeId }, { state, catalog, who }) =>
-    resources(brew(state, catalog, { stationId, recipeId }, who)),
-  lab_collect: ({ stationId }, { state, catalog }) => resources(collect(state, catalog, stationId)),
-  lab_discard: ({ stationId }, { state, catalog }) => resources(discard(state, catalog, stationId)),
+  garden_crop_create: ({ id, crop }, { state, catalog, depot }) =>
+    stocked(addCrop(state, catalog, { ...crop, id }, depot)),
+  garden_crop_update: ({ cropId, crop }, { state, catalog, depot }) =>
+    stocked(updateCrop(state, catalog, cropId, crop, depot)),
+  garden_crop_remove: ({ cropId }, { state }) => stocked(removeCrop(state, cropId)),
+  garden_plant: ({ plotId, cropId, buy }, { state, catalog, who, depot }) =>
+    stocked(plant(state, catalog, { plotId, cropId, buy }, who, depot)),
+  garden_harvest: ({ plotId }, { state, catalog, depot }) =>
+    stocked(harvest(state, catalog, plotId, depot)),
+  garden_clear: ({ plotId }, { state, catalog, depot }) =>
+    stocked(clearPlot(state, catalog, plotId, depot)),
+  lab_recipe_create: ({ id, recipe }, { state, depot }) =>
+    stocked(addRecipe(state, { ...recipe, id }, depot)),
+  lab_recipe_update: ({ recipeId, recipe }, { state, depot }) =>
+    stocked(updateRecipe(state, recipeId, recipe, depot)),
+  lab_recipe_remove: ({ recipeId }, { state }) => stocked(removeRecipe(state, recipeId)),
+  lab_brew: ({ stationId, recipeId }, { state, catalog, who, depot }) =>
+    stocked(brew(state, catalog, { stationId, recipeId }, who, depot)),
+  lab_collect: ({ stationId }, { state, catalog, depot }) =>
+    stocked(collect(state, catalog, stationId, depot)),
+  lab_discard: ({ stationId }, { state, catalog, depot }) =>
+    stocked(discard(state, catalog, stationId, depot)),
   shop_set_promotion: ({ itemId, discountPercent }, { state }) =>
     resources(setShopPromotion(state, itemId, discountPercent)),
 

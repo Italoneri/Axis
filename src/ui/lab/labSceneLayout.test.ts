@@ -6,7 +6,7 @@ import type { StationView } from './labViews';
 const station: StationDef = { id: 'alambique-1', type: 'alambique', x: 0, y: 0, w: 0.1, h: 0.1 };
 const brew: Brew = {
   recipeId: 'r',
-  outputId: 'cura',
+  output: { source: 'material', materialId: 'cura' },
   outputQty: 2,
   days: 4,
   spent: [],
@@ -23,14 +23,16 @@ const brewing = (progress: number): StationView => ({
 
 describe('liquidColor', () => {
   it('usesTheMastersColor', () => {
-    expect(liquidColor({ outputId: 'cura', color: '#ff0000' })).toBe('#ff0000');
+    expect(
+      liquidColor({ output: { source: 'material', materialId: 'cura' }, color: '#ff0000' }),
+    ).toBe('#ff0000');
   });
 
   it('drawsAStableHueFromTheOutputId', () => {
-    const color = liquidColor({ outputId: 'cura' });
+    const color = liquidColor({ output: { source: 'material', materialId: 'cura' } });
     expect(color).toMatch(/^hsl\(\d{1,3} 70% 55%\)$/);
-    expect(liquidColor({ outputId: 'cura' })).toBe(color);
-    expect(liquidColor({ outputId: 'mana' })).not.toBe(color);
+    expect(liquidColor({ output: { source: 'material', materialId: 'cura' } })).toBe(color);
+    expect(liquidColor({ output: { source: 'material', materialId: 'mana' } })).not.toBe(color);
   });
 });
 

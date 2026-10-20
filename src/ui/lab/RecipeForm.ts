@@ -8,8 +8,9 @@ import {
   type StationType,
 } from '../../model/schema';
 import type { RecipeFields } from '../../systems/Lab';
+import { parseRefKey } from '../../systems/Stock';
 import { el } from '../dom';
-import { materialSelect } from '../garden/CropForm';
+import { stockPicker, type DepotAccess, type StockPicker } from '../stock/StockPicker';
 import { button, closeButton, field, keepEscapeInside, numberInput } from '../widgets';
 import { liquidColor } from './labSceneLayout';
 
@@ -18,14 +19,20 @@ const QUANTITY_RANGE = { min: 1, max: 9999 } as const;
 const MAX_INGREDIENTS = 6;
 const DEFAULT_COLOR = '#9b6bff';
 
+/** A row of the form: the picker value (`m:`/`d:` key, '' while unchosen) and the amount. */
+export interface IngredientDraft {
+  key: string;
+  quantity: number;
+}
+
 export interface RecipeDraft {
-  outputId: string;
+  outputKey: string;
   outputQty: number;
-  /** One per row of the form; an empty `materialId` is a row still to fill. */
-  ingredients: Portion[];
+  /** One per row of the form; an empty `key` is a row still to fill. */
+  ingredients: IngredientDraft[];
   stationType: StationType;
   days: number;
-  /** Undefined: drawn from the potion id. */
+  /** Undefined: drawn from the potion. */
   color: string | undefined;
   hidden: boolean;
 }
@@ -38,12 +45,20 @@ export type RecipeFormResult =
 /** The same rules the server applies, checked before sending so the form can say what is wrong. */
 export function recipeFormValues(form: RecipeDraft): RecipeFormResult {
   const reason = refusal(form);
+  const output = parseRefKey(form.outputKey);
+  const ingredients = form.ingredients.flatMap(({ key, quantity }): Portion[] => {
+    const ref = parseRefKey(key);
+    return ref ? [{ ref, quantity }] : [];
+  });
   if (reason) return { ok: false, reason };
-  const { outputId, outputQty, ingredients, stationType, days, color, hidden } = form;
+  if (!output || ingredients.length !== form.ingredients.length) {
+    return { ok: false, reason: 'missing_material' };
+  }
+  const { outputQty, stationType, days, color, hidden } = form;
   return {
     ok: true,
     recipe: {
-      outputId,
+      output,
       outputQty,
       ingredients,
       stationType,
@@ -55,12 +70,12 @@ export function recipeFormValues(form: RecipeDraft): RecipeFormResult {
 }
 
 function refusal(form: RecipeDraft): RecipeFormReason | undefined {
-  const ids = form.ingredients.map((i) => i.materialId);
-  if (form.outputId === '' || ids.includes('')) return 'missing_material';
+  const ids = form.ingredients.map((i) => i.key);
+  if (form.outputKey === '' || ids.includes('')) return 'missing_material';
   if (ids.length === 0) return 'no_ingredients';
   if (ids.length > MAX_INGREDIENTS) return 'too_many_ingredients';
   if (new Set(ids).size !== ids.length) return 'repeated_ingredient';
-  if (ids.includes(form.outputId)) return 'output_among_ingredients';
+  if (ids.includes(form.outputKey)) return 'output_among_ingredients';
   const quantities = [form.outputQty, ...form.ingredients.map((i) => i.quantity)];
   const inRange =
     isWithin(form.days, DAYS_RANGE) && quantities.every((q) => isWithin(q, QUANTITY_RANGE));
@@ -82,31 +97,31 @@ export interface RecipeFormOptions {
   state: GameState;
   /** Present when editing. */
   recipe?: Recipe;
+  /** The group depot, to link items and create them; absent: materials only. */
+  depot?: DepotAccess | undefined;
   /** Saves the recipe and returns whether it now exists. */
   save(recipe: RecipeFields): boolean;
 }
 
 interface IngredientRow {
   node: HTMLElement;
-  read: () => Portion;
+  picker: StockPicker;
+  read: () => IngredientDraft;
 }
 
 /** Modal form of a recipe. New recipes start hidden from the players. It closes when `save` accepts. */
-export function openRecipeForm({ state, recipe, save }: RecipeFormOptions): void {
+export function openRecipeForm({ state, recipe, depot, save }: RecipeFormOptions): void {
   const texts = t.lab.recipes;
-  const sorted: GameState = {
-    ...state,
-    materials: { ...state.materials, categories: potionsFirst(state.materials.categories) },
-  };
-  const potion = materialSelect(
-    texts.potion,
-    sorted,
-    state.materials.items,
-    recipe?.outputId ?? '',
-  );
-  const rowsList = el('ul', { class: 'recipe-form__rows' });
+  const categoriesFirst = potionsFirst(state.materials.categories).map((c) => c.id);
   const rows: IngredientRow[] = [];
-  const addButton = button(texts.addIngredient, () => addRow({ materialId: '', quantity: 1 }));
+  const refreshAll = () =>
+    [potionPicker, ...rows.map((row) => row.picker)].forEach((p) => p.refresh());
+  const pickerFor = (label: string, value: Portion['ref'] | undefined) =>
+    stockPicker({ label, state, depot, value, categoriesFirst, onCreated: refreshAll });
+  const potionPicker = pickerFor(texts.potion, recipe?.output);
+  const potion = potionPicker.select;
+  const rowsList = el('ul', { class: 'recipe-form__rows' });
+  const addButton = button(texts.addIngredient, () => addRow(undefined));
   const stationType = el(
     'select',
     { class: 'input', 'aria-label': texts.stationType },
@@ -138,7 +153,7 @@ export function openRecipeForm({ state, recipe, save }: RecipeFormOptions): void
 
   const read = () =>
     recipeFormValues({
-      outputId: potion.value,
+      outputKey: potion.value,
       outputQty: Number(quantity.value),
       ingredients: rows.map((row) => row.read()),
       stationType: stationTypeSchema.safeParse(stationType.value).data ?? 'alambique',
@@ -152,11 +167,12 @@ export function openRecipeForm({ state, recipe, save }: RecipeFormOptions): void
     reasonText.textContent = result.ok ? '' : texts.reasons[result.reason];
     addButton.disabled = rows.length >= MAX_INGREDIENTS;
     color.disabled = !ownColor.checked;
-    const shown = ownColor.checked ? color.value : liquidColor({ outputId: potion.value });
+    const output = potionPicker.read() ?? { source: 'material', materialId: '' };
+    const shown = ownColor.checked ? color.value : liquidColor({ output });
     flask.style.setProperty('--liquid', shown);
   };
-  const addRow = (portion: Portion) => {
-    const row = ingredientRow(sorted, portion, () => {
+  const addRow = (portion: Portion | undefined) => {
+    const row = ingredientRow(pickerFor(texts.ingredient, portion?.ref), portion, () => {
       rows.splice(rows.indexOf(row), 1);
       row.node.remove();
       sync();
@@ -166,7 +182,7 @@ export function openRecipeForm({ state, recipe, save }: RecipeFormOptions): void
     row.node.addEventListener('input', sync);
     sync();
   };
-  (recipe?.ingredients ?? [{ materialId: '', quantity: 1 }]).forEach(addRow);
+  (recipe?.ingredients ?? [undefined]).forEach(addRow);
   for (const control of [potion, stationType, days, quantity, ownColor, color, hidden]) {
     control.addEventListener('input', sync);
   }
@@ -193,7 +209,7 @@ export function openRecipeForm({ state, recipe, save }: RecipeFormOptions): void
           if (result.ok && save(result.recipe)) dialog.close();
         },
       },
-      field(texts.potion, potion),
+      field(texts.potion, potionPicker.element),
       el(
         'fieldset',
         { class: 'recipe-form__ingredients' },
@@ -229,23 +245,21 @@ export function openRecipeForm({ state, recipe, save }: RecipeFormOptions): void
   dialog.showModal();
 }
 
-function ingredientRow(state: GameState, portion: Portion, onRemove: () => void): IngredientRow {
+function ingredientRow(
+  picker: StockPicker,
+  portion: Portion | undefined,
+  onRemove: () => void,
+): IngredientRow {
   const texts = t.lab.recipes;
-  const material = materialSelect(
-    texts.ingredient,
-    state,
-    state.materials.items,
-    portion.materialId,
-  );
   const quantity = numberInput({
     ...QUANTITY_RANGE,
-    value: portion.quantity,
+    value: portion?.quantity ?? 1,
     label: texts.quantity,
   });
   const node = el(
     'li',
     { class: 'recipe-form__row' },
-    material,
+    picker.element,
     quantity,
     el(
       'button',
@@ -259,5 +273,9 @@ function ingredientRow(state: GameState, portion: Portion, onRemove: () => void)
       '×',
     ),
   );
-  return { node, read: () => ({ materialId: material.value, quantity: Number(quantity.value) }) };
+  return {
+    node,
+    picker,
+    read: () => ({ key: picker.select.value, quantity: Number(quantity.value) }),
+  };
 }

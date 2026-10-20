@@ -1,4 +1,5 @@
 import type { Crop, CropLook, PlotDef, PlotType } from '../../model/schema';
+import { refHashKey } from '../../systems/Stock';
 import type { PlotView } from './gardenViews';
 
 /** Sprites and textures of the garden scene (public/assets/garden), loaded only by the HTML window. */
@@ -20,10 +21,10 @@ export function hash(text: string): number {
   return mixed >>> 0;
 }
 
-/** The master's choice, or a look drawn from the seed id (crops have no art of their own). */
-export function cropLook({ seedId, look }: Pick<Crop, 'seedId' | 'look'>): CropLook {
+/** The master's choice, or a look drawn from the seed (crops have no art of their own). */
+export function cropLook({ seed, look }: Pick<Crop, 'seed' | 'look'>): CropLook {
   if (look) return look;
-  const h = hash(seedId);
+  const h = hash(refHashKey(seed));
   return { kind: h % 2 === 0 ? 'foliage' : 'flower', hue: ((h >>> 8) % 360) - 180 };
 }
 
@@ -153,7 +154,7 @@ export function plotSignature(view: PlotView): string {
 
 function lookKey(crop: Crop): string {
   const { kind, hue } = cropLook(crop);
-  return `${crop.seedId}|${kind}|${hue}`;
+  return `${crop.id}|${kind}|${hue}`;
 }
 
 export interface Size {

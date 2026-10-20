@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { actorName, applyCommand, MASTER_ACTOR } from '../commands/applyCommand';
+import { depotItemsNeeded, stockRefusal } from '../commands/depotItemsNeeded';
 import { gameCommandSchema } from '../commands/schema';
 import type { DepotDelivery } from '../systems/Depot';
 import { createInitialState, parseState, type ParseResult } from '../systems/SaveSystem';
@@ -17,7 +18,7 @@ import {
   type GameResponse,
   type HandlerDeps,
 } from './caller';
-import type { InviteStatus } from './gameDb';
+import type { InviteStatus, StockCommitStatus } from './gameDb';
 import {
   createJoinLink,
   joinChoiceSchema,
@@ -130,7 +131,10 @@ const actions: Actions = {
 
     const stored = parseState(game.state, catalog);
     if (!stored.ok) throw new Error(`stored game ${gameId} is invalid: ${stored.error}`);
-    const ctx = contextOf(game);
+    // The rules see only the group items this command uses, read now and checked again at commit.
+    const itemIds = depotItemsNeeded(stored.state, command);
+    const depot = itemIds.length > 0 ? await db.loadDepotItems(gameId, itemIds) : [];
+    const ctx = { ...contextOf(game), depot };
     const outcome = applyCommand(stored.state, catalog, command, ctx);
     if (!outcome.ok) return refusal(outcome);
     if (outcome.state === stored.state) return reply(200, { state: stored.state });
@@ -145,10 +149,15 @@ const actions: Actions = {
       entries: outcome.logged,
     };
     const delivery = outcome.change.kind === 'shop_purchased' ? outcome.change.delivery : null;
-    const saved = delivery
-      ? await db.commitPurchase({ ...update, command: loggedCommand(command, delivery), delivery })
-      : await db.commitUpdate(update);
-    return saved ? reply(200, { state: outcome.state }) : conflict();
+    if (delivery) {
+      const bought = { ...update, command: loggedCommand(command, delivery), delivery };
+      return (await db.commitPurchase(bought)) ? reply(200, { state: outcome.state }) : conflict();
+    }
+    if (depot.length === 0 && outcome.stock.length === 0) {
+      return (await db.commitUpdate(update)) ? reply(200, { state: outcome.state }) : conflict();
+    }
+    const status = await db.commitWithStock({ ...update, moves: outcome.stock, reads: depot });
+    return stockReply(status, command, outcome.state);
   },
 
   create_game: async ({ name, state }, { userId, db, catalog }) => {
@@ -223,6 +232,13 @@ const actions: Actions = {
   join_game: joinGame,
   unlink_player: unlinkPlayer,
 };
+
+/** A shortage reads as the command's own refusal; a missing item as `stock_missing`. */
+function stockReply(status: StockCommitStatus, command: unknown, state: unknown): GameResponse {
+  if (status === 'ok') return reply(200, { state });
+  if (status === 'conflict') return conflict();
+  return reply(422, { error: 'refused', reason: stockRefusal(status, command) });
+}
 
 const INVITE_REFUSAL_STATUS: Record<Exclude<InviteStatus, 'ok'>, number> = {
   invalid: 404,
