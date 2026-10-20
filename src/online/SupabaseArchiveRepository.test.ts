@@ -16,6 +16,7 @@ const NOW = '2026-10-11T12:00:00.000Z';
 const thorin: Actor = { role: 'player', characterId: 'thorin' };
 const npcs: ArchiveTopic = {
   id: 'npcs',
+  parentId: null,
   name: 'NPCs',
   order: 0,
   authorId: 'mestre',
@@ -56,7 +57,7 @@ describe('archive rows', () => {
   it('round-trips records through rows', () => {
     const rows = { topics: [topicToRow(npcs)], notes: [noteToRow(zolt)] };
     expect(archiveFromRows(rows)).toEqual({ topics: [npcs], notes: [zolt] });
-    expect(rows.topics[0]).toMatchObject({ icon: null, position: 0, author_id: 'mestre' });
+    expect(rows.topics[0]).toMatchObject({ parent_id: null, icon: null, position: 0, author_id: 'mestre' });
   });
 
   it('applies realtime upserts and deletes', () => {

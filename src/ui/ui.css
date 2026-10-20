@@ -1691,6 +1691,47 @@ details > summary {
   outline-offset: 1px;
 }
 
+.archive__topic-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.archive__topic-toggle {
+  flex: none;
+  width: 22px;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+
+button.archive__topic-toggle:hover {
+  color: var(--gold-soft);
+}
+
+button.archive__topic-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+}
+
+.archive__subtopics {
+  margin: 2px 0 0 10px;
+  padding: 0 0 0 4px;
+  border-left: 1px solid rgba(212, 175, 55, 0.18);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.archive__topic-path {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .archive__topic-name {
   flex: 1;
   min-width: 0;
@@ -1802,6 +1843,17 @@ details > summary {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Remover on the left, away from Salvar. */
+.archive-editor__footer {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.archive-editor__footer > .row--end {
+  margin-left: auto;
 }
 
 .archive-editor__bar {

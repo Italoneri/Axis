@@ -9,7 +9,7 @@ import { LocalImageStore, memoryBlobTable } from './LocalImageStore';
 const NOW = '2026-10-11T12:00:00.000Z';
 const master: Actor = { role: 'master' };
 const thorin: Actor = { role: 'player', characterId: 'thorin' };
-const topic = { type: 'topic_create', id: 'npcs', name: 'NPCs' } as const;
+const topic = { type: 'topic_create', id: 'npcs', name: 'NPCs', parentId: null } as const;
 const secret = {
   type: 'note_create',
   id: 'plano',

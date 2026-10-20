@@ -25,16 +25,12 @@ import { renderMarkdown } from './markdownView';
 
 export interface NoteCardDeps {
   isExpanded: boolean;
-  /** Topics the note can move to (in use, other than its own). */
-  otherTopics: readonly ArchiveTopic[];
   authorName: (authorId: string) => string;
   /** Shown above the title in search results. */
   topicLabel?: string | undefined;
   onToggle: () => void;
   onEdit: () => void;
-  onMove: (topicId: string) => void;
   onShift: (direction: 'up' | 'down') => void;
-  onRemove: () => void;
   images: ImageStripDeps;
 }
 
@@ -81,26 +77,23 @@ export function noteCard(note: ArchiveNote, deps: NoteCardDeps): HTMLElement {
 }
 
 function noteActions(deps: NoteCardDeps): HTMLElement {
-  const moveSelect = selectInput({
-    label: t.archive.moveTo,
-    options: deps.otherTopics.map((topic) => ({ value: topic.id, label: topicName(topic) })),
-    value: deps.otherTopics[0]?.id ?? '',
-  });
-  const canMove = deps.otherTopics.length > 0;
   return el(
     'div',
     { class: 'row row--wrap archive-note__actions' },
     button(t.archive.edit, deps.onEdit),
     button('↑', () => deps.onShift('up'), { title: t.archive.moveUp }),
     button('↓', () => deps.onShift('down'), { title: t.archive.moveDown }),
-    canMove && moveSelect,
-    canMove && button(t.archive.move, () => deps.onMove(moveSelect.value)),
-    confirmButton(t.archive.remove, deps.onRemove),
   );
 }
 
 export function topicName(topic: Pick<ArchiveTopic, 'name' | 'icon'>): string {
   return topic.icon ? `${topic.icon} ${topic.name}` : topic.name;
+}
+
+/** A topic to pick in a select, labeled with its whole path ("Reino › Divindade"). */
+export interface TopicChoice {
+  id: string;
+  path: string;
 }
 
 // ---------------------------------------------------------------- note editor
@@ -110,9 +103,14 @@ export interface NoteEditorOptions {
   day: number;
   /** Only the master chooses who sees the note. */
   isMaster: boolean;
+  /** Where the note goes; starts at the topic shown. */
+  topicId: string;
+  topics: readonly TopicChoice[];
   /** The images section, which uploads as files arrive. */
   attachments: AttachmentsEditor;
-  onSave: (fields: NoteFields) => void;
+  onSave: (fields: NoteFields, topicId: string) => void;
+  /** Only for a note already saved. */
+  onRemove: () => void;
   onCancel: () => void;
 }
 
@@ -121,10 +119,18 @@ export function noteEditor({
   note,
   day,
   isMaster,
+  topicId,
+  topics,
   attachments,
   onSave,
+  onRemove,
   onCancel,
 }: NoteEditorOptions): HTMLElement {
+  const topic = selectInput({
+    label: t.archive.noteTopic,
+    options: topics.map((choice) => ({ value: choice.id, label: choice.path })),
+    value: topicId,
+  });
   const title = el('input', {
     class: 'input input--wide',
     type: 'text',
@@ -164,6 +170,7 @@ export function noteEditor({
     'form',
     { class: 'archive-editor' },
     field(t.archive.noteTitle, title),
+    field(t.archive.noteTopic, topic),
     el(
       'div',
       { class: 'row row--wrap' },
@@ -182,9 +189,14 @@ export function noteEditor({
     attachments.element,
     el(
       'div',
-      { class: 'row row--end' },
-      button(t.archive.cancel, onCancel),
-      el('button', { class: 'btn btn--primary', type: 'submit' }, t.archive.save),
+      { class: 'row archive-editor__footer' },
+      note && confirmButton(t.archive.remove, onRemove),
+      el(
+        'div',
+        { class: 'row row--end' },
+        button(t.archive.cancel, onCancel),
+        el('button', { class: 'btn btn--primary', type: 'submit' }, t.archive.save),
+      ),
     ),
   );
   attachments.listenOn(form);
@@ -192,14 +204,15 @@ export function noteEditor({
     event.preventDefault();
     // The status line says images are still uploading.
     if (attachments.isBusy()) return;
-    onSave({
+    const fields: NoteFields = {
       title: title.value,
       body: body.value,
       day: Math.max(0, Math.floor(Number(dayInput.value) || 0)),
       pinned: pinned.checked,
       visibility: isMaster ? parseVisibility(visibility.value) : (note?.visibility ?? 'todos'),
       images: attachments.images(),
-    });
+    };
+    onSave(fields, topic.value);
   });
   queueMicrotask(() => title.focus());
   return form;
@@ -350,11 +363,32 @@ function pastedItem(text: PastedText): PastedItem {
 
 export interface TopicEditorOptions {
   topic: ArchiveTopic | null;
-  onSave: (fields: { name: string; icon: string }) => void;
+  /** Where it sits (null: at the top); a new sub-topic starts under the topic shown. */
+  parentId: string | null;
+  /** Topics it can go under: not itself nor one below it. */
+  parents: readonly TopicChoice[];
+  onSave: (fields: { name: string; icon: string; parentId: string | null }) => void;
   onCancel: () => void;
 }
 
-export function topicEditor({ topic, onSave, onCancel }: TopicEditorOptions): HTMLElement {
+/** The parent select's value for "at the top"; record ids never take this form. */
+const TOP_LEVEL = '';
+
+export function topicEditor({
+  topic,
+  parentId,
+  parents,
+  onSave,
+  onCancel,
+}: TopicEditorOptions): HTMLElement {
+  const parent = selectInput({
+    label: t.archive.topicParent,
+    options: [
+      { value: TOP_LEVEL, label: t.archive.topLevel },
+      ...parents.map((choice) => ({ value: choice.id, label: choice.path })),
+    ],
+    value: parentId ?? TOP_LEVEL,
+  });
   const icon = el('input', {
     class: 'input archive-editor__icon',
     type: 'text',
@@ -373,6 +407,7 @@ export function topicEditor({ topic, onSave, onCancel }: TopicEditorOptions): HT
     'form',
     { class: 'archive-editor' },
     el('div', { class: 'row' }, field(t.archive.topicIcon, icon), field(t.archive.topicName, name)),
+    field(t.archive.topicParent, parent),
     el(
       'div',
       { class: 'row row--end' },
@@ -386,7 +421,11 @@ export function topicEditor({ topic, onSave, onCancel }: TopicEditorOptions): HT
   );
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    onSave({ name: name.value, icon: icon.value });
+    onSave({
+      name: name.value,
+      icon: icon.value,
+      parentId: parent.value === TOP_LEVEL ? null : parent.value,
+    });
   });
   queueMicrotask(() => name.focus());
   return form;

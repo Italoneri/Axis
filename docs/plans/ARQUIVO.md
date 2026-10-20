@@ -15,7 +15,7 @@ Offline, as notas `mestre` ficam só escondidas pela interface: é o mesmo naveg
 
 ## Dados (`src/systems/Archive.ts`, zod)
 
-- **Tópico:** `id`, `name` (1–200), `icon?` (emoji), `order`, `authorId`, `deletedAt` (`null` fora da lixeira). Um nível só, sem subtópicos.
+- **Tópico:** `id`, `parentId` (`null` no topo), `name` (1–200), `icon?` (emoji), `order`, `authorId`, `deletedAt` (`null` fora da lixeira). Sub-tópicos sem limite de níveis: veja [Sub-tópicos](#sub-tópicos).
 - **Nota:** `id`, `topicId`, `title` (1–200), `body` (até 20.000), `day`, `pinned`, `visibility: 'todos' | 'mestre'`, `order`, `authorId`, `editedBy?`, `createdAt`, `updatedAt`, `deletedAt`.
   - `order` não estava no pedido, mas sem ele não dá para reordenar notas.
   - `authorId` / `editedBy`: id do personagem ou `mestre`. A nota mostra "por Fulano · editado por Beltrano".
@@ -180,3 +180,38 @@ Online fica numa coluna **`images jsonb`** em `archive_notes`, e não numa tabel
 5. Interface: anexar, legendas, miniaturas e visualizador.
 6. Exportar/Importar com `.zip`.
 7. README.
+
+# Sub-tópicos
+
+Pedido: poder organizar em vários níveis, ex.: Reino Humano › Divindade › Deusa da Enganação. Antes era só tópico → nota.
+
+## Regras (`src/systems/Archive.ts`)
+
+- `parentId` no tópico; arquivos de antes leem como `null` (topo). `topic_create` e `topic_update` levam `parentId`.
+- Sem limite de níveis. Qualquer tópico pode ter notas e sub-tópicos ao mesmo tempo.
+- Nome único só entre irmãos: "Divindade" pode existir sob dois reinos diferentes.
+- Mover um tópico (mudar `parentId` no editar): o pai precisa estar em uso (`not_found`), e não pode ser o próprio tópico nem um abaixo dele (`invalid_parent`). Ele vai com tudo que está abaixo e entra por último entre os novos irmãos. O log registra como **editado**: assim o servidor (`archive_log`) não precisa mudar.
+- `topic_shift` reordena só entre irmãos.
+- `topic_remove` recusa (`category_not_empty`) se houver notas **ou sub-tópicos** em uso.
+- Restaurar um tópico ou nota cujo tópico está na lixeira restaura também os tópicos da lixeira acima dele.
+- `trash_empty`: o que estiver em uso sob um tópico apagado de vez sobe para o topo (o banco faz o mesmo com `on delete set null`).
+- `topicTree`, `topicPath` e `topicSubtreeIds` montam a árvore. Um tópico cujo pai não está em uso, ou que volta a ele mesmo subindo (um laço escrito à mão no banco), aparece no topo: nada some.
+
+## Interface
+
+- Lista da esquerda em árvore com ▸/▾. Abrir um tópico abre seus sub-tópicos; a árvore abre até o último tópico usado.
+- O contador soma as notas do tópico e de todos os sub-tópicos.
+- Cabeçalho do tópico: caminho acima do título e botão **"+ Sub-tópico"**. O editor de tópico tem **"Dentro de"** (topo ou qualquer tópico, menos ele mesmo e os de baixo).
+- O seletor de tópico, a busca e a lixeira mostram o caminho completo ("Reino Humano › Divindade").
+- Card da nota: só **Editar ↑ ↓**. O editor da nota ganhou o campo **Tópico** (mover vale ao **Salvar**, junto com o resto) e **Remover** (só em nota já salva).
+
+## Online (migração `20261020000000_archive_subtopics.sql`)
+
+- Coluna `parent_id` com FK `(game_id, parent_id)` → tópico do mesmo jogo, `on delete set null (parent_id)`; `check (parent_id <> id)`.
+- O gatilho de lixeira também recusa tópico com sub-tópico em uso.
+- `replace_archive` grava `parent_id` (a FK é checada no fim do comando, então a ordem não importa).
+- Laços e nomes repetidos entre irmãos ficam com as regras do cliente.
+
+## Publicação
+
+- `npx supabase db push` (a coluna). Sem `deploy:functions`: o log usa os tipos que já existem.
