@@ -1,5 +1,6 @@
 import type { Brew, Crop, GameState, Recipe, StockRef } from '../model/schema';
 import { depotIdsOf } from '../systems/Stock';
+import type { CommandError } from './applyCommand';
 import { gameCommandSchema, type CommandType, type GameCommand } from './schema';
 
 // Which group depot items a command may read or move, so the caller hands
@@ -59,4 +60,14 @@ export function depotItemsNeeded(state: GameState, input: unknown): string[] {
   const parsed = gameCommandSchema.safeParse(input);
   if (!parsed.success) return [];
   return depotIdsOf(refsFor(parsed.data.type, parsed.data, state));
+}
+
+/** A commit-time refusal as the player reads it: a shortage is the command's own error. */
+export function stockRefusal(
+  error: 'stock_short' | 'stock_missing',
+  command: unknown,
+): CommandError {
+  if (error === 'stock_missing') return 'stock_missing';
+  const isPlanting = gameCommandSchema.safeParse(command).data?.type === 'garden_plant';
+  return isPlanting ? 'no_seed' : 'missing_ingredients';
 }

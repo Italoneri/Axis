@@ -9,6 +9,9 @@ import { parseTheme, ThemeStore } from './map/theme';
 import { PreloadScene } from './scenes/PreloadScene';
 import { ArchiveStore } from './archiveStore';
 import { DepotStore } from './depotStore';
+import { depotItemsNeeded } from './commands/depotItemsNeeded';
+import { EMPTY_DEPOT } from './systems/Depot';
+import { depotSnapshot } from './systems/Stock';
 import { LocalDepotRepository } from './persistence/LocalDepotRepository';
 import type { DepotRepository } from './persistence/DepotRepository';
 import { DepotWindow } from './ui/depot/DepotWindow';
@@ -86,11 +89,13 @@ async function openMode(catalog: Catalog, notify: Notify): Promise<Mode | null> 
   const config = onlineConfig(import.meta.env);
   if (!config) {
     const session = new MasterSession(import.meta.env.VITE_MASTER_PASSWORD, window.sessionStorage);
+    const depotRepository = new LocalDepotRepository(window.localStorage, window);
     return {
       isOnline: false,
-      repository: new LocalRepository(window.localStorage, catalog, window),
+      // Garden and lab commands spend and fill the local depot in the same save.
+      repository: new LocalRepository(window.localStorage, catalog, window, depotRepository),
       archiveRepository: new LocalArchiveRepository(window.localStorage, window),
-      depotRepository: new LocalDepotRepository(window.localStorage, window),
+      depotRepository,
       archiveImages: new LocalImageStore(indexedDbBlobTable()),
       gamePhotos: new LocalImageStore(indexedDbBlobTable(PHOTO_DB_NAME)),
       session,
@@ -145,18 +150,26 @@ async function start(): Promise<void> {
     console.error('[photos] could not store a photo', error);
     notify(persistFailed, 'error');
   });
-  const store = await GameStore.open(
+  // Opened after the game (its log entries go through the store), so read lazily.
+  let depotStore: DepotStore | undefined;
+  /** The group items this command uses, from the depot this page shows (the commit reads it again). */
+  const depotFor = (command: GameCommand) =>
+    depotSnapshot(depotStore?.current ?? EMPTY_DEPOT, depotItemsNeeded(store.current, command));
+  const actingContext = (command: GameCommand): CommandContext =>
+    command.type === 'archive_log' ||
+    command.type === 'depot_log' ||
+    command.type === 'shop_buy' ||
+    command.type === 'shop_buy_materials' ||
+    command.type === 'shop_sell'
+      ? { actor: archiveViewer() }
+      : mode.contextFor(command);
+  const store: GameStore = await GameStore.open(
     gameData,
     repository,
     {
-      contextFor: (command) =>
-        command.type === 'archive_log' ||
-        command.type === 'depot_log' ||
-        command.type === 'shop_buy' ||
-        command.type === 'shop_buy_materials' ||
-        command.type === 'shop_sell'
-          ? { actor: archiveViewer() }
-          : mode.contextFor(command),
+      contextFor: (command) => ({ ...actingContext(command), depot: depotFor(command) }),
+      onStock: (moves) => depotStore?.preview(moves),
+      onStockSettled: () => void depotStore?.reload(),
       onRefused: (error) => notify(t.errors[error], 'error'),
       onPersistError: (error) => {
         console.error('[save] could not persist state', error);
@@ -191,6 +204,7 @@ async function start(): Promise<void> {
       notify(persistFailed, 'error');
     },
   });
+  depotStore = depot;
   const depotWindow = new DepotWindow({
     depot,
     game: store,
@@ -202,11 +216,12 @@ async function start(): Promise<void> {
   const openMenu = () => menuWindow.open();
   const shopWindow = new ShopWindow({ game: store, session, memory, viewer: archiveViewer });
   const openShop = () => shopWindow.open();
-  const gardenWindow = new GardenWindow({ game: store, session, viewer: archiveViewer });
+  const gardenWindow = new GardenWindow({ game: store, session, viewer: archiveViewer, depot });
   const labWindow = new LabWindow({
     game: store,
     session,
     viewer: archiveViewer,
+    depot,
     openGarden: () => gardenWindow.open(),
   });
   hideGate();

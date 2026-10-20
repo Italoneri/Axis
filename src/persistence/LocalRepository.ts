@@ -1,8 +1,17 @@
-import { applyCommand } from '../commands/applyCommand';
+import { applyCommand, type CommandError } from '../commands/applyCommand';
+import { depotItemsNeeded, stockRefusal } from '../commands/depotItemsNeeded';
 import type { Catalog } from '../model/catalog';
 import type { GameState } from '../model/schema';
+import { applyStock, EMPTY_DEPOT, type Depot } from '../systems/Depot';
+import { depotSnapshot } from '../systems/Stock';
 import { loadState, parseSave, persistState, STORAGE_KEY } from '../systems/SaveSystem';
 import type { GameChange, GameRepository, SubmitResult } from './GameRepository';
+
+/** The offline depot as the game sees it: read before a command, written with it. */
+export interface StockLedger {
+  read(): Depot;
+  write(depot: Depot): void;
+}
 
 /** Offline repository: one save per browser, kept in sync across its tabs. */
 export class LocalRepository implements GameRepository {
@@ -11,6 +20,8 @@ export class LocalRepository implements GameRepository {
     private readonly catalog: Catalog,
     /** Source of `storage` events from other tabs; absent in tests. */
     private readonly events?: Pick<Window, 'addEventListener' | 'removeEventListener'>,
+    /** The local depot; absent, depot items read as missing. */
+    private readonly depot?: StockLedger,
   ) {}
 
   load(): Promise<GameState> {
@@ -23,18 +34,31 @@ export class LocalRepository implements GameRepository {
     if (stored.revision !== expectedRevision) {
       return Promise.resolve({ ok: false, reason: 'conflict' });
     }
-    const result = this.apply(stored, change);
-    if (result.ok) persistState(this.storage, result.state);
-    return Promise.resolve(result);
+    if (change.kind === 'restore') {
+      const state = { ...change.state, revision: stored.revision + 1 };
+      persistState(this.storage, state);
+      return Promise.resolve({ ok: true, state });
+    }
+    return Promise.resolve(this.applyCommand(stored, change));
   }
 
-  private apply(stored: GameState, change: GameChange): SubmitResult {
-    if (change.kind === 'restore') {
-      return { ok: true, state: { ...change.state, revision: stored.revision + 1 } };
+  /**
+   * Same order as the server: the rules read the depot as stored now, then the
+   * moves are checked; only when both pass are the depot and the game written.
+   */
+  private applyCommand(stored: GameState, change: Extract<GameChange, { kind: 'command' }>) {
+    const before = this.depot?.read() ?? EMPTY_DEPOT;
+    const depot = depotSnapshot(before, depotItemsNeeded(stored, change.command));
+    const outcome = applyCommand(stored, this.catalog, change.command, { ...change.ctx, depot });
+    if (!outcome.ok) return refused(outcome.error);
+    if (outcome.stock.length > 0) {
+      const moved = applyStock(before, outcome.stock, new Date().toISOString());
+      if (!moved.ok) return refused(stockRefusal(moved.error, change.command));
+      this.depot?.write(moved.depot);
     }
-    const outcome = applyCommand(stored, this.catalog, change.command, change.ctx);
-    if (!outcome.ok) return { ok: false, reason: 'refused', error: outcome.error };
-    return { ok: true, state: outcome.state };
+    persistState(this.storage, outcome.state);
+    const result: SubmitResult = { ok: true, state: outcome.state };
+    return result;
   }
 
   subscribe(onRemoteChange: (state: GameState) => void): () => void {
@@ -49,4 +73,8 @@ export class LocalRepository implements GameRepository {
     events.addEventListener('storage', listener);
     return () => events.removeEventListener('storage', listener);
   }
+}
+
+function refused(error: CommandError): SubmitResult {
+  return { ok: false, reason: 'refused', error };
 }

@@ -8,6 +8,7 @@ import type { CommandContext, GameCommand } from './commands/schema';
 import { GameImages } from './gameImages';
 import type { Catalog } from './model/catalog';
 import type { GameState, LogEntry } from './model/schema';
+import type { StockMove } from './systems/Stock';
 import type { GameChange, GameRepository } from './persistence/GameRepository';
 import { LocalImageStore, memoryBlobTable } from './persistence/LocalImageStore';
 
@@ -21,10 +22,18 @@ export interface StoreHooks {
   contextFor: (command: GameCommand) => CommandContext;
   onRefused: (error: CommandError) => void;
   onPersistError: (error: unknown) => void;
+  /** A command moved depot items: the depot may show them at once, before the save. */
+  onStock?: (moves: readonly StockMove[]) => void;
+  /** That command was saved, refused or dropped: the depot reloads what is stored. */
+  onStockSettled?: () => void;
 }
 
 /** A local change not yet accepted by the repository. */
-type Pending = GameChange;
+interface Pending {
+  change: GameChange;
+  /** It moved depot items, so the depot catches up once it settles. */
+  movesStock: boolean;
+}
 
 /** After this many conflicts in a row, local changes are dropped in favor of the stored game. */
 const MAX_CONFLICTS = 3;
@@ -89,7 +98,10 @@ export class GameStore {
       return outcome.error;
     }
     if (outcome.state === this.state) return null;
-    this.enqueue({ kind: 'command', command, ctx }, outcome.state, outcome.change, outcome.logged);
+    const movesStock = outcome.stock.length > 0;
+    const change: Pending = { change: { kind: 'command', command, ctx }, movesStock };
+    this.enqueue(change, outcome.state, outcome.change, outcome.logged);
+    if (movesStock) this.hooks.onStock?.(outcome.stock);
     return null;
   }
 
@@ -101,7 +113,9 @@ export class GameStore {
   /** Restores an imported save (already validated by `parseSave`), overwriting the stored game. */
   replace(state: GameState): void {
     const restored = { ...state, revision: this.state.revision + 1 };
-    this.enqueue({ kind: 'restore', state }, restored, { kind: 'loaded' });
+    this.enqueue({ change: { kind: 'restore', state }, movesStock: false }, restored, {
+      kind: 'loaded',
+    });
   }
 
   /** Resolves once every change so far was saved (or given up on). */
@@ -126,11 +140,11 @@ export class GameStore {
     let isStale = false;
     this.isSubmitting = true;
     while (this.pending.length > 0) {
-      const [change] = this.pending;
-      if (!change) break;
+      const [pending] = this.pending;
+      if (!pending) break;
       let result;
       try {
-        result = await this.repository.submit(change, this.confirmed.revision);
+        result = await this.repository.submit(pending.change, this.confirmed.revision);
       } catch (error) {
         // Kept pending: the next change retries them, and the game stays playable meanwhile.
         this.hooks.onPersistError(error);
@@ -140,15 +154,15 @@ export class GameStore {
         conflicts = 0;
         // Realtime may already have brought this revision (or a newer one).
         if (result.state.revision > this.confirmed.revision) this.confirm(result.state);
-        this.pending = this.pending.slice(1);
+        this.settle(this.pending.slice(0, 1));
       } else if (result.reason === 'refused') {
-        this.pending = this.pending.slice(1);
+        this.settle(this.pending.slice(0, 1));
         this.hooks.onRefused(result.error);
         isStale = true;
       } else if (++conflicts >= MAX_CONFLICTS) {
         console.warn('[save] giving up after repeated conflicts', { dropped: this.pending.length });
         this.confirm(await this.repository.load());
-        this.pending = [];
+        this.settle(this.pending);
         this.hooks.onRefused('conflict');
         isStale = true;
       } else {
@@ -160,6 +174,12 @@ export class GameStore {
     this.isSubmitting = false;
     if (isStale || this.hasDeferredRemote) this.showConfirmedPlusPending();
     this.hasDeferredRemote = false;
+  }
+
+  /** Drops `done` from the front of the queue, letting the depot catch up with what they moved. */
+  private settle(done: readonly Pending[]): void {
+    this.pending = this.pending.slice(done.length);
+    if (done.some((pending) => pending.movesStock)) this.hooks.onStockSettled?.();
   }
 
   /** Someone else saved: their game becomes the base, and local changes go on top. */
@@ -193,7 +213,7 @@ export class GameStore {
 
 /** What the player sees: pending changes over the stored game, skipping any that no longer apply. */
 function replay(base: GameState, pending: readonly Pending[], catalog: Catalog): GameState {
-  return pending.reduce((state, change) => {
+  return pending.reduce((state, { change }) => {
     if (change.kind === 'restore') return { ...change.state, revision: state.revision + 1 };
     const outcome = applyCommand(state, catalog, change.command, change.ctx);
     return outcome.ok ? outcome.state : state;

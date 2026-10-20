@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { actorName, applyCommand, MASTER_ACTOR } from '../commands/applyCommand';
-import { depotItemsNeeded } from '../commands/depotItemsNeeded';
+import { depotItemsNeeded, stockRefusal } from '../commands/depotItemsNeeded';
 import { gameCommandSchema } from '../commands/schema';
 import type { DepotDelivery } from '../systems/Depot';
 import { createInitialState, parseState, type ParseResult } from '../systems/SaveSystem';
@@ -237,9 +237,7 @@ const actions: Actions = {
 function stockReply(status: StockCommitStatus, command: unknown, state: unknown): GameResponse {
   if (status === 'ok') return reply(200, { state });
   if (status === 'conflict') return conflict();
-  const isPlanting = gameCommandSchema.safeParse(command).data?.type === 'garden_plant';
-  const short = isPlanting ? 'no_seed' : 'missing_ingredients';
-  return reply(422, { error: 'refused', reason: status === 'stock_short' ? short : status });
+  return reply(422, { error: 'refused', reason: stockRefusal(status, command) });
 }
 
 const INVITE_REFUSAL_STATUS: Record<Exclude<InviteStatus, 'ok'>, number> = {
