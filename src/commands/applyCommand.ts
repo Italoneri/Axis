@@ -125,7 +125,9 @@ export type CommandError =
   | 'invalid_command'
   | 'blocked'
   /** Raised by the store when the stored game kept changing under a local change. */
-  | 'conflict';
+  | 'conflict'
+  /** A depot item a command spends from was removed or made private before the commit. */
+  | 'stock_missing';
 
 /** Every error, so answers from the server can be checked at runtime (the Record keeps it exhaustive). */
 const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
@@ -176,6 +178,7 @@ const COMMAND_ERRORS: Readonly<Record<CommandError, true>> = {
   invalid_command: true,
   blocked: true,
   conflict: true,
+  stock_missing: true,
 };
 
 export function isCommandError(value: unknown): value is CommandError {

@@ -1177,6 +1177,7 @@ export const t = {
     invalid_command: 'Ação inválida. Confira os valores informados.',
     blocked: 'A construção não atende aos requisitos.',
     conflict: 'O jogo mudou em outro lugar; sua última ação foi desfeita.',
+    stock_missing: 'O item ligado foi removido do Depósito.',
   } satisfies Record<CommandError, string>,
 } as const;
 

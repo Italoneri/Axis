@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { applyCommand } from '../commands/applyCommand';
 import { gameStateSchema } from '../model/schema';
 import { toBronze } from '../systems/Coins';
 import { serializeState, createInitialState } from '../systems/SaveSystem';
@@ -405,5 +406,175 @@ describe('shop purchases', () => {
     };
     expect((await buy('shop_sword')).status).toBe(409);
     expect(db.deliveries).toEqual([]);
+  });
+});
+
+describe('commands that move depot items', () => {
+  const NOW = '2026-10-19T12:00:00.000Z';
+  const depotItem = (id: string, name: string, quantity: number, extra = {}) => ({
+    id,
+    sectionId: 'porcoes',
+    name,
+    kind: 'outro' as const,
+    quantity,
+    notes: '',
+    order: 0,
+    authorId: 'mestre',
+    createdAt: NOW,
+    updatedAt: NOW,
+    deletedAt: null,
+    ...extra,
+  });
+  const crop = {
+    id: 'crop_hortela',
+    seed: { source: 'depot', itemId: 'sem' },
+    harvest: { source: 'depot', itemId: 'erva' },
+    plotType: 'canteiro',
+    days: 1,
+    yield: 3,
+    rare: true,
+  } as const;
+
+  async function withGarden(seeds: number) {
+    const context = setup();
+    const seed = createInitialState(serverCatalog);
+    const gameId = await context.createGame({
+      ...seed,
+      slots: { outer_1: { buildingId: 'herb_garden', level: 1, status: 'done' } },
+      garden: { crops: [crop], plots: {} },
+    });
+    context.db.players.set(`${gameId}:${PLAYER}`, { role: 'player', characterId: character });
+    context.db.depots.set(gameId, {
+      sections: [
+        {
+          id: 'porcoes',
+          name: 'porções',
+          ownerId: null,
+          order: 0,
+          authorId: 'mestre',
+          deletedAt: null,
+        },
+      ],
+      items: [depotItem('sem', 'Semente de Hortelã', seeds), depotItem('erva', 'Hortelã', 0)],
+    });
+    const plant = (plotId = 'canteiro-1', expectedRevision = 0) =>
+      context.request(
+        {
+          action: 'command',
+          gameId,
+          expectedRevision,
+          command: { type: 'garden_plant', plotId, cropId: 'crop_hortela', buy: false },
+        },
+        PLAYER,
+      );
+    const quantityOf = (itemId: string) =>
+      context.db.depots.get(gameId)?.items.find((item) => item.id === itemId)?.quantity;
+    return { ...context, gameId, plant, quantityOf };
+  }
+
+  it('stockSuccessWritesBoth', async () => {
+    const { db, gameId, plant, quantityOf } = await withGarden(2);
+    const response = await plant();
+    expect(response.status).toBe(200);
+    expect(db.games.get(gameId)?.revision).toBe(1);
+    expect(quantityOf('sem')).toBe(1);
+    expect(db.loggedEntries.at(-1)).toMatchObject([
+      { kind: 'garden_planted', seed: 'Semente de Hortelã' },
+    ]);
+  });
+
+  it('stockShortCommitsNothing', async () => {
+    const { db, gameId, plant, quantityOf } = await withGarden(1);
+    // Someone took the last seed between the read and the commit.
+    const load = db.loadDepotItems.bind(db);
+    db.loadDepotItems = async (id, ids) => {
+      const read = await load(id, ids);
+      db.takeQuietly(id, 'sem', 1);
+      return read;
+    };
+    const response = await plant();
+    expect(response).toMatchObject({ status: 422, body: { error: 'refused', reason: 'no_seed' } });
+    expect(db.games.get(gameId)?.revision).toBe(0);
+    expect(quantityOf('sem')).toBe(0);
+  });
+
+  it('refusesThePlayerWhenTheDepotHasNoSeed', async () => {
+    const { db, gameId, plant } = await withGarden(0);
+    const response = await plant();
+    expect(response).toMatchObject({ status: 422, body: { reason: 'no_seed' } });
+    expect(db.games.get(gameId)?.revision).toBe(0);
+  });
+
+  it('stockMissingRefused', async () => {
+    const { db, gameId, plant } = await withGarden(1);
+    // The database found the item gone while moving it (the reads alone did not catch it).
+    db.commitWithStock = () => Promise.resolve('stock_missing');
+    const response = await plant();
+    expect(response).toMatchObject({ status: 422, body: { reason: 'stock_missing' } });
+    expect(db.games.get(gameId)?.revision).toBe(0);
+  });
+
+  it('treatsAnItemTrashedAfterTheReadAsAConflict', async () => {
+    const { db, gameId, plant, quantityOf } = await withGarden(2);
+    const load = db.loadDepotItems.bind(db);
+    db.loadDepotItems = async (id, ids) => {
+      const read = await load(id, ids);
+      db.trashQuietly(id, 'sem');
+      return read;
+    };
+    expect((await plant()).status).toBe(409);
+    expect(db.games.get(gameId)?.revision).toBe(0);
+    expect(quantityOf('sem')).toBe(2);
+  });
+
+  it('conflictWins', async () => {
+    const { db, gameId, plant, quantityOf } = await withGarden(2);
+    const load = db.loadDepotItems.bind(db);
+    // The item was renamed after the rules read it: the logged name would be stale.
+    db.loadDepotItems = async (id, ids) => {
+      const read = await load(id, ids);
+      db.renameQuietly(id, 'sem', 'Semente nova');
+      return read;
+    };
+    expect((await plant()).status).toBe(409);
+    expect(db.games.get(gameId)?.revision).toBe(0);
+    expect(quantityOf('sem')).toBe(2);
+  });
+
+  it('readsOnlyTheItemsTheCommandUses', async () => {
+    const { db, gameId, plant } = await withGarden(2);
+    const asked: string[][] = [];
+    const load = db.loadDepotItems.bind(db);
+    db.loadDepotItems = (id, ids) => {
+      asked.push([...ids]);
+      return load(id, ids);
+    };
+    await plant();
+    expect(asked).toEqual([['sem', 'erva']]);
+    expect(db.games.get(gameId)?.revision).toBe(1);
+  });
+
+  it('logsTheSameAsOffline', async () => {
+    const { db, plant } = await withGarden(2);
+    await plant();
+    const local = applyCommand(
+      gameStateSchema.parse({
+        ...createInitialState(serverCatalog),
+        slots: { outer_1: { buildingId: 'herb_garden', level: 1, status: 'done' } },
+        garden: { crops: [crop], plots: {} },
+      }),
+      serverCatalog,
+      { type: 'garden_plant', plotId: 'canteiro-1', cropId: 'crop_hortela', buy: false },
+      {
+        actor: { role: 'player', characterId: character },
+        depot: [
+          { id: 'erva', name: 'Hortelã', quantity: 0, live: true, updatedAt: NOW },
+          { id: 'sem', name: 'Semente de Hortelã', quantity: 2, live: true, updatedAt: NOW },
+        ],
+      },
+    );
+    if (!local.ok) throw new Error(local.error);
+    expect(db.loggedEntries.at(-1)).toEqual(local.logged);
+    expect(local.stock).toEqual([{ itemId: 'sem', delta: -1, mode: 'strict' }]);
   });
 });
