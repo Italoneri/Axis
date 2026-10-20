@@ -22,21 +22,21 @@ Objetivo: a construção **Laboratório Arcano** (`arcane_lab`, `ARCANE_LAB_BUIL
 
 ## Receitas (catálogo do mestre)
 
-O laboratório não inventa material: a receita liga materiais que já existem.
+O laboratório não inventa nada: a receita liga materiais ou itens do Depósito do grupo que já existem (`StockRef`, ver `DEPOSITO.md` › Estoque), e dá para misturar. O formulário tem "+ Criar no Depósito".
 
-| Campo         | Significado                                                                     |
-| ------------- | ------------------------------------------------------------------------------- |
-| `id`          | gerado pelo cliente (`newId('recipe')`), enviado no `lab_recipe_create`         |
-| `outputId`    | material da poção                                                               |
-| `outputQty`   | poções por preparo (1 a 9999)                                                   |
-| `ingredients` | 1 a 6 `{ materialId, quantity }` (1 a 9999), sem repetir material e sem a poção |
-| `stationType` | tipo de bancada                                                                 |
-| `days`        | dias até ficar pronta (1 a 365)                                                 |
-| `color`       | opcional: cor do líquido (hex); ausente = tom estável pelo `outputId`           |
-| `hidden`      | oculta para os jogadores; toda receita nasce oculta e o mestre revela           |
+| Campo         | Significado                                                             |
+| ------------- | ----------------------------------------------------------------------- |
+| `id`          | gerado pelo cliente (`newId('recipe')`), enviado no `lab_recipe_create` |
+| `output`      | `StockRef` da poção                                                     |
+| `outputQty`   | poções por preparo (1 a 9999)                                           |
+| `ingredients` | 1 a 6 `{ ref, quantity }` (1 a 9999), sem repetir ponta e sem a poção   |
+| `stationType` | tipo de bancada                                                         |
+| `days`        | dias até ficar pronta (1 a 365)                                         |
+| `color`       | opcional: cor do líquido (hex); ausente = tom estável pela poção        |
+| `hidden`      | oculta para os jogadores; toda receita nasce oculta e o mestre revela   |
 
 - O schema (`recipeFieldsSchema` / `recipeSchema`) recusa ingrediente repetido e a poção entre os ingredientes.
-- Receita com material apagado some da bandeja. Editar, ocultar ou apagar uma receita **não** mexe nos preparos em andamento: a bancada guarda uma cópia.
+- Receita com material apagado ou item do Depósito removido some da bandeja (o mestre vê com aviso). Ingrediente do Depósito sai como movimento (`strict` jogador, `clamp` mestre, e `spent` guarda o que o mestre realmente tinha); poção e devolução entram no item. Editar, ocultar ou apagar uma receita **não** mexe nos preparos em andamento: a bancada guarda uma cópia.
 
 ## Comandos (`src/commands/schema.ts`, regras em `src/systems/Lab.ts`)
 

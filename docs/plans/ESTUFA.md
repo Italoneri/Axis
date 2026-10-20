@@ -4,10 +4,10 @@ Objetivo: a construção **Estufa de Ervas** (`herb_garden`, `HERB_GARDEN_BUILDI
 
 ## Onde guardar
 
-- **`state.garden`** no `GameState`: `{ crops: Crop[], plots: Record<plotId, { seedId, growthTenths }> }`. Viaja com o save, como a loja.
+- **`state.garden`** no `GameState`: `{ crops: Crop[], plots: Record<plotId, { cropId, growthTenths }> }`. Viaja com o save, como a loja.
 - **Layout dos espaços:** `catalog.garden` (`src/data/garden.json`, carregado por `src/data/gameData.ts`). Por nível, a lista de espaços com `id`, `type` e a caixa na arte (`x`, `y`, `w`, `h` de 0 a 1). Os ids são estáveis entre os níveis.
 - **Madeira passiva:** campo `produces` por nível em `src/data/buildings.json`.
-- **Save:** `SAVE_VERSION` = 9 (`src/model/schema.ts`). Saves da versão 8 ganham `garden: { crops: [], plots: {} }`.
+- **Save:** `SAVE_VERSION` = 11 (`src/model/schema.ts`). Saves da versão 8 ganham `garden: { crops: [], plots: {} }`; os da 10 passam a usar `StockRef` (cultivo `{ id: seedId, seed: material, harvest: material }`, espaço `{ cropId: seedId }`).
 
 ## Espaços por nível
 
@@ -28,31 +28,32 @@ Objetivo: a construção **Estufa de Ervas** (`herb_garden`, `HERB_GARDEN_BUILDI
 
 ## Cultivos (catálogo do mestre)
 
-O mestre cria as categorias **Sementes** e **Ervas** nos Materiais e liga uma semente a uma colheita. O jardim não inventa plantas. Um cultivo por semente (`seedId`):
+O mestre liga uma semente a uma colheita. Cada ponta é um **material** ou um **item do Depósito do grupo** (`StockRef`, ver `DEPOSITO.md` › Estoque), e o formulário tem "+ Criar no Depósito". O jardim não inventa plantas. Um cultivo por semente:
 
-| Campo       | Significado                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| `seedId`    | material da semente                                                                                |
-| `harvestId` | material entregue na colheita                                                                      |
-| `plotType`  | tipo de espaço onde pode ser plantada                                                              |
-| `days`      | dias até ficar pronta (inteiro ≥ 1)                                                                |
-| `yield`     | quanto cada colheita entrega (inteiro ≥ 1)                                                         |
-| `rare`      | rara: não se compra no jardim e não rebrota                                                        |
-| `price`     | preço da semente em moedas; obrigatório se comum, ausente se rara                                  |
-| `look`      | opcional: `{ kind: 'foliage' \| 'flower', hue }` (hue inteiro de -180 a 180); ausente = automática |
+| Campo      | Significado                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| `id`       | gerado pelo cliente (`newId('crop')`); cultivos migrados guardam o antigo `seedId`                 |
+| `seed`     | `StockRef` da semente                                                                              |
+| `harvest`  | `StockRef` entregue na colheita                                                                    |
+| `plotType` | tipo de espaço onde pode ser plantada                                                              |
+| `days`     | dias até ficar pronta (inteiro ≥ 1)                                                                |
+| `yield`    | quanto cada colheita entrega (inteiro ≥ 1)                                                         |
+| `rare`     | rara: não se compra no jardim e não rebrota                                                        |
+| `price`    | preço da semente em moedas; obrigatório se comum, ausente se rara                                  |
+| `look`     | opcional: `{ kind: 'foliage' \| 'flower', hue }` (hue inteiro de -180 a 180); ausente = automática |
 
-`look` é a **Aparência** escolhida no formulário (Automática, Folhagem ou Flor com cor). Ausente, `cropLook` sorteia como antes por um hash estável do `seedId`, então saves antigos continuam válidos sem migração. Folhagem guarda `hue: 0` (não tem cor).
+`look` é a **Aparência** escolhida no formulário (Automática, Folhagem ou Flor com cor). Ausente, `cropLook` sorteia por um hash estável da semente (o id do material, ou `d:<itemId>` para item do Depósito), então cultivos antigos mantêm a cor. Folhagem guarda `hue: 0` (não tem cor).
 
-`cropsFor` só lista cultivos cujos materiais (semente e colheita) ainda existem, por nome da semente.
+`cropsFor` só lista cultivos cujas pontas (semente e colheita) ainda existem, por nome da semente; o mestre vê os quebrados na aba Cultivos com aviso. Semente do Depósito sai como movimento (`strict` jogador, `clamp` mestre); colheita e devolução entram no item.
 
 ## Comandos (`src/commands/schema.ts`, regras em `src/systems/Garden.ts`)
 
-| Comando                                                                   | Quem pode        |
-| ------------------------------------------------------------------------- | ---------------- |
-| `garden_crop_create`, `garden_crop_update`, `garden_crop_remove`          | só o mestre      |
-| `garden_plant` (`plotId`, `seedId`, `buy`)                                | jogador e mestre |
-| `garden_harvest` (`plotId`; sem `plotId` = colher tudo o que está pronto) | jogador e mestre |
-| `garden_clear` (`plotId`)                                                 | jogador e mestre |
+| Comando                                                                                     | Quem pode        |
+| ------------------------------------------------------------------------------------------- | ---------------- |
+| `garden_crop_create` (`id`, `crop`), `garden_crop_update` / `garden_crop_remove` (`cropId`) | só o mestre      |
+| `garden_plant` (`plotId`, `cropId`, `buy`)                                                  | jogador e mestre |
+| `garden_harvest` (`plotId`; sem `plotId` = colher tudo o que está pronto)                   | jogador e mestre |
+| `garden_clear` (`plotId`)                                                                   | jogador e mestre |
 
 Os três do jogador estão em `PLAYER_COMMANDS` (`src/commands/applyCommand.ts`); os de cultivo caem na regra "todo o resto é do mestre". Não há `payer`: a compra sempre debita o acampamento.
 
