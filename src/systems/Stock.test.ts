@@ -1,0 +1,113 @@
+import { describe, expect, it } from 'vitest';
+import type { StockRef } from '../model/schema';
+import type { Depot, DepotItem } from './Depot';
+import { parseRefKey, refExists, refKey, refName, refQuantity, sameRef, sumMoves } from './Stock';
+import { withIron } from './testFixtures';
+
+const NOW = '2026-10-19T12:00:00.000Z';
+
+function item(id: string, sectionId: string, extra: Partial<DepotItem> = {}): DepotItem {
+  return {
+    id,
+    sectionId,
+    name: id,
+    kind: 'outro',
+    quantity: 2,
+    notes: '',
+    order: 0,
+    authorId: 'mestre',
+    createdAt: NOW,
+    updatedAt: NOW,
+    deletedAt: null,
+    ...extra,
+  };
+}
+
+const depot: Depot = {
+  sections: [
+    {
+      id: 'porcoes',
+      name: 'Porções',
+      ownerId: null,
+      order: 0,
+      authorId: 'mestre',
+      deletedAt: null,
+    },
+    { id: 'bau', name: 'Baú', ownerId: 'thorin', order: 0, authorId: 'thorin', deletedAt: null },
+  ],
+  items: [
+    item('cavalo', 'porcoes', { name: 'Porção de cavalo', quantity: 2 }),
+    item('lixo', 'porcoes', { name: 'Velha', deletedAt: NOW }),
+    item('secreto', 'bau', { name: 'Segredo' }),
+  ],
+};
+
+const iron: StockRef = { source: 'material', materialId: 'iron' };
+const cavalo: StockRef = { source: 'depot', itemId: 'cavalo' };
+const state = withIron(5);
+
+describe('stock refs', () => {
+  it('compares source and id', () => {
+    expect(sameRef(iron, { source: 'material', materialId: 'iron' })).toBe(true);
+    expect(sameRef(iron, { source: 'depot', itemId: 'iron' })).toBe(false);
+    expect(sameRef(cavalo, { source: 'depot', itemId: 'outro' })).toBe(false);
+  });
+
+  it('keys refs by source and round-trips the key', () => {
+    expect(refKey(iron)).toBe('m:iron');
+    expect(refKey(cavalo)).toBe('d:cavalo');
+    expect(parseRefKey('d:cavalo')).toEqual(cavalo);
+    expect(parseRefKey('m:iron')).toEqual(iron);
+    expect(parseRefKey('x:iron')).toBeUndefined();
+    expect(parseRefKey('d:')).toBeUndefined();
+  });
+
+  it('reads names and quantities from the materials or the group depot', () => {
+    expect(refName(iron, state, depot)).toBe('Ferro');
+    expect(refName(cavalo, state, depot)).toBe('Porção de cavalo');
+    expect(refQuantity(iron, state, depot)).toBe(5);
+    expect(refQuantity(cavalo, state, depot)).toBe(2);
+  });
+
+  it('treats trashed, private and unknown items as missing', () => {
+    for (const itemId of ['lixo', 'secreto', 'nada']) {
+      const ref: StockRef = { source: 'depot', itemId };
+      expect(refExists(ref, state, depot)).toBe(false);
+      expect(refName(ref, state, depot)).toBeUndefined();
+      expect(refQuantity(ref, state, depot)).toBe(0);
+    }
+    expect(refExists(cavalo, state, depot)).toBe(true);
+    expect(refExists({ source: 'material', materialId: 'nada' }, state, depot)).toBe(false);
+  });
+});
+
+describe('sumMoves', () => {
+  it('merges moves on the same item and drops the ones that cancel out', () => {
+    expect(
+      sumMoves([
+        { itemId: 'a', delta: -2, mode: 'strict' },
+        { itemId: 'b', delta: 3, mode: 'strict' },
+        { itemId: 'a', delta: -1, mode: 'strict' },
+        { itemId: 'b', delta: -3, mode: 'strict' },
+      ]),
+    ).toEqual([{ itemId: 'a', delta: -3, mode: 'strict' }]);
+  });
+
+  it('keeps clamp when every spend on the item is clamp', () => {
+    expect(
+      sumMoves([
+        { itemId: 'a', delta: -2, mode: 'clamp' },
+        { itemId: 'a', delta: 1, mode: 'strict' },
+      ]),
+    ).toEqual([{ itemId: 'a', delta: -1, mode: 'clamp' }]);
+  });
+
+  it('throws when strict and clamp spends mix on one item', () => {
+    expect(() =>
+      sumMoves([
+        { itemId: 'a', delta: -2, mode: 'clamp' },
+        { itemId: 'a', delta: -1, mode: 'strict' },
+      ]),
+    ).toThrow(/a/);
+  });
+});

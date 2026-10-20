@@ -808,6 +808,12 @@ export const gardenLayoutSchema = z.object({
   levels: z.array(z.object({ plots: z.array(plotDefSchema) })),
 });
 
+/** Where a crop or recipe takes and puts things: a material, or an item of the group's Depósito. */
+export const stockRefSchema = z.discriminatedUnion('source', [
+  z.object({ source: z.literal('material'), materialId: z.string().min(1) }),
+  z.object({ source: z.literal('depot'), itemId: z.string().min(1) }),
+]);
+
 /** How a crop is drawn in the garden: a leafy plant, or a flower tinted by `hue` (degrees). */
 export const cropLookSchema = z.object({
   kind: z.enum(['foliage', 'flower']),
@@ -994,6 +1000,7 @@ export type Shop = z.infer<typeof shopSchema>;
 export type PlotType = z.infer<typeof plotTypeSchema>;
 export type PlotDef = z.infer<typeof plotDefSchema>;
 export type GardenLayout = z.infer<typeof gardenLayoutSchema>;
+export type StockRef = z.infer<typeof stockRefSchema>;
 export type Crop = z.infer<typeof cropSchema>;
 export type CropLook = z.infer<typeof cropLookSchema>;
 export type Planting = z.infer<typeof plantingSchema>;

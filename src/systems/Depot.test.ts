@@ -3,6 +3,8 @@ import type { Actor } from '../commands/schema';
 import {
   activeSections,
   applyDepotCommand,
+  applyStock,
+  QUANTITY_LIMIT,
   depotCounts,
   deliverToDepot,
   depotDiff,
@@ -209,12 +211,25 @@ describe('depot items', () => {
 
   it('checks the quantity', () => {
     expect(
-      run({ type: 'item_create', id: 'x', sectionId: 'armas', ...newItem, quantity: 0 }, thorin),
+      run({ type: 'item_create', id: 'x', sectionId: 'armas', ...newItem, quantity: -1 }, thorin),
     ).toEqual({ ok: false, error: 'invalid_quantity' });
-    expect(run({ type: 'item_adjust', itemId: 'espada', delta: -1 }, thorin)).toEqual({
+    expect(run({ type: 'item_adjust', itemId: 'espada', delta: -2 }, thorin)).toEqual({
       ok: false,
       error: 'invalid_quantity',
     });
+  });
+
+  it('lets an item run out and stay at zero', () => {
+    const created = ok(
+      { type: 'item_create', id: 'x', sectionId: 'armas', ...newItem, quantity: 0 },
+      thorin,
+    );
+    expect(created.depot.items.at(-1)).toMatchObject({ id: 'x', quantity: 0 });
+    const emptied = ok({ type: 'item_adjust', itemId: 'espada', delta: -1 }, thorin);
+    expect(emptied.depot.items.find((i) => i.id === 'espada')?.quantity).toBe(0);
+    const updated = ok({ type: 'item_update', itemId: 'cura', ...newItem, quantity: 0 }, thorin);
+    expect(updated.depot.items.find((i) => i.id === 'cura')?.quantity).toBe(0);
+    expect(parseDepot(updated.depot).ok).toBe(true);
   });
 
   it('adds and takes units with + and -', () => {
@@ -420,5 +435,95 @@ describe('deliverToDepot', () => {
     );
     expect(result.sections).toContainEqual(thorins);
     expect(result.items[0]?.sectionId).not.toBe('entreposto-lyra');
+  });
+});
+
+describe('applyStock', () => {
+  const LATER = '2026-10-19T09:00:00.000Z';
+  const stock: Depot = {
+    ...base,
+    sections: [...base.sections, { ...section('velha', 'Velha', null, 2), deletedAt: NOW }],
+    items: [
+      ...base.items,
+      item('hortela', 'pocoes', { name: 'Hortelã', quantity: 2 }),
+      item('lixo', 'pocoes', { quantity: 4, deletedAt: NOW }),
+      item('cheio', 'pocoes', { quantity: QUANTITY_LIMIT - 1 }),
+    ],
+  };
+  const quantityOf = (depot: Depot, id: string) => depot.items.find((i) => i.id === id)?.quantity;
+
+  it('applyStockStrictShort', () => {
+    expect(applyStock(stock, [{ itemId: 'hortela', delta: -3, mode: 'strict' }], LATER)).toEqual({
+      ok: false,
+      error: 'stock_short',
+      itemId: 'hortela',
+    });
+  });
+
+  it('spends a strict move that fits', () => {
+    const outcome = applyStock(stock, [{ itemId: 'hortela', delta: -2, mode: 'strict' }], LATER);
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(outcome.depot.items.find((i) => i.id === 'hortela')).toMatchObject({
+      quantity: 0,
+      updatedAt: LATER,
+    });
+    expect(outcome.lost).toEqual([]);
+  });
+
+  it('applyStockClamp', () => {
+    const outcome = applyStock(stock, [{ itemId: 'hortela', delta: -5, mode: 'clamp' }], LATER);
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(quantityOf(outcome.depot, 'hortela')).toBe(0);
+  });
+
+  it('applyStockCapsAtLimit', () => {
+    const outcome = applyStock(stock, [{ itemId: 'cheio', delta: 5, mode: 'strict' }], LATER);
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(quantityOf(outcome.depot, 'cheio')).toBe(QUANTITY_LIMIT);
+  });
+
+  it('applyStockRefusesPrivateItem', () => {
+    for (const itemId of ['escudo', 'lixo', 'nada']) {
+      expect(applyStock(stock, [{ itemId, delta: -1, mode: 'clamp' }], LATER)).toEqual({
+        ok: false,
+        error: 'stock_missing',
+        itemId,
+      });
+    }
+  });
+
+  it('gainOnTrashedItemIsLost', () => {
+    const outcome = applyStock(
+      stock,
+      [
+        { itemId: 'lixo', delta: 2, mode: 'strict' },
+        { itemId: 'escudo', delta: 1, mode: 'strict' },
+        { itemId: 'hortela', delta: 1, mode: 'strict' },
+      ],
+      LATER,
+    );
+    if (!outcome.ok) throw new Error(outcome.error);
+    expect(outcome.lost).toEqual(['lixo', 'escudo']);
+    expect(quantityOf(outcome.depot, 'lixo')).toBe(4);
+    expect(quantityOf(outcome.depot, 'escudo')).toBe(1);
+    expect(quantityOf(outcome.depot, 'hortela')).toBe(3);
+  });
+
+  it('allOrNothing', () => {
+    const outcome = applyStock(
+      stock,
+      [
+        { itemId: 'cura', delta: -1, mode: 'strict' },
+        { itemId: 'hortela', delta: -9, mode: 'strict' },
+      ],
+      LATER,
+    );
+    expect(outcome).toEqual({ ok: false, error: 'stock_short', itemId: 'hortela' });
+    expect(quantityOf(stock, 'cura')).toBe(3);
+  });
+
+  it('keeps the same depot when there is nothing to move', () => {
+    const outcome = applyStock(stock, [], LATER);
+    expect(outcome).toEqual({ ok: true, depot: stock, lost: [] });
   });
 });
