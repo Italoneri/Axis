@@ -1311,15 +1311,15 @@ function logAction(entry: LogEntry, ctx: TextContext): string {
     case 'garden_planted':
       return gardenPlantedText(entry, ctx);
     case 'garden_harvested':
-      return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${entry.material} na Estufa de Ervas`;
+      return `${entry.actor ?? 'Alguém'} colheu ${entry.quantity} ${stockName(entry.material)} na Estufa de Ervas${lostText(entry)}`;
     case 'garden_seed_returned':
-      return `A Estufa de Ervas devolveu ${entry.quantity} ${entry.seed} ao estoque`;
+      return `A Estufa de Ervas devolveu ${entry.quantity} ${stockName(entry.seed)} ao estoque${lostText(entry)}`;
     case 'garden_cleared':
       return `${entry.actor ?? 'Alguém'} limpou ${plotLabel(entry.plot)} (${entry.seed})`;
     case 'lab_brewed':
       return labBrewedText(entry);
     case 'lab_collected':
-      return `${entry.actor ?? 'Alguém'} recolheu ${entry.quantity} ${entry.material} no Laboratório Arcano`;
+      return `${entry.actor ?? 'Alguém'} recolheu ${entry.quantity} ${stockName(entry.material)} no Laboratório Arcano${lostText(entry)}`;
     case 'lab_discarded':
       return `${entry.actor ?? 'Alguém'} descartou ${entry.material} de ${stationLabel(entry.station)}`;
     case 'lab_ingredients_returned':
@@ -1616,8 +1616,25 @@ function labBrewedText(entry: Extract<LogEntry, { kind: 'lab_brewed' }>): string
   return `${entry.actor ?? 'Alguém'} começou ${entry.material} em ${stationLabel(entry.station)}${spent}`;
 }
 
-function portionsText(portions: readonly { material: string; quantity: number }[]): string {
-  return listText(portions.map((p) => `${p.quantity} ${p.material}`));
+function portionsText(
+  portions: readonly { material: string; quantity: number; lost?: true | undefined }[],
+): string {
+  return listText(
+    portions.map(
+      (p) =>
+        `${p.quantity} ${stockName(p.material)}${p.lost ? ' (perdido: item removido do Depósito)' : ''}`,
+    ),
+  );
+}
+
+/** A delivery to a depot item that was gone: it reached nobody. */
+function lostText(entry: { lost?: true | undefined }): string {
+  return entry.lost ? ', mas o item foi removido do Depósito: perdido' : '';
+}
+
+/** Names snapshotted by the garden and the lab; '' when the item was gone before it had one here. */
+function stockName(name: string): string {
+  return name || t.garden.missingItem;
 }
 
 function signedList(delta: Readonly<Record<string, number>>, ctx: TextContext): string {
