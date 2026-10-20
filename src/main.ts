@@ -151,10 +151,10 @@ async function start(): Promise<void> {
     notify(persistFailed, 'error');
   });
   // Opened after the game (its log entries go through the store), so read lazily.
-  let depotStore: DepotStore | undefined;
+  const opened: { depot?: DepotStore } = {};
   /** The group items this command uses, from the depot this page shows (the commit reads it again). */
   const depotFor = (command: GameCommand) =>
-    depotSnapshot(depotStore?.current ?? EMPTY_DEPOT, depotItemsNeeded(store.current, command));
+    depotSnapshot(opened.depot?.current ?? EMPTY_DEPOT, depotItemsNeeded(store.current, command));
   const actingContext = (command: GameCommand): CommandContext =>
     command.type === 'archive_log' ||
     command.type === 'depot_log' ||
@@ -168,8 +168,8 @@ async function start(): Promise<void> {
     repository,
     {
       contextFor: (command) => ({ ...actingContext(command), depot: depotFor(command) }),
-      onStock: (moves) => depotStore?.preview(moves),
-      onStockSettled: () => void depotStore?.reload(),
+      onStock: (moves) => opened.depot?.preview(moves),
+      onStockSettled: () => void opened.depot?.reload(),
       onRefused: (error) => notify(t.errors[error], 'error'),
       onPersistError: (error) => {
         console.error('[save] could not persist state', error);
@@ -204,7 +204,7 @@ async function start(): Promise<void> {
       notify(persistFailed, 'error');
     },
   });
-  depotStore = depot;
+  opened.depot = depot;
   const depotWindow = new DepotWindow({
     depot,
     game: store,
