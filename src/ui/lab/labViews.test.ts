@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { t } from '../../i18n/pt-BR';
 import type { Actor } from '../../commands/schema';
 import { ARCANE_LAB_BUILDING_ID } from '../../model/catalog';
 import type { Brew, GameState, Recipe } from '../../model/schema';
@@ -17,11 +18,11 @@ const master: Actor = { role: 'master' };
 
 const cura: Recipe = {
   id: 'r-cura',
-  outputId: 'cura',
+  output: { source: 'material', materialId: 'cura' },
   outputQty: 2,
   ingredients: [
-    { materialId: 'hortela', quantity: 3 },
-    { materialId: 'camomila', quantity: 1 },
+    { ref: { source: 'material', materialId: 'hortela' }, quantity: 3 },
+    { ref: { source: 'material', materialId: 'camomila' }, quantity: 1 },
   ],
   stationType: 'alambique',
   days: 2,
@@ -30,7 +31,7 @@ const cura: Recipe = {
 
 const brewOf = (progressTenths: number): Brew => ({
   recipeId: 'r-cura',
-  outputId: 'cura',
+  output: { source: 'material', materialId: 'cura' },
   outputQty: 2,
   days: 2,
   spent: cura.ingredients,
@@ -63,6 +64,7 @@ describe('stationViews', () => {
     const views = stationViews(
       labState(1, { 'alambique-1': brewOf(5), 'alambique-2': brewOf(20) }),
       catalog,
+      [],
     );
     expect(views.map((v) => [v.station.id, v.kind])).toEqual([
       ['alambique-1', 'brewing'],
@@ -72,13 +74,15 @@ describe('stationViews', () => {
   });
 
   it('countsTheSummary', () => {
-    const views = stationViews(labState(2, { 'alambique-2': brewOf(20) }), catalog);
+    const views = stationViews(labState(2, { 'alambique-2': brewOf(20) }), catalog, []);
     expect(labSummary(views)).toEqual({ ready: 1, brewing: 0, free: 3 });
   });
 
-  it('namesAPotionThatIsGoneByItsId', () => {
-    const state = labState(1, { 'alambique-1': { ...brewOf(5), outputId: 'gone' } });
-    expect(stationViews(state, catalog)[0]).toMatchObject({ potionName: 'gone' });
+  it('namesAPotionThatIsGoneAsRemoved', () => {
+    const state = labState(1, {
+      'alambique-1': { ...brewOf(5), output: { source: 'material', materialId: 'gone' } },
+    });
+    expect(stationViews(state, catalog, [])[0]).toMatchObject({ potionName: t.garden.missingItem });
   });
 });
 
@@ -92,7 +96,7 @@ describe('stationAria', () => {
       label: 'Alambique 1: Poção de Cura pronta. Recolher 2.',
     },
   ])('labels $label', ({ stations, label }) => {
-    const [view] = stationViews(labState(1, stations), catalog);
+    const [view] = stationViews(labState(1, stations), catalog, []);
     if (!view) throw new Error('no station');
     expect(stationAria(view)).toBe(label);
   });
@@ -116,11 +120,10 @@ describe('lockedStations', () => {
 
 describe('recipeOptions', () => {
   it('comparesStockToTheRecipe', () => {
-    const [option] = recipeOptions(
-      labState(1, {}, { hortela: 2, camomila: 1 }),
-      'alambique',
-      player,
-    );
+    const [option] = recipeOptions(labState(1, {}, { hortela: 2, camomila: 1 }), 'alambique', {
+      actor: player,
+      depot: [],
+    });
     expect(option).toMatchObject({
       outputName: 'Poção de Cura',
       canBrew: false,
@@ -133,16 +136,15 @@ describe('recipeOptions', () => {
   });
 
   it('letsAPlayerBrewWithEveryIngredient', () => {
-    const [option] = recipeOptions(
-      labState(1, {}, { hortela: 3, camomila: 1 }),
-      'alambique',
-      player,
-    );
+    const [option] = recipeOptions(labState(1, {}, { hortela: 3, camomila: 1 }), 'alambique', {
+      actor: player,
+      depot: [],
+    });
     expect(option).toMatchObject({ canBrew: true, missing: [] });
   });
 
   it('masterCanBrewWithoutStock', () => {
-    const [option] = recipeOptions(labState(1), 'alambique', master);
+    const [option] = recipeOptions(labState(1), 'alambique', { actor: master, depot: [] });
     expect(option).toMatchObject({ canBrew: true, missing: ['Hortelã', 'Camomila'] });
   });
 
@@ -153,8 +155,9 @@ describe('recipeOptions', () => {
       garden: {
         crops: [
           {
-            seedId: 'wood',
-            harvestId: 'hortela',
+            id: 'wood',
+            seed: { source: 'material', materialId: 'wood' },
+            harvest: { source: 'material', materialId: 'hortela' },
             plotType: 'canteiro',
             days: 2,
             yield: 3,
@@ -164,15 +167,17 @@ describe('recipeOptions', () => {
         plots: {},
       },
     };
-    const [option] = recipeOptions(withCrop, 'alambique', player);
+    const [option] = recipeOptions(withCrop, 'alambique', { actor: player, depot: [] });
     expect(option?.ingredients.map((i) => i.fromGarden)).toEqual([true, false]);
   });
 
   it('playerTrayEmptyWhenAllHidden', () => {
     const state = labState(1);
     const hidden = { ...state, lab: { ...state.lab, recipes: [{ ...cura, hidden: true }] } };
-    expect(recipeOptions(hidden, 'alambique', player)).toEqual([]);
-    expect(recipeOptions(hidden, 'alambique', master)).toMatchObject([{ hidden: true }]);
+    expect(recipeOptions(hidden, 'alambique', { actor: player, depot: [] })).toEqual([]);
+    expect(recipeOptions(hidden, 'alambique', { actor: master, depot: [] })).toMatchObject([
+      { hidden: true },
+    ]);
   });
 });
 

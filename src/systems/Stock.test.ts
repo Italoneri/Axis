@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { StockRef } from '../model/schema';
 import type { Depot, DepotItem } from './Depot';
-import { parseRefKey, refExists, refKey, refName, refQuantity, sameRef, sumMoves } from './Stock';
+import {
+  depotSnapshot,
+  lostName,
+  parseRefKey,
+  refExists,
+  refKey,
+  refName,
+  refQuantity,
+  sameRef,
+  sumMoves,
+} from './Stock';
 import { withIron } from './testFixtures';
 
 const NOW = '2026-10-19T12:00:00.000Z';
@@ -23,7 +33,7 @@ function item(id: string, sectionId: string, extra: Partial<DepotItem> = {}): De
   };
 }
 
-const depot: Depot = {
+const fullDepot: Depot = {
   sections: [
     {
       id: 'porcoes',
@@ -45,6 +55,7 @@ const depot: Depot = {
 const iron: StockRef = { source: 'material', materialId: 'iron' };
 const cavalo: StockRef = { source: 'depot', itemId: 'cavalo' };
 const state = withIron(5);
+const depot = depotSnapshot(fullDepot);
 
 describe('stock refs', () => {
   it('compares source and id', () => {
@@ -78,6 +89,21 @@ describe('stock refs', () => {
     }
     expect(refExists(cavalo, state, depot)).toBe(true);
     expect(refExists({ source: 'material', materialId: 'nada' }, state, depot)).toBe(false);
+  });
+});
+
+describe('depotSnapshot', () => {
+  it('keeps only the group items asked for, flagging the trashed ones', () => {
+    expect(depotSnapshot(fullDepot, ['cavalo', 'lixo', 'secreto'])).toEqual([
+      { id: 'cavalo', name: 'Porção de cavalo', quantity: 2, live: true, updatedAt: NOW },
+      { id: 'lixo', name: 'Velha', quantity: 2, live: false, updatedAt: NOW },
+    ]);
+    expect(depotSnapshot(fullDepot, [])).toEqual([]);
+  });
+
+  it('names lost items by their last group name only', () => {
+    expect(lostName('lixo', depot)).toBe('Velha');
+    expect(lostName('secreto', depot)).toBe('');
   });
 });
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { chosenLook, cropFormValues, type CropDraft } from './CropForm';
 
 const draft: CropDraft = {
-  seedId: 'seed',
-  harvestId: 'herb',
+  seedKey: 'd:seed',
+  harvestKey: 'm:herb',
   plotType: 'canteiro',
   days: 3,
   yield: 2,
@@ -14,8 +14,9 @@ const draft: CropDraft = {
 
 describe('cropFormValues', () => {
   it.each([
-    ['noSeed', { seedId: '' }, 'missing_material'],
-    ['noHarvest', { harvestId: '' }, 'missing_material'],
+    ['noSeed', { seedKey: '' }, 'missing_material'],
+    ['noHarvest', { harvestKey: '' }, 'missing_material'],
+    ['brokenKey', { seedKey: 'x:seed' }, 'missing_material'],
     ['commonWithEmptyPrice', { price: {} }, 'empty_price'],
     ['commonWithZeroPrice', { price: { bronze: 0 } }, 'empty_price'],
   ] as const)('refuses %s', (_name, change, reason) => {
@@ -26,8 +27,8 @@ describe('cropFormValues', () => {
     expect(cropFormValues(draft)).toEqual({
       ok: true,
       crop: {
-        seedId: 'seed',
-        harvestId: 'herb',
+        seed: { source: 'depot', itemId: 'seed' },
+        harvest: { source: 'material', materialId: 'herb' },
         plotType: 'canteiro',
         days: 3,
         yield: 2,
@@ -42,8 +43,8 @@ describe('cropFormValues', () => {
     expect(result).toEqual({
       ok: true,
       crop: {
-        seedId: 'seed',
-        harvestId: 'herb',
+        seed: { source: 'depot', itemId: 'seed' },
+        harvest: { source: 'material', materialId: 'herb' },
         plotType: 'canteiro',
         days: 3,
         yield: 2,

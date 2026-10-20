@@ -18,6 +18,7 @@ import {
   skillLevelSchema,
 } from '../model/schema';
 import { IMAGE_KINDS } from '../systems/GameImages';
+import type { DepotSnapshot } from '../systems/Stock';
 
 // Every action in the game as plain data: it can be logged, sent to a server
 // and validated there. Names are checked by the systems (not here) so an empty
@@ -91,8 +92,8 @@ const shopItemFieldsSchema = z.discriminatedUnion('kind', [
 
 const [commonCrop, rareCrop] = cropSchema.options;
 const cropFieldsSchema = z.discriminatedUnion('rare', [
-  commonCrop.omit({ seedId: true }),
-  rareCrop.omit({ seedId: true }),
+  commonCrop.omit({ id: true }),
+  rareCrop.omit({ id: true }),
 ]);
 
 const command = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
@@ -172,11 +173,11 @@ export const gameCommandSchema = z.discriminatedUnion('type', [
   command('shop_item_update', { itemId: ref, item: shopItemFieldsSchema }),
   command('shop_item_remove', { itemId: ref }),
   // Herb garden crops (master only)
-  command('garden_crop_create', { crop: cropSchema }),
-  command('garden_crop_update', { seedId: ref, crop: cropFieldsSchema }),
-  command('garden_crop_remove', { seedId: ref }),
+  command('garden_crop_create', { id: newRecordId, crop: cropFieldsSchema }),
+  command('garden_crop_update', { cropId: ref, crop: cropFieldsSchema }),
+  command('garden_crop_remove', { cropId: ref }),
   // Herb garden work (players too)
-  command('garden_plant', { plotId: ref, seedId: ref, buy: z.boolean() }),
+  command('garden_plant', { plotId: ref, cropId: ref, buy: z.boolean() }),
   command('garden_harvest', { plotId: ref.optional() }),
   command('garden_clear', { plotId: ref }),
   // Arcane lab recipes (master only)
@@ -221,6 +222,12 @@ export type Actor = { role: 'master' } | { role: 'player'; characterId?: string 
 
 export interface CommandContext {
   actor: Actor;
+  /**
+   * The group's depot items the command references (see `depotItemsNeeded`),
+   * read before it runs: offline from the local depot, online by the server.
+   * Absent: every depot item reads as missing.
+   */
+  depot?: DepotSnapshot;
   /**
    * Set only by the game function while it links or unlinks a player: the
    * membership commands need it, so no client can send them as a plain command.

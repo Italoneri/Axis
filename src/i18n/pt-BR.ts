@@ -536,6 +536,8 @@ export const t = {
     notBuilt: 'A Estufa de Ervas ainda não foi construída.',
     closePopover: 'Fechar',
     harvestAllCount: (ready: number) => (ready === 0 ? 'Colher tudo' : `Colher tudo (${ready})`),
+    /** A crop or recipe end whose material or depot item is gone. */
+    missingItem: 'item removido',
     scene: {
       label: 'Jardim da Estufa de Ervas',
       locked: {
@@ -596,6 +598,7 @@ export const t = {
       close: 'Fechar',
       uncategorized: 'Sem categoria',
       removedMaterial: 'material removido',
+      brokenLink: 'item do Depósito removido: os jogadores não veem esta planta',
       look: {
         title: 'Aparência',
         kind: 'Tipo de planta',
@@ -712,6 +715,7 @@ export const t = {
       cancel: 'Cancelar',
       close: 'Fechar',
       removedMaterial: 'material removido',
+      brokenLink: '⚠ item do Depósito removido: os jogadores não veem esta receita',
       summary: (days: number, quantity: number) =>
         `${days === 1 ? '1 dia' : `${days} dias`} · rende ${quantity}`,
       reasons: {
@@ -1088,6 +1092,30 @@ export const t = {
     trashedItem: (name: string, section: string) => `${name} (em ${section})`,
     restore: 'Restaurar',
     emptyTrash: 'Esvaziar lixeira',
+    outOfStock: 'em falta',
+    linked: {
+      badge: '🔗',
+      seedOf: (crop: string) => `Semente de ${crop}`,
+      harvestOf: (crop: string) => `Colheita de ${crop}`,
+      potionOf: (recipe: string) => `Poção de ${recipe}`,
+      ingredientOf: (count: number) =>
+        count === 1 ? 'Ingrediente de 1 receita' : `Ingrediente de ${count} receitas`,
+      removeAsk: (uses: string) =>
+        `Este item está ligado à Estufa/Laboratório (${uses}). Removido, isso para de funcionar até o mestre religar. Remover mesmo assim?`,
+    },
+    stock: {
+      section: (name: string) => `Depósito › ${name}`,
+      option: (name: string, quantity: number) => `${name} ×${quantity.toLocaleString('pt-BR')}`,
+      sameAsMaterial: (name: string, quantity: number) =>
+        `${name} (Depósito) ×${quantity.toLocaleString('pt-BR')}`,
+      removed: '⚠ item do Depósito removido',
+      create: '+ Criar no Depósito',
+      createTitle: 'Novo item no Depósito do grupo',
+      newSection: '+ Nova seção',
+      newSectionName: 'Nome da nova seção',
+      notLoaded: 'O Depósito ainda não carregou.',
+      created: 'Item criado com 0 no Depósito.',
+    },
     errors: {
       empty_name: 'Informe um nome.',
       duplicate_name: 'Já existe uma seção com esse nome nesta área.',
@@ -1096,7 +1124,7 @@ export const t = {
       category_not_empty: 'A seção ainda tem itens. Mova-os ou remova-os antes.',
       forbidden: 'Você não pode fazer isso.',
       too_long: `Nome até ${NAME_LIMIT} caracteres e observações até ${ITEM_NOTES_LIMIT.toLocaleString('pt-BR')}.`,
-      invalid_quantity: `A quantidade vai de 1 a ${QUANTITY_LIMIT.toLocaleString('pt-BR')}. Para zerar, remova o item.`,
+      invalid_quantity: `A quantidade vai de 0 a ${QUANTITY_LIMIT.toLocaleString('pt-BR')}.`,
       invalid_command: 'Ação inválida. Confira os valores informados.',
       no_author: 'Escolha seu personagem antes de mexer no depósito.',
     } satisfies Record<DepotError, string>,

@@ -9,10 +9,21 @@ import type {
   Recipe,
   StationDef,
   StationType,
+  StockRef,
 } from '../model/schema';
 import { builtLevel } from './BuildSystem';
-import { addStock, findMaterial } from './Materials';
-import { fail, ok, withLog, type Outcome } from './outcome';
+import { addStock } from './Materials';
+import { fail, stocked, withLog, type Stocked, type StockedOutcome } from './outcome';
+import {
+  gainStock,
+  refExists,
+  refKey,
+  refName,
+  refQuantity,
+  spendMode,
+  type DepotSnapshot,
+  type StockMove,
+} from './Stock';
 
 export { ARCANE_LAB_BUILDING_ID };
 
@@ -39,42 +50,48 @@ export function findRecipe(state: GameState, recipeId: string): Recipe | undefin
   return state.lab.recipes.find((recipe) => recipe.id === recipeId);
 }
 
-/** Every material the recipe names (output and ingredients) still exists. */
-function materialsExist(state: GameState, recipe: RecipeFields): boolean {
-  return [recipe.outputId, ...recipe.ingredients.map((i) => i.materialId)].every(
-    (id) => findMaterial(state.materials, id) !== undefined,
+/** Everything the recipe names (output and ingredients) still exists. */
+function refsExist(state: GameState, recipe: RecipeFields, depot: DepotSnapshot): boolean {
+  return [recipe.output, ...recipe.ingredients.map((i) => i.ref)].every((ref) =>
+    refExists(ref, state, depot),
   );
 }
 
-/** Recipes for a station type whose materials all still exist, by output name; hidden ones only for the master. */
+/** Recipes for a station type whose refs all still exist, by output name; hidden ones only for the master. */
 export function recipesFor(
   state: GameState,
   stationType: StationType,
   isMaster: boolean,
+  depot: DepotSnapshot,
 ): Recipe[] {
-  const outputName = (recipe: Recipe) => findMaterial(state.materials, recipe.outputId)?.name ?? '';
+  const outputName = (recipe: Recipe) => refName(recipe.output, state, depot) ?? '';
   return state.lab.recipes
     .filter(
       (recipe) =>
         recipe.stationType === stationType &&
         (isMaster || !recipe.hidden) &&
-        materialsExist(state, recipe),
+        refsExist(state, recipe, depot),
     )
     .sort((a, b) => outputName(a).localeCompare(outputName(b)));
 }
 
-export function addRecipe(state: GameState, recipe: Recipe): Outcome {
-  if (!materialsExist(state, recipe)) return fail('not_found');
+export function addRecipe(state: GameState, recipe: Recipe, depot: DepotSnapshot): StockedOutcome {
+  if (!refsExist(state, recipe, depot)) return fail('not_found');
   if (findRecipe(state, recipe.id)) return fail('recipe_already_exists');
-  return ok(setRecipes(state, [...state.lab.recipes, recipe]));
+  return stocked(setRecipes(state, [...state.lab.recipes, recipe]));
 }
 
 /** Brews keep their own copy, so editing a recipe never changes what is already brewing. */
-export function updateRecipe(state: GameState, recipeId: string, fields: RecipeFields): Outcome {
+export function updateRecipe(
+  state: GameState,
+  recipeId: string,
+  fields: RecipeFields,
+  depot: DepotSnapshot,
+): StockedOutcome {
   if (!findRecipe(state, recipeId)) return fail('not_found');
-  if (!materialsExist(state, fields)) return fail('not_found');
+  if (!refsExist(state, fields, depot)) return fail('not_found');
   const next: Recipe = { ...fields, id: recipeId };
-  return ok(
+  return stocked(
     setRecipes(
       state,
       state.lab.recipes.map((recipe) => (recipe.id === recipeId ? next : recipe)),
@@ -83,9 +100,9 @@ export function updateRecipe(state: GameState, recipeId: string, fields: RecipeF
 }
 
 /** Allowed with brews in progress: they finish from their copy. */
-export function removeRecipe(state: GameState, recipeId: string): Outcome {
+export function removeRecipe(state: GameState, recipeId: string): StockedOutcome {
   if (!findRecipe(state, recipeId)) return fail('not_found');
-  return ok(
+  return stocked(
     setRecipes(
       state,
       state.lab.recipes.filter((recipe) => recipe.id !== recipeId),
@@ -98,58 +115,79 @@ export interface BrewOrder {
   recipeId: string;
 }
 
-export function brew(state: GameState, catalog: Catalog, order: BrewOrder, actor: Actor): Outcome {
+export function brew(
+  state: GameState,
+  catalog: Catalog,
+  order: BrewOrder,
+  actor: Actor,
+  depot: DepotSnapshot,
+): StockedOutcome {
   const isMaster = actor.role === 'master';
   if (labLevel(state) < 1) return fail('lab_not_built');
   const station = stationsInForce(state, catalog).find((s) => s.id === order.stationId);
   if (!station) return fail('unknown_station');
   if (state.lab.stations[station.id]) return fail('station_busy');
   const recipe = findRecipe(state, order.recipeId);
-  const output = recipe && findMaterial(state.materials, recipe.outputId);
-  if (!recipe || !output || !materialsExist(state, recipe)) return fail('not_found');
+  const outputName = recipe && refName(recipe.output, state, depot);
+  if (!recipe || outputName === undefined || !refsExist(state, recipe, depot)) {
+    return fail('not_found');
+  }
   if (recipe.hidden && !isMaster) return fail('not_found');
   if (recipe.stationType !== station.type) return fail('wrong_station_type');
 
-  const spent = spendable(state, recipe.ingredients);
+  const spent = spendable(state, recipe.ingredients, depot);
   const isShort = spent.some(
     (portion, i) => portion.quantity < (recipe.ingredients[i]?.quantity ?? 0),
   );
   if (isShort && !isMaster) return fail('missing_ingredients');
   const taken = spent.filter((portion) => portion.quantity > 0);
-  const paid = taken.reduce((current, p) => addStock(current, p.materialId, -p.quantity), state);
+  const paid = taken.reduce(
+    (current, { ref, quantity }) =>
+      ref.source === 'material' ? addStock(current, ref.materialId, -quantity) : current,
+    state,
+  );
+  // Depot items leave at commit time; the master's moves take what is there by then.
+  const stock = taken.flatMap(({ ref, quantity }): StockMove[] =>
+    ref.source === 'depot'
+      ? [{ itemId: ref.itemId, delta: -quantity, mode: spendMode(actor) }]
+      : [],
+  );
   const brewing: Brew = {
     recipeId: recipe.id,
-    outputId: recipe.outputId,
+    output: recipe.output,
     outputQty: recipe.outputQty,
     days: recipe.days,
     spent: taken,
     ...(recipe.color ? { color: recipe.color } : {}),
     progressTenths: 0,
   };
-  return ok(
-    withLog(withStation(paid, station.id, brewing), {
-      day: state.day,
-      kind: 'lab_brewed',
-      station: station.id,
-      material: output.name,
-      ingredients: namedPortions(state, taken),
-    }),
-  );
+  const entry = {
+    day: state.day,
+    kind: 'lab_brewed',
+    station: station.id,
+    material: outputName,
+    ingredients: namedPortions(state, taken, depot),
+  } as const;
+  return stocked(withLog(withStation(paid, station.id, brewing), entry), stock);
 }
 
 /** Each ingredient capped at the stock: the master brews with whatever there is. */
-function spendable(state: GameState, ingredients: readonly Portion[]): Portion[] {
-  return ingredients.map(({ materialId, quantity }) => {
-    const stock = findMaterial(state.materials, materialId)?.quantity ?? 0;
-    return { materialId, quantity: Math.max(0, Math.min(stock, quantity)) };
+function spendable(
+  state: GameState,
+  ingredients: readonly Portion[],
+  depot: DepotSnapshot,
+): Portion[] {
+  return ingredients.map(({ ref, quantity }) => {
+    const stock = refQuantity(ref, state, depot);
+    return { ref, quantity: Math.max(0, Math.min(stock, quantity)) };
   });
 }
 
-/** Names at the time, for the log; a material that is gone is left out. */
-function namedPortions(state: GameState, portions: readonly Portion[]) {
-  return portions.flatMap(({ materialId, quantity }) => {
-    const material = findMaterial(state.materials, materialId);
-    return material ? [{ material: material.name, quantity }] : [];
+/** Names at the time, for the log; whatever is gone is left out. */
+function namedPortions(state: GameState, portions: readonly Portion[], depot: DepotSnapshot) {
+  return portions.flatMap(({ ref, quantity }) => {
+    const name = refName(ref, state, depot);
+    return name === undefined ? [] : [{ material: name, quantity }];
   });
 }
 
@@ -158,57 +196,70 @@ export function collect(
   state: GameState,
   catalog: Catalog,
   stationId: string | undefined,
-): Outcome {
+  depot: DepotSnapshot,
+): StockedOutcome {
   const inForce = stationsInForce(state, catalog).map((station) => station.id);
   if (stationId === undefined) {
     const ready = inForce.filter((id) => {
       const brewing = state.lab.stations[id];
       return brewing !== undefined && isBrewReady(brewing);
     });
-    return ready.length === 0 ? fail('nothing_changed') : ok(bottle(state, ready));
+    if (ready.length === 0) return fail('nothing_changed');
+    const bottled = bottle(state, ready, depot);
+    return stocked(bottled.state, bottled.stock);
   }
   if (!inForce.includes(stationId)) return fail('unknown_station');
   const brewing = state.lab.stations[stationId];
   if (!brewing) return fail('station_empty');
   if (!isBrewReady(brewing)) return fail('not_ready');
-  return ok(bottle(state, [stationId]));
+  const bottled = bottle(state, [stationId], depot);
+  return stocked(bottled.state, bottled.stock);
 }
 
-/** Frees the stations and delivers their potions, one log line per material. A potion that is gone yields nothing. */
-function bottle(state: GameState, stationIds: readonly string[]): GameState {
-  const totals = stationIds.reduce((sum, id) => {
+/**
+ * Frees the stations and delivers their potions, one log line per output.
+ * A material that is gone yields nothing; a depot item that is gone is logged as lost.
+ */
+function bottle(state: GameState, stationIds: readonly string[], depot: DepotSnapshot): Stocked {
+  const totals = new Map<string, { ref: StockRef; quantity: number }>();
+  for (const id of stationIds) {
     const brewing = state.lab.stations[id];
-    return brewing
-      ? sum.set(brewing.outputId, (sum.get(brewing.outputId) ?? 0) + brewing.outputQty)
-      : sum;
-  }, new Map<string, number>());
-  const freed = stationIds.reduce(withoutStation, state);
-  return [...totals].reduce(
-    (current, [materialId, quantity]) => deliver(current, materialId, quantity),
-    freed,
-  );
-}
-
-function deliver(state: GameState, materialId: string, quantity: number): GameState {
-  const material = findMaterial(state.materials, materialId);
-  if (!material) return state;
-  return withLog(addStock(state, materialId, quantity), {
-    day: state.day,
-    kind: 'lab_collected',
-    material: material.name,
-    quantity,
-  });
+    if (!brewing) continue;
+    const key = refKey(brewing.output);
+    const quantity = (totals.get(key)?.quantity ?? 0) + brewing.outputQty;
+    totals.set(key, { ref: brewing.output, quantity });
+  }
+  const start: Stocked = { state: stationIds.reduce(withoutStation, state), stock: [] };
+  return [...totals.values()].reduce((current, { ref, quantity }) => {
+    const gained = gainStock(ref, quantity, current.state, depot);
+    if (!gained) return current;
+    const entry = {
+      day: state.day,
+      kind: 'lab_collected',
+      material: gained.name,
+      quantity,
+    } as const;
+    return {
+      state: withLog(gained.state, { ...entry, ...gained.lost }),
+      stock: [...current.stock, ...gained.stock],
+    };
+  }, start);
 }
 
 /** Empties the station without bottling and without giving the ingredients back. */
-export function discard(state: GameState, catalog: Catalog, stationId: string): Outcome {
+export function discard(
+  state: GameState,
+  catalog: Catalog,
+  stationId: string,
+  depot: DepotSnapshot,
+): StockedOutcome {
   if (!stationsInForce(state, catalog).some((station) => station.id === stationId)) {
     return fail('unknown_station');
   }
   const brewing = state.lab.stations[stationId];
   if (!brewing) return fail('station_empty');
-  const potionName = findMaterial(state.materials, brewing.outputId)?.name ?? brewing.outputId;
-  return ok(
+  const potionName = refName(brewing.output, state, depot) ?? refKey(brewing.output).slice(2);
+  return stocked(
     withLog(withoutStation(state, stationId), {
       day: state.day,
       kind: 'lab_discarded',
@@ -250,22 +301,32 @@ export function hastenBrews(state: GameState, units: number): GameState {
  * ready → collected; else moved to the first free station in force of the same type, keeping progress;
  * else what was spent goes back to the stock.
  */
-export function settleLab(state: GameState, catalog: Catalog): GameState {
+export function settleLab(state: GameState, catalog: Catalog, depot: DepotSnapshot): Stocked {
   const inForce = new Set(stationsInForce(state, catalog).map((station) => station.id));
   const vanished = Object.keys(state.lab.stations).filter((id) => !inForce.has(id));
-  return vanished.reduce((current, id) => settleStation(current, catalog, id), state);
+  const start: Stocked = { state, stock: [] };
+  return vanished.reduce((current, id) => {
+    const settled = settleStation(current.state, catalog, id, depot);
+    return { state: settled.state, stock: [...current.stock, ...settled.stock] };
+  }, start);
 }
 
-function settleStation(state: GameState, catalog: Catalog, stationId: string): GameState {
+function settleStation(
+  state: GameState,
+  catalog: Catalog,
+  stationId: string,
+  depot: DepotSnapshot,
+): Stocked {
   const brewing = state.lab.stations[stationId];
-  if (!brewing) return state;
-  if (isBrewReady(brewing)) return bottle(state, [stationId]);
+  if (!brewing) return { state, stock: [] };
+  if (isBrewReady(brewing)) return bottle(state, [stationId], depot);
   const cleared = withoutStation(state, stationId);
   const type = stationTypeOf(catalog, stationId);
   const free = stationsInForce(cleared, catalog).find(
     (station) => station.type === type && !cleared.lab.stations[station.id],
   );
-  return free ? withStation(cleared, free.id, brewing) : refund(cleared, stationId, brewing.spent);
+  if (free) return { state: withStation(cleared, free.id, brewing), stock: [] };
+  return refund(cleared, stationId, brewing.spent, depot);
 }
 
 /** The type a station id has in lab.json (the catalog keeps it the same across levels). */
@@ -275,20 +336,33 @@ function stationTypeOf(catalog: Catalog, stationId: string): StationType | undef
     .find((station) => station.id === stationId)?.type;
 }
 
-/** Gives back what the brew took; materials the master deleted return nothing. */
-function refund(state: GameState, stationId: string, spent: readonly Portion[]): GameState {
-  const returned = spent.filter((p) => findMaterial(state.materials, p.materialId) !== undefined);
-  if (returned.length === 0) return state;
-  const restocked = returned.reduce(
-    (current, p) => addStock(current, p.materialId, p.quantity),
-    state,
-  );
-  return withLog(restocked, {
+type ReturnedPortion = { material: string; quantity: number; lost?: true };
+
+/** Gives back what the brew took; materials the master deleted return nothing, gone depot items are lost. */
+function refund(
+  state: GameState,
+  stationId: string,
+  spent: readonly Portion[],
+  depot: DepotSnapshot,
+): Stocked {
+  const start: Stocked & { ingredients: ReturnedPortion[] } = { state, stock: [], ingredients: [] };
+  const returned = spent.reduce((current, { ref, quantity }) => {
+    const gained = gainStock(ref, quantity, current.state, depot);
+    if (!gained) return current;
+    return {
+      state: gained.state,
+      stock: [...current.stock, ...gained.stock],
+      ingredients: [...current.ingredients, { material: gained.name, quantity, ...gained.lost }],
+    };
+  }, start);
+  if (returned.ingredients.length === 0) return { state, stock: [] };
+  const entry = {
     day: state.day,
     kind: 'lab_ingredients_returned',
     station: stationId,
-    ingredients: namedPortions(state, returned),
-  });
+    ingredients: returned.ingredients,
+  } as const;
+  return { state: withLog(returned.state, entry), stock: returned.stock };
 }
 
 function withStation(state: GameState, stationId: string, brewing: Brew): GameState {

@@ -7,11 +7,12 @@ import type {
   Recipe,
   StationDef,
   StationType,
+  StockRef,
 } from '../../model/schema';
 import { t } from '../../i18n/pt-BR';
 import { stationLabel } from '../../i18n/stationLabel';
 import { BREW_TENTHS_PER_DAY, isBrewReady, recipesFor, stationsInForce } from '../../systems/Lab';
-import { findMaterial } from '../../systems/Materials';
+import { refKey, refName, refQuantity, sameRef, type DepotSnapshot } from '../../systems/Stock';
 
 export type StationView =
   | { kind: 'free'; station: StationDef }
@@ -26,14 +27,18 @@ export type StationView =
     }
   | { kind: 'ready'; station: StationDef; brew: Brew; potionName: string };
 
-export function stationViews(state: GameState, catalog: Catalog): StationView[] {
-  return stationsInForce(state, catalog).map((station) => stationView(state, station));
+export function stationViews(
+  state: GameState,
+  catalog: Catalog,
+  depot: DepotSnapshot,
+): StationView[] {
+  return stationsInForce(state, catalog).map((station) => stationView(state, station, depot));
 }
 
-function stationView(state: GameState, station: StationDef): StationView {
+function stationView(state: GameState, station: StationDef, depot: DepotSnapshot): StationView {
   const brew = state.lab.stations[station.id];
   if (!brew) return { kind: 'free', station };
-  const potionName = findMaterial(state.materials, brew.outputId)?.name ?? brew.outputId;
+  const potionName = refName(brew.output, state, depot) ?? t.garden.missingItem;
   if (isBrewReady(brew)) return { kind: 'ready', station, brew, potionName };
   const totalTenths = brew.days * BREW_TENTHS_PER_DAY;
   return {
@@ -87,7 +92,9 @@ export function lockedStations(levels: LabLayout['levels'], level: number): Lock
 }
 
 export interface IngredientView {
-  materialId: string;
+  ref: StockRef;
+  /** `refKey(ref)`, for lists and DOM keys. */
+  key: string;
   name: string;
   have: number;
   need: number;
@@ -111,17 +118,17 @@ export interface RecipeOption {
 export function recipeOptions(
   state: GameState,
   stationType: StationType,
-  actor: Actor,
+  { actor, depot }: { actor: Actor; depot: DepotSnapshot },
 ): RecipeOption[] {
   const isMaster = actor.role === 'master';
-  return recipesFor(state, stationType, isMaster).map((recipe) => {
-    const ingredients = recipe.ingredients.map(({ materialId, quantity }) =>
-      ingredientView(state, materialId, quantity),
+  return recipesFor(state, stationType, isMaster, depot).map((recipe) => {
+    const ingredients = recipe.ingredients.map(({ ref, quantity }) =>
+      ingredientView(state, depot, ref, quantity),
     );
     const missing = ingredients.filter((i) => i.missing).map((i) => i.name);
     return {
       recipe,
-      outputName: findMaterial(state.materials, recipe.outputId)?.name ?? recipe.outputId,
+      outputName: refName(recipe.output, state, depot) ?? t.garden.missingItem,
       hidden: recipe.hidden,
       ingredients,
       canBrew: isMaster || missing.length === 0,
@@ -130,16 +137,21 @@ export function recipeOptions(
   });
 }
 
-function ingredientView(state: GameState, materialId: string, need: number): IngredientView {
-  const material = findMaterial(state.materials, materialId);
-  const have = material?.quantity ?? 0;
+function ingredientView(
+  state: GameState,
+  depot: DepotSnapshot,
+  ref: StockRef,
+  need: number,
+): IngredientView {
+  const have = refQuantity(ref, state, depot);
   return {
-    materialId,
-    name: material?.name ?? materialId,
+    ref,
+    key: refKey(ref),
+    name: refName(ref, state, depot) ?? t.garden.missingItem,
     have,
     need,
     missing: have < need,
-    fromGarden: state.garden.crops.some((crop) => crop.harvestId === materialId),
+    fromGarden: state.garden.crops.some((crop) => sameRef(crop.harvest, ref)),
   };
 }
 

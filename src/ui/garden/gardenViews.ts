@@ -9,8 +9,9 @@ import {
   isReady,
   plotsInForce,
 } from '../../systems/Garden';
-import { findMaterial } from '../../systems/Materials';
+import { refName, refQuantity, type DepotSnapshot } from '../../systems/Stock';
 import { campShortfall } from '../../systems/Wallets';
+import { t } from '../../i18n/pt-BR';
 
 export type PlotView =
   | { kind: 'empty'; plot: PlotDef }
@@ -25,15 +26,15 @@ export type PlotView =
     }
   | { kind: 'ready'; plot: PlotDef; crop: Crop; harvestName: string };
 
-export function plotViews(state: GameState, catalog: Catalog): PlotView[] {
-  return plotsInForce(state, catalog).map((plot) => plotView(state, plot));
+export function plotViews(state: GameState, catalog: Catalog, depot: DepotSnapshot): PlotView[] {
+  return plotsInForce(state, catalog).map((plot) => plotView(state, plot, depot));
 }
 
-function plotView(state: GameState, plot: PlotDef): PlotView {
+function plotView(state: GameState, plot: PlotDef, depot: DepotSnapshot): PlotView {
   const planting = state.garden.plots[plot.id];
-  const crop = planting && findCrop(state, planting.seedId);
+  const crop = planting && findCrop(state, planting.cropId);
   if (!planting || !crop) return { kind: 'empty', plot };
-  const harvestName = findMaterial(state.materials, crop.harvestId)?.name ?? crop.harvestId;
+  const harvestName = refName(crop.harvest, state, depot) ?? t.garden.missingItem;
   if (isReady(crop, planting)) return { kind: 'ready', plot, crop, harvestName };
   const totalTenths = crop.days * GROWTH_TENTHS_PER_DAY;
   return {
@@ -72,23 +73,29 @@ export function seedOptions(
   state: GameState,
   catalog: Catalog,
   plotType: PlotType,
-  actor: Actor,
+  { actor, depot }: { actor: Actor; depot: DepotSnapshot },
 ): SeedOption[] {
-  return cropsFor(state, plotType).map((crop) => seedOption(state, catalog, crop, actor));
+  return cropsFor(state, plotType, depot).map((crop) =>
+    seedOption(state, catalog, crop, { actor, depot }),
+  );
 }
 
-function seedOption(state: GameState, catalog: Catalog, crop: Crop, actor: Actor): SeedOption {
-  const seed = findMaterial(state.materials, crop.seedId);
+function seedOption(
+  state: GameState,
+  catalog: Catalog,
+  crop: Crop,
+  { actor, depot }: { actor: Actor; depot: DepotSnapshot },
+): SeedOption {
   const priceBronze = crop.rare ? null : toBronze(crop.price, catalog.currencies);
   const shortBronze =
     priceBronze === null
       ? null
       : (campShortfall(state, catalog, priceBronze)?.missingBronze ?? null);
-  const owned = seed?.quantity ?? 0;
+  const owned = refQuantity(crop.seed, state, depot);
   return {
     crop,
-    seedName: seed?.name ?? crop.seedId,
-    harvestName: findMaterial(state.materials, crop.harvestId)?.name ?? crop.harvestId,
+    seedName: refName(crop.seed, state, depot) ?? t.garden.missingItem,
+    harvestName: refName(crop.harvest, state, depot) ?? t.garden.missingItem,
     owned,
     action: seedAction(owned, crop, shortBronze, actor),
     priceBronze,

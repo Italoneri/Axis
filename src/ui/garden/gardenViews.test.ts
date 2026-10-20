@@ -14,8 +14,9 @@ const placed = {
 } as PlacedBuilding;
 
 const common: Crop = {
-  seedId: 'wood',
-  harvestId: 'iron',
+  id: 'wood',
+  seed: { source: 'material', materialId: 'wood' },
+  harvest: { source: 'material', materialId: 'iron' },
   plotType: 'canteiro',
   days: 3,
   yield: 2,
@@ -23,8 +24,9 @@ const common: Crop = {
   price: { bronze: 2 },
 };
 const rare: Crop = {
-  seedId: 'aetherium',
-  harvestId: 'iron',
+  id: 'aetherium',
+  seed: { source: 'material', materialId: 'aetherium' },
+  harvest: { source: 'material', materialId: 'iron' },
   plotType: 'canteiro',
   days: 5,
   yield: 1,
@@ -53,8 +55,8 @@ function withSeeds(state: GameState, stock: Record<string, number>): GameState {
 
 describe('plotViews', () => {
   it('daysLeftRoundsUp', () => {
-    const state = gardenWith({ 'canteiro-1': { seedId: 'wood', growthTenths: 15 } });
-    const view = plotViews(state, catalog).find((v) => v.plot.id === 'canteiro-1');
+    const state = gardenWith({ 'canteiro-1': { cropId: 'wood', growthTenths: 15 } });
+    const view = plotViews(state, catalog, []).find((v) => v.plot.id === 'canteiro-1');
     expect(view).toMatchObject({
       kind: 'growing',
       daysLeft: 2,
@@ -64,31 +66,38 @@ describe('plotViews', () => {
   });
 
   it('marksReadyPlantings', () => {
-    const state = gardenWith({ 'canteiro-1': { seedId: 'wood', growthTenths: 30 } });
-    const view = plotViews(state, catalog).find((v) => v.plot.id === 'canteiro-1');
+    const state = gardenWith({ 'canteiro-1': { cropId: 'wood', growthTenths: 30 } });
+    const view = plotViews(state, catalog, []).find((v) => v.plot.id === 'canteiro-1');
     expect(view).toMatchObject({ kind: 'ready', harvestName: 'Ferro' });
   });
 
   it('listsEveryPlotInForce', () => {
-    expect(plotViews(gardenWith({}), catalog)).toHaveLength(8);
-    expect(plotViews(makeState(), catalog)).toEqual([]);
+    expect(plotViews(gardenWith({}), catalog, [])).toHaveLength(8);
+    expect(plotViews(makeState(), catalog, [])).toEqual([]);
   });
 });
 
 describe('gardenSummary', () => {
   it('summaryCountsEachState', () => {
     const state = gardenWith({
-      'canteiro-1': { seedId: 'wood', growthTenths: 30 },
-      'canteiro-2': { seedId: 'wood', growthTenths: 40 },
-      'canteiro-3': { seedId: 'wood', growthTenths: 10 },
+      'canteiro-1': { cropId: 'wood', growthTenths: 30 },
+      'canteiro-2': { cropId: 'wood', growthTenths: 40 },
+      'canteiro-3': { cropId: 'wood', growthTenths: 10 },
     });
-    expect(gardenSummary(plotViews(state, catalog))).toEqual({ ready: 2, growing: 1, empty: 5 });
+    expect(gardenSummary(plotViews(state, catalog, []))).toEqual({
+      ready: 2,
+      growing: 1,
+      empty: 5,
+    });
   });
 });
 
 describe('seedOptions', () => {
   it('listsSeedsWithZeroStock', () => {
-    const options = seedOptions(gardenWith({}, [common, rare]), catalog, 'canteiro', player);
+    const options = seedOptions(gardenWith({}, [common, rare]), catalog, 'canteiro', {
+      actor: player,
+      depot: [],
+    });
     expect(options.map((o) => [o.seedName, o.owned])).toEqual([
       ['Aetherium', 0],
       ['Madeira', 0],
@@ -97,7 +106,7 @@ describe('seedOptions', () => {
 
   it('ignoresCropsOfOtherPlotTypes', () => {
     const state = gardenWith({}, [{ ...common, plotType: 'muda' }]);
-    expect(seedOptions(state, catalog, 'canteiro', player)).toEqual([]);
+    expect(seedOptions(state, catalog, 'canteiro', { actor: player, depot: [] })).toEqual([]);
   });
 
   it.each([
@@ -108,17 +117,19 @@ describe('seedOptions', () => {
     { name: 'owned rare', actor: player, stock: { aetherium: 1 }, crop: rare, action: 'plant' },
   ] as const)('seedOptionActions: $name is $action', ({ actor, stock, crop, action }) => {
     const state = withSeeds(gardenWith({}, [crop]), stock);
-    expect(seedOptions(state, catalog, 'canteiro', actor)[0]?.action).toBe(action);
+    expect(seedOptions(state, catalog, 'canteiro', { actor: actor, depot: [] })[0]?.action).toBe(
+      action,
+    );
   });
 
   it('seedOptionDisabledWhenCampIsShort', () => {
     const state = withCamp({ bronze: 1 }, gardenWith({}));
-    const [option] = seedOptions(state, catalog, 'canteiro', player);
+    const [option] = seedOptions(state, catalog, 'canteiro', { actor: player, depot: [] });
     expect(option).toMatchObject({ action: 'camp_short', priceBronze: 2, shortBronze: 1 });
   });
 
   it('showsPriceWhenCampCanPay', () => {
-    const [option] = seedOptions(gardenWith({}), catalog, 'canteiro', player);
+    const [option] = seedOptions(gardenWith({}), catalog, 'canteiro', { actor: player, depot: [] });
     expect(option).toMatchObject({ action: 'buy', priceBronze: 2, shortBronze: null });
   });
 });

@@ -2,11 +2,12 @@ import type { Actor, GameCommand } from '../../commands/schema';
 import { plotLabel } from '../../i18n/plotLabel';
 import { t } from '../../i18n/pt-BR';
 import { resolveImage } from '../../model/catalog';
-import type { Crop, CropLook, PlotDef, PlotType } from '../../model/schema';
+import type { Crop, CropLook, GameState, PlotDef, PlotType, StockRef } from '../../model/schema';
 import type { GameStore } from '../../store';
 import { fromBronze } from '../../systems/Coins';
 import { findCrop, gardenLevel } from '../../systems/Garden';
 import { findMaterial } from '../../systems/Materials';
+import { refKey, type DepotSnapshot } from '../../systems/Stock';
 import { el } from '../dom';
 import { formatPrice } from '../format';
 import { button, closeButton, pictureOr } from '../widgets';
@@ -33,10 +34,12 @@ type EmptyView = Extract<PlotView, { kind: 'empty' }>;
 export interface GardenSceneDeps {
   game: GameStore;
   viewer: () => Actor;
+  /** The group depot items as the rules see them: seeds and harvests linked there. */
+  depot: () => DepotSnapshot;
   /** Runs once per plot after a harvest went through, before its icons fly. */
   onHarvest: (view: ReadyView) => void;
-  /** The chip the harvested icons fly to (it bumps when they land). */
-  harvestTarget: (harvestId: string) => HTMLElement | null;
+  /** The chip the harvested icons fly to (it bumps when they land), by `refKey` of the harvest. */
+  harvestTarget: (harvestKey: string) => HTMLElement | null;
 }
 
 interface PlotEntry {
@@ -62,7 +65,7 @@ type Gesture =
   | (GestureBase & { kind: 'harvest' })
   | (GestureBase & {
       kind: 'plant';
-      seedId: string;
+      cropId: string;
       originPlotId: string;
       start: { x: number; y: number };
       moved: boolean;
@@ -212,9 +215,9 @@ export class GardenScene {
     else this.openPopover(plotId);
   }
 
-  private onSeedClick(seedId: string): void {
+  private onSeedClick(cropId: string): void {
     if (this.suppressClick || !this.popover) return;
-    if (this.plant(this.popover.plotId, seedId)) this.closePopover();
+    if (this.plant(this.popover.plotId, cropId)) this.closePopover();
   }
 
   // ---------- Gestures: drag a seed to sow, drag the sickle to harvest ----------
@@ -230,12 +233,12 @@ export class GardenScene {
     this.startGesture(event, source, { kind: 'harvest', ...gestureBase(event, sickleGhost()) });
   }
 
-  private onSeedPointerDown(event: PointerEvent, seedId: string, source: HTMLElement): void {
+  private onSeedPointerDown(event: PointerEvent, cropId: string, source: HTMLElement): void {
     const origin = this.popover?.plotId;
     if (!event.isPrimary || event.button !== 0 || origin === undefined) return;
     event.preventDefault();
     this.suppressClick = true;
-    const crop = findCrop(this.deps.game.current, seedId);
+    const crop = findCrop(this.deps.game.current, cropId);
     const ghost = el(
       'div',
       { class: 'garden-ghost' },
@@ -244,7 +247,7 @@ export class GardenScene {
     this.startGesture(event, source, {
       kind: 'plant',
       ...gestureBase(event, ghost),
-      seedId,
+      cropId,
       originPlotId: origin,
       start: { x: event.clientX, y: event.clientY },
       moved: false,
@@ -278,10 +281,10 @@ export class GardenScene {
     const { start } = gesture;
     gesture.moved ||=
       Math.hypot(event.clientX - start.x, event.clientY - start.y) > DRAG_THRESHOLD_PX;
-    const target = view && this.accepts(view, gesture.seedId) ? view : undefined;
+    const target = view && this.accepts(view, gesture.cropId) ? view : undefined;
     this.markTarget(gesture.moved ? target?.plot.id : undefined);
     if (!gesture.moved || !target || gesture.refused) return;
-    if (this.plant(target.plot.id, gesture.seedId)) gesture.planted += 1;
+    if (this.plant(target.plot.id, gesture.cropId)) gesture.planted += 1;
     else gesture.refused = true;
   }
 
@@ -301,7 +304,7 @@ export class GardenScene {
   private finishSowing(gesture: Extract<Gesture, { kind: 'plant' }>): void {
     const sowed = gesture.moved
       ? gesture.planted > 0
-      : this.plant(gesture.originPlotId, gesture.seedId);
+      : this.plant(gesture.originPlotId, gesture.cropId);
     if (sowed) this.closePopover();
   }
 
@@ -311,9 +314,9 @@ export class GardenScene {
     return plotId === undefined ? undefined : this.entries.get(plotId)?.view;
   }
 
-  private accepts(view: PlotView, seedId: string): view is EmptyView {
+  private accepts(view: PlotView, cropId: string): view is EmptyView {
     return (
-      view.kind === 'empty' && findCrop(this.deps.game.current, seedId)?.plotType === view.plot.type
+      view.kind === 'empty' && findCrop(this.deps.game.current, cropId)?.plotType === view.plot.type
     );
   }
 
@@ -329,16 +332,14 @@ export class GardenScene {
   // ---------- Commands ----------
 
   /** Buys the seed when the camp holds none; a refusal is toasted by the store. */
-  private plant(plotId: string, seedId: string): boolean {
-    const { game, viewer } = this.deps;
+  private plant(plotId: string, cropId: string): boolean {
+    const { game } = this.deps;
     const plotType = this.entries.get(plotId)?.view.plot.type;
     if (!plotType) return false;
-    const option = seedOptions(game.current, game.catalog, plotType, viewer()).find(
-      (candidate) => candidate.crop.seedId === seedId,
-    );
+    const option = this.seedOptionsFor(plotType).find((candidate) => candidate.crop.id === cropId);
     if (!option) return false;
     const buy = option.action !== 'plant';
-    if (game.dispatch({ type: 'garden_plant', plotId, seedId, buy }) !== null) return false;
+    if (game.dispatch({ type: 'garden_plant', plotId, cropId, buy }) !== null) return false;
     this.sprayDirt(plotId);
     return true;
   }
@@ -378,7 +379,7 @@ export class GardenScene {
     }
     const options = view.kind === 'empty' ? this.seedOptionsFor(view.plot.type) : [];
     const signature = `${plotSignature(view)}|${JSON.stringify(
-      options.map((o) => [o.crop.seedId, o.action, o.owned, o.priceBronze, o.shortBronze]),
+      options.map((o) => [o.crop.id, o.action, o.owned, o.priceBronze, o.shortBronze]),
     )}`;
     if (signature === popover.signature) return;
     const node = view.kind === 'empty' ? this.seedTray(view, options) : this.growingPanel(view);
@@ -397,8 +398,8 @@ export class GardenScene {
   }
 
   private seedOptionsFor(plotType: PlotType): SeedOption[] {
-    const { game, viewer } = this.deps;
-    return seedOptions(game.current, game.catalog, plotType, viewer());
+    const { game, viewer, depot } = this.deps;
+    return seedOptions(game.current, game.catalog, plotType, { actor: viewer(), depot: depot() });
   }
 
   private seedTray(view: EmptyView, options: readonly SeedOption[]): HTMLElement {
@@ -431,7 +432,7 @@ export class GardenScene {
 
   private seedButton(option: SeedOption): HTMLElement {
     const { crop } = option;
-    const { seedId } = crop;
+    const cropId = crop.id;
     const node = el(
       'button',
       {
@@ -444,8 +445,8 @@ export class GardenScene {
       el('span', { class: 'garden-tray__name' }, option.seedName),
       el('small', { class: 'garden-tray__tag' }, ...this.seedTag(option)),
     );
-    node.addEventListener('pointerdown', (event) => this.onSeedPointerDown(event, seedId, node));
-    node.addEventListener('click', () => this.onSeedClick(seedId));
+    node.addEventListener('pointerdown', (event) => this.onSeedPointerDown(event, cropId, node));
+    node.addEventListener('click', () => this.onSeedClick(cropId));
     return node;
   }
 
@@ -553,7 +554,7 @@ export class GardenScene {
   /** Part of the plot's signature: the bubble shows the harvest's picture. */
   private harvestPicture(view: PlotView): string {
     if (view.kind === 'empty') return '';
-    return findMaterial(this.deps.game.current.materials, view.crop.harvestId)?.icon ?? '';
+    return pictureOf(this.deps.game.current, view.crop.harvest) ?? '';
   }
 
   // ---------- Effects ----------
@@ -593,7 +594,7 @@ export class GardenScene {
 
   private flyIcons(view: ReadyView): void {
     const from = this.entries.get(view.plot.id)?.button;
-    const to = this.deps.harvestTarget(view.crop.harvestId);
+    const to = this.deps.harvestTarget(refKey(view.crop.harvest));
     if (!from || !to) return;
     const [x0, y0] = centerOf(from);
     const [x1, y1] = centerOf(to);
@@ -619,14 +620,14 @@ export class GardenScene {
       );
       flight.onfinish = () => {
         icon.remove();
-        if (i === 2) this.bump(view.crop.harvestId);
+        if (i === 2) this.bump(refKey(view.crop.harvest));
       };
     });
   }
 
   /** Looked up again: the strip may have been redrawn while the icons flew. */
-  private bump(harvestId: string): void {
-    const target = this.deps.harvestTarget(harvestId);
+  private bump(harvestKey: string): void {
+    const target = this.deps.harvestTarget(harvestKey);
     if (target) flashClass(target, 'is-bumping', 400);
   }
 }
@@ -737,7 +738,7 @@ function plotAria(view: PlotView): string {
   }
 }
 
-/** Which material lends its picture to a crop's icon. */
+/** Which end of the crop lends its picture to its icon. */
 export type CropIconSource = 'seed' | 'harvest';
 
 /**
@@ -746,11 +747,17 @@ export type CropIconSource = 'seed' | 'harvest';
  * photo loads).
  */
 export function cropIcon(game: GameStore, crop: Crop, source: CropIconSource): HTMLElement {
-  const materialId = source === 'seed' ? crop.seedId : crop.harvestId;
-  const picture = findMaterial(game.current.materials, materialId)?.icon;
+  const picture = pictureOf(game.current, source === 'seed' ? crop.seed : crop.harvest);
   return pictureOr(game, picture, 'garden-icon garden-icon--photo', () =>
     cropSprite(cropLook(crop)),
   );
+}
+
+/** A material's photo; depot items have none, so they draw the sprite. */
+function pictureOf(state: GameState, ref: StockRef): string | undefined {
+  return ref.source === 'material'
+    ? findMaterial(state.materials, ref.materialId)?.icon
+    : undefined;
 }
 
 /** The flower tinted by the look's hue, or a leaf for foliage. */

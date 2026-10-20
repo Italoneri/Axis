@@ -5,11 +5,20 @@ import { t } from '../../i18n/pt-BR';
 import type { GameStore } from '../../store';
 import { gardenLevel } from '../../systems/Garden';
 import { recipesFor } from '../../systems/Lab';
-import { findMaterial } from '../../systems/Materials';
+import { EMPTY_DEPOT } from '../../systems/Depot';
+import {
+  depotSnapshot,
+  refExists,
+  refKey,
+  refName,
+  refQuantity,
+  type DepotSnapshot,
+} from '../../systems/Stock';
 import { el } from '../dom';
 import type { MasterAccess } from '../MasterSession';
+import type { DepotSource } from '../stock/StockPicker';
 import { button, closeButton, confirmButton, keepEscapeInside } from '../widgets';
-import type { Recipe, StationType } from '../../model/schema';
+import type { Recipe, StationType, StockRef } from '../../model/schema';
 import { stationTypeSchema } from '../../model/schema';
 import { LabScene, potionIcon, progressBar, recipeRow, type ReadyView } from './LabScene';
 import {
@@ -27,6 +36,8 @@ export interface LabWindowDeps {
   session: MasterAccess;
   viewer: () => Actor;
   openGarden: () => void;
+  /** The depot store: potions and ingredients linked to group items count from it. */
+  depot?: DepotSource | undefined;
 }
 
 /**
@@ -47,16 +58,17 @@ export class LabWindow {
   private readonly scene: LabScene;
   private readonly strip = el('div', { class: 'garden-strip' });
   private readonly cards = el('ul', { class: 'garden-cards' });
-  /** Collected while the window is open, by potion material: where the icons fly. */
-  private collected = new Map<string, number>();
+  /** Collected while the window is open, by `refKey` of the potion: where the icons fly. */
+  private collected = new Map<string, { output: StockRef; quantity: number }>();
 
   constructor(private readonly deps: LabWindowDeps) {
     this.scene = new LabScene({
       game: deps.game,
       viewer: deps.viewer,
+      depot: () => this.snapshot(),
       onCollect: (view) => this.recordCollect(view),
-      collectTarget: (outputId) =>
-        this.strip.querySelector(`[data-output-id="${CSS.escape(outputId)}"]`),
+      collectTarget: (outputKey) =>
+        this.strip.querySelector(`[data-output-id="${CSS.escape(outputKey)}"]`),
       gardenBuilt: () => gardenLevel(deps.game.current) > 0,
       openGarden: () => this.openGarden(),
     });
@@ -71,7 +83,12 @@ export class LabWindow {
     this.selectedStationId = null;
     this.tab = 'lab';
     this.collected = new Map();
-    this.stopWatching = this.deps.game.subscribe(() => this.render());
+    const stopGame = this.deps.game.subscribe(() => this.render());
+    const stopDepot = this.deps.depot?.subscribe(() => this.render());
+    this.stopWatching = () => {
+      stopGame();
+      stopDepot?.();
+    };
     document.body.append(dialog);
     this.render();
     dialog.showModal();
@@ -133,7 +150,7 @@ export class LabWindow {
       this.renderRecipes(dialog);
       return;
     }
-    const views = stationViews(game.current, game.catalog);
+    const views = stationViews(game.current, game.catalog, this.snapshot());
     if (!views.some((view) => view.station.id === this.selectedStationId)) {
       this.selectedStationId = null;
     }
@@ -222,12 +239,15 @@ export class LabWindow {
 
   private recipeItem(recipe: Recipe): HTMLElement {
     const { game } = this.deps;
-    const name = (id: string) =>
-      findMaterial(game.current.materials, id)?.name ?? t.lab.recipes.removedMaterial;
+    const state = game.current;
+    const depot = this.snapshot();
+    const name = (ref: StockRef) =>
+      refName(ref, state, depot) ??
+      (ref.source === 'depot' ? t.depot.stock.removed : t.lab.recipes.removedMaterial);
     const texts = t.lab.recipes;
-    const ingredients = recipe.ingredients
-      .map((i) => `${i.quantity} ${name(i.materialId)}`)
-      .join(' + ');
+    const ingredients = recipe.ingredients.map((i) => `${i.quantity} ${name(i.ref)}`).join(' + ');
+    const refs = [recipe.output, ...recipe.ingredients.map((i) => i.ref)];
+    const isBroken = refs.some((ref) => !refExists(ref, state, depot));
     return el(
       'li',
       { class: 'garden-crop' },
@@ -238,9 +258,10 @@ export class LabWindow {
         el(
           'strong',
           {},
-          name(recipe.outputId),
+          name(recipe.output),
           recipe.hidden && el('span', { class: 'lab-badge' }, t.lab.scene.hiddenBadge),
         ),
+        isBroken && el('span', { class: 'panel__hint' }, texts.brokenLink),
         el('span', { class: 'panel__hint' }, ingredients),
         el('span', { class: 'panel__hint' }, texts.summary(recipe.days, recipe.outputQty)),
       ),
@@ -272,6 +293,7 @@ export class LabWindow {
     openRecipeForm({
       state: game.current,
       ...(recipe ? { recipe } : {}),
+      depot: this.deps.depot,
       save: (fields) => {
         const command: GameCommand = recipe
           ? { type: 'lab_recipe_update', recipeId: recipe.id, recipe: fields }
@@ -281,23 +303,31 @@ export class LabWindow {
     });
   }
 
+  /** The group depot as the rules see it; empty until the depot store loads. */
+  private snapshot(): DepotSnapshot {
+    return depotSnapshot(this.deps.depot?.current ?? EMPTY_DEPOT);
+  }
+
   private recordCollect(view: ReadyView): void {
-    const { outputId, outputQty } = view.brew;
-    this.collected.set(outputId, (this.collected.get(outputId) ?? 0) + outputQty);
+    const { output, outputQty } = view.brew;
+    const key = refKey(output);
+    const quantity = (this.collected.get(key)?.quantity ?? 0) + outputQty;
+    this.collected.set(key, { output, quantity });
     this.renderStrip();
   }
 
+  /** Potions of this visit, then every known ingredient in stock, materials and depot items alike. */
   private renderStrip(): void {
     const { game } = this.deps;
-    const { materials } = game.current;
-    const collected = [...this.collected].flatMap(([outputId, quantity]) => {
-      const material = findMaterial(materials, outputId);
-      if (!material) return [];
-      return [chip(potionIcon(game, { outputId }), material.name, quantity, outputId)];
+    const state = game.current;
+    const depot = this.snapshot();
+    const collected = [...this.collected].flatMap(([key, { output, quantity }]) => {
+      const name = refName(output, state, depot);
+      return name === undefined ? [] : [chip(potionIcon(game, { output }), name, quantity, key)];
     });
-    const ingredients = this.knownIngredients().flatMap((materialId) => {
-      const material = findMaterial(materials, materialId);
-      return material ? [chip(null, material.name, material.quantity)] : [];
+    const ingredients = this.knownIngredients().flatMap((ref) => {
+      const name = refName(ref, state, depot);
+      return name === undefined ? [] : [chip(null, name, refQuantity(ref, state, depot))];
     });
     this.strip.replaceChildren(
       stripSection(t.lab.scene.collectedTitle, collected, t.lab.scene.nothingCollected),
@@ -306,14 +336,14 @@ export class LabWindow {
   }
 
   /** Ingredients of the recipes the viewer can see, each once. */
-  private knownIngredients(): string[] {
+  private knownIngredients(): StockRef[] {
     const state = this.deps.game.current;
     const isMaster = this.deps.viewer().role === 'master';
     const types = ['alambique', 'caldeirao', 'circulo'] as const;
-    const ids = types
-      .flatMap((type) => recipesFor(state, type, isMaster))
-      .flatMap((recipe) => recipe.ingredients.map((i) => i.materialId));
-    return [...new Set(ids)];
+    const refs = types
+      .flatMap((type) => recipesFor(state, type, isMaster, this.snapshot()))
+      .flatMap((recipe) => recipe.ingredients.map((i) => i.ref));
+    return [...new Map(refs.map((ref) => [refKey(ref), ref])).values()];
   }
 
   // ---------- Narrow screens ----------
@@ -378,7 +408,10 @@ export class LabWindow {
 
   private recipeList(view: Extract<StationView, { kind: 'free' }>): HTMLElement {
     const { game, viewer } = this.deps;
-    const options = recipeOptions(game.current, view.station.type, viewer());
+    const options = recipeOptions(game.current, view.station.type, {
+      actor: viewer(),
+      depot: this.snapshot(),
+    });
     if (options.length === 0) return el('p', { class: 'panel__hint' }, t.lab.scene.noRecipes);
     return el(
       'ul',
@@ -415,18 +448,18 @@ function stateText(view: StationView): string {
   }
 }
 
-/** `outputId` marks a chip of the collected list as the target of the flying icons. */
+/** `outputKey` marks a chip of the collected list as the target of the flying icons. */
 function chip(
   icon: HTMLElement | null,
   name: string,
   quantity: number,
-  outputId?: string,
+  outputKey?: string,
 ): HTMLElement {
   return el(
     'span',
     {
       class: quantity > 0 ? 'garden-chip' : 'garden-chip garden-chip--none',
-      'data-output-id': outputId,
+      'data-output-id': outputKey,
     },
     icon,
     name,
